@@ -1,0 +1,22 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const DelegationController_1 = require("../controllers/DelegationController");
+const delegation_dto_1 = require("../../application/dto/delegation.dto");
+const validate_request_middleware_1 = require("../../../../shared/middlewares/validate-request.middleware");
+const auth_middleware_1 = require("../../../../shared/middlewares/auth.middleware");
+const asyncHandler_1 = require("../../../../shared/utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.get("/delegation/tasks", (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.list));
+router.get("/delegation/i-delegated", (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.listIDelegated));
+router.get("/delegation/tasks/:id", (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.getById));
+router.post("/delegation/tasks", (0, validate_request_middleware_1.validate)(delegation_dto_1.createDelegatedTaskSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.create));
+router.patch("/delegation/tasks/:id", (0, validate_request_middleware_1.validate)(delegation_dto_1.updateDelegatedTaskSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.update));
+router.patch("/delegation/tasks/:id/status", (0, validate_request_middleware_1.validate)(delegation_dto_1.updateStatusSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.updateStatus));
+router.patch("/delegation/tasks/:id/escalate", (0, validate_request_middleware_1.validate)(delegation_dto_1.escalateSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.escalate));
+router.delete("/delegation/tasks/:id", (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.remove));
+router.post("/delegation/tasks/:id/files", (0, validate_request_middleware_1.validate)(delegation_dto_1.addFileSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.addFile));
+router.post("/delegation/tasks/:id/whatsapp", (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.sendWhatsAppReminder));
+exports.default = router;
+//# sourceMappingURL=delegation.routes.js.map

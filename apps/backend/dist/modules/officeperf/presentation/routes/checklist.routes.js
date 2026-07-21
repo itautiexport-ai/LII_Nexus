@@ -1,0 +1,20 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const ChecklistController_1 = require("../controllers/ChecklistController");
+const checklist_dto_1 = require("../../application/dto/checklist.dto");
+const validate_request_middleware_1 = require("../../../../shared/middlewares/validate-request.middleware");
+const auth_middleware_1 = require("../../../../shared/middlewares/auth.middleware");
+const rbac_middleware_1 = require("../../../../shared/middlewares/rbac.middleware");
+const asyncHandler_1 = require("../../../../shared/utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.get("/checklists/my-checklists", (0, asyncHandler_1.asyncHandler)(ChecklistController_1.ChecklistController.getMyChecklists));
+router.get("/checklists/templates", (0, rbac_middleware_1.requirePermission)("checklist.template.view"), (0, asyncHandler_1.asyncHandler)(ChecklistController_1.ChecklistController.listTemplates));
+router.get("/checklists/templates/:id", (0, rbac_middleware_1.requirePermission)("checklist.template.view"), (0, asyncHandler_1.asyncHandler)(ChecklistController_1.ChecklistController.getTemplateDetail));
+router.post("/checklists/templates", (0, rbac_middleware_1.requirePermission)("checklist.template.create"), (0, validate_request_middleware_1.validate)(checklist_dto_1.createTemplateSchema), (0, asyncHandler_1.asyncHandler)(ChecklistController_1.ChecklistController.createTemplate));
+router.patch("/checklists/templates/:id", (0, rbac_middleware_1.requirePermission)("checklist.template.update"), (0, validate_request_middleware_1.validate)(checklist_dto_1.updateTemplateSchema), (0, asyncHandler_1.asyncHandler)(ChecklistController_1.ChecklistController.updateTemplate));
+router.delete("/checklists/templates/:id", (0, rbac_middleware_1.requirePermission)("checklist.template.delete"), (0, asyncHandler_1.asyncHandler)(ChecklistController_1.ChecklistController.deleteTemplate));
+router.patch("/checklists/instances/:instanceId/items/:itemId", (0, validate_request_middleware_1.validate)(checklist_dto_1.setItemCheckedSchema), (0, asyncHandler_1.asyncHandler)(ChecklistController_1.ChecklistController.setItemChecked));
+exports.default = router;
+//# sourceMappingURL=checklist.routes.js.map

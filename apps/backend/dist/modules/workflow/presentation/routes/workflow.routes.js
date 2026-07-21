@@ -1,0 +1,23 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const WorkflowController_1 = require("../controllers/WorkflowController");
+const workflow_dto_1 = require("../../application/dto/workflow.dto");
+const validate_request_middleware_1 = require("../../../../shared/middlewares/validate-request.middleware");
+const auth_middleware_1 = require("../../../../shared/middlewares/auth.middleware");
+const rbac_middleware_1 = require("../../../../shared/middlewares/rbac.middleware");
+const asyncHandler_1 = require("../../../../shared/utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.get("/workflows", (0, rbac_middleware_1.requirePermission)("workflow.view"), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.list));
+router.get("/workflows/:id", (0, rbac_middleware_1.requirePermission)("workflow.view"), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.getById));
+router.post("/workflows", (0, rbac_middleware_1.requirePermission)("workflow.create"), (0, validate_request_middleware_1.validate)(workflow_dto_1.createWorkflowSchema), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.create));
+router.patch("/workflows/:id", (0, rbac_middleware_1.requirePermission)("workflow.update"), (0, validate_request_middleware_1.validate)(workflow_dto_1.updateWorkflowMetaSchema), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.updateMeta));
+router.patch("/workflows/:id/status", (0, rbac_middleware_1.requirePermission)("workflow.publish"), (0, validate_request_middleware_1.validate)(workflow_dto_1.updateStatusSchema), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.updateStatus));
+router.delete("/workflows/:id", (0, rbac_middleware_1.requirePermission)("workflow.delete"), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.remove));
+router.post("/workflows/:id/stages", (0, rbac_middleware_1.requirePermission)("workflow.update"), (0, validate_request_middleware_1.validate)(workflow_dto_1.stageSchema), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.addStage));
+router.patch("/workflows/:id/stages/reorder", (0, rbac_middleware_1.requirePermission)("workflow.update"), (0, validate_request_middleware_1.validate)(workflow_dto_1.reorderStagesSchema), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.reorderStages));
+router.patch("/workflows/:id/stages/:stageId", (0, rbac_middleware_1.requirePermission)("workflow.update"), (0, validate_request_middleware_1.validate)(workflow_dto_1.stageSchema), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.updateStage));
+router.delete("/workflows/:id/stages/:stageId", (0, rbac_middleware_1.requirePermission)("workflow.update"), (0, asyncHandler_1.asyncHandler)(WorkflowController_1.WorkflowController.removeStage));
+exports.default = router;
+//# sourceMappingURL=workflow.routes.js.map

@@ -1,0 +1,2 @@
+ALTER TABLE machine_targets
+ADD COLUMN uom VARCHAR(50) NOT NULL DEFAULT 'Pieces' AFTER target;

@@ -1,0 +1,249 @@
+/* Checklist.css */
+
+.chk-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.chk-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chk-card-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #fdfdfd 0%, #f7f9fb 100%);
+}
+
+.chk-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.chk-link {
+  color: #3457d5;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.chk-link:hover {
+  color: #2740a6;
+  text-decoration: underline;
+}
+
+.chk-card-content {
+  padding: 32px;
+}
+
+.chk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.chk-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.chk-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.chk-required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.chk-input,
+.chk-select {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #1f2937;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.chk-input:focus,
+.chk-select:focus {
+  outline: none;
+  border-color: #3457d5;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(52, 87, 213, 0.1);
+}
+
+.chk-input:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.chk-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.chk-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid #d1d5db;
+  cursor: pointer;
+  accent-color: #3457d5;
+  transition: transform 0.2s ease;
+}
+
+.chk-checkbox:active {
+  transform: scale(0.9);
+}
+
+.chk-checkbox-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.chk-divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 32px 0;
+  border: none;
+}
+
+.chk-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.chk-btn-primary {
+  background-color: #3457d5;
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(52, 87, 213, 0.2);
+}
+
+.chk-btn-primary:hover {
+  background-color: #2a46ad;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(52, 87, 213, 0.3);
+}
+
+.chk-btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px rgba(52, 87, 213, 0.2);
+}
+
+/* Table Styles */
+.chk-table-container {
+  overflow-x: auto;
+}
+
+.chk-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+}
+
+.chk-th {
+  padding: 16px 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.chk-th:first-child { border-top-left-radius: 8px; }
+.chk-th:last-child { border-top-right-radius: 8px; }
+
+.chk-tr {
+  transition: background-color 0.2s ease;
+}
+
+.chk-tr:hover {
+  background-color: #f8fafc;
+}
+
+.chk-td {
+  padding: 16px 24px;
+  font-size: 14px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+
+.chk-td-strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Status Pills */
+.chk-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9999px;
+  text-transform: capitalize;
+}
+
+.chk-pill-high { background-color: #fee2e2; color: #b91c1c; }
+.chk-pill-medium { background-color: #fef3c7; color: #b45309; }
+.chk-pill-low { background-color: #d1fae5; color: #047857; }
+
+/* Empty State */
+.chk-empty {
+  padding: 48px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+/* Animations */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

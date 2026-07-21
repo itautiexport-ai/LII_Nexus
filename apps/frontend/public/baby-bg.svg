@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1120">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff5f5"/>
+      <stop offset="50%" stop-color="#fdfbfb"/>
+      <stop offset="100%" stop-color="#ebf8ff"/>
+    </linearGradient>
+    <path id="star" d="M10,0 L13,6 L20,7 L15,12 L16,19 L10,16 L4,19 L5,12 L0,7 L7,6 Z" fill="#ffd700"/>
+    <circle id="bubble" r="10" fill="#87cefa"/>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#bg)"/>
+  
+  <!-- Soft clouds / circles -->
+  <g opacity="0.3">
+    <circle cx="0" cy="0" r="300" fill="#ffb6c1" opacity="0.4"/>
+    <circle cx="800" cy="1120" r="350" fill="#87cefa" opacity="0.4"/>
+    <circle cx="800" cy="0" r="250" fill="#f0e68c" opacity="0.3"/>
+    <circle cx="0" cy="1120" r="200" fill="#ffe4e1" opacity="0.5"/>
+  </g>
+  
+  <!-- Bubbles & Stars -->
+  <g opacity="0.5">
+    <use href="#bubble" x="100" y="80" transform="scale(1.5)"/>
+    <use href="#bubble" x="650" y="150" transform="scale(2)"/>
+    <use href="#bubble" x="120" y="1000" transform="scale(1)"/>
+    <use href="#bubble" x="720" y="950" transform="scale(1.8)"/>
+    <use href="#bubble" x="400" y="50" transform="scale(1.2)"/>
+    <use href="#bubble" x="50" y="500" transform="scale(1.5)"/>
+    
+    <use href="#star" x="50" y="120" transform="scale(1.2) rotate(15)"/>
+    <use href="#star" x="700" y="60" transform="scale(1.5) rotate(-20)"/>
+    <use href="#star" x="80" y="900" transform="scale(2) rotate(45)"/>
+    <use href="#star" x="680" y="1050" transform="scale(1) rotate(-10)"/>
+    <use href="#star" x="750" y="400" transform="scale(1.2) rotate(30)"/>
+  </g>
+
+  <!-- White overlay for text readability -->
+  <rect x="40" y="56" width="720" height="1008" fill="#ffffff" opacity="0.85" rx="20"/>
+</svg>

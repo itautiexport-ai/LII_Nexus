@@ -1,0 +1,20 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.trainingRoutes = void 0;
+const express_1 = require("express");
+const TrainingController_1 = require("../controllers/TrainingController");
+const TrainingService_1 = require("../../application/services/TrainingService");
+const MySqlTrainingRepository_1 = require("../../infrastructure/repositories/MySqlTrainingRepository");
+const connection_1 = require("../../../../infrastructure/database/mysql/connection");
+const router = (0, express_1.Router)();
+exports.trainingRoutes = router;
+const repo = new MySqlTrainingRepository_1.MySqlTrainingRepository(connection_1.pool);
+const service = new TrainingService_1.TrainingService(repo);
+const controller = new TrainingController_1.TrainingController(service);
+router.get('/calendars', controller.listCalendars.bind(controller));
+router.post('/calendars', controller.createCalendar.bind(controller));
+router.get('/sessions', controller.listSessions.bind(controller));
+router.post('/sessions', controller.createSession.bind(controller));
+router.put('/sessions/:id/status', controller.updateSessionStatus.bind(controller));
+router.delete('/sessions/:id', controller.deleteSession.bind(controller));
+//# sourceMappingURL=trainingRoutes.js.map
