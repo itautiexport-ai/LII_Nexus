@@ -311,7 +311,7 @@ export function ManageFmsStepsPage() {
                         if (stepIndex === -1) return null;
                         return (
                           <span key={id} style={{ background: "#e9ecef", padding: "2px 8px", borderRadius: "12px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: "bold" }}>
-                            Step {stepIndex + 1}
+                            Step-{stepIndex + 1}
                             <span 
                               style={{ cursor: "pointer", color: "#dc3545", marginLeft: "4px" }}
                               onClick={(e) => {
@@ -351,7 +351,7 @@ export function ManageFmsStepsPage() {
                                 }}
                                 style={{ marginRight: "8px" }}
                               />
-                              <span style={{ fontWeight: "bold", marginRight: "6px" }}>Step {index + 1}:</span> {step.stepName}
+                              <span style={{ fontWeight: "bold" }}>Step-{index + 1}</span>
                             </label>
                           )
                         })
@@ -426,7 +426,7 @@ export function ManageFmsStepsPage() {
                               const depIndex = steps.findIndex(s => s.id === depId);
                               return depIndex !== -1 ? (
                                 <div key={depId} style={{ fontSize: "0.85rem", background: "#f8f9fa", padding: "2px 6px", borderRadius: "4px", marginBottom: "4px", display: "inline-block", marginRight: "4px", fontWeight: "bold" }}>
-                                  Step {depIndex + 1}
+                                  Step-{depIndex + 1}
                                 </div>
                               ) : null;
                             })
