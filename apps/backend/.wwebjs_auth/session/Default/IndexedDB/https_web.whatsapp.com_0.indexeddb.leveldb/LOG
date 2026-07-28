@@ -58,3 +58,8 @@
 2026/07/28-15:01:46.436 47bc1 compacted to: files[ 0 0 1 0 0 0 0 ]
 2026/07/28-15:01:46.436 47bc1 Delete type=2 #3047
 2026/07/28-15:01:46.436 47ba8 Manual compaction at level-1 from ' \x06\x04\x00\x00\xc8\x11\x00w\x00o\x00r\x00k\x00e\x00r\x00_\x00w\x00a\x00m\x00_\x00e\x00v\x00e\x00n\x00t\x00s' @ 2954027 : 1 .. ' \x00\x04\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/28-16:19:11.684 47bab Level-0 table #3053: started
+2026/07/28-16:19:11.725 47bab Level-0 table #3053: 1080959 bytes OK
+2026/07/28-16:19:11.730 47bab Delete type=2 #3035
+2026/07/28-16:19:11.731 47bab Delete type=2 #3050
+2026/07/28-16:19:11.731 47bab Delete type=0 #3048
