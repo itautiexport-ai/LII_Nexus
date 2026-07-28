@@ -23,9 +23,15 @@ export function FinishingRecipePage() {
     woodType: "",
   });
 
+  const generateId = () => {
+    return typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : Date.now().toString(36) + Math.random().toString(36).substring(2);
+  };
+
   const [steps, setSteps] = useState<RecipeStep[]>([
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       stepNo: 1,
       processMaterial: "",
       toolMachine: "",
@@ -51,7 +57,7 @@ export function FinishingRecipePage() {
     setSteps(prev => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         stepNo: prev.length + 1,
         processMaterial: "",
         toolMachine: "",
