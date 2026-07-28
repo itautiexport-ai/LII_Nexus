@@ -64,7 +64,7 @@ export function UserFmsPage() {
             <thead>
               <tr>
                 <th>Reference / Order</th>
-                <th>Manager / SOP</th>
+                <th>Alias Name</th>
                 <th>Step Name</th>
                 <th>Timeline</th>
                 <th>Assigned At</th>
@@ -75,7 +75,7 @@ export function UserFmsPage() {
               {fmsTasks.map(t => (
                 <tr key={t.instanceStepId}>
                   <td>{t.referenceTitle}</td>
-                  <td>{t.managerName}</td>
+                  <td>{t.formData?.aliasName || t.managerName}</td>
                   <td>{t.stepName}</td>
                   <td>{t.timelineHours} {t.timelineUnit}</td>
                   <td>{new Date(t.assignedAt).toLocaleString()}</td>
