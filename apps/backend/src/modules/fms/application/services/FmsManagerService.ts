@@ -58,6 +58,13 @@ export class FmsManagerService {
   }
 
   async deleteFms(fmsId: string): Promise<void> {
+    // Delete fms_instance_steps first
+    await this.dbPool.query("DELETE FROM fms_instance_steps WHERE instance_id IN (SELECT id FROM fms_instances WHERE fms_manager_id = ?)", [fmsId]);
+    // Delete fms_instances
+    await this.dbPool.query("DELETE FROM fms_instances WHERE fms_manager_id = ?", [fmsId]);
+    // Delete fms_steps
+    await this.dbPool.query("DELETE FROM fms_steps WHERE fms_id = ?", [fmsId]);
+    // Finally delete the manager
     await this.dbPool.query("DELETE FROM fms_managers WHERE id = ?", [fmsId]);
   }
 
