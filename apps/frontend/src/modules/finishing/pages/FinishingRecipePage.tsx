@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import "../../fms/pages/Fms.css"; // Reuse FMS styles for consistency
+import React, { useState, useEffect } from "react";
+import "../../fms/pages/Fms.css";
+import { masterDataApi } from "../../admin/masterdata/api/masterDataApi";
 
 interface RecipeStep {
   id: string;
@@ -22,6 +23,14 @@ export function FinishingRecipePage() {
     glossLevel: "",
     woodType: "",
   });
+
+  const [woodTypes, setWoodTypes] = useState<{id: string, name: string}[]>([]);
+
+  useEffect(() => {
+    masterDataApi.getWoodTypes()
+      .then(data => setWoodTypes(data.filter((w: any) => w.status === 'active')))
+      .catch(console.error);
+  }, []);
 
   const generateId = () => {
     return typeof crypto !== 'undefined' && crypto.randomUUID 
@@ -166,14 +175,18 @@ export function FinishingRecipePage() {
 
               <div className="fms-form-group">
                 <label className="fms-label">Wood Type</label>
-                <input
-                  type="text"
+                <select
                   name="woodType"
                   value={formData.woodType}
-                  onChange={handleHeaderChange}
+                  onChange={handleHeaderChange as any}
                   className="fms-input"
-                  placeholder="e.g. Mango"
-                />
+                  style={{ padding: "8px", border: "1px solid #ced4da", borderRadius: "4px" }}
+                >
+                  <option value="">Select Wood Type...</option>
+                  {woodTypes.map(wood => (
+                    <option key={wood.id} value={wood.name}>{wood.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
