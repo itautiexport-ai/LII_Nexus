@@ -14,8 +14,9 @@ export const CreateFmsStepSchema = z.object({
   doerEmployeeIds: z.array(z.string().uuid("Must be a valid UUID")),
   timelineHours: z.number().min(0, "Timeline cannot be negative").default(0),
   timelineUnit: z.enum(["hours", "days"]).default("hours"),
-  isSequential: z.boolean().default(true),
-  sequenceOrder: z.number().int().min(0).default(0),
+  isSequential: z.boolean().default(true).optional(),
+  sequenceOrder: z.number().int().min(0).default(0).optional(),
+  dependsOnStepIds: z.array(z.string().uuid("Must be a valid UUID")).default([]).optional(),
 });
 
 export type CreateFmsStepDto = z.infer<typeof CreateFmsStepSchema>;

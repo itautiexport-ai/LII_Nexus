@@ -25,6 +25,7 @@ export interface FmsStep {
   timelineUnit: "hours" | "days";
   isSequential: boolean;
   sequenceOrder: number;
+  dependsOnStepIds?: string[];
   createdAt: string;
 }
 
@@ -33,8 +34,9 @@ export interface CreateFmsStepDto {
   doerEmployeeIds: string[];
   timelineHours: number;
   timelineUnit: "hours" | "days";
-  isSequential: boolean;
-  sequenceOrder: number;
+  isSequential?: boolean;
+  sequenceOrder?: number;
+  dependsOnStepIds?: string[];
 }
 
 export const fmsApi = {

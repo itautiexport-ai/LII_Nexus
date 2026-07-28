@@ -105,8 +105,8 @@ export class FmsManagerService {
     const id = uuidv4();
     const query = `
       INSERT INTO fms_steps (
-        id, fms_id, step_name, doer_employee_ids, timeline_hours, timeline_unit, is_sequential, sequence_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        id, fms_id, step_name, doer_employee_ids, timeline_hours, timeline_unit, is_sequential, sequence_order, depends_on_step_ids
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       id,
@@ -115,8 +115,9 @@ export class FmsManagerService {
       JSON.stringify(dto.doerEmployeeIds),
       dto.timelineHours,
       dto.timelineUnit,
-      dto.isSequential,
-      dto.sequenceOrder
+      dto.isSequential !== undefined ? dto.isSequential : true,
+      dto.sequenceOrder || 0,
+      JSON.stringify(dto.dependsOnStepIds || [])
     ];
 
     await this.dbPool.query(query, params);
@@ -137,7 +138,7 @@ export class FmsManagerService {
   async updateStep(stepId: string, dto: CreateFmsStepDto): Promise<FmsStepEntity> {
     const query = `
       UPDATE fms_steps 
-      SET step_name = ?, doer_employee_ids = ?, timeline_hours = ?, timeline_unit = ?, is_sequential = ?, sequence_order = ?
+      SET step_name = ?, doer_employee_ids = ?, timeline_hours = ?, timeline_unit = ?, is_sequential = ?, sequence_order = ?, depends_on_step_ids = ?
       WHERE id = ?
     `;
     const params = [
@@ -145,8 +146,9 @@ export class FmsManagerService {
       JSON.stringify(dto.doerEmployeeIds),
       dto.timelineHours,
       dto.timelineUnit,
-      dto.isSequential,
-      dto.sequenceOrder,
+      dto.isSequential !== undefined ? dto.isSequential : true,
+      dto.sequenceOrder || 0,
+      JSON.stringify(dto.dependsOnStepIds || []),
       stepId
     ];
     await this.dbPool.query(query, params);
@@ -165,6 +167,7 @@ export class FmsManagerService {
       timelineUnit: row.timeline_unit,
       isSequential: !!row.is_sequential,
       sequenceOrder: row.sequence_order,
+      dependsOnStepIds: typeof row.depends_on_step_ids === "string" ? JSON.parse(row.depends_on_step_ids) : (row.depends_on_step_ids || []),
       createdAt: row.created_at,
     };
   }
