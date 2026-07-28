@@ -29,12 +29,19 @@ export function FmsGridViewPage() {
           setMyEmployeeId(currentEmployeeId);
         }
 
-        const [stepsRes, empRes, fmsListRes, instancesRes] = await Promise.all([
+        const [stepsRes, fmsListRes, instancesRes] = await Promise.all([
           fmsApi.getSteps(fmsId as string),
-          employeesApi.list(),
           fmsApi.getAll(),
           fmsApi.getInstances(fmsId as string)
         ]);
+        
+        let empRes = [];
+        try {
+          empRes = await employeesApi.list();
+        } catch (e) {
+          console.warn("Failed to load employees list (possibly lack of permissions)");
+        }
+
         setSteps(stepsRes);
         setEmployees(empRes);
         setInstances(instancesRes);
