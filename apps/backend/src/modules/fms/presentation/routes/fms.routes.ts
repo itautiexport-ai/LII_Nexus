@@ -15,6 +15,7 @@ const execController = new FmsExecutionController(execService);
 
 router.post("/fms", authMiddleware, controller.createFms);
 router.get("/fms", authMiddleware, controller.getAllFms);
+router.get("/fms-global-steps", authMiddleware, controller.getAllStepsGlobal);
 router.put("/fms/:id", authMiddleware, controller.updateFms);
 router.delete("/fms/:id", authMiddleware, controller.deleteFms);
 

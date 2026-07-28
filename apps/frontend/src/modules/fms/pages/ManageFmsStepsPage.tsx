@@ -8,6 +8,7 @@ export function ManageFmsStepsPage() {
   const { fmsId } = useParams();
   const navigate = useNavigate();
   const [steps, setSteps] = useState<FmsStep[]>([]);
+  const [allGlobalSteps, setAllGlobalSteps] = useState<(FmsStep & { managerName: string })[]>([]);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -46,12 +47,14 @@ export function ManageFmsStepsPage() {
 
     const fetchData = async () => {
       try {
-        const [stepsRes, empRes, fmsListRes] = await Promise.all([
+        const [stepsRes, empRes, fmsListRes, globalStepsRes] = await Promise.all([
           fmsApi.getSteps(fmsId),
           employeesApi.list(),
           fmsApi.getAll(),
+          fmsApi.getAllStepsGlobal()
         ]);
         setSteps(stepsRes);
+        setAllGlobalSteps(globalStepsRes);
         setEmployees(empRes);
         const fms = fmsListRes.find((f) => f.id === fmsId);
         if (fms) setFmsName(fms.name);
@@ -307,11 +310,14 @@ export function ManageFmsStepsPage() {
                       <span style={{ color: "#6c757d" }}>Select prerequisite steps...</span>
                     ) : (
                       formData.dependsOnStepIds.map(id => {
-                        const stepIndex = steps.findIndex(s => s.id === id);
-                        if (stepIndex === -1) return null;
+                        const step = allGlobalSteps.find(s => s.id === id);
+                        if (!step) return null;
+                        const isCurrent = step.fmsId === fmsId;
+                        const mgrSteps = allGlobalSteps.filter(s => s.fmsId === step.fmsId);
+                        const stepIndex = mgrSteps.findIndex(s => s.id === id);
                         return (
                           <span key={id} style={{ background: "#e9ecef", padding: "2px 8px", borderRadius: "12px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: "bold" }}>
-                            Step-{stepIndex + 1}
+                            {isCurrent ? `Step-${stepIndex + 1}` : `[${step.managerName}] Step-${stepIndex + 1}`}
                             <span 
                               style={{ cursor: "pointer", color: "#dc3545", marginLeft: "4px" }}
                               onClick={(e) => {
@@ -332,29 +338,45 @@ export function ManageFmsStepsPage() {
                   
                   {dependsDropdownOpen && (
                     <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "white", border: "1px solid #ced4da", borderRadius: "4px", marginTop: "4px", maxHeight: "250px", overflowY: "auto", zIndex: 10 }}>
-                      {steps.length === 0 || (editingStepId && steps.length === 1) ? (
+                      {allGlobalSteps.length === 0 || (editingStepId && allGlobalSteps.length === 1) ? (
                         <div style={{ padding: "8px", color: "#6c757d" }}>No other steps available</div>
                       ) : (
-                        steps.map((step, index) => {
-                          if (step.id === editingStepId) return null;
-                          return (
-                            <label key={step.id} style={{ display: "flex", alignItems: "center", padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid #f8f9fa", margin: 0 }}>
-                              <input
-                                type="checkbox"
-                                checked={formData.dependsOnStepIds.includes(step.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setFormData(prev => ({ ...prev, dependsOnStepIds: [...prev.dependsOnStepIds, step.id] }));
-                                  } else {
-                                    setFormData(prev => ({ ...prev, dependsOnStepIds: prev.dependsOnStepIds.filter(id => id !== step.id) }));
-                                  }
-                                }}
-                                style={{ marginRight: "8px" }}
-                              />
-                              <span style={{ fontWeight: "bold" }}>Step-{index + 1}</span>
-                            </label>
-                          )
-                        })
+                        Object.entries(
+                          allGlobalSteps.reduce((acc, step) => {
+                            if (!acc[step.managerName]) acc[step.managerName] = [];
+                            acc[step.managerName].push(step);
+                            return acc;
+                          }, {} as Record<string, typeof allGlobalSteps>)
+                        ).map(([managerName, mgrSteps]) => (
+                          <div key={managerName}>
+                            <div style={{ background: "#f1f5f9", padding: "4px 8px", fontSize: "0.8rem", fontWeight: "bold", color: "#475569" }}>
+                              {managerName === fmsName ? `[Current] ${managerName}` : managerName}
+                            </div>
+                            {mgrSteps.map((step, index) => {
+                              if (step.id === editingStepId) return null;
+                              return (
+                                <label key={step.id} style={{ display: "flex", alignItems: "center", padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid #f8f9fa", margin: 0 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={formData.dependsOnStepIds.includes(step.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setFormData(prev => ({ ...prev, dependsOnStepIds: [...prev.dependsOnStepIds, step.id] }));
+                                      } else {
+                                        setFormData(prev => ({ ...prev, dependsOnStepIds: prev.dependsOnStepIds.filter(id => id !== step.id) }));
+                                      }
+                                    }}
+                                    style={{ marginRight: "8px" }}
+                                  />
+                                  <span style={{ fontWeight: "bold", display: "flex", flexDirection: "column" }}>
+                                    Step-{index + 1}
+                                    <span style={{ fontWeight: "normal", fontSize: "0.75rem", color: "#64748b" }}>{step.stepName}</span>
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        ))
                       )}
                     </div>
                   )}
@@ -423,12 +445,18 @@ export function ManageFmsStepsPage() {
                             <span style={{ color: "#28a745", fontWeight: "bold" }}>Parallel (Start)</span>
                           ) : (
                             step.dependsOnStepIds.map(depId => {
-                              const depIndex = steps.findIndex(s => s.id === depId);
-                              return depIndex !== -1 ? (
-                                <div key={depId} style={{ fontSize: "0.85rem", background: "#f8f9fa", padding: "2px 6px", borderRadius: "4px", marginBottom: "4px", display: "inline-block", marginRight: "4px", fontWeight: "bold" }}>
-                                  Step-{depIndex + 1}
+                              const depStep = allGlobalSteps.find(s => s.id === depId);
+                              if (!depStep) return null;
+                              
+                              const isCurrentFms = depStep.fmsId === fmsId;
+                              const mgrSteps = allGlobalSteps.filter(s => s.fmsId === depStep.fmsId);
+                              const depIndex = mgrSteps.findIndex(s => s.id === depId);
+                              
+                              return (
+                                <div key={depId} style={{ fontSize: "0.80rem", background: isCurrentFms ? "#f8f9fa" : "#e0e7ff", padding: "3px 6px", borderRadius: "4px", marginBottom: "4px", display: "inline-block", marginRight: "4px", fontWeight: "bold", border: isCurrentFms ? "1px solid #dee2e6" : "1px solid #c7d2fe" }}>
+                                  {isCurrentFms ? `Step-${depIndex + 1}` : `[${depStep.managerName}] Step-${depIndex + 1}`}
                                 </div>
-                              ) : null;
+                              );
                             })
                           )}
                         </td>

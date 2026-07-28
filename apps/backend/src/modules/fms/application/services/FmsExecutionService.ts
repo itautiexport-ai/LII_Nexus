@@ -92,12 +92,17 @@ export class FmsExecutionService {
       JOIN fms_managers fm ON fi.fms_manager_id = fm.id
       WHERE fi.status = 'In Progress' 
         AND fis.status IN ('Pending', 'Under Process')
-        AND NOT EXISTS (
-          SELECT 1 
-          FROM fms_instance_steps prev_fis
-          WHERE prev_fis.instance_id = fi.id 
-            AND JSON_CONTAINS(COALESCE(fs.depends_on_step_ids, '[]'), CONCAT('"', prev_fis.fms_step_id, '"'))
-            AND prev_fis.status != 'Completed'
+        AND (
+          fs.depends_on_step_ids IS NULL 
+          OR JSON_LENGTH(fs.depends_on_step_ids) = 0
+          OR JSON_LENGTH(fs.depends_on_step_ids) = (
+            SELECT COUNT(DISTINCT prev_fis.fms_step_id)
+            FROM fms_instance_steps prev_fis
+            JOIN fms_instances prev_fi ON prev_fis.instance_id = prev_fi.id
+            WHERE prev_fi.reference_title = fi.reference_title
+              AND JSON_CONTAINS(fs.depends_on_step_ids, CONCAT('"', prev_fis.fms_step_id, '"'))
+              AND prev_fis.status = 'Completed'
+          )
         )
       ORDER BY fis.created_at ASC
     `;

@@ -69,6 +69,11 @@ export const fmsApi = {
     return res.data.data;
   },
 
+  async getAllStepsGlobal(): Promise<(FmsStep & { managerName: string })[]> {
+    const res = await axiosInstance.get(`/fms-global-steps`);
+    return res.data.data;
+  },
+
   async updateStep(stepId: string, payload: CreateFmsStepDto): Promise<FmsStep> {
     const res = await axiosInstance.put(`/fms/steps/${stepId}`, payload);
     return res.data.data;

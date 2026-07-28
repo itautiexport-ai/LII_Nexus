@@ -81,6 +81,16 @@ export class FmsManagerController {
     }
   };
 
+  getAllStepsGlobal = async (req: Request, res: Response) => {
+    try {
+      const steps = await this.service.getAllStepsAcrossManagers();
+      res.json({ success: true, data: steps });
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  };
+
   deleteStep = async (req: Request, res: Response) => {
     try {
       const { stepId } = req.params;

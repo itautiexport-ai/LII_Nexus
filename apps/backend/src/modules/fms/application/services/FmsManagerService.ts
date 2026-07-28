@@ -21,6 +21,7 @@ export interface FmsStepEntity {
   timelineUnit: "hours" | "days";
   isSequential: boolean;
   sequenceOrder: number;
+  dependsOnStepIds?: string[];
   createdAt: string;
 }
 
@@ -129,6 +130,20 @@ export class FmsManagerService {
   async getSteps(fmsId: string): Promise<FmsStepEntity[]> {
     const [rows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE fms_id = ? ORDER BY sequence_order ASC, created_at ASC", [fmsId]);
     return rows.map(this.mapToStepEntity);
+  }
+
+  async getAllStepsAcrossManagers(): Promise<any[]> {
+    const query = `
+      SELECT fs.*, fm.name as manager_name
+      FROM fms_steps fs
+      JOIN fms_managers fm ON fs.fms_id = fm.id
+      ORDER BY fm.name ASC, fs.sequence_order ASC, fs.created_at ASC
+    `;
+    const [rows] = await this.dbPool.query(query);
+    return rows.map((row: any) => ({
+      ...this.mapToStepEntity(row),
+      managerName: row.manager_name
+    }));
   }
 
   async deleteStep(stepId: string): Promise<void> {
