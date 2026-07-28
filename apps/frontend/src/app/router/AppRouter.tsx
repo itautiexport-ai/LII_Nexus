@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { FinishingRecipePage } from "../../modules/finishing/pages/FinishingRecipePage";
 import AttendanceCalculatorPage from "../../modules/hr/pages/AttendanceCalculatorPage";
 import AnnualTrainingPlannerPage from "../../modules/hr/pages/AnnualTrainingPlannerPage";
 import DelegationHubPage from "../../modules/officeperf/delegation/pages/DelegationHubPage";
@@ -159,6 +160,7 @@ export default function AppRouter() {
           <Route path="resource-center/templates" element={<TemplatesPage />} />
           <Route path="resource-center/manuals" element={<ManualsPage />} />
           <Route path="modules/:moduleKey" element={<ModuleLandingPage />} />
+          <Route path="finishing-recipe" element={<FinishingRecipePage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="permissions" element={<PermissionsPage />} />
           <Route path="whatsapp" element={<WhatsAppIntegrationPage />} />
