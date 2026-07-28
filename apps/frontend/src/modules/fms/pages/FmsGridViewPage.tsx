@@ -92,14 +92,7 @@ export function FmsGridViewPage() {
 
   if (loading) return <div>Loading...</div>;
 
-  const visibleSteps = isSystemAdmin 
-    ? steps 
-    : steps.filter(step => {
-        const inBlueprint = step.doerEmployeeIds?.includes(myEmployeeId || "");
-        const isCreatorStep = !step.doerEmployeeIds || step.doerEmployeeIds.length === 0;
-        const createdAnyInstance = instances.some((inst: any) => inst.creatorId === myEmployeeId);
-        return inBlueprint || (isCreatorStep && createdAnyInstance);
-      });
+  const visibleSteps = steps;
 
   return (
     <div className="fms-container" style={{ maxWidth: "1400px", padding: "32px" }}>

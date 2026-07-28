@@ -16,28 +16,7 @@ export function FmsManagerPage() {
     try {
       const allManagers = await fmsApi.getAll();
       
-      if (user && !user.roles.includes("System Admin")) {
-        const empRes = await axiosInstance.get("/employees/me");
-        const myEmployeeId = empRes.data?.data?.id;
-        
-        if (!myEmployeeId) {
-          setFmsList([]);
-        } else {
-          const filteredManagers = [];
-          for (const mgr of allManagers) {
-            const steps = await fmsApi.getSteps(mgr.id);
-            const isRelevant = steps.some(s => {
-              return s.doerEmployeeIds?.includes(myEmployeeId);
-            });
-            if (isRelevant) {
-              filteredManagers.push(mgr);
-            }
-          }
-          setFmsList(filteredManagers);
-        }
-      } else {
-        setFmsList(allManagers);
-      }
+      setFmsList(allManagers);
     } catch (err) {
       console.error(err);
     } finally {
