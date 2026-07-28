@@ -131,7 +131,12 @@ export const SECTIONS: NavSection[] = [
       }
     ],
   },
-
+  {
+    key: "finishing",
+    label: "Finishing",
+    allowedRoles: ["System Admin", "Finishing Access"],
+    items: [],
+  },
   {
     key: "crm",
     label: "CRM",
