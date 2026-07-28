@@ -36,3 +36,13 @@ export const addFileSchema = z.object({
   fileName: z.string().min(1),
   fileUrl: z.string().min(1),
 });
+
+export const requestExtensionSchema = z.object({
+  reason: z.string().min(1).max(1000),
+  requestedDate: z.string(), // YYYY-MM-DD
+});
+
+export const respondExtensionSchema = z.object({
+  status: z.enum(["approved", "rejected"]),
+  rejectionReason: z.string().max(1000).optional().nullable(),
+});

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fmsApi, FmsStep } from "../api/fmsApi";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
@@ -9,17 +9,32 @@ export function ManageFmsStepsPage() {
   const navigate = useNavigate();
   const [steps, setSteps] = useState<FmsStep[]>([]);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   
   const [formData, setFormData] = useState({
     stepName: "",
-    doerEmployeeId: "",
+    doerEmployeeIds: [] as string[],
     timelineHours: 0,
     timelineUnit: "hours" as "hours" | "days",
     isSequential: true,
+    insertPosition: "end"
   });
 
   const [loading, setLoading] = useState(true);
   const [fmsName, setFmsName] = useState<string>("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!fmsId) return;
@@ -55,31 +70,81 @@ export function ManageFmsStepsPage() {
     }
   };
 
-  const handleAddStep = async (e: React.FormEvent) => {
+  const handleAddOrUpdateStep = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fmsId) return;
 
     try {
-      const newStep = await fmsApi.addStep(fmsId, {
-        stepName: formData.stepName,
-        doerEmployeeId: formData.doerEmployeeId,
-        timelineHours: formData.timelineHours,
-        timelineUnit: formData.timelineUnit,
-        isSequential: formData.isSequential,
-        sequenceOrder: steps.length, // Put at end
-      });
-      setSteps((prev) => [...prev, newStep]);
+      if (editingStepId) {
+        // Find existing sequence order
+        const existingStep = steps.find(s => s.id === editingStepId);
+        const updatedStep = await fmsApi.updateStep(editingStepId, {
+          stepName: formData.stepName,
+          doerEmployeeIds: formData.doerEmployeeIds,
+          timelineHours: formData.timelineHours,
+          timelineUnit: formData.timelineUnit,
+          isSequential: formData.isSequential,
+          sequenceOrder: existingStep ? existingStep.sequenceOrder : steps.length,
+        });
+        setSteps(prev => prev.map(s => s.id === editingStepId ? updatedStep : s));
+        setEditingStepId(null);
+      } else {
+        let targetSequenceOrder = steps.length;
+        if (formData.insertPosition !== "end") {
+          targetSequenceOrder = parseInt(formData.insertPosition, 10);
+          
+          const stepsToUpdate = steps.filter(s => s.sequenceOrder >= targetSequenceOrder);
+          for (const step of stepsToUpdate) {
+            await fmsApi.updateStep(step.id, {
+              stepName: step.stepName,
+              doerEmployeeIds: step.doerEmployeeIds,
+              timelineHours: step.timelineHours,
+              timelineUnit: step.timelineUnit,
+              isSequential: step.isSequential,
+              sequenceOrder: step.sequenceOrder + 1,
+            });
+          }
+        }
+
+        await fmsApi.addStep(fmsId, {
+          stepName: formData.stepName,
+          doerEmployeeIds: formData.doerEmployeeIds,
+          timelineHours: formData.timelineHours,
+          timelineUnit: formData.timelineUnit,
+          isSequential: formData.isSequential,
+          sequenceOrder: targetSequenceOrder,
+        });
+
+        const updatedSteps = await fmsApi.getSteps(fmsId);
+        setSteps(updatedSteps);
+      }
+      
+
       setFormData({
         stepName: "",
-        doerEmployeeId: "",
+        doerEmployeeIds: [],
         timelineHours: 0,
         timelineUnit: "hours",
         isSequential: true,
+        insertPosition: "end"
       });
     } catch (err) {
       console.error(err);
-      alert("Failed to add step");
+      alert(editingStepId ? "Failed to update step" : "Failed to add step");
     }
+  };
+
+  const handleEditClick = (step: FmsStep) => {
+    setEditingStepId(step.id);
+    setFormData({
+      stepName: step.stepName,
+      doerEmployeeIds: step.doerEmployeeIds || [],
+      timelineHours: step.timelineHours,
+      timelineUnit: step.timelineUnit,
+      isSequential: step.isSequential,
+      insertPosition: "end",
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteStep = async (stepId: string) => {
@@ -100,13 +165,17 @@ export function ManageFmsStepsPage() {
       <div className="fms-card">
         <div className="fms-card-header">
           <h2 className="fms-title">MANAGE STEPS: {fmsName.toUpperCase()}</h2>
-          <button className="fms-btn-primary" onClick={() => navigate("/admin/fms/list")}>
+          <button 
+            className="fms-btn-primary" 
+            onClick={() => navigate("/admin/fms/list")}
+            style={{ background: "#ffc107", color: "#333", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+          >
             BACK TO LIST
           </button>
         </div>
 
         <div className="fms-card-content">
-          <form onSubmit={handleAddStep} className="fms-grid" style={{ marginBottom: "2rem" }}>
+          <form onSubmit={handleAddOrUpdateStep} className="fms-grid" style={{ marginBottom: "2rem" }}>
             <div className="fms-form-group">
               <label className="fms-label">Task Name <span className="fms-required">*</span></label>
               <input
@@ -122,20 +191,77 @@ export function ManageFmsStepsPage() {
 
             <div className="fms-form-group">
               <label className="fms-label">Doer (Employee) <span className="fms-required">*</span></label>
-              <select
-                name="doerEmployeeId"
-                required
-                value={formData.doerEmployeeId}
-                onChange={handleChange}
-                className="fms-select"
-              >
-                <option value="">Select Employee</option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.fullName} ({emp.employeeCode})
-                  </option>
-                ))}
-              </select>
+              <div className="custom-multi-select" ref={dropdownRef} style={{ position: "relative" }}>
+                <div 
+                  className="fms-input" 
+                  style={{ minHeight: "38px", display: "flex", flexWrap: "wrap", gap: "4px", padding: "4px 8px", cursor: "pointer", alignItems: "center" }}
+                  onClick={() => {
+                    setDropdownOpen(!dropdownOpen);
+                    setSearchQuery("");
+                  }}
+                >
+                  {formData.doerEmployeeIds.length === 0 ? (
+                    <span style={{ color: "#6c757d" }}>Select Employees...</span>
+                  ) : (
+                    formData.doerEmployeeIds.map(id => {
+                      const emp = employees.find(e => e.id === id);
+                      if (!emp) return null;
+                      return (
+                        <span key={id} style={{ background: "#e9ecef", padding: "2px 8px", borderRadius: "12px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                          {emp.fullName}
+                          <span 
+                            style={{ cursor: "pointer", color: "#dc3545", fontWeight: "bold" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFormData(prev => ({
+                                ...prev,
+                                doerEmployeeIds: prev.doerEmployeeIds.filter(eid => eid !== id)
+                              }));
+                            }}
+                          >
+                            &times;
+                          </span>
+                        </span>
+                      );
+                    })
+                  )}
+                </div>
+                
+                {dropdownOpen && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "white", border: "1px solid #ced4da", borderRadius: "4px", marginTop: "4px", maxHeight: "250px", overflowY: "auto", zIndex: 10 }}>
+                    <div style={{ padding: "8px", borderBottom: "1px solid #ced4da", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+                      <input 
+                        type="text" 
+                        placeholder="Search employees..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: "100%", padding: "6px 8px", borderRadius: "4px", border: "1px solid #ced4da", boxSizing: "border-box" }}
+                        autoFocus
+                      />
+                    </div>
+                    {employees
+                      .filter(emp => emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || (emp.employeeCode && emp.employeeCode.toLowerCase().includes(searchQuery.toLowerCase())))
+                      .map(emp => (
+                      <label key={emp.id} style={{ display: "flex", alignItems: "center", padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid #f8f9fa", margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.doerEmployeeIds.includes(emp.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData(prev => ({ ...prev, doerEmployeeIds: [...prev.doerEmployeeIds, emp.id] }));
+                            } else {
+                              setFormData(prev => ({ ...prev, doerEmployeeIds: prev.doerEmployeeIds.filter(id => id !== emp.id) }));
+                            }
+                          }}
+                          style={{ marginRight: "8px" }}
+                        />
+                        {emp.fullName} ({emp.employeeCode})
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="fms-form-group">
@@ -179,8 +305,48 @@ export function ManageFmsStepsPage() {
               </select>
             </div>
 
-            <div className="fms-form-group full-width" style={{ marginTop: "1rem" }}>
-              <button type="submit" className="fms-btn-primary">ADD STEP</button>
+            {!editingStepId && (
+              <div className="fms-form-group">
+                <label className="fms-label">Insert Position</label>
+                <select
+                  name="insertPosition"
+                  value={formData.insertPosition}
+                  onChange={handleChange}
+                  className="fms-select"
+                >
+                  <option value="end">At the End</option>
+                  {steps.map((step, index) => (
+                    <option key={step.id} value={step.sequenceOrder.toString()}>
+                      Before Step {index + 1}: {step.stepName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="fms-form-group full-width" style={{ marginTop: "1rem", display: "flex", gap: "10px" }}>
+              <button type="submit" className="fms-btn-primary">
+                {editingStepId ? "UPDATE STEP" : "ADD STEP"}
+              </button>
+              {editingStepId && (
+                <button 
+                  type="button" 
+                  style={{ background: "#6c757d", color: "white", border: "none", padding: "8px 16px", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
+                  onClick={() => {
+                    setEditingStepId(null);
+                    setFormData({
+                      stepName: "",
+                      doerEmployeeIds: [],
+                      timelineHours: 0,
+                      timelineUnit: "hours",
+                      isSequential: true,
+                      insertPosition: "end"
+                    });
+                  }}
+                >
+                  CANCEL EDIT
+                </button>
+              )}
             </div>
           </form>
 
@@ -206,22 +372,32 @@ export function ManageFmsStepsPage() {
                   </tr>
                 ) : (
                   steps.map((step, index) => {
-                    const emp = employees.find(e => e.id === step.doerEmployeeId);
+                    const emps = employees.filter(e => step.doerEmployeeIds?.includes(e.id));
+                    let empNames = emps.length > 0 ? emps.map(e => e.fullName).join(", ") : "Form Creator (Dynamic)";
                     return (
                       <tr key={step.id} className="fms-tr">
                         <td className="fms-td">{index + 1}</td>
                         <td className="fms-td">{step.stepName}</td>
-                        <td className="fms-td">{emp ? emp.fullName : "Unknown"}</td>
+                        <td className="fms-td">{empNames}</td>
                         <td className="fms-td">{step.timelineHours} {step.timelineUnit}</td>
                         <td className="fms-td">{step.isSequential ? "Sequential" : "Parallel"}</td>
                         <td className="fms-td">
-                          <button 
-                            type="button" 
-                            style={{ background: "#dc3545", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                            onClick={() => handleDeleteStep(step.id)}
-                          >
-                            Delete
-                          </button>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button 
+                              type="button" 
+                              style={{ background: "#007bff", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                              onClick={() => handleEditClick(step)}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              type="button" 
+                              style={{ background: "#dc3545", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                              onClick={() => handleDeleteStep(step.id)}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

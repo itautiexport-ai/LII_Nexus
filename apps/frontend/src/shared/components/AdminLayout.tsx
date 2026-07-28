@@ -3,11 +3,13 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "../../modules/auth/api/authApi";
 import { useAuthStore } from "../../modules/auth/hooks/useAuthStore";
 import NotificationBell from "../../modules/notifications/components/NotificationBell";
+import { env } from "../../config/env";
 
 export interface NavItem {
   label: string;
   to?: string;
   items?: NavItem[];
+  hideChildrenInSidebar?: boolean;
 }
 
 export interface NavSection {
@@ -16,36 +18,35 @@ export interface NavSection {
   items: NavItem[];
   allowedRoles?: string[];
 }
-
 export const SECTIONS: NavSection[] = [
   {
     key: "administration",
     label: "Administration",
-    allowedRoles: ["System Admin"],
+    allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin"],
     items: [
       { label: "Users", to: "/admin/users" },
       { label: "Permissions", to: "/admin/permissions" },
-    ],
-  },
-  {
-    key: "master-data",
-    label: "Master Data",
-    allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin"],
-    items: [
-      { label: "Departments", to: "/admin/departments" },
-      { label: "Designations", to: "/admin/designations" },
-      { label: "Shifts", to: "/admin/shifts" },
-      { label: "Wood Types", to: "/admin/wood-types" },
-      { label: "Priorities", to: "/admin/priorities" },
-      { label: "UOMs", to: "/admin/uoms" },
-      { label: "HOD Names", to: "/admin/hods" },
-      { label: "Merchants", to: "/admin/merchants" },
-      { label: "Module Weights", to: "/admin/module-weights" },
-      { label: "Machine Targets", to: "/admin/machine-targets" },
-      { label: "Machine Names", to: "/admin/machines-products" },
-      { label: "Employees", to: "/admin/employees" },
-      { label: "Buyers", to: "/admin/buyers" },
-      { label: "Weights", to: "/admin/module-weights" },
+      {
+        label: "Master Data",
+        to: "/admin/master-data",
+        hideChildrenInSidebar: true,
+        items: [
+          { label: "Departments", to: "/admin/departments" },
+          { label: "Designations", to: "/admin/designations" },
+          { label: "Shifts", to: "/admin/shifts" },
+          { label: "Wood Types", to: "/admin/wood-types" },
+          { label: "Priorities", to: "/admin/priorities" },
+          { label: "UOMs", to: "/admin/uoms" },
+          { label: "HOD Names", to: "/admin/hods" },
+          { label: "Merchants", to: "/admin/merchants" },
+          { label: "Module Weights", to: "/admin/module-weights" },
+          { label: "Machine Targets", to: "/admin/machine-targets" },
+          { label: "Machine Names", to: "/admin/machines-products" },
+          { label: "Employees", to: "/admin/employees" },
+          { label: "Buyers", to: "/admin/buyers" },
+          { label: "Weights", to: "/admin/module-weights" },
+        ]
+      }
     ],
   },
   {
@@ -67,27 +68,62 @@ export const SECTIONS: NavSection[] = [
     label: "Task Center",
     allowedRoles: ["System Admin", "HOD", "CEO", "Supervisor"],
     items: [
-      { label: "List Delegation", to: "/admin/delegation" },
-      { label: "Add Delegation", to: "/admin/delegation/new" },
-      { label: "List Checklist", to: "/admin/standalone-checklist/list" },
-      { label: "Add Checklist", to: "/admin/standalone-checklist/add" },
-      { label: "List FMS Manager", to: "/admin/fms/list" },
-      { label: "Add FMS Manager", to: "/admin/fms/add" },
+      {
+        label: "Checklist",
+        to: "/admin/checklist",
+        hideChildrenInSidebar: true,
+        items: [
+          { label: "My Checklists", to: "/admin/my-checklists" },
+          { label: "List Checklist", to: "/admin/standalone-checklist/list" },
+          { label: "Add Checklist", to: "/admin/standalone-checklist/add" },
+        ]
+      },
+      {
+        label: "Delegation",
+        to: "/admin/delegation",
+        hideChildrenInSidebar: true,
+        items: [
+          { label: "List Delegation", to: "/admin/delegation/list" },
+          { label: "Add Delegation", to: "/admin/delegation/new" },
+          { label: "My Delegation", to: "/admin/delegation/user" },
+        ]
+      },
+      {
+        label: "FMS",
+        to: "/admin/fms",
+        hideChildrenInSidebar: true,
+        items: [
+          { label: "List FMS Manager", to: "/admin/fms/list" },
+          { label: "Add FMS Manager", to: "/admin/fms/add" },
+          { label: "FMS Grid View", to: "/admin/fms/manager" },
+          {
+            label: "Forms",
+            items: [
+              { label: "Form Builder", to: "/admin/fms/forms" },
+              { label: "List Form", to: "/admin/fms/list-forms" },
+            ]
+          },
+        ]
+      },
+    ],
+  },
+  {
+    key: "dpr-management",
+    label: "DPR Management",
+    allowedRoles: ["System Admin", "DPR Management Access", "DPR Management"],
+    items: [
+      { label: "DPR Entry", to: "/admin/dpr-entry" },
     ],
   },
   {
     key: "machine-shop",
     label: "Machine Shop",
-    allowedRoles: ["System Admin", "DPR Management Access", "DPR Management", "Machine Efficiency Access"],
+    allowedRoles: ["System Admin", "Machine Efficiency Access"],
     items: [
       {
-        label: "DPR Management",
-        items: [
-          { label: "DPR Entry", to: "/admin/dpr-entry" },
-        ]
-      },
-      {
         label: "Machine Efficiency",
+        to: "/admin/machine-efficiency/hub",
+        hideChildrenInSidebar: true,
         items: [
           { label: "Add Efficiency", to: "/admin/machine-efficiency/new" },
           { label: "List Efficiency", to: "/admin/machine-efficiency" },
@@ -95,16 +131,7 @@ export const SECTIONS: NavSection[] = [
       }
     ],
   },
-  {
-    key: "user-dashboard",
-    label: "User Dashboard",
-    allowedRoles: ["System Admin", "User Dashboard Access"],
-    items: [
-      { label: "Delegation", to: "/admin/user-dashboard/delegation" },
-      { label: "Checklist", to: "/admin/user-dashboard/checklist" },
-      { label: "FMS", to: "/admin/user-dashboard/fms" },
-    ],
-  },
+
   {
     key: "crm",
     label: "CRM",
@@ -114,6 +141,8 @@ export const SECTIONS: NavSection[] = [
       { label: "List Leads", to: "/admin/crm/leads" },
       { 
         label: "Quotations", 
+        to: "/admin/crm/quotations/hub",
+        hideChildrenInSidebar: true,
         items: [
           { label: "Add Quotation", to: "/admin/crm/quotations/new" },
           { label: "List Quotations", to: "/admin/crm/quotations" },
@@ -121,6 +150,8 @@ export const SECTIONS: NavSection[] = [
       },
       {
         label: "Complaints",
+        to: "/admin/crm/complaints/hub",
+        hideChildrenInSidebar: true,
         items: [
           { label: "New Complaint", to: "/admin/crm/complaints/new" },
           { label: "List Complaints", to: "/admin/crm/complaints" },
@@ -140,35 +171,39 @@ export const SECTIONS: NavSection[] = [
       { label: "Production Insight", to: "/admin/manufacturing/production-insight" }
     ],
   },
-  {
-    key: "help-ticket",
-    label: "Help Ticket",
-    allowedRoles: ["System Admin", "Help Ticket Access"],
-    items: [
-      { label: "List All Help Ticket", to: "/admin/help-tickets/all" },
-      { label: "Add New Ticket", to: "/admin/help-tickets/new" },
-      { label: "Assigned to Me", to: "/admin/help-tickets/assigned-to-me" },
-      { label: "Assigned by Me", to: "/admin/help-tickets/assigned-by-me" },
-    ],
-  },
+
   {
     key: "executive-meetings",
     label: "Executive Meetings",
     allowedRoles: ["System Admin", "CEO"],
     items: [
       { label: "Office EM", to: "/admin/reports/office-em" },
+      { label: "Production EM", to: "/admin/reports/production-em" },
       { label: "EM List", to: "/admin/reports/office-em-list" }
     ],
   },
   {
     key: "hr-module",
     label: "HR",
-    allowedRoles: ["System Admin", "HR", "CEO", "HOD", "HR Admin"],
+    allowedRoles: ["System Admin", "HR", "CEO", "HOD", "HR Admin", "Help Ticket Access"],
     items: [
       { label: "Attendance Calculator", to: "/admin/hr/attendance-calculator" },
+      { label: "Weekly Payroll", to: "/admin/hr/weekly-payroll" },
+      { label: "Monthly Salary Sheet", to: "/admin/hr/monthly-salary-sheet" },
       { label: "Notices", to: "/admin/hr/notices" },
       { label: "Annual Training Planner", to: "/admin/hr/annual-training-planner" },
       { label: "KRA", to: "/admin/hr/kra" },
+      {
+        label: "Help Ticket",
+        to: "/admin/help-tickets/hub",
+        hideChildrenInSidebar: true,
+        items: [
+          { label: "List All Help Ticket", to: "/admin/help-tickets/all" },
+          { label: "Add New Ticket", to: "/admin/help-tickets/new" },
+          { label: "Assigned to Me", to: "/admin/help-tickets/assigned-to-me" },
+          { label: "Assigned by Me", to: "/admin/help-tickets/assigned-by-me" },
+        ]
+      }
     ],
   },
   {
@@ -176,6 +211,8 @@ export const SECTIONS: NavSection[] = [
     label: "Order Management",
     allowedRoles: ["System Admin", "CEO", "HOD"],
     items: [
+      { label: "Order Dashboard", to: "/admin/order-management/summary" },
+      { label: "Buyer Dashboard", to: "/admin/order-management/buyers" },
       { label: "Add Order", to: "/admin/order-management/new" },
       { label: "List Order In Hand", to: "/admin/order-management/list" },
     ],
@@ -197,6 +234,8 @@ export const SECTIONS: NavSection[] = [
     items: [
       {
         label: "Production Report",
+        to: "/admin/reports/production-hub",
+        hideChildrenInSidebar: true,
         items: [
           { label: "Daily Production Report", to: "/admin/reports/daily-production" },
           { label: "Detailed DPR", to: "/admin/reports/detailed-production" },
@@ -213,13 +252,13 @@ export const SECTIONS: NavSection[] = [
 ];
 
 function SidebarSubGroup({ item, pathname, userRoles, legacyAccess, sectionRolePrefix }: { item: any; pathname: string; userRoles: string[]; legacyAccess: boolean; sectionRolePrefix: string }) {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(() => {
     return item.items.some((sub: any) => pathname === sub.to || pathname.startsWith(sub.to + "/"));
   });
 
   const visibleSubs = item.items.filter((sub: any) => {
     if (legacyAccess) return true;
-    if (userRoles.includes(sectionRolePrefix)) return true;
     
     // Check specific sub-item role
     const subItemRole = `${sectionRolePrefix} -> ${item.label} -> ${sub.label}`;
@@ -233,7 +272,12 @@ function SidebarSubGroup({ item, pathname, userRoles, legacyAccess, sectionRoleP
       <button 
         type="button"
         className={"sidebar-subgroup-title" + (isExpanded ? " active" : "")}
-        onClick={() => setIsExpanded((e: boolean) => !e)}
+        onClick={() => {
+          setIsExpanded((e: boolean) => !e);
+          if (item.to) {
+            navigate(item.to);
+          }
+        }}
       >
         <span>{item.label}</span>
         <span className={"chevron" + (isExpanded ? " expanded" : "")}>▶</span>
@@ -281,7 +325,7 @@ export default function AdminLayout() {
   const location = useLocation();
 
   useEffect(() => {
-    // Refresh user object and roles from server when AdminLayout mounts
+    // Refresh user object and roles from server on route change to strictly enforce permissions
     if (accessToken) {
       authApi.getMe().then(({ user: refreshedUser }) => {
         setSession(accessToken, refreshedUser, permissions);
@@ -289,7 +333,7 @@ export default function AdminLayout() {
         console.error("Failed to refresh user profile:", err);
       });
     }
-  }, []);
+  }, [location.pathname]);
 
   const activeSectionKey = useMemo(() => findActiveSectionKey(location.pathname), [location.pathname]);
 
@@ -335,15 +379,6 @@ export default function AdminLayout() {
       </div>
 
       <nav className="sidebar-nav">
-        {(user?.roles.includes("System Admin") || user?.roles.includes("CEO")) && (
-          <NavLink
-            to="/admin/command-center"
-            className={({ isActive }) => "sidebar-toplink" + (isActive ? " active" : "")}
-          >
-            🎯 Command Center
-          </NavLink>
-        )}
-
         {SECTIONS.filter(section => {
           if (!user) return false;
           const userRoles = user.roles || [];
@@ -367,11 +402,14 @@ export default function AdminLayout() {
           
           const visibleItems = section.items.filter((item: any) => {
             if (isSystemAdmin) return true; // System Admin sees all
-            if (userRoles.includes(sectionRolePrefix)) return true; // Top-level Menu role grants all access
             
             // Check specific item role
             const itemRole = `${sectionRolePrefix} -> ${item.label}`;
-            return userRoles.includes(itemRole);
+            if (userRoles.includes(itemRole)) return true;
+            if (item.items) {
+              return item.items.some((sub: any) => userRoles.includes(`${itemRole} -> ${sub.label}`));
+            }
+            return false;
           });
 
           if (visibleItems.length === 0 && !userRoles.includes(sectionRolePrefix) && !isSystemAdmin) return null;
@@ -383,7 +421,11 @@ export default function AdminLayout() {
                 className={"sidebar-section-header" + (isSectionActive ? " active" : "")}
                 onClick={() => {
                   toggleSection(section.key);
-                  navigate(`/admin/modules/${section.key}`);
+                  if (section.key === 'task-center') {
+                    navigate(`/admin/task-center`);
+                  } else {
+                    navigate(`/admin/modules/${section.key}`);
+                  }
                 }}
                 aria-expanded={isExpanded}
               >
@@ -393,7 +435,7 @@ export default function AdminLayout() {
               <div className={"sidebar-submenu" + (isExpanded ? " expanded" : "")}>
                 <div className="sidebar-submenu-inner">
                   {visibleItems.map((item: any) => {
-                    if (item.items) {
+                    if (item.items && !item.hideChildrenInSidebar) {
                       return (
                         <SidebarSubGroup 
                           key={item.label} 
@@ -422,11 +464,6 @@ export default function AdminLayout() {
         })}
       </nav>
 
-      <div className="sidebar-footer">
-        <p className="sidebar-user-name">{user?.fullName}</p>
-        <p className="sidebar-user-email">{user?.email}</p>
-        <button className="sidebar-logout" onClick={handleLogout}>Logout</button>
-      </div>
     </>
   );
 
@@ -448,6 +485,57 @@ export default function AdminLayout() {
       <main className="admin-content">
         <div className="content-topbar">
           <NotificationBell />
+          {/* User profile in top-right */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            marginLeft: "16px",
+            paddingLeft: "16px",
+            borderLeft: "1px solid #e5e7eb",
+          }}>
+            {/* Avatar circle */}
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl.startsWith('/') ? new URL(env.apiBaseUrl).origin + user.avatarUrl : user.avatarUrl}
+                alt={user?.fullName}
+                style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", border: "2px solid #c7d2fe", flexShrink: 0 }}
+              />
+            ) : (
+              <div style={{
+                width: 38, height: 38, borderRadius: "50%",
+                background: "linear-gradient(135deg, #4338ca, #6366f1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800, fontSize: 16, color: "#fff", flexShrink: 0,
+                border: "2px solid #c7d2fe",
+              }}>
+                {user?.fullName?.charAt(0)?.toUpperCase() ?? "?"}
+              </div>
+            )}
+            <div style={{ textAlign: "right" }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827", lineHeight: 1.2 }}>{user?.fullName}</p>
+              <p style={{ margin: 0, fontSize: "12px", color: "#6b7280", lineHeight: 1.4 }}>{user?.email}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "#fff",
+                color: "#374151",
+                border: "1px solid #d1d5db",
+                padding: "6px 14px",
+                borderRadius: "6px",
+                fontWeight: "600",
+                cursor: "pointer",
+                fontSize: "13px",
+                whiteSpace: "nowrap",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#f3f4f6")}
+              onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+            >
+              Logout
+            </button>
+          </div>
         </div>
         <div className="content-inner">
           <Outlet />

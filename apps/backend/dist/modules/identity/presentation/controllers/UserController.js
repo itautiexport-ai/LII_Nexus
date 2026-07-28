@@ -23,6 +23,7 @@ exports.UserController = {
         return (0, apiResponse_1.created)(res, user);
     },
     async update(req, res) {
+        console.log("UPDATE REQ BODY:", req.body);
         const user = await userService.update(req.params.id, req.body, req.user.sub);
         return (0, apiResponse_1.ok)(res, user);
     },

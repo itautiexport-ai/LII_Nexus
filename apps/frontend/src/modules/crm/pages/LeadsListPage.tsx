@@ -139,8 +139,7 @@ export default function LeadsListPage() {
               <tr key={lead.id} style={{ borderBottom: "1px solid #f0f0f0", cursor: "pointer" }} onClick={() => navigate(`/admin/crm/leads/${lead.id}`)}>
                 <td style={{ padding: 10, fontSize: 13, fontFamily: "monospace" }}>{lead.leadCode}<br /><span style={{ color: "#888", fontSize: 11 }}>{lead.inquiryDate}</span></td>
                 <td style={{ padding: 10, fontSize: 13, whiteSpace: "nowrap" }}>
-                  <strong>{lead.contactName}</strong>
-                  {lead.contactPersons && <div style={{ color: "#666", fontSize: 11 }}>Persons: {lead.contactPersons}</div>}
+                  <div style={{ fontWeight: 600, color: "#333", fontSize: 13 }}>{lead.contactName}</div>
                 </td>
                 <td style={{ padding: 10, fontSize: 13 }}>{lead.companyName ?? "—"}</td>
                 <td style={{ padding: 10, fontSize: 12, color: "#666" }}>
@@ -152,7 +151,11 @@ export default function LeadsListPage() {
                   <div>{lead.email ?? "No Email"}</div>
                   {lead.preferredLanguage && <div>Lang: {lead.preferredLanguage}</div>}
                 </td>
-                <td style={{ padding: 10, fontSize: 12, color: "#666" }}>{lead.leadSource.replace(/_/g, " ")}<br />{lead.leadCategory.replace(/_/g, " ")}</td>
+                <td style={{ padding: 10, fontSize: 12, color: "#666" }}>
+                  {lead.leadSource.replace(/_/g, " ")}
+                  {lead.leadSource === 'trade_fair' && lead.tradeFairName && <span> ({lead.tradeFairName})</span>}
+                  <br />{lead.leadCategory.replace(/_/g, " ")}
+                </td>
                 <td style={{ padding: 10, fontSize: 12, color: "#555" }}>
                   {lead.currency && <span style={{ fontWeight: 600 }}>{lead.currency} </span>}
                   Forecast: {lead.weightedForecast !== null ? lead.weightedForecast.toLocaleString() : "—"}

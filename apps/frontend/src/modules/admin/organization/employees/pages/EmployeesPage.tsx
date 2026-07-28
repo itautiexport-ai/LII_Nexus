@@ -10,7 +10,7 @@ import { useAuthStore } from "../../../../auth/hooks/useAuthStore";
 const emptyForm = {
   employeeCode: "", fullName: "", email: "", phone: "",
   departmentId: "", designationId: "", managerId: "", 
-  dateOfJoining: "", birthday: "", anniversary: "",
+  dateOfJoining: "", birthday: "", anniversary: "", salary: 0,
 };
 
 export default function EmployeesPage() {
@@ -59,6 +59,7 @@ export default function EmployeesPage() {
         dateOfJoining: form.dateOfJoining || undefined,
         birthday: form.birthday || undefined,
         anniversary: form.anniversary || undefined,
+        salary: Number(form.salary) || 0,
       });
       setShowCreate(false);
       setForm(emptyForm);
@@ -74,7 +75,7 @@ export default function EmployeesPage() {
     await load();
   }
 
-  async function handleReassign(emp: EmployeeRecord, field: "employeeCode" | "fullName" | "departmentId" | "designationId" | "managerId" | "userId" | "dateOfJoining" | "birthday" | "anniversary" | "status", value: string) {
+  async function handleReassign(emp: EmployeeRecord, field: "employeeCode" | "fullName" | "departmentId" | "designationId" | "managerId" | "userId" | "dateOfJoining" | "birthday" | "anniversary" | "status" | "salary", value: string | number) {
     try {
       await employeesApi.update(emp.id, { [field]: value || null });
       await load();
@@ -138,6 +139,8 @@ export default function EmployeesPage() {
                 onChange={(e) => setForm({ ...form, anniversary: e.target.value })} style={{ display: "block", width: "100%", padding: 6 }} />
             </div>
           </div>
+          <input placeholder="Salary" type="number" required value={form.salary}
+            onChange={(e) => setForm({ ...form, salary: parseFloat(e.target.value) || 0 })} style={{ display: "block", width: "100%", marginBottom: 8, padding: 6 }} />
           {error && <p style={{ color: "crimson", fontSize: 13 }}>{error}</p>}
           <button type="submit">Create Employee</button>
         </form>
@@ -147,8 +150,8 @@ export default function EmployeesPage() {
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
           <thead>
           <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-            <th style={{ padding: 8 }}>Code</th>
-            <th style={{ padding: 8 }}>Name</th>
+            <th style={{ padding: 8, position: "sticky", left: 0, zIndex: 2, backgroundColor: "#f9f9f9", minWidth: 100, borderRight: "1px solid #eee" }}>Code</th>
+            <th style={{ padding: 8, position: "sticky", left: 100, zIndex: 2, backgroundColor: "#f9f9f9", minWidth: 150, borderRight: "2px solid #ddd", boxShadow: "2px 0 5px -2px rgba(0,0,0,0.1)" }}>Name</th>
             <th style={{ padding: 8 }}>Department</th>
             <th style={{ padding: 8 }}>Designation</th>
             <th style={{ padding: 8 }}>HOD</th>
@@ -156,6 +159,7 @@ export default function EmployeesPage() {
             <th style={{ padding: 8 }}>Joining</th>
             <th style={{ padding: 8 }}>Birthday</th>
             <th style={{ padding: 8 }}>Anniv.</th>
+            <th style={{ padding: 8 }}>Salary</th>
             <th style={{ padding: 8 }}>Status</th>
             <th style={{ padding: 8 }}></th>
           </tr>
@@ -163,15 +167,15 @@ export default function EmployeesPage() {
         <tbody>
           {employees.map((emp) => (
             <tr key={emp.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: 8 }}>
+              <td style={{ padding: 8, position: "sticky", left: 0, zIndex: 1, backgroundColor: "#fff", minWidth: 100, borderRight: "1px solid #eee" }}>
                 <input defaultValue={emp.employeeCode} onBlur={(e) => {
                   if (e.target.value !== emp.employeeCode) handleReassign(emp, "employeeCode", e.target.value);
-                }} style={{ padding: 4, width: 80 }} disabled={!isAdmin} />
+                }} style={{ padding: 4, width: "100%", boxSizing: "border-box" }} disabled={!isAdmin} />
               </td>
-              <td style={{ padding: 8 }}>
+              <td style={{ padding: 8, position: "sticky", left: 100, zIndex: 1, backgroundColor: "#fff", minWidth: 150, borderRight: "2px solid #ddd", boxShadow: "2px 0 5px -2px rgba(0,0,0,0.1)" }}>
                 <input defaultValue={emp.fullName} onBlur={(e) => {
                   if (e.target.value !== emp.fullName) handleReassign(emp, "fullName", e.target.value);
-                }} style={{ padding: 4, width: 120 }} disabled={!isAdmin} />
+                }} style={{ padding: 4, width: "100%", boxSizing: "border-box" }} disabled={!isAdmin} />
               </td>
               <td style={{ padding: 8 }}>
                   <select value={emp.departmentId || ""} onChange={(e) => handleReassign(emp, "departmentId", e.target.value)} disabled={!isAdmin}>
@@ -208,6 +212,12 @@ export default function EmployeesPage() {
               <td style={{ padding: 8 }}>
                 <input type="date" value={emp.anniversary ? emp.anniversary.split("T")[0] : ""} 
                   onChange={(e) => handleReassign(emp, "anniversary", e.target.value)} style={{ padding: 2 }} disabled={!isAdmin} />
+              </td>
+              <td style={{ padding: 8 }}>
+                <input type="number" defaultValue={emp.salary} onBlur={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  if (val !== emp.salary) handleReassign(emp, "salary", val);
+                }} style={{ padding: 4, width: 80 }} disabled={!isAdmin} />
               </td>
               <td style={{ padding: 8 }}>
                   <select value={emp.status || "active"} onChange={(e) => handleReassign(emp, "status", e.target.value)} disabled={!isAdmin} style={{ padding: 2 }}>

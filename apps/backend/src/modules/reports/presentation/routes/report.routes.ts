@@ -8,6 +8,7 @@ import { requirePermission } from "../../../../shared/middlewares/rbac.middlewar
 import { asyncHandler } from "../../../../shared/utils/asyncHandler";
 
 import { OfficeEmController } from "../controllers/OfficeEmController";
+import { ProductionEmController } from "../controllers/ProductionEmController";
 
 const router = Router();
 router.use(authMiddleware);
@@ -15,6 +16,7 @@ router.use(authMiddleware);
 // Core report running/export - literal paths, always before any :param route.
 router.get("/reports/office-em-list", requirePermission("report.view"), asyncHandler(OfficeEmController.getGapScoreList));
 router.get("/reports/office-em/:employeeId", requirePermission("report.view"), asyncHandler(OfficeEmController.getGapScore));
+router.get("/reports/production-em", requirePermission("report.view"), asyncHandler(ProductionEmController.getReport));
 router.get("/reports/cumulative-scores", requirePermission("report.view"), asyncHandler(ApgsController.getCumulativeScores));
 router.get("/reports/apgs/:employeeId", requirePermission("report.view"), asyncHandler(ApgsController.getScore));
 router.post("/reports/apgs/:employeeId/manager-evaluation", requirePermission("report.view"), asyncHandler(ApgsController.saveManagerEvaluation));

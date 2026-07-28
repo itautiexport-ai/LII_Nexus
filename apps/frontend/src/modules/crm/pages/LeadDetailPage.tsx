@@ -126,7 +126,9 @@ export default function LeadDetailPage() {
       <div style={{ border: "1px solid #e0e0e0", borderRadius: 6, padding: 16, marginBottom: 20 }}>
         <h3 style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Inquiry Details</h3>
         <p style={{ fontSize: 13 }}>{lead.inquiryDetails ?? "—"}</p>
-        <p style={{ fontSize: 12, color: "#999", marginTop: 8 }}>Source: {lead.leadSource.replace(/_/g, " ")} · Category: {lead.leadCategory.replace(/_/g, " ")} · Product: {lead.productCategory ?? "—"}</p>
+        <p style={{ fontSize: 12, color: "#999", marginTop: 8 }}>
+          Source: {lead.leadSource.replace(/_/g, " ")}{lead.leadSource === 'trade_fair' && lead.tradeFairName ? ` (${lead.tradeFairName})` : ''} · Category: {lead.leadCategory.replace(/_/g, " ")} · Product: {lead.productCategory ?? "—"}
+        </p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>

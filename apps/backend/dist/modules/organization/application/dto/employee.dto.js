@@ -14,6 +14,7 @@ exports.createEmployeeSchema = zod_1.z.object({
     dateOfJoining: zod_1.z.string().optional().nullable(), // ISO date string, e.g. "2026-07-04"
     birthday: zod_1.z.string().optional().nullable(),
     anniversary: zod_1.z.string().optional().nullable(),
+    salary: zod_1.z.number().nonnegative().optional(),
 });
 exports.updateEmployeeSchema = zod_1.z.object({
     employeeCode: zod_1.z.string().min(1).optional(),
@@ -29,5 +30,6 @@ exports.updateEmployeeSchema = zod_1.z.object({
     birthday: zod_1.z.string().optional().nullable(),
     anniversary: zod_1.z.string().optional().nullable(),
     status: zod_1.z.enum(["active", "inactive"]).optional(),
+    salary: zod_1.z.number().nonnegative().optional(),
 });
 //# sourceMappingURL=employee.dto.js.map

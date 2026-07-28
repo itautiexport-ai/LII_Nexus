@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AttendanceCalculatorPage from "../../modules/hr/pages/AttendanceCalculatorPage";
 import AnnualTrainingPlannerPage from "../../modules/hr/pages/AnnualTrainingPlannerPage";
+import DelegationHubPage from "../../modules/officeperf/delegation/pages/DelegationHubPage";
 import LoginPage from "../../modules/auth/pages/LoginPage";
 import ProtectedRoute from "../../shared/guards/ProtectedRoute";
 import AdminLayout from "../../shared/components/AdminLayout";
@@ -62,6 +63,7 @@ import NotificationTemplatesPage from "../../modules/notifications/pages/Notific
 import EscalationRulesPage from "../../modules/notifications/pages/EscalationRulesPage";
 import ReportsHubPage from "../../modules/reports/pages/ReportsHubPage";
 import OfficeEmReportPage from "../../modules/reports/pages/OfficeEmReportPage";
+import ProductionEmReportPage from "../../modules/reports/pages/ProductionEmReportPage";
 import EmListReportPage from "../../modules/reports/pages/EmListReportPage";
 import ScheduledReportsPage from "../../modules/reports/pages/ScheduledReportsPage";
 import MisScoreReportPage from "../../modules/reports/pages/MisScoreReportPage";
@@ -82,9 +84,13 @@ import MeetingDetailPage from "../../modules/meetings/pages/MeetingDetailPage";
 import MeetingDashboardPage from "../../modules/meetings/pages/MeetingDashboardPage";
 import DocumentsListPage from "../../modules/documents/pages/DocumentsListPage";
 import DocumentFormPage from "../../modules/documents/pages/DocumentFormPage";
-import OrdersInHandListPage from "../../modules/ordermanagement/pages/OrdersInHandListPage";
 import OrderInHandFormPage from "../../modules/ordermanagement/pages/OrderInHandFormPage";
+import OrdersInHandListPage from "../../modules/ordermanagement/pages/OrdersInHandListPage";
+import OrdersInHandSummaryPage from "../../modules/ordermanagement/pages/OrdersInHandSummaryPage";
+import BuyerDashboardPage from "../../modules/ordermanagement/pages/BuyerDashboardPage";
 import DocumentDetailPage from "../../modules/documents/pages/DocumentDetailPage";
+
+import BuyerCartonOrderFormPage from "../../modules/ordermanagement/pages/BuyerCartonOrderFormPage";
 
 import KpiEngineDefinitionsPage from "../../modules/kpiengine/pages/KpiDefinitionsPage";
 import KpiDetailPage from "../../modules/kpiengine/pages/KpiDetailPage";
@@ -93,9 +99,15 @@ import KpiEngineScoresPage from "../../modules/kpiengine/pages/KpiEngineScoresPa
 import DprEntryPage from "../../modules/dpr/pages/DprEntryPage";
 import { AddChecklistPage } from "../../modules/checklist/pages/AddChecklistPage";
 import { ListChecklistPage } from "../../modules/checklist/pages/ListChecklistPage";
+import ChecklistHubPage from "../../modules/checklist/pages/ChecklistHubPage";
+import FmsHubPage from "../../modules/fms/pages/FmsHubPage";
 import { AddFmsManagerPage } from "../../modules/fms/pages/AddFmsManagerPage";
 import { ListFmsManagerPage } from "../../modules/fms/pages/ListFmsManagerPage";
 import { ManageFmsStepsPage } from "../../modules/fms/pages/ManageFmsStepsPage";
+import { FmsGridViewPage } from "../../modules/fms/pages/FmsGridViewPage";
+import { FmsFormsHubPage } from "../../modules/fms/pages/FmsFormsHubPage";
+import { FmsFillListPage } from "../../modules/fms/pages/FmsFillListPage";
+import { FmsFillPage } from "../../modules/fms/pages/FmsFillPage";
 import AddHelpTicketPage from "../../modules/admin/helptickets/pages/AddHelpTicketPage";
 import HelpTicketsListPage from "../../modules/admin/helptickets/pages/HelpTicketsListPage";
 import MachineTargetsPage from "../../modules/admin/masterdata/pages/MachineTargetsPage";
@@ -104,6 +116,7 @@ import ListMachineEfficiencyPage from "../../modules/admin/machineefficiency/pag
 import ModuleLandingPage from "../../shared/pages/ModuleLandingPage";
 
 import ProductionProgressPage from "../../modules/manufacturing/pages/ProductionProgressPage";
+import { FmsManagerPage } from "../../modules/fms/pages/FmsManagerPage";
 import ProductionPlanningSheetPage from "../../modules/manufacturing/pages/ProductionPlanningSheetPage";
 import NewProductionPlanningSheetPage from "../../modules/manufacturing/pages/NewProductionPlanningSheetPage";
 import WhatsAppIntegrationPage from "../../modules/admin/whatsapp/pages/WhatsAppIntegrationPage";
@@ -120,6 +133,15 @@ import FormsPage from "../../modules/resourcescenter/pages/FormsPage";
 import TemplatesPage from "../../modules/resourcescenter/pages/TemplatesPage";
 import ManualsPage from "../../modules/resourcescenter/pages/ManualsPage";
 import NoticesPage from "../../modules/hr/pages/NoticesPage";
+import WeeklyPayrollPage from "../../modules/hr/pages/WeeklyPayrollPage";
+import MonthlySalarySheetPage from "../../modules/hr/pages/MonthlySalarySheetPage";
+import { MasterDataHubPage } from "../../modules/admin/masterdata/pages/MasterDataHubPage";
+import { MachineEfficiencyHubPage } from "../../modules/admin/machineefficiency/pages/MachineEfficiencyHubPage";
+import { QuotationsHubPage } from "../../modules/crm/pages/QuotationsHubPage";
+import { ComplaintsHubPage } from "../../modules/crm/pages/ComplaintsHubPage";
+import { HelpTicketHubPage } from "../../modules/admin/helptickets/pages/HelpTicketHubPage";
+import { ProductionReportHubPage } from "../../modules/reports/pages/ProductionReportHubPage";
+import TaskCenterDashboardPage from "../../modules/taskcenter/pages/TaskCenterDashboardPage";
 
 export default function AppRouter() {
   return (
@@ -147,6 +169,7 @@ export default function AppRouter() {
           <Route path="my-goals" element={<GoalsPage />} />
           <Route path="my-reviews" element={<ReviewsPage />} />
           {/* Master Data */}
+          <Route path="master-data" element={<MasterDataHubPage />} />
           <Route path="wood-types" element={<WoodTypesPage />} />
           <Route path="priorities" element={<PrioritiesPage />} />
           <Route path="buyers" element={<BuyersPage />} />
@@ -164,20 +187,30 @@ export default function AppRouter() {
           <Route path="workflows/:id" element={<WorkflowEditorPage />} />
           <Route path="flowchart" element={<FlowchartRunsPage />} />
           <Route path="flowchart/runs/:id" element={<FlowchartRunDetailPage />} />
+          <Route path="checklist" element={<ChecklistHubPage />} />
           <Route path="checklist-templates" element={<ChecklistTemplatesPage />} />
           <Route path="my-checklists" element={<MyChecklistPage />} />
-          <Route path="standalone-checklist/add" element={<AddChecklistPage />} />
-          <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
+          <Route path="checklist/new" element={<AddChecklistPage />} />
+          <Route path="checklist/list" element={<ListChecklistPage />} />
+          <Route path="fms" element={<FmsHubPage />} />
           <Route path="fms/add" element={<AddFmsManagerPage />} />
           <Route path="fms/list" element={<ListFmsManagerPage />} />
+          <Route path="fms/manager" element={<FmsManagerPage />} />
+          <Route path="fms/forms" element={<FmsFormsHubPage />} />
+          <Route path="fms/list-forms" element={<FmsFillListPage />} />
+          <Route path="fms/fill/:fmsId" element={<FmsFillPage />} />
           <Route path="fms/:fmsId/steps" element={<ManageFmsStepsPage />} />
+          <Route path="fms/:fmsId/grid" element={<FmsGridViewPage />} />
+          <Route path="delegation" element={<DelegationHubPage />} />
+          <Route path="delegation/list" element={<DelegationPage />} />
           <Route path="delegation/new" element={<AddDelegationPage />} />
-          <Route path="delegation" element={<DelegationPage />} />
+          <Route path="delegation/user" element={<UserDelegationPage />} />
           <Route path="performance-dashboard" element={<DashboardPage />} />
           <Route path="contractors" element={<ContractorsPage />} />
           <Route path="factory-entries" element={<FactoryEntriesPage />} />
           <Route path="factory-entries/new" element={<FactoryEntryFormPage />} />
           <Route path="dpr-entry" element={<DprEntryPage />} />
+          <Route path="machine-efficiency/hub" element={<MachineEfficiencyHubPage />} />
           <Route path="machine-efficiency/new" element={<AddMachineEfficiencyPage />} />
           <Route path="machine-efficiency" element={<ListMachineEfficiencyPage />} />
           <Route path="manufacturing/production-progress" element={<ProductionProgressPage />} />
@@ -190,7 +223,13 @@ export default function AppRouter() {
           <Route path="my-score" element={<MyScorePage />} />
           <Route path="rankings" element={<RankingsPage />} />
           <Route path="command-center" element={<CommandCenterPage />} />
+          {/* Order Management Module */}
+          <Route path="order-management/new" element={<OrderInHandFormPage />} />
           <Route path="order-management/list" element={<OrdersInHandListPage />} />
+          <Route path="order-management/summary" element={<OrdersInHandSummaryPage />} />
+          <Route path="order-management/buyers" element={<BuyerDashboardPage />} />
+
+          <Route path="order-management/carton-orders/new" element={<BuyerCartonOrderFormPage />} />
           <Route path="order-management/:id" element={<OrderInHandFormPage />} />
           <Route path="crm/leads" element={<LeadsListPage />} />
           <Route path="crm/leads/new" element={<LeadFormPage />} />
@@ -199,8 +238,10 @@ export default function AppRouter() {
           <Route path="user-dashboard/delegation" element={<UserDelegationPage />} />
           <Route path="user-dashboard/checklist" element={<UserChecklistPage />} />
           <Route path="user-dashboard/fms" element={<UserFmsPage />} />
+          <Route path="crm/quotations/hub" element={<QuotationsHubPage />} />
           <Route path="crm/quotations" element={<QuotationsListPage />} />
           <Route path="crm/quotations/new" element={<QuotationFormPage />} />
+          <Route path="crm/complaints/hub" element={<ComplaintsHubPage />} />
           <Route path="crm/complaints" element={<ComplaintsListPage />} />
           <Route path="crm/complaints/new" element={<ComplaintFormPage />} />
           <Route path="crm/complaints/:id" element={<ComplaintDetailPage />} />
@@ -208,18 +249,23 @@ export default function AppRouter() {
           <Route path="crm/investigation/new" element={<InvestigationFormPage />} />
           <Route path="crm/capa" element={<CapaListPage />} />
           <Route path="crm/capa/new" element={<CapaFormPage />} />
+          <Route path="task-center" element={<TaskCenterDashboardPage />} />
           <Route path="buyers" element={<BuyersPage />} />
           <Route path="notifications" element={<NotificationCenterPage />} />
           <Route path="notification-templates" element={<NotificationTemplatesPage />} />
           <Route path="escalation-rules" element={<EscalationRulesPage />} />
           <Route path="reports" element={<ReportsHubPage />} />
           <Route path="reports/dashboard" element={<DashboardWidgetsPage />} />
+          <Route path="reports/production-hub" element={<ProductionReportHubPage />} />
           <Route path="reports/daily-production" element={<DailyProductionReportPage />} />
           <Route path="reports/detailed-production" element={<DetailedProductionReportPage />} />
           <Route path="reports/office-em" element={<OfficeEmReportPage />} />
+          <Route path="reports/production-em" element={<ProductionEmReportPage />} />
           <Route path="reports/office-em-list" element={<EmListReportPage />} />
 
           <Route path="hr/attendance-calculator" element={<AttendanceCalculatorPage />} />
+          <Route path="hr/weekly-payroll" element={<WeeklyPayrollPage />} />
+          <Route path="hr/monthly-salary-sheet" element={<MonthlySalarySheetPage />} />
           <Route path="hr/notices" element={<NoticesPage />} />
           <Route path="hr/annual-training-planner" element={<AnnualTrainingPlannerPage />} />
           <Route path="hr/kra" element={<KraPage />} />
@@ -246,6 +292,7 @@ export default function AppRouter() {
           <Route path="kpi-engine-scores" element={<KpiEngineScoresPage />} />
           <Route path="standalone-checklist/add" element={<AddChecklistPage />} />
           <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
+          <Route path="help-tickets/hub" element={<HelpTicketHubPage />} />
           <Route path="help-tickets/new" element={<AddHelpTicketPage />} />
           <Route path="help-tickets/all" element={<HelpTicketsListPage mode="all" />} />
           <Route path="help-tickets/assigned-to-me" element={<HelpTicketsListPage mode="assigned-to-me" />} />

@@ -17,7 +17,7 @@ const error_handler_middleware_1 = require("./shared/middlewares/error-handler.m
 const WhatsAppBotService_1 = require("./modules/whatsapp/application/services/WhatsAppBotService");
 function createApp() {
     const app = (0, express_1.default)();
-    app.use((0, helmet_1.default)());
+    app.use((0, helmet_1.default)({ crossOriginResourcePolicy: false }));
     app.use((0, cors_1.default)({ origin: env_1.env.corsAllowedOrigins, credentials: true }));
     app.use(express_1.default.json());
     app.use((0, cookie_parser_1.default)());

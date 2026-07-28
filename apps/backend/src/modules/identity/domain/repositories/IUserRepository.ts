@@ -11,6 +11,7 @@ export interface CreateUserData {
 }
 
 export interface UpdateUserData {
+  email?: string;
   employeeCode?: string | null;
   fullName?: string;
   whatsappNumber?: string | null;

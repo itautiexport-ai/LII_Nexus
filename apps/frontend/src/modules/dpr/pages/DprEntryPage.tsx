@@ -87,9 +87,9 @@ export default function DprEntryPage() {
 
       setHeader((h) => ({
         ...h,
-        factoryDepartmentId: deps[0]?.id ?? "",
+        factoryDepartmentId: "",
         shiftId: defaultShiftId,
-        supervisorId: resolvedEmployeeId ?? empList[0]?.id ?? "",
+        supervisorId: "",
       }));
     } catch (err) {
       console.error("Failed to load data", err);
@@ -247,11 +247,38 @@ export default function DprEntryPage() {
       await dprApi.create(payload);
       setSuccess("DPR Entry saved successfully!");
       
-      // Reset Item details
-      setItems([{ aliasName: "", productCode: "", woodType: "", orderQty: 0, okQty: 0, reworkQty: 0, uom: header.uom, qtyAsPerUom: null }]);
-      // Reload today entries
-      const entriesRes = await dprApi.list({ entryDate: header.entryDate });
-      setTodayEntries(entriesRes.items);
+      // Reset all form details for new entry
+      setItems([{
+        aliasName: "",
+        productCode: "",
+        woodType: "",
+        orderQty: 0,
+        okQty: 0,
+        reworkQty: 0,
+        uom: header.uom,
+        qtyAsPerUom: null,
+      }]);
+
+      setManpower({
+        totalOperator: 0,
+        totalHelper: 0,
+        totalContractor: 0,
+        manpowerDepartmentId: "",
+      });
+
+      setHeader(h => ({
+        ...h,
+        factoryDepartmentId: "",
+        shiftId: "",
+        supervisorId: "",
+        hodId: "",
+        totalTarget: 0,
+        totalAchievement: 0,
+        totalRework: 0,
+      }));
+
+      const newEntriesRes = await dprApi.list({ entryDate: header.entryDate });
+      setTodayEntries(newEntriesRes.items);
     } catch (err: any) {
       setError(err?.response?.data?.error?.message ?? "Failed to save DPR Entry.");
     } finally {

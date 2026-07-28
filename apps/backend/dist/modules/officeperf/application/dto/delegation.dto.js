@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addFileSchema = exports.escalateSchema = exports.updateStatusSchema = exports.updateDelegatedTaskSchema = exports.createDelegatedTaskSchema = void 0;
+exports.respondExtensionSchema = exports.requestExtensionSchema = exports.addFileSchema = exports.escalateSchema = exports.updateStatusSchema = exports.updateDelegatedTaskSchema = exports.createDelegatedTaskSchema = void 0;
 const zod_1 = require("zod");
 exports.createDelegatedTaskSchema = zod_1.z.object({
     title: zod_1.z.string().min(1),
@@ -33,5 +33,13 @@ exports.addFileSchema = zod_1.z.object({
     kind: zod_1.z.enum(["attachment", "proof"]),
     fileName: zod_1.z.string().min(1),
     fileUrl: zod_1.z.string().min(1),
+});
+exports.requestExtensionSchema = zod_1.z.object({
+    reason: zod_1.z.string().min(1).max(1000),
+    requestedDate: zod_1.z.string(), // YYYY-MM-DD
+});
+exports.respondExtensionSchema = zod_1.z.object({
+    status: zod_1.z.enum(["approved", "rejected"]),
+    rejectionReason: zod_1.z.string().max(1000).optional().nullable(),
 });
 //# sourceMappingURL=delegation.dto.js.map

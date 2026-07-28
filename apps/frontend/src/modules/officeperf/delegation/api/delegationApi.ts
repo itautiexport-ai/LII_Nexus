@@ -21,6 +21,10 @@ export interface DelegatedTaskRecord {
   baseStatus: string;
   remarks: string | null;
   escalatedToName: string | null;
+  extensionStatus: "none" | "pending" | "approved" | "rejected";
+  extensionReason: string | null;
+  extensionRequestedDate: string | null;
+  extensionRejectionReason: string | null;
   files: DelegatedTaskFileRecord[];
 }
 
@@ -60,6 +64,14 @@ export const delegationApi = {
     const res = await axiosInstance.post(`/delegation/tasks/${id}/files`, { kind, fileName, fileUrl });
     return res.data.data;
   },
+  async uploadFile(file: File): Promise<{ fileUrl: string; fileName: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axiosInstance.post("/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data.data;
+  },
   async remove(id: string) {
     await axiosInstance.delete(`/delegation/tasks/${id}`);
   },
@@ -67,4 +79,12 @@ export const delegationApi = {
     const res = await axiosInstance.post(`/delegation/tasks/${id}/whatsapp`);
     return res.data;
   },
+  async requestExtension(id: string, reason: string, requestedDate: string) {
+    const res = await axiosInstance.post(`/delegation/tasks/${id}/extension`, { reason, requestedDate });
+    return res.data.data;
+  },
+  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason?: string) {
+    const res = await axiosInstance.post(`/delegation/tasks/${id}/extension-response`, { status, rejectionReason });
+    return res.data.data;
+  }
 };

@@ -200,4 +200,61 @@ export class DelegationService {
     await AuditService.record({ actorUserId, action: "DELEGATED_TASK_FILE_ADDED", entityType: "delegated_task", entityId: id, afterState: { kind, fileName } });
     return this.repo.getWithContext(id);
   }
+  async requestExtension(id: string, reason: string, requestedDate: string, actorUserId: string) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new NotFoundError("Delegated task not found.");
+    
+    const actor = await this.scope.requireEmployeeForUser(actorUserId);
+    if (actor.id !== existing.assignedTo) {
+      throw new ForbiddenError("Only the assignee can request an extension.");
+    }
+    
+    const updated = await this.repo.setExtensionRequest(id, reason, requestedDate);
+    await AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_REQUESTED", entityType: "delegated_task", entityId: id, afterState: { reason, requestedDate } });
+
+    // Notify assigner
+    const assignerUser = await pool.query<any[]>("SELECT id FROM users WHERE employee_id = ?", [existing.assignedBy]);
+    if (assignerUser[0] && assignerUser[0][0]) {
+      await notificationService.notify({
+        type: "delegation_extension_requested",
+        module: "office",
+        referenceType: "delegated_task",
+        referenceId: id,
+        assignedUserId: assignerUser[0][0].id,
+        createdBy: actorUserId,
+      });
+    }
+
+    return updated;
+  }
+
+  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null, actorUserId: string, hasUpdateOverride: boolean) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new NotFoundError("Delegated task not found.");
+
+    if (!hasUpdateOverride) {
+      const actor = await this.scope.requireEmployeeForUser(actorUserId);
+      if (actor.id !== existing.assignedBy) {
+        throw new ForbiddenError("Only the assigner can respond to an extension request.");
+      }
+    }
+
+    const updated = await this.repo.respondToExtension(id, status, rejectionReason);
+    await AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_RESPONDED", entityType: "delegated_task", entityId: id, afterState: { status, rejectionReason } });
+
+    // Notify assignee
+    const assigneeUser = await pool.query<any[]>("SELECT id FROM users WHERE employee_id = ?", [existing.assignedTo]);
+    if (assigneeUser[0] && assigneeUser[0][0]) {
+      await notificationService.notify({
+        type: status === "approved" ? "delegation_extension_approved" : "delegation_extension_rejected",
+        module: "office",
+        referenceType: "delegated_task",
+        referenceId: id,
+        assignedUserId: assigneeUser[0][0].id,
+        createdBy: actorUserId,
+      });
+    }
+
+    return updated;
+  }
 }

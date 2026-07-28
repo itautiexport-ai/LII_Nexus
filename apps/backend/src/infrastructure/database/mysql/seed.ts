@@ -50,6 +50,14 @@ async function seedBootstrapAdmin() {
     [userId, "EMP-0001", "admin@liinexus.com", passwordHash, "System Administrator"]
   );
 
+  // Also create a linked employee record for the admin so they can test employee features like DPR
+  const employeeId = uuid();
+  await pool.query(
+    `INSERT INTO employees (id, employee_code, full_name, email, user_id, status)
+     VALUES (?, ?, ?, ?, ?, 'active')`,
+    [employeeId, "EMP-0001", "System Administrator", "admin@liinexus.com", userId]
+  );
+
   const [roleRows] = await pool.query<any[]>("SELECT id FROM roles WHERE name = ?", ["System Admin"]);
   const roleId = roleRows[0].id;
 

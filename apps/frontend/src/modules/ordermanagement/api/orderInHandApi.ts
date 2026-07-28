@@ -22,11 +22,12 @@ export interface OrderInHandRecord {
   dispatchStatus: 'Pending' | 'Booked' | 'Dispatched' | null;
   expectedDispatchDate: string | null;
   expectedDelivery: string | null;
-  priority: 'Low' | 'Medium' | 'High' | 'Urgent' | null;
+  priority: "Low" | "Medium" | "High" | "Urgent" | null;
   delayDays: number | null;
   currentStage: string | null;
   overallProgress: number | null;
-  overallStatus: 'Under Process' | 'Dispatched';
+  overallStatus: "Under Process" | "Dispatched";
+  totalCbm: number | null;
   createdAt: string;
   updatedAt: string;
 }

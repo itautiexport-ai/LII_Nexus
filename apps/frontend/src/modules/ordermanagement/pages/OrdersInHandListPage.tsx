@@ -49,12 +49,11 @@ export default function OrdersInHandListPage() {
   };
 
   const getDelay = (order: OrderInHandRecord) => {
-    if (!order.expectedDispatchDate) return "-";
-    if (order.overallStatus === "Dispatched") return "-"; // Optionally, you could store final delay. Here we just hide it or show 0 if dispatched.
+    if (!order.expectedDispatchDate || !order.exFactoryDate) return 0;
     
     const expDate = new Date(order.expectedDispatchDate);
-    const today = new Date();
-    const diffTime = Math.max(0, today.getTime() - expDate.getTime());
+    const exFactory = new Date(order.exFactoryDate);
+    const diffTime = expDate.getTime() - exFactory.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     return diffDays > 0 ? diffDays : 0;
@@ -110,7 +109,7 @@ export default function OrdersInHandListPage() {
             <tr>
               {[
                 "Order ID", "Order Date", "Customer Name", "Country", "Merchant Name", "ERP Number", "Ex-Factory Date",
-                "Marketplace", "PO Number", "No. of Products", "Total Qty", "Order Value",
+                "PO Number", "No. of Products", "Total Qty", "Total CBM", "Order Value",
                 "Currency", "Payment Status", "Production Status", "QC Status", "Packing Status",
                 "Exp. Dispatch", "Delay (Days)",
                 "Status", "Priority", "Actions"
@@ -136,10 +135,10 @@ export default function OrdersInHandListPage() {
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.merchantName}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.erpNumber || "-"}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.exFactoryDate || "-"}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.marketplace || "-"}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.poNumber || "-"}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.noOfProducts || "-"}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.totalQty || "-"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.totalCbm || "-"}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.orderValue || "-"}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.currency || "-"}</td>
                   <td style={{ padding: "12px 16px", fontSize: 14 }}>{order.paymentStatus || "-"}</td>
@@ -149,11 +148,6 @@ export default function OrdersInHandListPage() {
                       onChange={async (e) => {
                         const val = e.target.value;
                         const payload: any = { productionStatus: val };
-                        if (val === "Completed") {
-                          const expDate = new Date();
-                          expDate.setDate(expDate.getDate() + 7);
-                          payload.expectedDispatchDate = expDate.toISOString().split('T')[0];
-                        }
                         try {
                           await orderInHandApi.update(order.id, payload);
                           setOrders(orders.map(o => o.id === order.id ? { ...o, ...payload } : o));

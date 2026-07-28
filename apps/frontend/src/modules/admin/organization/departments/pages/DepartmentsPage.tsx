@@ -51,6 +51,33 @@ export default function DepartmentsPage() {
     await load();
   }
 
+  const [sortConfig, setSortConfig] = useState<{ key: keyof DepartmentRecord, direction: 'asc' | 'desc' } | null>(null);
+
+  const handleSort = (key: keyof DepartmentRecord) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedDepartments = [...departments].sort((a, b) => {
+    if (!sortConfig) return 0;
+    const aValue = a[sortConfig.key] || "";
+    const bValue = b[sortConfig.key] || "";
+    
+    // Perform case-insensitive string comparison if both are strings
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortConfig.direction === 'asc' 
+        ? aValue.localeCompare(bValue) 
+        : bValue.localeCompare(aValue);
+    }
+    
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   return (
     <div>
       <h1 style={{ fontSize: 20, marginBottom: 16 }}>Department Master</h1>
@@ -67,14 +94,20 @@ export default function DepartmentsPage() {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-            <th style={{ padding: 8 }}>Name</th>
-            <th style={{ padding: 8 }}>Code</th>
-            <th style={{ padding: 8 }}>Description</th>
+            <th style={{ padding: 8, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('name')}>
+              Name {sortConfig?.key === 'name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+            </th>
+            <th style={{ padding: 8, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('code')}>
+              Code {sortConfig?.key === 'code' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+            </th>
+            <th style={{ padding: 8, cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('description')}>
+              Description {sortConfig?.key === 'description' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+            </th>
             <th style={{ padding: 8 }}></th>
           </tr>
         </thead>
         <tbody>
-          {departments.map((d) => (
+          {sortedDepartments.map((d) => (
             <tr key={d.id} style={{ borderBottom: "1px solid #eee" }}>
               <td style={{ padding: 8 }}>{d.name}</td>
               <td style={{ padding: 8 }}>{d.code ?? "—"}</td>

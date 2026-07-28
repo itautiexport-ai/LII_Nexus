@@ -23,6 +23,7 @@ export interface CreateOrderInHandDTO {
   currentStage?: string | null;
   overallProgress?: number | null;
   overallStatus?: 'Under Process' | 'Dispatched';
+  totalCbm?: number | null;
 }
 
 export interface UpdateOrderInHandDTO extends Partial<CreateOrderInHandDTO> {

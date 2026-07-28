@@ -37,12 +37,18 @@ import uploadRoutes from "../../modules/upload/presentation/routes/upload.routes
 import { trainingRoutes } from "../../modules/training/presentation/routes/trainingRoutes";
 import { noticeRoutes } from "../../modules/notices/presentation/routes/noticeRoutes";
 import { kraRouter } from "../../modules/hr/api/kra.router";
+import { attendanceRouter } from "../../modules/hr/api/attendance.router";
+import { payrollRouter } from "../../modules/hr/api/payroll.router";
 import { orderInHandRoutes } from "../../modules/ordermanagement/presentation/routes/orderInHandRoutes";
+import cartonOrderRoutes from "../../modules/ordermanagement/presentation/routes/cartonOrder.routes";
+import taskCenterRoutes from "../../modules/taskcenter/presentation/routes/taskcenter.routes";
 const router = Router();
 
 router.use("/training", trainingRoutes);
 router.use("/notices", noticeRoutes);
 router.use("/hr/kras", kraRouter);
+router.use("/hr/payroll", payrollRouter);
+router.use("/hr", attendanceRouter);
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
@@ -78,5 +84,7 @@ router.use("/performance-evaluation", performanceEvaluationRouter);
 router.use("/", urlRoutes);
 router.use("/", uploadRoutes);
 router.use("/orders-in-hand", orderInHandRoutes);
+router.use("/", cartonOrderRoutes);
+router.use("/task-center", taskCenterRoutes);
 
 export default router;

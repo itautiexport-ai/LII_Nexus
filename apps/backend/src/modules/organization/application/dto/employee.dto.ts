@@ -12,6 +12,7 @@ export const createEmployeeSchema = z.object({
   dateOfJoining: z.string().optional().nullable(), // ISO date string, e.g. "2026-07-04"
   birthday: z.string().optional().nullable(),
   anniversary: z.string().optional().nullable(),
+  salary: z.number().nonnegative().optional(),
 });
 
 export const updateEmployeeSchema = z.object({
@@ -28,4 +29,5 @@ export const updateEmployeeSchema = z.object({
   birthday: z.string().optional().nullable(),
   anniversary: z.string().optional().nullable(),
   status: z.enum(["active", "inactive"]).optional(),
+  salary: z.number().nonnegative().optional(),
 });

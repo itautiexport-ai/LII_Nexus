@@ -38,11 +38,17 @@ const upload_routes_1 = __importDefault(require("../../modules/upload/presentati
 const trainingRoutes_1 = require("../../modules/training/presentation/routes/trainingRoutes");
 const noticeRoutes_1 = require("../../modules/notices/presentation/routes/noticeRoutes");
 const kra_router_1 = require("../../modules/hr/api/kra.router");
+const attendance_router_1 = require("../../modules/hr/api/attendance.router");
+const payroll_router_1 = require("../../modules/hr/api/payroll.router");
 const orderInHandRoutes_1 = require("../../modules/ordermanagement/presentation/routes/orderInHandRoutes");
+const cartonOrder_routes_1 = __importDefault(require("../../modules/ordermanagement/presentation/routes/cartonOrder.routes"));
+const taskcenter_routes_1 = __importDefault(require("../../modules/taskcenter/presentation/routes/taskcenter.routes"));
 const router = (0, express_1.Router)();
 router.use("/training", trainingRoutes_1.trainingRoutes);
 router.use("/notices", noticeRoutes_1.noticeRoutes);
 router.use("/hr/kras", kra_router_1.kraRouter);
+router.use("/hr/payroll", payroll_router_1.payrollRouter);
+router.use("/hr", attendance_router_1.attendanceRouter);
 router.use("/auth", auth_routes_1.default);
 router.use("/users", user_routes_1.default);
 router.use("/", masterDataRoutes_1.masterDataRoutes); // exposes /wood-types, /priorities
@@ -77,5 +83,7 @@ router.use("/performance-evaluation", router_1.performanceEvaluationRouter);
 router.use("/", url_routes_1.default);
 router.use("/", upload_routes_1.default);
 router.use("/orders-in-hand", orderInHandRoutes_1.orderInHandRoutes);
+router.use("/", cartonOrder_routes_1.default);
+router.use("/task-center", taskcenter_routes_1.default);
 exports.default = router;
 //# sourceMappingURL=router.js.map

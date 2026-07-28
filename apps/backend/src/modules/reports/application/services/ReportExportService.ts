@@ -1,20 +1,78 @@
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
+import fs from "fs";
+import path from "path";
 import { ReportResult } from "../../domain/entities/Report";
 
 /** One export pipeline for all 12 report types, made possible by every
  *  report builder returning the same { title, summary, columns, rows }
  *  shape. */
 export class ReportExportService {
-  toExcelBuffer(report: ReportResult): Buffer {
-    const workbook = XLSX.utils.book_new();
+  async toExcelBuffer(report: ReportResult): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Data");
+
+    const logoPath = path.join(__dirname, "../../../../../../frontend/public/logo.jpg");
+    let hasLogo = false;
+    let logoId = -1;
+    if (fs.existsSync(logoPath)) {
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoId = workbook.addImage({
+        buffer: logoBuffer as any,
+        extension: "jpeg",
+      });
+      hasLogo = true;
+    }
+
+    if (hasLogo) {
+      sheet.addImage(logoId, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 100, height: 50 },
+      });
+    }
+
+    // Add Title
+    sheet.mergeCells('C1:F2');
+    const titleCell = sheet.getCell('C1');
+    titleCell.value = report.title;
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Summary (e.g. Date and Entries)
+    let rowCursor = 4;
+    for (const stat of report.summary) {
+      sheet.getCell(`A${rowCursor}`).value = `${stat.label}: ${stat.value}`;
+      sheet.getCell(`A${rowCursor}`).font = { bold: true };
+      rowCursor++;
+    }
+
+    rowCursor += 1;
+
     // Filter out internal _id column
     const visibleCols = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => col !== "_id");
-    const dataRows = report.rows.map((row) => Object.fromEntries(visibleCols.map(({ col, i }) => [col, row[i]])));
     const headers = visibleCols.map(({ col }) => col);
-    const dataSheet = XLSX.utils.json_to_sheet(dataRows, { header: headers });
-    XLSX.utils.book_append_sheet(workbook, dataSheet, "Data");
-    return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    
+    // Header Row
+    const headerRow = sheet.getRow(rowCursor);
+    headerRow.values = headers;
+    headerRow.font = { bold: true };
+    rowCursor++;
+
+    // Data Rows
+    for (const row of report.rows) {
+      const rowData = visibleCols.map(({ i }) => row[i]);
+      sheet.getRow(rowCursor).values = rowData;
+      rowCursor++;
+    }
+
+    // Auto-fit columns roughly
+    sheet.columns.forEach((column) => {
+      column.width = 15;
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   toCsvBuffer(report: ReportResult): Buffer {
@@ -38,7 +96,14 @@ export class ReportExportService {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      doc.fontSize(18).text(report.title, { align: "left" });
+      const logoPath = path.join(__dirname, "../../../../../../frontend/public/logo.jpg");
+      let startY = 40;
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, 40, 40, { width: 100 });
+        startY = 100;
+      }
+
+      doc.fontSize(18).text(report.title, 40, startY, { align: "left" });
       doc.fontSize(9).fillColor("#666").text(`Generated ${new Date(report.generatedAt).toLocaleString()}`);
       doc.moveDown();
 

@@ -14,9 +14,12 @@ exports.createUserSchema = zod_1.z.object({
     roles: zod_1.z.array(zod_1.z.string()).optional(),
 });
 exports.updateUserSchema = zod_1.z.object({
+    email: zod_1.z.string().min(1, "User ID / Login ID is required.").optional(),
+    password: zod_1.z.string().min(4, "Password must be at least 4 characters.").optional(),
     fullName: zod_1.z.string().min(1).optional(),
     whatsappNumber: zod_1.z.string().optional().nullable(),
     employeeCode: zod_1.z.string().optional().nullable(),
     status: zod_1.z.enum(["active", "suspended", "inactive"]).optional(),
+    departmentId: zod_1.z.string().optional().nullable(),
 });
 //# sourceMappingURL=user.dto.js.map

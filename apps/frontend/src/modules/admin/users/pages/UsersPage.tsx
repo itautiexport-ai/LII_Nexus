@@ -6,6 +6,7 @@ import { designationsApi } from "../../organization/designations/api/designation
 import { shiftsApi } from "../../factory/shifts/api/shiftsApi";
 import PermissionGate from "../../../../shared/guards/PermissionGate";
 import { useHasPermission } from "../../../auth/hooks/usePermissions";
+import { env } from "../../../../config/env";
 
 function UserRoleDropdown({ u, roles, canAssignRoles, handleToggleRole }: any) {
   const [isOpen, setIsOpen] = useState(false);
@@ -101,6 +102,8 @@ export default function UsersPage() {
   const [departmentsList, setDepartmentsList] = useState<any[]>([]);
   const [designationsList, setDesignationsList] = useState<any[]>([]);
   const [shiftsList, setShiftsList] = useState<any[]>([]);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
@@ -118,11 +121,52 @@ export default function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+  
+  const [sortConfig, setSortConfig] = useState<{ key: keyof UserRecord, direction: 'asc' | 'desc' } | null>(null);
+
+  const handleSort = (key: keyof UserRecord) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const [searchName, setSearchName] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+
+  const filteredUsers = users.filter((u) => {
+    const matchName = !searchName || 
+      u.fullName.toLowerCase().includes(searchName.toLowerCase()) || 
+      u.email.toLowerCase().includes(searchName.toLowerCase());
+    const matchDept = !filterDepartment || u.departmentId === filterDepartment;
+    return matchName && matchDept;
+  });
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    if (!sortConfig) return 0;
+    const aValue = a[sortConfig.key] || "";
+    const bValue = b[sortConfig.key] || "";
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortConfig.direction === 'asc' 
+        ? aValue.localeCompare(bValue) 
+        : bValue.localeCompare(aValue);
+    }
+    
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const [editForm, setEditForm] = useState({
     fullName: "",
     whatsappNumber: "",
     employeeCode: "",
+    email: "",
+    password: "",
     status: "active",
+    departmentId: "",
   });
 
   function startEdit(u: UserRecord) {
@@ -131,8 +175,12 @@ export default function UsersPage() {
       fullName: u.fullName,
       whatsappNumber: u.whatsappNumber || "",
       employeeCode: u.employeeCode || "",
+      email: u.email || "",
+      password: "", // empty so it won't update unless typed
       status: u.status,
+      departmentId: u.departmentId || "",
     });
+    setAvatarUploading(false);
   }
 
   function cancelEdit() {
@@ -150,7 +198,10 @@ export default function UsersPage() {
         fullName: editForm.fullName,
         whatsappNumber: editForm.whatsappNumber || null,
         employeeCode: editForm.employeeCode || null,
+        email: editForm.email || undefined,
+        ...(editForm.password ? { password: editForm.password } : {}),
         status: editForm.status,
+        departmentId: editForm.departmentId || null,
       });
       setSuccess("User updated successfully!");
       setEditingUser(null);
@@ -253,6 +304,22 @@ export default function UsersPage() {
       await rolesApi.assignToUser(user.id, role.id);
     }
     await load();
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!editingUser || !e.target.files?.[0]) return;
+    setAvatarUploading(true);
+    try {
+      await usersApi.uploadAvatar(editingUser.id, e.target.files[0]);
+      await load();
+      // Update editingUser in state to reflect new avatar
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, avatarUrl: URL.createObjectURL(e.target.files![0]) } : u));
+      setEditingUser(prev => prev ? { ...prev, avatarUrl: URL.createObjectURL(e.target.files![0]) } : prev);
+    } catch {
+      alert("Failed to upload image.");
+    } finally {
+      setAvatarUploading(false);
+    }
   }
 
   const handleFormRoleChange = (roleName: string) => {
@@ -376,62 +443,6 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: 20 }}>
-            <label className="form-label" style={{ marginBottom: 12 }}>Permissions</label>
-            <div className="roles-checkbox-grid">
-              <label className="role-checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={form.roles.includes("DPR Management")} 
-                  onChange={() => handleFormRoleChange("DPR Management")} 
-                  className="role-checkbox"
-                />
-                <div>
-                  <span className="role-name">DPR Management Access</span>
-                  <span className="role-desc">Grants full permission to record, edit, and view Daily Production Reports (DPR).</span>
-                </div>
-              </label>
-
-              <label className="role-checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={form.roles.includes("User Dashboard Access")} 
-                  onChange={() => handleFormRoleChange("User Dashboard Access")} 
-                  className="role-checkbox"
-                />
-                <div>
-                  <span className="role-name">User Dashboard Access</span>
-                  <span className="role-desc">Grants access to the User Dashboard.</span>
-                </div>
-              </label>
-
-              <label className="role-checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={form.roles.includes("Help Ticket Access")} 
-                  onChange={() => handleFormRoleChange("Help Ticket Access")} 
-                  className="role-checkbox"
-                />
-                <div>
-                  <span className="role-name">Help Ticket Access</span>
-                  <span className="role-desc">Grants access to Help Tickets.</span>
-                </div>
-              </label>
-
-              <label className="role-checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={form.roles.includes("Machine Efficiency Access")} 
-                  onChange={() => handleFormRoleChange("Machine Efficiency Access")} 
-                  className="role-checkbox"
-                />
-                <div>
-                  <span className="role-name">Machine Efficiency Access</span>
-                  <span className="role-desc">Grants access to Machine Efficiency.</span>
-                </div>
-              </label>
-            </div>
-          </div>
 
           {error && <div className="alert-message error">{error}</div>}
           {success && <div className="alert-message success">{success}</div>}
@@ -451,27 +462,72 @@ export default function UsersPage() {
       {success && !showCreate && <div className="alert-message success" style={{ marginBottom: 16 }}>{success}</div>}
 
       <div className="users-list-card">
-        <h2 className="section-title">📋 Active Users Directory</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+          <h2 className="section-title" style={{ margin: 0 }}>📋 Active Users Directory</h2>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input 
+              placeholder="Search Name or Login ID..." 
+              className="form-input" 
+              style={{ width: 220 }} 
+              value={searchName} 
+              onChange={(e) => setSearchName(e.target.value)} 
+            />
+            <select 
+              className="form-select" 
+              style={{ width: 200 }} 
+              value={filterDepartment} 
+              onChange={(e) => setFilterDepartment(e.target.value)}
+            >
+              <option value="">All Departments</option>
+              {departmentsList.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
         <table className="users-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Login ID</th>
-              <th>Password</th>
-              <th>Status</th>
+              <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('fullName')}>
+                Name {sortConfig?.key === 'fullName' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+              </th>
+              <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('email')}>
+                Login ID {sortConfig?.key === 'email' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+              </th>
+              <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('department')}>
+                Department {sortConfig?.key === 'department' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+              </th>
+              <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('tempPassword')}>
+                Password {sortConfig?.key === 'tempPassword' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+              </th>
+              <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('status')}>
+                Status {sortConfig?.key === 'status' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+              </th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {sortedUsers.map((u) => {
               const dprRole = roles.find(r => r.name === "DPR Management");
               const udRole = roles.find(r => r.name === "User Dashboard Access");
               const htRole = roles.find(r => r.name === "Help Ticket Access");
               const meRole = roles.find(r => r.name === "Machine Efficiency Access");
               return (
                 <tr key={u.id}>
-                  <td style={{ fontWeight: 600, color: "#111827" }}>{u.fullName}</td>
+                  <td style={{ fontWeight: 600, color: "#111827" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      {u.avatarUrl ? (
+                        <img src={u.avatarUrl.startsWith('/') ? new URL(env.apiBaseUrl).origin + u.avatarUrl : u.avatarUrl} alt={u.fullName} style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "2px solid #e5e7eb", flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#4338ca", flexShrink: 0 }}>
+                          {u.fullName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      {u.fullName}
+                    </div>
+                  </td>
                   <td><code className="login-id-code">{u.email}</code></td>
+                  <td>{u.department || "-"}</td>
                   <td><code className="login-id-code">{u.tempPassword || "Not Recorded"}</code></td>
                   <td>
                     <span className={`status-badge ${u.status}`}>
@@ -511,10 +567,63 @@ export default function UsersPage() {
           background: "rgba(0,0,0,0.5)", zIndex: 100,
           display: "flex", alignItems: "center", justifyContent: "center"
         }}>
-          <form onSubmit={handleUpdate} className="create-user-card animate-fade" style={{ width: "100%", maxWidth: 600, margin: 0 }}>
+          <form onSubmit={handleUpdate} className="create-user-card animate-fade" style={{ width: "100%", maxWidth: 620, margin: 0, maxHeight: "90vh", overflowY: "auto" }}>
             <h2 className="section-title">✏️ Edit User Profile: {editingUser.email}</h2>
+
+            {/* Avatar Section */}
+            <div style={{ display: "flex", alignItems: "center", gap: "20px", padding: "16px", background: "#f9fafb", borderRadius: "10px", marginBottom: "20px", border: "1px solid #e5e7eb" }}>
+              <div style={{ flexShrink: 0 }}>
+                {editingUser.avatarUrl ? (
+                  <img src={editingUser.avatarUrl.startsWith('/') ? new URL(env.apiBaseUrl).origin + editingUser.avatarUrl : editingUser.avatarUrl} alt={editingUser.fullName} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "3px solid #4338ca" }} />
+                ) : (
+                  <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 28, color: "#4338ca", border: "3px solid #c7d2fe" }}>
+                    {editingUser.fullName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p style={{ margin: "0 0 4px 0", fontWeight: 600, color: "#111827" }}>Profile Photo</p>
+                <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#6b7280" }}>Upload JPG, PNG or GIF (max 2MB)</p>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleAvatarUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  style={{ padding: "6px 16px", background: "#4338ca", color: "white", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+                >
+                  {avatarUploading ? "Uploading..." : "📷 Change Photo"}
+                </button>
+              </div>
+            </div>
             
             <div className="form-grid">
+              <div>
+                <label className="form-label">Login ID (Email) *</label>
+                <input 
+                  required 
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value, employeeCode: e.target.value })} 
+                  className="form-input" 
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Reset Password</label>
+                <input 
+                  type="password"
+                  placeholder="Leave blank to keep current"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} 
+                  className="form-input" 
+                />
+              </div>
+
               <div>
                 <label className="form-label">Full Name *</label>
                 <input 
@@ -537,10 +646,25 @@ export default function UsersPage() {
               <div>
                 <label className="form-label">Employee Code</label>
                 <input 
+                  placeholder="e.g. EMP001" 
                   value={editForm.employeeCode}
-                  onChange={(e) => setEditForm({ ...editForm, employeeCode: e.target.value })} 
+                  onChange={(e) => setEditForm({ ...editForm, employeeCode: e.target.value, email: e.target.value })} 
                   className="form-input" 
                 />
+              </div>
+
+              <div>
+                <label className="form-label">Department</label>
+                <select
+                  className="form-select"
+                  value={editForm.departmentId}
+                  onChange={(e) => setEditForm({ ...editForm, departmentId: e.target.value })}
+                >
+                  <option value="">Select Department...</option>
+                  {departmentsList.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

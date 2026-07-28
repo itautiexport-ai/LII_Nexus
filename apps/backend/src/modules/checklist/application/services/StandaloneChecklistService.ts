@@ -67,10 +67,23 @@ export class StandaloneChecklistService {
        ORDER BY c.created_at DESC`
     );
     return rows.map((row: any) => ({
-      ...row,
-      make_attachment_mandatory: !!row.make_attachment_mandatory,
-      make_note_mandatory: !!row.make_note_mandatory,
-      skip_on_holidays: !!row.skip_on_holidays,
+      id: row.id,
+      assignedBy: row.assigned_by,
+      assignBy: row.assigned_by,
+      assignTo: row.assign_to,
+      taskName: row.task_name,
+      plannedDate: row.planned_date,
+      priority: row.priority,
+      makeAttachmentMandatory: !!row.make_attachment_mandatory,
+      makeNoteMandatory: !!row.make_note_mandatory,
+      mode: row.mode,
+      frequency: row.frequency,
+      remindBeforeDays: row.remind_before_days,
+      skipOnHolidays: !!row.skip_on_holidays,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      assigner_name: row.assigner_name,
+      assignee_name: row.assignee_name,
     }));
   }
 

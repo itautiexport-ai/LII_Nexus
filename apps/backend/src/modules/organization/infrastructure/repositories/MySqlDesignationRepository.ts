@@ -66,7 +66,7 @@ export class MySqlDesignationRepository implements IDesignationRepository {
       await pool.query("DELETE FROM designations WHERE id = ?", [id]);
     } catch (err: any) {
       if (err.code === "ER_ROW_IS_REFERENCED_2") {
-        await pool.query("UPDATE designations SET deleted_at = NOW(), name = CONCAT(name, '-del-', SUBSTRING(id, 1, 6)) WHERE id = ?", [id]);
+        await pool.query("UPDATE designations SET deleted_at = NOW(), title = CONCAT(title, '-del-', SUBSTRING(id, 1, 6)) WHERE id = ?", [id]);
       } else throw err;
     }
   }

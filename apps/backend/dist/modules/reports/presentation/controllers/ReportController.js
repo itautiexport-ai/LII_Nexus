@@ -32,7 +32,7 @@ exports.ReportController = {
         if (format === "xlsx") {
             res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             res.setHeader("Content-Disposition", `attachment; filename=${reportType}.xlsx`);
-            return res.send(exportService.toExcelBuffer(report));
+            return res.send(await exportService.toExcelBuffer(report));
         }
         if (format === "csv") {
             res.setHeader("Content-Type", "text/csv");

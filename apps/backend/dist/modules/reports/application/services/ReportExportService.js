@@ -1,57 +1,71 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReportExportService = void 0;
-const XLSX = __importStar(require("xlsx"));
+const exceljs_1 = __importDefault(require("exceljs"));
 const pdfkit_1 = __importDefault(require("pdfkit"));
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 /** One export pipeline for all 12 report types, made possible by every
  *  report builder returning the same { title, summary, columns, rows }
  *  shape. */
 class ReportExportService {
-    toExcelBuffer(report) {
-        const workbook = XLSX.utils.book_new();
+    async toExcelBuffer(report) {
+        const workbook = new exceljs_1.default.Workbook();
+        const sheet = workbook.addWorksheet("Data");
+        const logoPath = path_1.default.join(__dirname, "../../../../../../frontend/public/logo.jpg");
+        let hasLogo = false;
+        let logoId = -1;
+        if (fs_1.default.existsSync(logoPath)) {
+            const logoBuffer = fs_1.default.readFileSync(logoPath);
+            logoId = workbook.addImage({
+                buffer: logoBuffer,
+                extension: "jpeg",
+            });
+            hasLogo = true;
+        }
+        if (hasLogo) {
+            sheet.addImage(logoId, {
+                tl: { col: 0, row: 0 },
+                ext: { width: 100, height: 50 },
+            });
+        }
+        // Add Title
+        sheet.mergeCells('C1:F2');
+        const titleCell = sheet.getCell('C1');
+        titleCell.value = report.title;
+        titleCell.font = { size: 16, bold: true };
+        titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        // Summary (e.g. Date and Entries)
+        let rowCursor = 4;
+        for (const stat of report.summary) {
+            sheet.getCell(`A${rowCursor}`).value = `${stat.label}: ${stat.value}`;
+            sheet.getCell(`A${rowCursor}`).font = { bold: true };
+            rowCursor++;
+        }
+        rowCursor += 1;
         // Filter out internal _id column
         const visibleCols = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => col !== "_id");
-        const dataRows = report.rows.map((row) => Object.fromEntries(visibleCols.map(({ col, i }) => [col, row[i]])));
         const headers = visibleCols.map(({ col }) => col);
-        const dataSheet = XLSX.utils.json_to_sheet(dataRows, { header: headers });
-        XLSX.utils.book_append_sheet(workbook, dataSheet, "Data");
-        return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+        // Header Row
+        const headerRow = sheet.getRow(rowCursor);
+        headerRow.values = headers;
+        headerRow.font = { bold: true };
+        rowCursor++;
+        // Data Rows
+        for (const row of report.rows) {
+            const rowData = visibleCols.map(({ i }) => row[i]);
+            sheet.getRow(rowCursor).values = rowData;
+            rowCursor++;
+        }
+        // Auto-fit columns roughly
+        sheet.columns.forEach((column) => {
+            column.width = 15;
+        });
+        const buffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(buffer);
     }
     toCsvBuffer(report) {
         // Filter out internal _id column
@@ -72,7 +86,13 @@ class ReportExportService {
             doc.on("data", (chunk) => chunks.push(chunk));
             doc.on("end", () => resolve(Buffer.concat(chunks)));
             doc.on("error", reject);
-            doc.fontSize(18).text(report.title, { align: "left" });
+            const logoPath = path_1.default.join(__dirname, "../../../../../../frontend/public/logo.jpg");
+            let startY = 40;
+            if (fs_1.default.existsSync(logoPath)) {
+                doc.image(logoPath, 40, 40, { width: 100 });
+                startY = 100;
+            }
+            doc.fontSize(18).text(report.title, 40, startY, { align: "left" });
             doc.fontSize(9).fillColor("#666").text(`Generated ${new Date(report.generatedAt).toLocaleString()}`);
             doc.moveDown();
             doc.fontSize(12).fillColor("#000").text("Summary");

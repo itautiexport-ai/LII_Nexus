@@ -25,6 +25,7 @@ export interface OrderInHand {
   currentStage: string | null;
   overallProgress: number | null;
   overallStatus: 'Under Process' | 'Dispatched';
+  totalCbm: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
 import * as xlsx from "xlsx";
+import { axiosInstance } from "../../../services/api/axiosInstance";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -10,6 +11,9 @@ export default function AttendanceCalculatorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<any[]>([]);
+  const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -141,9 +145,32 @@ export default function AttendanceCalculatorPage() {
       setReport(results);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to process file.");
+      setError(err.message || "An error occurred while parsing the file.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveToDB = async () => {
+    if (report.length === 0) return;
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const records = report.flatMap(r => {
+        const statuses = [];
+        for (let i=0; i<r.present; i++) statuses.push({ employeeCode: r.employeeCode, date: reportDate, status: "Present" });
+        for (let i=0; i<r.absent; i++) statuses.push({ employeeCode: r.employeeCode, date: reportDate, status: "Absent" });
+        for (let i=0; i<r.halfDay; i++) statuses.push({ employeeCode: r.employeeCode, date: reportDate, status: "Half Day" });
+        return statuses;
+      });
+      if (records.length === 0) return;
+      const res = await axiosInstance.post("/hr/attendance/bulk", { records });
+      setSaveMessage(res.data.data?.message || "Saved successfully!");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.response?.data?.error?.message ?? "Failed to save to database.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -152,7 +179,7 @@ export default function AttendanceCalculatorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <h1 style={{ margin: "0 0 6px 0", fontSize: 24, fontWeight: 700, color: "#111827" }}>Attendance Calculator</h1>
-          <p style={{ color: "#6b7280", margin: 0, fontSize: 14 }}>Import a CSV file to automatically calculate monthly attendance reports.</p>
+          <p style={{ color: "#6b7280", margin: 0, fontSize: 14 }}>Import a file to automatically calculate monthly attendance reports.</p>
         </div>
       </div>
 
@@ -160,40 +187,30 @@ export default function AttendanceCalculatorPage() {
         <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 16, color: "#374151" }}>Import Instructions</h3>
         <p style={{ fontSize: 14, color: "#4b5563", marginBottom: 16 }}>
           Please upload a <strong>.csv, .xlsx, .xls, or .pdf</strong> file containing at least two columns: 
-          <strong>"Employee Code"</strong> (or ID/Name) and <strong>"Status"</strong> (e.g., Present, Absent, Half-day).
+          <strong>"Employee Code"</strong> and <strong>"Status"</strong>.
         </p>
-        
+
+        <div style={{ marginBottom: 24, display: "flex", gap: 16, alignItems: "center" }}>
+          <input type="file" onChange={handleFileChange} accept=".csv, .xlsx, .xls, .pdf" style={{ padding: "8px", border: "1px solid #d1d5db", borderRadius: 4, flex: 1 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontSize: 14, fontWeight: 500 }}>Report Date:</label>
+            <input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} style={{ padding: "8px", border: "1px solid #d1d5db", borderRadius: 4 }} />
+          </div>
+          <button onClick={handleCalculate} disabled={loading || !file} style={{ padding: "8px 16px", background: loading || !file ? "#9ca3af" : "#2563eb", color: "white", border: "none", borderRadius: 4, cursor: loading || !file ? "not-allowed" : "pointer" }}>
+            {loading ? "Calculating..." : "Calculate Attendance"}
+          </button>
+          {report.length > 0 && (
+            <button onClick={handleSaveToDB} disabled={saving} style={{ padding: "8px 16px", background: saving ? "#9ca3af" : "#10b981", color: "white", border: "none", borderRadius: 4, cursor: saving ? "not-allowed" : "pointer" }}>
+              {saving ? "Saving..." : "Save to DB"}
+            </button>
+          )}
+        </div>
+
         {error && (
           <div style={{ padding: "12px 16px", background: "#fee2e2", color: "#dc2626", borderRadius: 6, marginBottom: 16, fontSize: 14 }}>
             {error}
           </div>
         )}
-
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <input 
-            type="file" 
-            accept=".csv, .xlsx, .xls, .pdf"
-            onChange={handleFileChange}
-            style={{ 
-              padding: "10px", border: "1px dashed #d1d5db", borderRadius: 6, background: "#f9fafb", cursor: "pointer", flex: 1 
-            }}
-          />
-          <button 
-            onClick={handleCalculate}
-            disabled={!file || loading}
-            style={{ 
-              padding: "10px 24px", 
-              background: (!file || loading) ? "#9ca3af" : "#2563eb", 
-              color: "white", 
-              border: "none", 
-              borderRadius: 6, 
-              fontWeight: 600, 
-              cursor: (!file || loading) ? "not-allowed" : "pointer" 
-            }}
-          >
-            {loading ? "Calculating..." : "Calculate Attendance"}
-          </button>
-        </div>
       </div>
 
       {report.length > 0 && (

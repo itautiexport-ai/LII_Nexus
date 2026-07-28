@@ -27,6 +27,7 @@ export const UserController = {
   },
 
   async update(req: AuthenticatedRequest, res: Response) {
+    console.log("UPDATE REQ BODY:", req.body);
     const user = await userService.update(req.params.id, req.body, req.user!.sub);
     return ok(res, user);
   },

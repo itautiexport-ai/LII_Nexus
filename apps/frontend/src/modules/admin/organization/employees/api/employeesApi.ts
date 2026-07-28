@@ -17,6 +17,7 @@ export interface EmployeeRecord {
   birthday: string | null;
   anniversary: string | null;
   status: "active" | "inactive";
+  salary: number;
 }
 
 export const employeesApi = {
@@ -31,7 +32,7 @@ export const employeesApi = {
   async create(payload: {
     employeeCode: string; fullName: string; email?: string; phone?: string;
     departmentId?: string | null; designationId?: string | null; managerId?: string | null; dateOfJoining?: string;
-    birthday?: string; anniversary?: string;
+    birthday?: string; anniversary?: string; salary?: number;
   }) {
     const res = await axiosInstance.post("/employees", payload);
     return res.data.data as EmployeeRecord;
@@ -39,7 +40,7 @@ export const employeesApi = {
   async update(id: string, payload: Partial<{
     employeeCode: string; fullName: string; email: string | null; phone: string | null;
     departmentId: string | null; designationId: string | null; managerId: string | null; userId: string | null;
-    dateOfJoining: string | null; birthday: string | null; anniversary: string | null; status: string;
+    dateOfJoining: string | null; birthday: string | null; anniversary: string | null; status: string; salary: number;
   }>) {
     const res = await axiosInstance.patch(`/employees/${id}`, payload);
     return res.data.data as EmployeeRecord;

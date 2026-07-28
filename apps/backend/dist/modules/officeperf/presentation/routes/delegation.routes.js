@@ -18,5 +18,7 @@ router.patch("/delegation/tasks/:id/escalate", (0, validate_request_middleware_1
 router.delete("/delegation/tasks/:id", (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.remove));
 router.post("/delegation/tasks/:id/files", (0, validate_request_middleware_1.validate)(delegation_dto_1.addFileSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.addFile));
 router.post("/delegation/tasks/:id/whatsapp", (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.sendWhatsAppReminder));
+router.post("/delegation/tasks/:id/extension", (0, validate_request_middleware_1.validate)(delegation_dto_1.requestExtensionSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.requestExtension));
+router.post("/delegation/tasks/:id/extension-response", (0, validate_request_middleware_1.validate)(delegation_dto_1.respondExtensionSchema), (0, asyncHandler_1.asyncHandler)(DelegationController_1.DelegationController.respondToExtension));
 exports.default = router;
 //# sourceMappingURL=delegation.routes.js.map

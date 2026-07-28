@@ -48,6 +48,10 @@ async function seedBootstrapAdmin() {
     const userId = (0, uuid_1.v4)();
     await connection_1.pool.query(`INSERT INTO users (id, employee_code, email, password_hash, full_name, status)
      VALUES (?, ?, ?, ?, ?, 'active')`, [userId, "EMP-0001", "admin@liinexus.com", passwordHash, "System Administrator"]);
+    // Also create a linked employee record for the admin so they can test employee features like DPR
+    const employeeId = (0, uuid_1.v4)();
+    await connection_1.pool.query(`INSERT INTO employees (id, employee_code, full_name, email, user_id, status)
+     VALUES (?, ?, ?, ?, ?, 'active')`, [employeeId, "EMP-0001", "System Administrator", "admin@liinexus.com", userId]);
     const [roleRows] = await connection_1.pool.query("SELECT id FROM roles WHERE name = ?", ["System Admin"]);
     const roleId = roleRows[0].id;
     await connection_1.pool.query("INSERT IGNORE INTO user_roles (user_id, role_id, scope_type, scope_id) VALUES (?, ?, 'global', '')", [userId, roleId]);

@@ -29,34 +29,35 @@ class MySqlOrderInHandRepository {
     async create(data) {
         const id = (0, uuid_1.v4)();
         const orderId = await this.generateOrderId();
-        // Auto-calculate expected dispatch date
-        if (data.exFactoryDate) {
-            const exFactory = new Date(data.exFactoryDate);
-            exFactory.setDate(exFactory.getDate() + 7);
-            data.expectedDispatchDate = exFactory.toISOString().split('T')[0];
+        // Auto-calculate expected dispatch date: Order Date + 7 (Production) + 3 (QC) + 2 (Packing) = 12 days
+        if (data.orderDate) {
+            const orderDateObj = new Date(data.orderDate);
+            orderDateObj.setDate(orderDateObj.getDate() + 12);
+            data.expectedDispatchDate = orderDateObj.toISOString().split('T')[0];
         }
         await connection_1.pool.query(`INSERT INTO orders_in_hand (
         id, order_id, order_date, customer_name, country, merchant_name, erp_number, ex_factory_date, marketplace,
         po_number, no_of_products, total_qty, order_value, currency, payment_status,
         production_status, qc_status, packing_status, dispatch_status, expected_dispatch_date,
-        expected_delivery, priority, delay_days, current_stage, overall_progress, overall_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+        expected_delivery, priority, delay_days, current_stage, overall_progress, overall_status, total_cbm
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
             id, orderId, data.orderDate, data.customerName, data.country ?? null,
             data.merchantName, data.erpNumber ?? null, data.exFactoryDate ?? null, data.marketplace ?? null, data.poNumber ?? null,
             data.noOfProducts ?? null, data.totalQty ?? null, data.orderValue ?? null,
             data.currency ?? null, data.paymentStatus ?? null, data.productionStatus ?? null,
             data.qcStatus ?? null, data.packingStatus ?? null, data.dispatchStatus ?? null,
             data.expectedDispatchDate ?? null, data.expectedDelivery ?? null, data.priority ?? null,
-            data.delayDays ?? null, data.currentStage ?? null, data.overallProgress ?? null, data.overallStatus ?? 'Under Process'
+            data.delayDays ?? null, data.currentStage ?? null, data.overallProgress ?? null, data.overallStatus ?? 'Under Process',
+            data.totalCbm ?? null
         ]);
         return this.findById(id);
     }
     async update(id, data) {
-        // Auto-calculate expected dispatch date if exFactoryDate is updated
-        if (data.exFactoryDate) {
-            const exFactory = new Date(data.exFactoryDate);
-            exFactory.setDate(exFactory.getDate() + 7);
-            data.expectedDispatchDate = exFactory.toISOString().split('T')[0];
+        // Auto-calculate expected dispatch date if orderDate is updated
+        if (data.orderDate) {
+            const orderDateObj = new Date(data.orderDate);
+            orderDateObj.setDate(orderDateObj.getDate() + 12);
+            data.expectedDispatchDate = orderDateObj.toISOString().split('T')[0];
         }
         const updates = [];
         const values = [];
@@ -84,7 +85,8 @@ class MySqlOrderInHandRepository {
             delayDays: 'delay_days',
             currentStage: 'current_stage',
             overallProgress: 'overall_progress',
-            overallStatus: 'overall_status'
+            overallStatus: 'overall_status',
+            totalCbm: 'total_cbm'
         };
         for (const [key, value] of Object.entries(data)) {
             if (fieldMap[key]) {
@@ -129,6 +131,7 @@ class MySqlOrderInHandRepository {
             currentStage: row.current_stage,
             overallProgress: row.overall_progress,
             overallStatus: row.overall_status,
+            totalCbm: row.total_cbm !== null ? Number(row.total_cbm) : null,
             createdAt: row.created_at,
             updatedAt: row.updated_at
         };

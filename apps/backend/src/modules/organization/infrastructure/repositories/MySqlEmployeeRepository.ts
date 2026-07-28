@@ -22,6 +22,7 @@ function mapRow(row: any): Employee {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+    salary: Number(row.salary) || 0,
   };
 }
 
@@ -100,8 +101,8 @@ export class MySqlEmployeeRepository implements IEmployeeRepository {
   async create(data: CreateEmployeeData): Promise<Employee> {
     const id = data.id || uuid();
     await pool.query(
-      `INSERT INTO employees (id, employee_code, full_name, email, phone, department_id, designation_id, manager_id, user_id, shift_id, date_of_joining, birthday, anniversary)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (id, employee_code, full_name, email, phone, department_id, designation_id, manager_id, user_id, shift_id, date_of_joining, birthday, anniversary, salary)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.employeeCode,
@@ -116,6 +117,7 @@ export class MySqlEmployeeRepository implements IEmployeeRepository {
         data.dateOfJoining ?? null,
         data.birthday ?? null,
         data.anniversary ?? null,
+        data.salary ?? 0,
       ]
     );
     return (await this.findById(id))!;
@@ -138,6 +140,7 @@ export class MySqlEmployeeRepository implements IEmployeeRepository {
     if (changes.birthday !== undefined) { fields.push("birthday = ?"); values.push(changes.birthday); }
     if (changes.anniversary !== undefined) { fields.push("anniversary = ?"); values.push(changes.anniversary); }
     if (changes.status !== undefined) { fields.push("status = ?"); values.push(changes.status); }
+    if (changes.salary !== undefined) { fields.push("salary = ?"); values.push(changes.salary); }
 
     if (fields.length > 0) {
       values.push(id);
@@ -147,6 +150,17 @@ export class MySqlEmployeeRepository implements IEmployeeRepository {
   }
 
   async softDelete(id: string): Promise<void> {
-    await pool.query("UPDATE employees SET deleted_at = NOW(), status = 'inactive', employee_code = CONCAT(employee_code, '_del_', UNIX_TIMESTAMP()) WHERE id = ?", [id]);
+    try {
+      await pool.query("DELETE FROM employees WHERE id = ?", [id]);
+    } catch (err: any) {
+      if (err.code === "ER_ROW_IS_REFERENCED_2") {
+        await pool.query(
+          "UPDATE employees SET deleted_at = NOW(), status = 'inactive', employee_code = CONCAT(employee_code, '-del-', SUBSTRING(id, 1, 6)), email = IF(email IS NULL, NULL, CONCAT(email, '-del-', SUBSTRING(id, 1, 6))) WHERE id = ?",
+          [id]
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 }

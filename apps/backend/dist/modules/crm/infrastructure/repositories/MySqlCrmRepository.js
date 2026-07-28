@@ -18,6 +18,7 @@ function mapLead(row) {
         phone: row.phone,
         email: row.email,
         leadSource: row.lead_source,
+        tradeFairName: row.trade_fair_name,
         leadCategory: row.lead_category,
         currency: row.currency,
         preferredLanguage: row.preferred_language,
@@ -126,12 +127,12 @@ class MySqlCrmRepository {
         const weightedForecast = (0, Lead_1.computeWeightedForecast)(data.forecastAmount ?? null, data.winProbability ?? null);
         await connection_1.pool.query(`INSERT INTO crm_leads
          (id, lead_code, inquiry_date, contact_name, contact_persons, company_name, country, city, multiple_addresses, phone, email,
-          lead_source, lead_category, currency, preferred_language, credit_limit, payment_terms, product_category, inquiry_details, assigned_merchant_id,
+          lead_source, trade_fair_name, lead_category, currency, preferred_language, credit_limit, payment_terms, product_category, inquiry_details, assigned_merchant_id,
           forecast_amount, win_probability, weighted_forecast, expected_close_date, next_follow_up_date,
           follow_up_remarks, next_action, priority, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
             id, data.leadCode, data.inquiryDate, data.contactName, data.contactPersons ?? null, data.companyName ?? null, data.country ?? null,
-            data.city ?? null, data.multipleAddresses ?? null, data.phone ?? null, data.email ?? null, data.leadSource, data.leadCategory,
+            data.city ?? null, data.multipleAddresses ?? null, data.phone ?? null, data.email ?? null, data.leadSource, data.tradeFairName ?? null, data.leadCategory,
             data.currency ?? null, data.preferredLanguage ?? null, data.creditLimit ?? null, data.paymentTerms ?? null,
             data.productCategory ?? null, data.inquiryDetails ?? null, data.assignedMerchantId ?? null,
             data.forecastAmount ?? null, data.winProbability ?? null, weightedForecast, data.expectedCloseDate ?? null,
@@ -149,7 +150,7 @@ class MySqlCrmRepository {
         const weightedForecast = (0, Lead_1.computeWeightedForecast)(nextForecast, nextProbability);
         const fieldMap = {
             contactName: "contact_name", contactPersons: "contact_persons", companyName: "company_name", country: "country", city: "city",
-            multipleAddresses: "multiple_addresses", phone: "phone", email: "email", leadSource: "lead_source", leadCategory: "lead_category",
+            multipleAddresses: "multiple_addresses", phone: "phone", email: "email", leadSource: "lead_source", tradeFairName: "trade_fair_name", leadCategory: "lead_category",
             currency: "currency", preferredLanguage: "preferred_language", creditLimit: "credit_limit", paymentTerms: "payment_terms",
             productCategory: "product_category", inquiryDetails: "inquiry_details", salesStage: "sales_stage",
             forecastAmount: "forecast_amount", winProbability: "win_probability", expectedCloseDate: "expected_close_date",

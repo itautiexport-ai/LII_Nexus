@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { standaloneChecklistApi, StandaloneChecklist } from "../api/checklistApi";
+import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import "./Checklist.css";
 
 export function ListChecklistPage() {
   const [checklists, setChecklists] = useState<StandaloneChecklist[]>([]);
   const [loading, setLoading] = useState(true);
+  const user = useAuthStore(state => state.user);
 
   useEffect(() => {
     fetchChecklists();
@@ -12,7 +14,18 @@ export function ListChecklistPage() {
 
   const fetchChecklists = () => {
     standaloneChecklistApi.getAll().then(data => {
-      setChecklists(data);
+      if (user && !user.roles.includes("System Admin")) {
+        const filtered = data.filter(c => 
+          (c as any).assignTo === user.id || 
+          c.assignee_name === user.fullName ||
+          c.assigner_name === user.fullName ||
+          (c as any).assignBy === user.id ||
+          c.assignedBy === user.id
+        );
+        setChecklists(filtered);
+      } else {
+        setChecklists(data);
+      }
       setLoading(false);
     }).catch(err => {
       console.error(err);

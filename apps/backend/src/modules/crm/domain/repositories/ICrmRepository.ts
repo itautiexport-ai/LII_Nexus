@@ -14,6 +14,7 @@ export interface CreateLeadData {
   email?: string | null;
   leadSource: LeadSource;
   leadCategory: LeadCategory;
+  tradeFairName?: string | null;
   currency?: string | null;
   preferredLanguage?: string | null;
   creditLimit?: number | null;

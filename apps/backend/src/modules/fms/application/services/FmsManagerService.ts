@@ -8,6 +8,7 @@ export interface FmsManagerEntity {
   description: string;
   globalPc: string | null;
   tField: string | null;
+  formFields: any[] | null;
   createdAt: string;
 }
 
@@ -15,7 +16,7 @@ export interface FmsStepEntity {
   id: string;
   fmsId: string;
   stepName: string;
-  doerEmployeeId: string;
+  doerEmployeeIds: string[];
   timelineHours: number;
   timelineUnit: "hours" | "days";
   isSequential: boolean;
@@ -30,8 +31,8 @@ export class FmsManagerService {
     const id = uuidv4();
     const query = `
       INSERT INTO fms_managers (
-        id, name, sop_video_link, description, global_pc, t_field, conditional_step, consolidated_entry
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        id, name, sop_video_link, description, global_pc, t_field, conditional_step, consolidated_entry, form_fields
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       id,
@@ -41,7 +42,8 @@ export class FmsManagerService {
       null,
       null,
       false,
-      false
+      false,
+      dto.formFields ? JSON.stringify(dto.formFields) : null
     ];
 
     await this.dbPool.query(query, params);
@@ -59,6 +61,26 @@ export class FmsManagerService {
     await this.dbPool.query("DELETE FROM fms_managers WHERE id = ?", [fmsId]);
   }
 
+  async updateFms(fmsId: string, dto: CreateFmsManagerDto): Promise<FmsManagerEntity> {
+    const query = `
+      UPDATE fms_managers
+      SET name = ?, sop_video_link = ?, description = ?, form_fields = ?
+      WHERE id = ?
+    `;
+    const params = [
+      dto.name,
+      dto.sopVideoLink || null,
+      dto.description,
+      dto.formFields ? JSON.stringify(dto.formFields) : null,
+      fmsId
+    ];
+
+    await this.dbPool.query(query, params);
+
+    const [rows] = await this.dbPool.query("SELECT * FROM fms_managers WHERE id = ?", [fmsId]);
+    return this.mapToEntity(rows[0]);
+  }
+
   private mapToEntity(row: any): FmsManagerEntity {
     return {
       id: row.id,
@@ -67,6 +89,7 @@ export class FmsManagerService {
       description: row.description,
       globalPc: row.global_pc,
       tField: row.t_field,
+      formFields: typeof row.form_fields === "string" ? JSON.parse(row.form_fields) : row.form_fields,
       createdAt: row.created_at,
     };
   }
@@ -75,14 +98,14 @@ export class FmsManagerService {
     const id = uuidv4();
     const query = `
       INSERT INTO fms_steps (
-        id, fms_id, step_name, doer_employee_id, timeline_hours, timeline_unit, is_sequential, sequence_order
+        id, fms_id, step_name, doer_employee_ids, timeline_hours, timeline_unit, is_sequential, sequence_order
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       id,
       fmsId,
       dto.stepName,
-      dto.doerEmployeeId,
+      JSON.stringify(dto.doerEmployeeIds),
       dto.timelineHours,
       dto.timelineUnit,
       dto.isSequential,
@@ -104,12 +127,33 @@ export class FmsManagerService {
     await this.dbPool.query("DELETE FROM fms_steps WHERE id = ?", [stepId]);
   }
 
+  async updateStep(stepId: string, dto: CreateFmsStepDto): Promise<FmsStepEntity> {
+    const query = `
+      UPDATE fms_steps 
+      SET step_name = ?, doer_employee_ids = ?, timeline_hours = ?, timeline_unit = ?, is_sequential = ?, sequence_order = ?
+      WHERE id = ?
+    `;
+    const params = [
+      dto.stepName,
+      JSON.stringify(dto.doerEmployeeIds),
+      dto.timelineHours,
+      dto.timelineUnit,
+      dto.isSequential,
+      dto.sequenceOrder,
+      stepId
+    ];
+    await this.dbPool.query(query, params);
+    
+    const [rows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE id = ?", [stepId]);
+    return this.mapToStepEntity(rows[0]);
+  }
+
   private mapToStepEntity(row: any): FmsStepEntity {
     return {
       id: row.id,
       fmsId: row.fms_id,
       stepName: row.step_name,
-      doerEmployeeId: row.doer_employee_id,
+      doerEmployeeIds: typeof row.doer_employee_ids === "string" ? JSON.parse(row.doer_employee_ids) : row.doer_employee_ids,
       timelineHours: parseFloat(row.timeline_hours),
       timelineUnit: row.timeline_unit,
       isSequential: !!row.is_sequential,

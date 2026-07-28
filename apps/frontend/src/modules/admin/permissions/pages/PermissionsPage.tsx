@@ -126,7 +126,27 @@ export default function PermissionsPage() {
                       <input 
                         type="checkbox" 
                         checked={isSectionAssigned}
-                        onChange={() => handleToggleMenuRole(sectionRoleName, isSectionAssigned)}
+                        onChange={() => {
+                          const allRolesForSection = [sectionRoleName];
+                          
+                          section.items.forEach((item: any) => {
+                            if (item.items) {
+                              item.items.forEach((sub: any) => {
+                                allRolesForSection.push(`${sectionRoleName} -> ${item.label} -> ${sub.label}`);
+                              });
+                            } else {
+                              allRolesForSection.push(`${sectionRoleName} -> ${item.label}`);
+                            }
+                          });
+
+                          if (isSectionAssigned) {
+                            // Deselect main module and all its sub-modules
+                            setStagedRoles(prev => prev.filter(r => !allRolesForSection.includes(r)));
+                          } else {
+                            // Select main module and all its sub-modules
+                            setStagedRoles(prev => Array.from(new Set([...prev, ...allRolesForSection])));
+                          }
+                        }}
                         style={{ width: 16, height: 16, cursor: "pointer" }}
                       />
                       <span style={{ fontWeight: 700, fontSize: 15, color: "#111827", textTransform: "uppercase" }}>{section.label} (Main Module)</span>
@@ -140,7 +160,21 @@ export default function PermissionsPage() {
                         if (isSubGroup) {
                           return (
                             <div key={item.label} style={{ borderLeft: "2px solid #e5e7eb", paddingLeft: 12 }}>
-                              <strong style={{ fontSize: 13, color: "#4b5563", display: "block", marginBottom: 8 }}>{item.label} (Group)</strong>
+                              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+                                <input 
+                                  type="checkbox"
+                                  checked={item.items.every((sub: any) => stagedRoles.includes(`${sectionRoleName} -> ${item.label} -> ${sub.label}`))}
+                                  onChange={(e) => {
+                                    const allRolesForGroup = item.items.map((sub: any) => `${sectionRoleName} -> ${item.label} -> ${sub.label}`);
+                                    if (e.target.checked) {
+                                      setStagedRoles(prev => Array.from(new Set([...prev, ...allRolesForGroup])));
+                                    } else {
+                                      setStagedRoles(prev => prev.filter(r => !allRolesForGroup.includes(r)));
+                                    }
+                                  }}
+                                />
+                                <strong style={{ fontSize: 13, color: "#4b5563" }}>{item.label} (Group)</strong>
+                              </label>
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 {item.items.map((sub: any) => {
                                   const subRoleName = `${sectionRoleName} -> ${item.label} -> ${sub.label}`;

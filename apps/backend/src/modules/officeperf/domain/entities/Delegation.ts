@@ -18,6 +18,10 @@ export interface DelegatedTask {
   escalatedTo: string | null;
   escalatedAt: Date | null;
   escalationNotes: string | null;
+  extensionStatus: "none" | "pending" | "approved" | "rejected";
+  extensionReason: string | null;
+  extensionRequestedDate: Date | null;
+  extensionRejectionReason: string | null;
   startedAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;

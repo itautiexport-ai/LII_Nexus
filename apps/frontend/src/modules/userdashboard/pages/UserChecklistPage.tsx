@@ -22,7 +22,10 @@ export function UserChecklistPage() {
         setEmployeeId(myEmployeeId);
 
         const chkRes = await standaloneChecklistApi.getAll();
-        const myChecklists = chkRes.filter(c => c.assignTo === myEmployeeId);
+        const myFullName = empRes.data?.data?.fullName;
+        const myChecklists = chkRes.filter(
+          c => c.assignTo === myEmployeeId || (c as any).assignee_name === myFullName
+        );
         setChecklists(myChecklists);
 
       } catch (err) {

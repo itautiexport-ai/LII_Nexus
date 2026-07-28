@@ -181,6 +181,56 @@ class DelegationService {
         await AuditService_1.AuditService.record({ actorUserId, action: "DELEGATED_TASK_FILE_ADDED", entityType: "delegated_task", entityId: id, afterState: { kind, fileName } });
         return this.repo.getWithContext(id);
     }
+    async requestExtension(id, reason, requestedDate, actorUserId) {
+        const existing = await this.repo.findById(id);
+        if (!existing)
+            throw new DomainError_1.NotFoundError("Delegated task not found.");
+        const actor = await this.scope.requireEmployeeForUser(actorUserId);
+        if (actor.id !== existing.assignedTo) {
+            throw new DomainError_1.ForbiddenError("Only the assignee can request an extension.");
+        }
+        const updated = await this.repo.setExtensionRequest(id, reason, requestedDate);
+        await AuditService_1.AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_REQUESTED", entityType: "delegated_task", entityId: id, afterState: { reason, requestedDate } });
+        // Notify assigner
+        const assignerUser = await connection_1.pool.query("SELECT id FROM users WHERE employee_id = ?", [existing.assignedBy]);
+        if (assignerUser[0] && assignerUser[0][0]) {
+            await notificationService.notify({
+                type: "delegation_extension_requested",
+                module: "office",
+                referenceType: "delegated_task",
+                referenceId: id,
+                assignedUserId: assignerUser[0][0].id,
+                createdBy: actorUserId,
+            });
+        }
+        return updated;
+    }
+    async respondToExtension(id, status, rejectionReason, actorUserId, hasUpdateOverride) {
+        const existing = await this.repo.findById(id);
+        if (!existing)
+            throw new DomainError_1.NotFoundError("Delegated task not found.");
+        if (!hasUpdateOverride) {
+            const actor = await this.scope.requireEmployeeForUser(actorUserId);
+            if (actor.id !== existing.assignedBy) {
+                throw new DomainError_1.ForbiddenError("Only the assigner can respond to an extension request.");
+            }
+        }
+        const updated = await this.repo.respondToExtension(id, status, rejectionReason);
+        await AuditService_1.AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_RESPONDED", entityType: "delegated_task", entityId: id, afterState: { status, rejectionReason } });
+        // Notify assignee
+        const assigneeUser = await connection_1.pool.query("SELECT id FROM users WHERE employee_id = ?", [existing.assignedTo]);
+        if (assigneeUser[0] && assigneeUser[0][0]) {
+            await notificationService.notify({
+                type: status === "approved" ? "delegation_extension_approved" : "delegation_extension_rejected",
+                module: "office",
+                referenceType: "delegated_task",
+                referenceId: id,
+                assignedUserId: assigneeUser[0][0].id,
+                createdBy: actorUserId,
+            });
+        }
+        return updated;
+    }
 }
 exports.DelegationService = DelegationService;
 //# sourceMappingURL=DelegationService.js.map

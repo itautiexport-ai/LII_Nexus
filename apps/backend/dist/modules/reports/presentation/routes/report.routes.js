@@ -9,11 +9,13 @@ const auth_middleware_1 = require("../../../../shared/middlewares/auth.middlewar
 const rbac_middleware_1 = require("../../../../shared/middlewares/rbac.middleware");
 const asyncHandler_1 = require("../../../../shared/utils/asyncHandler");
 const OfficeEmController_1 = require("../controllers/OfficeEmController");
+const ProductionEmController_1 = require("../controllers/ProductionEmController");
 const router = (0, express_1.Router)();
 router.use(auth_middleware_1.authMiddleware);
 // Core report running/export - literal paths, always before any :param route.
 router.get("/reports/office-em-list", (0, rbac_middleware_1.requirePermission)("report.view"), (0, asyncHandler_1.asyncHandler)(OfficeEmController_1.OfficeEmController.getGapScoreList));
 router.get("/reports/office-em/:employeeId", (0, rbac_middleware_1.requirePermission)("report.view"), (0, asyncHandler_1.asyncHandler)(OfficeEmController_1.OfficeEmController.getGapScore));
+router.get("/reports/production-em", (0, rbac_middleware_1.requirePermission)("report.view"), (0, asyncHandler_1.asyncHandler)(ProductionEmController_1.ProductionEmController.getReport));
 router.get("/reports/cumulative-scores", (0, rbac_middleware_1.requirePermission)("report.view"), (0, asyncHandler_1.asyncHandler)(ApgsController_1.ApgsController.getCumulativeScores));
 router.get("/reports/apgs/:employeeId", (0, rbac_middleware_1.requirePermission)("report.view"), (0, asyncHandler_1.asyncHandler)(ApgsController_1.ApgsController.getScore));
 router.post("/reports/apgs/:employeeId/manager-evaluation", (0, rbac_middleware_1.requirePermission)("report.view"), (0, asyncHandler_1.asyncHandler)(ApgsController_1.ApgsController.saveManagerEvaluation));

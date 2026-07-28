@@ -315,13 +315,15 @@ export class ReportingService {
 
     return {
       reportType: "daily_production_report",
-      title: "Daily Production Report",
+      title: "DAILY PRODUCTION REPORT",
       generatedAt: new Date().toISOString(),
       filters,
-      summary: [{ label: "Entries", value: rows.length }],
-      columns: ["Date", "Department Name", "Supervisor Name", "HOD Name", "Total Manpower", "UOM", "Total Achievement", "Total Re-work", "_id"],
+      summary: [
+        { label: "Report Date", value: from === to ? from : `${from} to ${to}` },
+        { label: "Entries", value: rows.length }
+      ],
+      columns: ["Department Name", "Supervisor Name", "HOD Name", "Total Manpower", "UOM", "Total Achievement", "Total Re-work", "_id"],
       rows: rows.map((r) => [
-        r.entry_date, 
         r.dept,
         r.supervisor || "—",
         r.hod_name || "—",
@@ -364,13 +366,16 @@ export class ReportingService {
 
     return {
       reportType: "dpr_product_report",
-      title: "Daily Production Report",
+      title: "DAILY PRODUCTION REPORT",
       generatedAt: new Date().toISOString(),
       filters,
-      summary: [{ label: "Product Entries", value: rows.length }],
-      columns: ["Date", "Department", "Supervisor", "Product Code", "Alias Name", "Wood Type", "Order Qty", "OK Qty", "Rework Qty", "UOM", "Qty per UOM"],
+      summary: [
+        { label: "Report Date", value: from === to ? from : `${from} to ${to}` },
+        { label: "Product Entries", value: rows.length }
+      ],
+      columns: ["Department", "Supervisor", "Product Code", "Alias Name", "Wood Type", "Order Qty", "OK Qty", "Rework Qty", "UOM", "Qty per UOM"],
       rows: rows.map((r) => [
-        r.entry_date, r.dept, r.supervisor || "—",
+        r.dept, r.supervisor || "—",
         r.product_code || "—", r.alias_name || "—", r.wood_type || "—",
         Number(r.order_qty) || 0,
         Number(r.ok_qty) || 0,

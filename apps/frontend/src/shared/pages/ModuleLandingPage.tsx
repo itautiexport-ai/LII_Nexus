@@ -19,9 +19,12 @@ export default function ModuleLandingPage() {
 
     return section.items.filter((item: any) => {
       if (isSystemAdmin) return true;
-      if (userRoles.includes(sectionRolePrefix)) return true;
       const itemRole = `${sectionRolePrefix} -> ${item.label}`;
-      return userRoles.includes(itemRole);
+      if (userRoles.includes(itemRole)) return true;
+      if (item.items) {
+        return item.items.some((sub: any) => userRoles.includes(`${itemRole} -> ${sub.label}`));
+      }
+      return false;
     });
   }, [section, user]);
 
@@ -95,7 +98,7 @@ export default function ModuleLandingPage() {
                       const secRolePrefix = `Menu: ${section.label}`;
                       const subItemRole = `${secRolePrefix} -> ${item.label} -> ${sub.label}`;
                       
-                      const isSubVisible = isSysAdmin || userRoles.includes(secRolePrefix) || userRoles.includes(subItemRole);
+                      const isSubVisible = isSysAdmin || userRoles.includes(subItemRole);
                       
                       if (!isSubVisible) return null;
 

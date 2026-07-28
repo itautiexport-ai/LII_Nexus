@@ -135,19 +135,6 @@ export default function OrderInHandFormPage() {
           <label style={labelStyle}>Ex-Factory Date *</label>
           <input type="date" required value={form.exFactoryDate || ""} onChange={e => setForm({...form, exFactoryDate: e.target.value})} style={inputStyle} />
         </div>
-        {id !== "new" && (
-          <div>
-            <label style={labelStyle}>Marketplace *</label>
-            <select required value={form.marketplace || ""} onChange={e => setForm({...form, marketplace: e.target.value as any})} style={inputStyle}>
-              <option value="">Select...</option>
-              <option value="Etsy">Etsy</option>
-              <option value="Shopify">Shopify</option>
-              <option value="Wholesale">Wholesale</option>
-              <option value="Amazon">Amazon</option>
-              <option value="Website">Website</option>
-            </select>
-          </div>
-        )}
         <div>
           <label style={labelStyle}>PO Number *</label>
           <input type="text" required value={form.poNumber || ""} onChange={e => setForm({...form, poNumber: e.target.value})} style={inputStyle} />
@@ -159,6 +146,10 @@ export default function OrderInHandFormPage() {
         <div>
           <label style={labelStyle}>Total Qty *</label>
           <input type="number" required value={form.totalQty || ""} onChange={e => setForm({...form, totalQty: e.target.value ? parseInt(e.target.value) : null})} style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Total CBM</label>
+          <input type="number" step="0.01" value={form.totalCbm || ""} onChange={e => setForm({...form, totalCbm: e.target.value ? parseFloat(e.target.value) : null})} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>Order Value *</label>
@@ -183,44 +174,6 @@ export default function OrderInHandFormPage() {
             <option value="Pending">Pending</option>
           </select>
         </div>
-        {id !== "new" && (
-          <>
-            <div>
-              <label style={labelStyle}>Production Status *</label>
-              <select required value={form.productionStatus || ""} onChange={e => setForm({...form, productionStatus: e.target.value as any})} style={inputStyle}>
-                <option value="">Select...</option>
-                <option value="Started">Started</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>QC Status *</label>
-              <select required value={form.qcStatus || ""} onChange={e => setForm({...form, qcStatus: e.target.value as any})} style={inputStyle}>
-                <option value="">Select...</option>
-                <option value="Started">Started</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Packing Status *</label>
-              <select required value={form.packingStatus || ""} onChange={e => setForm({...form, packingStatus: e.target.value as any})} style={inputStyle}>
-                <option value="">Select...</option>
-                <option value="Started">Started</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Priority *</label>
-              <select required value={form.priority || ""} onChange={e => setForm({...form, priority: e.target.value as any})} style={inputStyle}>
-                <option value="">Select...</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
-            </div>
-          </>
-        )}
 
 
 

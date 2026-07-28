@@ -19,7 +19,18 @@ export class UserService {
     const withRoles = await Promise.all(
       items.map(async (u) => {
         const roles = await this.roleRepository.getRolesForUser(u.id);
-        return toPublicUser(u, roles.map((r) => r.name));
+        const [empRows] = await pool.query<any[]>(
+          `SELECT d.name as departmentName, e.department_id as departmentId 
+           FROM employees e 
+           LEFT JOIN departments d ON e.department_id = d.id 
+           WHERE e.user_id = ? 
+           ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
+           LIMIT 1`, 
+          [u.id]
+        );
+        const department = empRows[0]?.departmentName || null;
+        const departmentId = empRows[0]?.departmentId || null;
+        return { ...toPublicUser(u, roles.map((r) => r.name)), department, departmentId };
       })
     );
     return { items: withRoles, total, page, pageSize };
@@ -110,7 +121,29 @@ export class UserService {
     const existing = await this.userRepository.findById(id);
     if (!existing) throw new NotFoundError("User not found.");
 
-    const updated = await this.userRepository.update(id, changes);
+    const updatePayload: any = { ...changes };
+    if (changes.password) {
+      updatePayload.passwordHash = await BcryptService.hash(changes.password);
+      delete updatePayload.password;
+    }
+
+    const updated = await this.userRepository.update(id, updatePayload);
+    
+    // Sync email to employee record if changed
+    if (changes.email && changes.email !== existing.email) {
+      await pool.query("UPDATE employees SET email = ? WHERE user_id = ?", [changes.email, id]);
+    }
+
+    // Sync employee code to employee record if changed
+    if (changes.employeeCode && changes.employeeCode !== existing.employeeCode) {
+      await pool.query("UPDATE employees SET employee_code = ? WHERE user_id = ?", [changes.employeeCode, id]);
+    }
+
+    // Sync department to employee record if changed
+    if (changes.departmentId !== undefined) {
+      await pool.query("UPDATE employees SET department_id = ? WHERE user_id = ?", [changes.departmentId || null, id]);
+    }
+
     const roles = await this.roleRepository.getRolesForUser(id);
 
     await AuditService.record({
@@ -129,7 +162,19 @@ export class UserService {
     const existing = await this.userRepository.findById(id);
     if (!existing) throw new NotFoundError("User not found.");
 
+    // Find linked employees BEFORE we delete the user (because ON DELETE SET NULL might clear the link)
+    const [employees] = await pool.query<any[]>("SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL", [id]);
+
     await this.userRepository.softDelete(id);
+
+    // Delete the linked employees safely
+    if (employees && employees.length > 0) {
+      const { MySqlEmployeeRepository } = require("../../../organization/infrastructure/repositories/MySqlEmployeeRepository");
+      const empRepo = new MySqlEmployeeRepository();
+      for (const emp of employees) {
+        await empRepo.softDelete(emp.id);
+      }
+    }
 
     await AuditService.record({
       actorUserId: actorId,

@@ -71,7 +71,7 @@ class MySqlDesignationRepository {
         }
         catch (err) {
             if (err.code === "ER_ROW_IS_REFERENCED_2") {
-                await connection_1.pool.query("UPDATE designations SET deleted_at = NOW(), name = CONCAT(name, '-del-', SUBSTRING(id, 1, 6)) WHERE id = ?", [id]);
+                await connection_1.pool.query("UPDATE designations SET deleted_at = NOW(), title = CONCAT(title, '-del-', SUBSTRING(id, 1, 6)) WHERE id = ?", [id]);
             }
             else
                 throw err;

@@ -39,7 +39,7 @@ export default function AddDelegationPage() {
         sendAppNotification,
         sendWhatsappNotification
       });
-      navigate("/admin/delegation"); // Redirect to list page
+      navigate("/admin/delegation/list"); // Redirect to list page
     } catch (err: any) {
       alert(err.response?.data?.error?.message || "Failed to create delegation.");
     } finally {

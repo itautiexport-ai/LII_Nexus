@@ -40,6 +40,21 @@ export class FmsManagerController {
     }
   };
 
+  updateFms = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const dto = CreateFmsManagerSchema.parse(req.body);
+      const fms = await this.service.updateFms(id, dto);
+      res.json({ success: true, data: fms });
+    } catch (err: any) {
+      if (err.errors) {
+        return res.status(400).json({ success: false, errors: err.errors });
+      }
+      console.error(err);
+      res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  };
+
   addStep = async (req: Request, res: Response) => {
     try {
       const { fmsId } = req.params;
@@ -72,6 +87,21 @@ export class FmsManagerController {
       await this.service.deleteStep(stepId);
       res.json({ success: true, message: "Step deleted" });
     } catch (err: any) {
+      console.error(err);
+      res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  };
+
+  updateStep = async (req: Request, res: Response) => {
+    try {
+      const { stepId } = req.params;
+      const dto = CreateFmsStepSchema.parse(req.body);
+      const step = await this.service.updateStep(stepId, dto);
+      res.json({ success: true, data: step });
+    } catch (err: any) {
+      if (err.errors) {
+        return res.status(400).json({ success: false, errors: err.errors });
+      }
       console.error(err);
       res.status(500).json({ success: false, message: "Internal server error" });
     }

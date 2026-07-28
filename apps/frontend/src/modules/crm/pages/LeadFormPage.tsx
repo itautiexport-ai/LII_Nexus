@@ -11,11 +11,12 @@ export default function LeadFormPage() {
   const [merchants, setMerchants] = useState<MerchantRecord[]>([]);
   const [form, setForm] = useState({
     inquiryDate: new Date().toISOString().slice(0, 10),
-    contactName: "", contactPersons: "", companyName: "", country: "", city: "", multipleAddresses: "", phone: "", email: "",
-    leadSource: "website", leadCategory: "domestic", currency: "", preferredLanguage: "", creditLimit: "", paymentTerms: "", productCategory: "", inquiryDetails: "",
+    contactName: "", companyName: "", country: "", city: "", phone: "", email: "",
+    leadSource: "website", tradeFairName: "", leadCategory: "domestic", currency: "", preferredLanguage: "", creditLimit: "", paymentTerms: "", productCategory: "", inquiryDetails: "",
     assignedMerchantId: "", forecastAmount: "", winProbability: "", expectedCloseDate: "",
     nextFollowUpDate: "", priority: "medium",
   });
+  const [addresses, setAddresses] = useState<string[]>([""]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { merchantsApi.list().then(setMerchants); }, []);
@@ -27,10 +28,9 @@ export default function LeadFormPage() {
       const lead = await crmApi.create({
         ...form,
         companyName: form.companyName || undefined,
-        contactPersons: form.contactPersons || undefined,
         country: form.country || undefined,
         city: form.city || undefined,
-        multipleAddresses: form.multipleAddresses || undefined,
+        multipleAddresses: addresses.filter(a => a.trim() !== "").join(" | ") || undefined,
         phone: form.phone || undefined,
         email: form.email || undefined,
         currency: form.currency || undefined,
@@ -62,9 +62,6 @@ export default function LeadFormPage() {
           <label style={labelStyle}>Contact Name
             <input required value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} style={inputStyle} />
           </label>
-          <label style={labelStyle}>Contact Persons
-            <input value={form.contactPersons} onChange={(e) => setForm({ ...form, contactPersons: e.target.value })} style={inputStyle} />
-          </label>
           <label style={labelStyle}>Company Name
             <input value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} style={inputStyle} />
           </label>
@@ -74,9 +71,27 @@ export default function LeadFormPage() {
           <label style={labelStyle}>City
             <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} style={inputStyle} />
           </label>
-          <label style={labelStyle}>Multiple Addresses
-            <input value={form.multipleAddresses} onChange={(e) => setForm({ ...form, multipleAddresses: e.target.value })} style={inputStyle} placeholder="Billing, Shipping, etc." />
-          </label>
+          <div style={{ ...labelStyle, display: "flex", flexDirection: "column" }}>
+            <span>Multiple Addresses</span>
+            {addresses.map((addr, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 8 }}>
+                <input 
+                  value={addr} 
+                  onChange={(e) => {
+                    const newAddrs = [...addresses];
+                    newAddrs[idx] = e.target.value;
+                    setAddresses(newAddrs);
+                  }} 
+                  style={{ ...inputStyle, marginBottom: 4 }} 
+                  placeholder={`Address ${idx + 1}`} 
+                />
+                {addresses.length > 1 && (
+                  <button type="button" onClick={() => setAddresses(addresses.filter((_, i) => i !== idx))} style={{ padding: "8px 12px", height: "35px", marginTop: "4px", background: "#fee", border: "1px solid #fcc", color: "crimson", cursor: "pointer", borderRadius: 4 }}>✕</button>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={() => setAddresses([...addresses, ""])} style={{ alignSelf: "flex-start", padding: "4px 8px", background: "#eee", border: "1px solid #ccc", cursor: "pointer", borderRadius: 4, marginBottom: 12 }}>+ Add Address</button>
+          </div>
           <label style={labelStyle}>Phone
             <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
           </label>
@@ -112,6 +127,11 @@ export default function LeadFormPage() {
               <option value="buyer_agent">Buyer Agent</option><option value="repeat_customer">Repeat Customer</option>
             </select>
           </label>
+          {form.leadSource === "trade_fair" && (
+            <label style={labelStyle}>Trade Fair Name
+              <input value={form.tradeFairName} onChange={(e) => setForm({ ...form, tradeFairName: e.target.value })} style={inputStyle} placeholder="e.g. Canton Fair 2026" />
+            </label>
+          )}
           <div>
             <label style={labelStyle}>Assigned Merchant</label>
             <select style={inputStyle} value={form.assignedMerchantId} onChange={(e) => setForm({ ...form, assignedMerchantId: e.target.value })}>

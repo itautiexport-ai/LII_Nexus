@@ -4,6 +4,7 @@ import path from "path";
 import { v4 as uuid } from "uuid";
 import { authMiddleware } from "../../../../shared/middlewares/auth.middleware";
 import { ok } from "../../../../shared/utils/apiResponse";
+import { FileParsingService } from "../../application/services/FileParsingService";
 
 const router = Router();
 
@@ -23,7 +24,7 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
-router.post("/upload", authMiddleware, upload.single("file"), (req: Request, res: Response) => {
+router.post("/upload", authMiddleware, upload.single("file"), async (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: "No file uploaded." });
   }
@@ -31,11 +32,20 @@ router.post("/upload", authMiddleware, upload.single("file"), (req: Request, res
   // Generate the URL for the uploaded file
   const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
   
+  let parsedData: any[] = [];
+  try {
+    const parser = new FileParsingService();
+    parsedData = await parser.parseSalarySheet(req.file.path);
+  } catch (err) {
+    console.error("Failed to parse file:", err);
+  }
+  
   return ok(res, {
     fileUrl,
     fileName: req.file.originalname,
     size: req.file.size,
     mimetype: req.file.mimetype,
+    parsedData
   });
 });
 

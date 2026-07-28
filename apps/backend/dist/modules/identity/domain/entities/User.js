@@ -9,6 +9,7 @@ function toPublicUser(user, roles = []) {
         tempPassword: user.tempPassword,
         fullName: user.fullName,
         whatsappNumber: user.whatsappNumber,
+        avatarUrl: user.avatarUrl,
         status: user.status,
         lastLoginAt: user.lastLoginAt,
         createdAt: user.createdAt,

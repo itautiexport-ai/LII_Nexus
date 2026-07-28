@@ -13,10 +13,13 @@ export const createUserSchema = z.object({
 });
 
 export const updateUserSchema = z.object({
+  email: z.string().min(1, "User ID / Login ID is required.").optional(),
+  password: z.string().min(4, "Password must be at least 4 characters.").optional(),
   fullName: z.string().min(1).optional(),
   whatsappNumber: z.string().optional().nullable(),
   employeeCode: z.string().optional().nullable(),
   status: z.enum(["active", "suspended", "inactive"]).optional(),
+  departmentId: z.string().optional().nullable(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;

@@ -15,6 +15,7 @@ export interface Employee {
   birthday: string | null;
   anniversary: string | null;
   status: EmployeeStatus;
+  salary: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;

@@ -57,5 +57,12 @@ exports.DelegationController = {
         const result = await service.sendWhatsAppReminder(req.params.id, req.user.sub);
         return (0, apiResponse_1.ok)(res, result);
     },
+    async requestExtension(req, res) {
+        return (0, apiResponse_1.ok)(res, await service.requestExtension(req.params.id, req.body.reason, req.body.requestedDate, req.user.sub));
+    },
+    async respondToExtension(req, res) {
+        const override = await hasPermission(req.user.sub, "delegation.task.update");
+        return (0, apiResponse_1.ok)(res, await service.respondToExtension(req.params.id, req.body.status, req.body.rejectionReason, req.user.sub, override));
+    },
 };
 //# sourceMappingURL=DelegationController.js.map

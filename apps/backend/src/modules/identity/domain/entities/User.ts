@@ -8,6 +8,7 @@ export interface User {
   tempPassword?: string | null;
   fullName: string;
   whatsappNumber?: string | null;
+  avatarUrl?: string | null;
   status: UserStatus;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -23,6 +24,7 @@ export interface UserPublic {
   tempPassword?: string | null;
   fullName: string;
   whatsappNumber?: string | null;
+  avatarUrl?: string | null;
   status: UserStatus;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -37,6 +39,7 @@ export function toPublicUser(user: User, roles: string[] = []): UserPublic {
     tempPassword: user.tempPassword,
     fullName: user.fullName,
     whatsappNumber: user.whatsappNumber,
+    avatarUrl: user.avatarUrl,
     status: user.status,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,

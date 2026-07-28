@@ -19,6 +19,7 @@ export interface Lead {
   phone: string | null;
   email: string | null;
   leadSource: LeadSource;
+  tradeFairName: string | null;
   leadCategory: LeadCategory;
   currency: string | null;
   preferredLanguage: string | null;

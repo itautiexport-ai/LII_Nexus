@@ -39,7 +39,9 @@ export function AddFmsManagerPage() {
       <div className="fms-card">
         <div className="fms-card-header">
           <h2 className="fms-title">FMS BASIC DETAILS</h2>
-          <span>-</span>
+          <button className="fms-btn-primary" onClick={() => navigate("/admin/fms/list")}>
+            BACK TO LIST
+          </button>
         </div>
         
         <div className="fms-card-content">

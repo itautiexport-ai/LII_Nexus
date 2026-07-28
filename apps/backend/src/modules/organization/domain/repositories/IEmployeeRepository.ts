@@ -14,6 +14,7 @@ export interface CreateEmployeeData {
   dateOfJoining?: string | null;
   birthday?: string | null;
   anniversary?: string | null;
+  salary?: number;
 }
 
 export interface UpdateEmployeeData {
@@ -30,6 +31,7 @@ export interface UpdateEmployeeData {
   birthday?: string | null;
   anniversary?: string | null;
   status?: Employee["status"];
+  salary?: number;
 }
 
 export interface IEmployeeRepository {

@@ -21,6 +21,10 @@ function mapTask(row: any): DelegatedTask {
     escalationNotes: row.escalation_notes,
     startedAt: row.started_at,
     completedAt: row.completed_at,
+    extensionStatus: row.extension_status || "none",
+    extensionReason: row.extension_reason,
+    extensionRequestedDate: row.extension_requested_date,
+    extensionRejectionReason: row.extension_rejection_reason,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -125,6 +129,30 @@ export class MySqlDelegationRepository implements IDelegationRepository {
       await pool.query("UPDATE delegated_tasks SET base_status = 'running', started_at = COALESCE(started_at, NOW()) WHERE id = ?", [id]);
     } else {
       await pool.query("UPDATE delegated_tasks SET base_status = 'completed', completed_at = NOW() WHERE id = ?", [id]);
+    }
+    return (await this.findById(id))!;
+  }
+
+  async setExtensionRequest(id: string, reason: string, requestedDate: string): Promise<DelegatedTask> {
+    await pool.query(
+      "UPDATE delegated_tasks SET extension_status = 'pending', extension_reason = ?, extension_requested_date = ?, extension_rejection_reason = NULL WHERE id = ?",
+      [reason, requestedDate, id]
+    );
+    return (await this.findById(id))!;
+  }
+
+  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null): Promise<DelegatedTask> {
+    if (status === "approved") {
+      // Due date needs to be updated. Since it's done in the service or here, we do it here based on requested date.
+      await pool.query(
+        "UPDATE delegated_tasks SET extension_status = 'approved', due_date = extension_requested_date WHERE id = ?",
+        [id]
+      );
+    } else {
+      await pool.query(
+        "UPDATE delegated_tasks SET extension_status = 'rejected', extension_rejection_reason = ? WHERE id = ?",
+        [rejectionReason, id]
+      );
     }
     return (await this.findById(id))!;
   }
