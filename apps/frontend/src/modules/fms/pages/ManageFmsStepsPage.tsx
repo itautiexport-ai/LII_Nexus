@@ -17,6 +17,7 @@ export function ManageFmsStepsPage() {
     timelineHours: 0,
     timelineUnit: "hours" as "hours" | "days",
     dependsOnStepIds: [] as string[],
+    stepType: "sequential" as "sequential" | "parallel",
   });
 
   const [loading, setLoading] = useState(true);
@@ -67,6 +68,12 @@ export function ManageFmsStepsPage() {
     const { name, value, type } = e.target as HTMLInputElement;
     if (type === "number") {
       setFormData((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
+    } else if (name === "stepType") {
+      setFormData((prev) => ({
+        ...prev,
+        stepType: value as "sequential" | "parallel",
+        dependsOnStepIds: value === "parallel" ? [] : prev.dependsOnStepIds,
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -107,7 +114,8 @@ export function ManageFmsStepsPage() {
         doerEmployeeIds: [],
         timelineHours: 0,
         timelineUnit: "hours",
-        dependsOnStepIds: []
+        dependsOnStepIds: [],
+        stepType: "sequential",
       });
     } catch (err) {
       console.error(err);
@@ -123,6 +131,7 @@ export function ManageFmsStepsPage() {
       timelineHours: step.timelineHours,
       timelineUnit: step.timelineUnit,
       dependsOnStepIds: step.dependsOnStepIds || [],
+      stepType: (!step.dependsOnStepIds || step.dependsOnStepIds.length === 0) ? "parallel" : "sequential",
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -273,67 +282,85 @@ export function ManageFmsStepsPage() {
             </div>
 
             <div className="fms-form-group">
-              <label className="fms-label">Depends On (Prerequisites)</label>
-              <div className="custom-multi-select" ref={dependsDropdownRef} style={{ position: "relative" }}>
-                <div 
-                  className="fms-input" 
-                  style={{ minHeight: "38px", display: "flex", flexWrap: "wrap", gap: "4px", padding: "4px 8px", cursor: "pointer", alignItems: "center" }}
-                  onClick={() => setDependsDropdownOpen(!dependsDropdownOpen)}
-                >
-                  {formData.dependsOnStepIds.length === 0 ? (
-                    <span style={{ color: "#6c757d" }}>Starts Immediately (Parallel)</span>
-                  ) : (
-                    formData.dependsOnStepIds.map(id => {
-                      const step = steps.find(s => s.id === id);
-                      if (!step) return null;
-                      return (
-                        <span key={id} style={{ background: "#e9ecef", padding: "2px 8px", borderRadius: "12px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px" }}>
-                          {step.stepName}
-                          <span 
-                            style={{ cursor: "pointer", color: "#dc3545", fontWeight: "bold" }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFormData(prev => ({
-                                ...prev,
-                                dependsOnStepIds: prev.dependsOnStepIds.filter(did => did !== id)
-                              }));
-                            }}
-                          >
-                            &times;
-                          </span>
-                        </span>
-                      );
-                    })
-                  )}
-                </div>
-                
-                {dependsDropdownOpen && (
-                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "white", border: "1px solid #ced4da", borderRadius: "4px", marginTop: "4px", maxHeight: "250px", overflowY: "auto", zIndex: 10 }}>
-                    {steps.length === 0 || (editingStepId && steps.length === 1) ? (
-                      <div style={{ padding: "8px", color: "#6c757d" }}>No other steps available</div>
+              <label className="fms-label">Step Type</label>
+              <select
+                name="stepType"
+                value={formData.stepType}
+                onChange={handleChange}
+                className="fms-select"
+              >
+                <option value="sequential">Sequential (Waits for specific step)</option>
+                <option value="parallel">Parallel (Can start immediately)</option>
+              </select>
+            </div>
+
+            {formData.stepType === "sequential" && (
+              <div className="fms-form-group">
+                <label className="fms-label">Depends On (Prerequisites)</label>
+                <div className="custom-multi-select" ref={dependsDropdownRef} style={{ position: "relative" }}>
+                  <div 
+                    className="fms-input" 
+                    style={{ minHeight: "38px", display: "flex", flexWrap: "wrap", gap: "4px", padding: "4px 8px", cursor: "pointer", alignItems: "center" }}
+                    onClick={() => setDependsDropdownOpen(!dependsDropdownOpen)}
+                  >
+                    {formData.dependsOnStepIds.length === 0 ? (
+                      <span style={{ color: "#6c757d" }}>Select prerequisite steps...</span>
                     ) : (
-                      steps.filter(s => s.id !== editingStepId).map(step => (
-                        <label key={step.id} style={{ display: "flex", alignItems: "center", padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid #f8f9fa", margin: 0 }}>
-                          <input
-                            type="checkbox"
-                            checked={formData.dependsOnStepIds.includes(step.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData(prev => ({ ...prev, dependsOnStepIds: [...prev.dependsOnStepIds, step.id] }));
-                              } else {
-                                setFormData(prev => ({ ...prev, dependsOnStepIds: prev.dependsOnStepIds.filter(id => id !== step.id) }));
-                              }
-                            }}
-                            style={{ marginRight: "8px" }}
-                          />
-                          {step.stepName}
-                        </label>
-                      ))
+                      formData.dependsOnStepIds.map(id => {
+                        const stepIndex = steps.findIndex(s => s.id === id);
+                        if (stepIndex === -1) return null;
+                        return (
+                          <span key={id} style={{ background: "#e9ecef", padding: "2px 8px", borderRadius: "12px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: "bold" }}>
+                            Step {stepIndex + 1}
+                            <span 
+                              style={{ cursor: "pointer", color: "#dc3545", marginLeft: "4px" }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFormData(prev => ({
+                                  ...prev,
+                                  dependsOnStepIds: prev.dependsOnStepIds.filter(did => did !== id)
+                                }));
+                              }}
+                            >
+                              &times;
+                            </span>
+                          </span>
+                        );
+                      })
                     )}
                   </div>
-                )}
+                  
+                  {dependsDropdownOpen && (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "white", border: "1px solid #ced4da", borderRadius: "4px", marginTop: "4px", maxHeight: "250px", overflowY: "auto", zIndex: 10 }}>
+                      {steps.length === 0 || (editingStepId && steps.length === 1) ? (
+                        <div style={{ padding: "8px", color: "#6c757d" }}>No other steps available</div>
+                      ) : (
+                        steps.map((step, index) => {
+                          if (step.id === editingStepId) return null;
+                          return (
+                            <label key={step.id} style={{ display: "flex", alignItems: "center", padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid #f8f9fa", margin: 0 }}>
+                              <input
+                                type="checkbox"
+                                checked={formData.dependsOnStepIds.includes(step.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData(prev => ({ ...prev, dependsOnStepIds: [...prev.dependsOnStepIds, step.id] }));
+                                  } else {
+                                    setFormData(prev => ({ ...prev, dependsOnStepIds: prev.dependsOnStepIds.filter(id => id !== step.id) }));
+                                  }
+                                }}
+                                style={{ marginRight: "8px" }}
+                              />
+                              <span style={{ fontWeight: "bold", marginRight: "6px" }}>Step {index + 1}:</span> {step.stepName}
+                            </label>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="fms-form-group full-width" style={{ marginTop: "1rem", display: "flex", gap: "10px" }}>
               <button type="submit" className="fms-btn-primary">
@@ -396,10 +423,10 @@ export function ManageFmsStepsPage() {
                             <span style={{ color: "#28a745", fontWeight: "bold" }}>Parallel (Start)</span>
                           ) : (
                             step.dependsOnStepIds.map(depId => {
-                              const depStep = steps.find(s => s.id === depId);
-                              return depStep ? (
-                                <div key={depId} style={{ fontSize: "0.85rem", background: "#f8f9fa", padding: "2px 6px", borderRadius: "4px", marginBottom: "4px", display: "inline-block", marginRight: "4px" }}>
-                                  {depStep.stepName}
+                              const depIndex = steps.findIndex(s => s.id === depId);
+                              return depIndex !== -1 ? (
+                                <div key={depId} style={{ fontSize: "0.85rem", background: "#f8f9fa", padding: "2px 6px", borderRadius: "4px", marginBottom: "4px", display: "inline-block", marginRight: "4px", fontWeight: "bold" }}>
+                                  Step {depIndex + 1}
                                 </div>
                               ) : null;
                             })
