@@ -377,8 +377,8 @@ export function ManageFmsStepsPage() {
                       doerEmployeeIds: [],
                       timelineHours: 0,
                       timelineUnit: "hours",
-                      isSequential: true,
-                      insertPosition: "end"
+                      dependsOnStepIds: [],
+                      stepType: "sequential"
                     });
                   }}
                 >
