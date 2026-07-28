@@ -109,11 +109,17 @@ export class FmsExecutionService {
         doers = typeof row.doerEmployeeIds === 'string' ? JSON.parse(row.doerEmployeeIds) : row.doerEmployeeIds;
       } catch (e) {}
       
-      const isCreatorStep = !doers || doers.length === 0;
-      if (isCreatorStep && row.creatorId === employeeId) {
+      if (!Array.isArray(doers)) doers = [];
+
+      const isDoer = doers.includes(employeeId);
+      const isCreator = row.creatorId === employeeId;
+
+      // If a step has no assigned doers, default to the creator of the FMS instance
+      if (doers.length === 0 && isCreator) {
         return true;
       }
-      return Array.isArray(doers) && doers.includes(employeeId);
+
+      return isDoer;
     }).map((row: any) => ({
       instanceStepId: row.instanceStepId,
       instanceId: row.instanceId,

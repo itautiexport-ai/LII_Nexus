@@ -69,3 +69,12 @@
 2026/07/28-16:32:30.153 47ba8 compacted to: files[ 0 0 1 0 0 0 0 ]
 2026/07/28-16:32:30.154 47ba8 Delete type=2 #3051
 2026/07/28-16:32:30.154 47ba8 Delete type=2 #3053
+2026/07/28-17:05:00.131 47bc1 Level-0 table #3056: started
+2026/07/28-17:05:00.165 47bc1 Level-0 table #3056: 809087 bytes OK
+2026/07/28-17:05:00.170 47bc1 Delete type=0 #3052
+2026/07/28-17:07:40.814 47bab Compacting 1@1 + 1@2 files
+2026/07/28-17:07:40.854 47bab Generated table #3057@1: 8871 keys, 785468 bytes
+2026/07/28-17:07:40.854 47bab Compacted 1@1 + 1@2 files => 785468 bytes
+2026/07/28-17:07:40.855 47bab compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/28-17:07:40.855 47bab Delete type=2 #3056
+2026/07/28-17:07:40.855 47bab Delete type=2 #3054
