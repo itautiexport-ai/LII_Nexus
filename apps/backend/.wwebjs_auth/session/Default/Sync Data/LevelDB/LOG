@@ -1,3 +1,3 @@
-2026/07/28-15:01:44.461 47bc1 Reusing MANIFEST /Users/bci/Downloads/lii-performance-nexus 5/apps/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001
-2026/07/28-15:01:44.471 47bc1 Recovering log #3
-2026/07/28-15:01:44.471 47bc1 Reusing old log /Users/bci/Downloads/lii-performance-nexus 5/apps/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB/000003.log 
+2026/07/31-17:27:23.727 50b37 Reusing MANIFEST /Users/bci/Downloads/lii-performance-nexus 5/apps/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001
+2026/07/31-17:27:23.746 50b37 Recovering log #3
+2026/07/31-17:27:23.746 50b37 Reusing old log /Users/bci/Downloads/lii-performance-nexus 5/apps/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB/000003.log 

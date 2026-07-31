@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
+import { NotificationService } from "../../../notifications/application/services/NotificationService";
+import { MySqlNotificationRepository } from "../../../notifications/infrastructure/repositories/MySqlNotificationRepository";
 
 export interface StartFmsInstanceDto {
   referenceTitle: string;
@@ -11,7 +13,11 @@ export interface CompleteFmsStepDto {
 }
 
 export class FmsExecutionService {
-  constructor(private dbPool: any) {}
+  private notificationService: NotificationService;
+
+  constructor(private dbPool: any) {
+    this.notificationService = new NotificationService(new MySqlNotificationRepository());
+  }
 
   async startFmsInstance(fmsManagerId: string, dto: StartFmsInstanceDto) {
     const instanceId = uuidv4();
@@ -36,37 +42,139 @@ export class FmsExecutionService {
       );
     }
 
-    // Fetch current FMS name to handle auto-connect logic
-    const [managerRows] = await this.dbPool.query("SELECT name FROM fms_managers WHERE id = ?", [fmsManagerId]);
-    const managerName = managerRows[0]?.name;
-
-    if (managerName === 'BUYER ORDER TO CARTON ORDER') {
-      const [targetRows] = await this.dbPool.query(
-        "SELECT id, name FROM fms_managers WHERE name IN ('FINISHED PRODUCTS TO DELIVERY', 'DELIVERY TO CLEARANCE')"
-      );
+    // Notify initial steps
+    const actionableStepIds = await this._computeActionableSteps(instanceId);
+    if (actionableStepIds.length > 0) {
+      const placeholders = actionableStepIds.map(() => '?').join(',');
+      await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'Under Process' WHERE id IN (${placeholders})`, actionableStepIds);
       
-      for (const target of targetRows) {
-         const targetInstanceId = uuidv4();
-         await this.dbPool.query(
-           "INSERT INTO fms_instances (id, fms_manager_id, reference_title, status, form_data, creator_id) VALUES (?, ?, ?, ?, ?, ?)",
-           [targetInstanceId, target.id, dto.referenceTitle, 'In Progress', dto.formData ? JSON.stringify(dto.formData) : null, dto.creatorId || null]
-         );
-         
-         const [targetSteps] = await this.dbPool.query(
-           "SELECT id FROM fms_steps WHERE fms_id = ? ORDER BY sequence_order ASC",
-           [target.id]
-         );
-         
-         for (const step of targetSteps) {
-           await this.dbPool.query(
-             "INSERT INTO fms_instance_steps (id, instance_id, fms_step_id, status) VALUES (?, ?, ?, ?)",
-             [uuidv4(), targetInstanceId, step.id, 'Pending']
-           );
-         }
+      const [initialSteps] = await this.dbPool.query(`
+        SELECT fis.id as instanceStepId, fs.step_name as stepName, fs.doer_employee_ids as doerEmployeeIds, fi.creator_id as creatorId, fm.name as managerName
+        FROM fms_instance_steps fis
+        JOIN fms_instances fi ON fis.instance_id = fi.id
+        JOIN fms_steps fs ON fis.fms_step_id = fs.id
+        JOIN fms_managers fm ON fi.fms_manager_id = fm.id
+        WHERE fis.id IN (${placeholders})
+      `, actionableStepIds);
+      
+      for (const step of initialSteps) {
+        await this.notifyDoers(step);
       }
     }
 
     return { id: instanceId, message: "FMS instance started successfully" };
+  }
+
+  private async _computeActionableSteps(instanceId: string): Promise<string[]> {
+    const query = `
+      SELECT 
+        fis.id as instanceStepId,
+        fs.id as stepId,
+        fs.is_sequential as isSequential,
+        fs.depends_on_step_ids as explicitDependsOn,
+        fis.status,
+        fs.sequence_order as sequenceOrder
+      FROM fms_instance_steps fis
+      JOIN fms_steps fs ON fis.fms_step_id = fs.id
+      WHERE fis.instance_id = ?
+      ORDER BY fs.sequence_order ASC
+    `;
+    const [rows] = await this.dbPool.query(query, [instanceId]);
+    
+    let currentBlock: string[] = [];
+    let previousBlock: string[] = [];
+    const computedDeps = new Map<string, string[]>(); 
+    const stepIdToInstanceStepId = new Map<string, string>();
+    
+    for (const row of rows) {
+      stepIdToInstanceStepId.set(row.stepId, row.instanceStepId);
+    }
+
+    for (const row of rows) {
+      const explicit = typeof row.explicitDependsOn === 'string' ? JSON.parse(row.explicitDependsOn) : (row.explicitDependsOn || []);
+      const isSeq = !!row.isSequential;
+      let deps: string[] = [];
+
+      if (explicit && explicit.length > 0) {
+        deps = explicit.map((stepId: string) => stepIdToInstanceStepId.get(stepId)).filter(Boolean);
+        previousBlock = currentBlock.length > 0 ? [...currentBlock] : [...previousBlock];
+        currentBlock = [row.instanceStepId];
+      } else {
+        if (isSeq) {
+           deps = currentBlock.length > 0 ? [...currentBlock] : [...previousBlock];
+           previousBlock = currentBlock.length > 0 ? [...currentBlock] : [...previousBlock];
+           currentBlock = [row.instanceStepId];
+        } else {
+           if (currentBlock.length > 0) {
+             const lastInstanceStepId = currentBlock[currentBlock.length - 1];
+             const lastRow = rows.find((r: any) => r.instanceStepId === lastInstanceStepId);
+             if (lastRow && lastRow.isSequential) {
+                previousBlock = [...currentBlock];
+                currentBlock = [row.instanceStepId];
+                deps = [...previousBlock];
+             } else {
+                currentBlock.push(row.instanceStepId);
+                deps = [...previousBlock];
+             }
+           } else {
+             currentBlock.push(row.instanceStepId);
+             deps = [];
+           }
+        }
+      }
+      computedDeps.set(row.instanceStepId, deps);
+    }
+
+    const actionableIds: string[] = [];
+    for (const row of rows) {
+      if (row.status === 'Pending') {
+        const deps = computedDeps.get(row.instanceStepId) || [];
+        let allMet = true;
+        for (const depId of deps) {
+           const depRow = rows.find((r: any) => r.instanceStepId === depId);
+           if (!depRow || (depRow.status !== 'Completed' && depRow.status !== 'Skipped')) {
+             allMet = false;
+             break;
+           }
+        }
+        if (allMet) {
+          actionableIds.push(row.instanceStepId);
+        }
+      }
+    }
+
+    return actionableIds;
+  }
+
+  private async notifyDoers(step: any) {
+    let doers: string[] = [];
+    try {
+      doers = typeof step.doerEmployeeIds === 'string' ? JSON.parse(step.doerEmployeeIds) : step.doerEmployeeIds;
+    } catch (e) {}
+
+    if (!Array.isArray(doers) || doers.length === 0) {
+      if (step.creatorId) doers = [step.creatorId];
+    }
+
+    for (const doerId of doers) {
+      if (!doerId) continue;
+      try {
+        await this.notificationService.notify({
+          type: "new_task_assigned",
+          module: "workflow",
+          referenceType: "fms_step",
+          referenceId: step.instanceStepId,
+          assignedUserId: doerId,
+          title: `FMS Task Actionable: ${step.stepName}`,
+          description: `A task in the FMS workflow "${step.managerName}" is now ready for your action.`,
+          priority: "medium",
+          actionLabel: "View Tasks",
+          actionUrl: "/admin/fms/tasks"
+        });
+      } catch (err) {
+        console.error("Failed to send notification:", err);
+      }
+    }
   }
 
   async getMyPendingTasks(employeeId: string) {
@@ -91,19 +199,7 @@ export class FmsExecutionService {
       JOIN fms_steps fs ON fis.fms_step_id = fs.id
       JOIN fms_managers fm ON fi.fms_manager_id = fm.id
       WHERE fi.status = 'In Progress' 
-        AND fis.status IN ('Pending', 'Under Process')
-        AND (
-          fs.depends_on_step_ids IS NULL 
-          OR JSON_LENGTH(fs.depends_on_step_ids) = 0
-          OR JSON_LENGTH(fs.depends_on_step_ids) = (
-            SELECT COUNT(DISTINCT prev_fis.fms_step_id)
-            FROM fms_instance_steps prev_fis
-            JOIN fms_instances prev_fi ON prev_fis.instance_id = prev_fi.id
-            WHERE prev_fi.reference_title = fi.reference_title
-              AND JSON_CONTAINS(fs.depends_on_step_ids, CONCAT('"', prev_fis.fms_step_id, '"'))
-              AND prev_fis.status = 'Completed'
-          )
-        )
+        AND fis.status = 'Under Process'
       ORDER BY fis.created_at ASC
     `;
     const [rows] = await this.dbPool.query(query);
@@ -198,7 +294,7 @@ export class FmsExecutionService {
   async completeStep(employeeId: string, instanceStepId: string, dto: CompleteFmsStepDto) {
     // Check step details
     const [rows] = await this.dbPool.query(`
-      SELECT fis.*, fs.step_name, fs.sequence_order, fs.doer_employee_ids, fi.fms_manager_id, fi.creator_id 
+      SELECT fis.*, fs.step_name, fs.sequence_order, fs.doer_employee_ids, fi.fms_manager_id, fi.creator_id, fi.reference_title, fi.form_data 
       FROM fms_instance_steps fis
       JOIN fms_steps fs ON fis.fms_step_id = fs.id
       JOIN fms_instances fi ON fis.instance_id = fi.id
@@ -257,13 +353,59 @@ export class FmsExecutionService {
       }
     }
 
+    // Find newly actionable steps dependent on this completed step
+    const actionableStepIds = await this._computeActionableSteps(step.instance_id);
+    if (actionableStepIds.length > 0) {
+      const placeholders = actionableStepIds.map(() => '?').join(',');
+      await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'Under Process' WHERE id IN (${placeholders})`, actionableStepIds);
+      
+      const [actionableSteps] = await this.dbPool.query(`
+        SELECT fis.id as instanceStepId, fs.step_name as stepName, fs.doer_employee_ids as doerEmployeeIds, fi.creator_id as creatorId, fm.name as managerName
+        FROM fms_instance_steps fis
+        JOIN fms_instances fi ON fis.instance_id = fi.id
+        JOIN fms_steps fs ON fis.fms_step_id = fs.id
+        JOIN fms_managers fm ON fi.fms_manager_id = fm.id
+        WHERE fis.id IN (${placeholders})
+      `, actionableStepIds);
+      
+      for (const aStep of actionableSteps) {
+        await this.notifyDoers(aStep);
+      }
+    }
+
     // Check if all steps are done/skipped
     const [pendingSteps] = await this.dbPool.query(
-      "SELECT id FROM fms_instance_steps WHERE instance_id = ? AND status = 'Pending'",
+      "SELECT id FROM fms_instance_steps WHERE instance_id = ? AND status IN ('Pending', 'Under Process')",
       [step.instance_id]
     );
     if (pendingSteps.length === 0) {
       await this.dbPool.query("UPDATE fms_instances SET status = 'Completed' WHERE id = ?", [step.instance_id]);
+
+      // FMS Workflow Chaining
+      const [managerRows] = await this.dbPool.query("SELECT name FROM fms_managers WHERE id = ?", [step.fms_manager_id]);
+      const managerName = managerRows[0]?.name;
+
+      if (managerName === 'BUYER ORDER TO CARTON ORDER') {
+        const [targetRows] = await this.dbPool.query("SELECT id FROM fms_managers WHERE name = 'FINISHED PRODUCTS TO DELIVERY'");
+        if (targetRows.length > 0) {
+          const formData = typeof step.form_data === 'string' ? JSON.parse(step.form_data) : step.form_data;
+          await this.startFmsInstance(targetRows[0].id, {
+            referenceTitle: step.reference_title,
+            formData,
+            creatorId: step.creator_id
+          });
+        }
+      } else if (managerName === 'FINISHED PRODUCTS TO DELIVERY') {
+        const [targetRows] = await this.dbPool.query("SELECT id FROM fms_managers WHERE name = 'DELIVERY TO CLEARANCE'");
+        if (targetRows.length > 0) {
+          const formData = typeof step.form_data === 'string' ? JSON.parse(step.form_data) : step.form_data;
+          await this.startFmsInstance(targetRows[0].id, {
+            referenceTitle: step.reference_title,
+            formData,
+            creatorId: step.creator_id
+          });
+        }
+      }
     }
 
     return { message: "Step completed" };
