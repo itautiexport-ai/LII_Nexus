@@ -72,6 +72,8 @@ export class FmsExecutionService {
         fs.id as stepId,
         fs.is_sequential as isSequential,
         fs.depends_on_step_ids as explicitDependsOn,
+        fs.cross_fms_id as crossFmsId,
+        fs.cross_fms_step_id as crossFmsStepId,
         fis.status,
         fs.sequence_order as sequenceOrder
       FROM fms_instance_steps fis
@@ -80,6 +82,34 @@ export class FmsExecutionService {
       ORDER BY fs.sequence_order ASC
     `;
     const [rows] = await this.dbPool.query(query, [instanceId]);
+    
+    const [instanceRows] = await this.dbPool.query("SELECT reference_title, fms_manager_id FROM fms_instances WHERE id = ?", [instanceId]);
+    const referenceTitle = instanceRows[0]?.reference_title;
+    const managerId = instanceRows[0]?.fms_manager_id;
+    
+    // Check if the FMS Manager has a global cross-FMS dependency
+    const [managerRows] = await this.dbPool.query("SELECT cross_fms_id, cross_fms_step_id FROM fms_managers WHERE id = ?", [managerId]);
+    const manager = managerRows[0];
+    
+    if (manager && manager.cross_fms_id && manager.cross_fms_step_id) {
+      const [crossInstanceRows] = await this.dbPool.query(
+        "SELECT id FROM fms_instances WHERE fms_manager_id = ? AND reference_title = ?", 
+        [manager.cross_fms_id, referenceTitle]
+      );
+      if (crossInstanceRows.length > 0) {
+        const [crossStepRows] = await this.dbPool.query(
+          "SELECT status FROM fms_instance_steps WHERE instance_id = ? AND fms_step_id = ?", 
+          [crossInstanceRows[0].id, manager.cross_fms_step_id]
+        );
+        if (crossStepRows.length === 0 || crossStepRows[0].status !== 'Completed') {
+           // Global dependency is not met, so NO steps are actionable
+           return [];
+        }
+      } else {
+         // Cross instance doesn't exist yet, NO steps actionable
+         return [];
+      }
+    }
     
     let currentBlock: string[] = [];
     let previousBlock: string[] = [];
@@ -137,6 +167,22 @@ export class FmsExecutionService {
              break;
            }
         }
+        if (allMet && row.crossFmsId && row.crossFmsStepId && referenceTitle) {
+           const [crossRows] = await this.dbPool.query(`
+             SELECT fis.status 
+             FROM fms_instance_steps fis
+             JOIN fms_instances fi ON fis.instance_id = fi.id
+             WHERE fi.fms_manager_id = ? 
+               AND fi.reference_title = ?
+               AND fis.fms_step_id = ?
+               AND (fis.status = 'Completed' OR fis.status = 'Skipped')
+           `, [row.crossFmsId, referenceTitle, row.crossFmsStepId]);
+           
+           if (crossRows.length === 0) {
+             allMet = false;
+           }
+        }
+        
         if (allMet) {
           actionableIds.push(row.instanceStepId);
         }

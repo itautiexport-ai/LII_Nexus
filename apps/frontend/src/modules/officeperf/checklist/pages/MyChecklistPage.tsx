@@ -1,45 +1,106 @@
-import { useEffect, useState } from "react";
-import { checklistApi, ChecklistInstanceRecord } from "../api/checklistApi";
+import React, { useEffect, useState } from "react";
+import { standaloneChecklistApi, StandaloneChecklist } from "../../../checklist/api/checklistApi";
+import { useAuthStore } from "../../../auth/hooks/useAuthStore";
+import "../../../checklist/pages/Checklist.css";
 
 export default function MyChecklistPage() {
-  const [instances, setInstances] = useState<ChecklistInstanceRecord[]>([]);
+  const [checklists, setChecklists] = useState<StandaloneChecklist[]>([]);
   const [loading, setLoading] = useState(true);
+  const user = useAuthStore(state => state.user);
 
-  async function load() {
-    setInstances(await checklistApi.getMyChecklists());
-    setLoading(false);
-  }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetchChecklists();
+  }, [user]);
 
-  async function handleToggle(instance: ChecklistInstanceRecord, itemId: string, checked: boolean) {
-    const updated = await checklistApi.setItemChecked(instance.id, itemId, checked);
-    setInstances((prev) => prev.map((i) => (i.id === instance.id ? updated : i)));
-  }
+  const fetchChecklists = () => {
+    if (!user) return;
+    standaloneChecklistApi.getAll().then(data => {
+      const filtered = data.filter(c => 
+        (c as any).assignTo === user.id || 
+        c.assignee_name === user.fullName ||
+        c.assigner_name === user.fullName ||
+        (c as any).assignBy === user.id ||
+        c.assignedBy === user.id
+      );
+      setChecklists(filtered);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  };
 
-  if (loading) return <p>Loading...</p>;
+  const handleAction = async (id: string) => {
+    if (confirm(`Are you sure you want to complete this checklist?`)) {
+      try {
+        await standaloneChecklistApi.delete(id);
+        fetchChecklists(); // Refresh
+      } catch (err) {
+        console.error(`Failed to complete`, err);
+        alert(`Failed to complete checklist`);
+      }
+    }
+  };
 
   return (
-    <div>
-      <h1 style={{ fontSize: 20, marginBottom: 16 }}>My Checklists</h1>
-      {instances.length === 0 && <p style={{ color: "#777" }}>No checklists assigned to you yet.</p>}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-        {instances.map((instance) => {
-          const doneCount = instance.items.filter((i) => i.isChecked).length;
-          return (
-            <div key={instance.id} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 16, width: 300 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <strong>{instance.templateTitle}</strong>
-                <span style={{ fontSize: 11, textTransform: "uppercase", color: "#999" }}>{instance.frequency}</span>
-              </div>
-              <p style={{ fontSize: 12, color: "#777", marginBottom: 8 }}>{instance.periodStart} – {instance.periodEnd} · {doneCount}/{instance.items.length} done</p>
-              {instance.items.map((item) => (
-                <label key={item.id} style={{ display: "block", fontSize: 14, marginBottom: 6 }}>
-                  <input type="checkbox" checked={item.isChecked} onChange={(e) => handleToggle(instance, item.id, e.target.checked)} /> {item.label}
-                </label>
-              ))}
+    <div className="chk-container">
+      <div className="chk-card">
+        <div className="chk-card-header">
+          <h2 className="chk-title">MY CHECKLISTS</h2>
+        </div>
+        <div className="chk-card-content" style={{ padding: 0 }}>
+          {loading ? (
+            <div className="chk-empty">Loading...</div>
+          ) : checklists.length === 0 ? (
+            <div className="chk-empty">No checklists assigned to you yet.</div>
+          ) : (
+            <div className="chk-table-container">
+              <table className="chk-table">
+                <thead>
+                  <tr>
+                    <th className="chk-th">Task Name</th>
+                    <th className="chk-th">Assigned By</th>
+                    <th className="chk-th">Planned Date</th>
+                    <th className="chk-th">Priority</th>
+                    <th className="chk-th">Mode</th>
+                    <th className="chk-th">Frequency</th>
+                    <th className="chk-th">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {checklists.map(c => (
+                    <tr key={c.id} className="chk-tr">
+                      <td className="chk-td chk-td-strong">{(c as any).task_name || c.taskName}</td>
+                      <td className="chk-td">
+                        {c.assigner_name || "Unknown"}
+                      </td>
+                      <td className="chk-td">{new Date((c as any).planned_date || c.plannedDate).toLocaleString()}</td>
+                      <td className="chk-td">
+                        <span className={`chk-pill ${
+                          c.priority === 'High' ? 'chk-pill-high' :
+                          c.priority === 'Medium' ? 'chk-pill-medium' :
+                          'chk-pill-low'
+                        }`}>
+                          {c.priority}
+                        </span>
+                      </td>
+                      <td className="chk-td">{c.mode}</td>
+                      <td className="chk-td">{c.frequency}</td>
+                      <td className="chk-td">
+                        <button 
+                          onClick={() => handleAction(c.id)}
+                          style={{ background: "#10b981", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
+                        >
+                          Complete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          );
-        })}
+          )}
+        </div>
       </div>
     </div>
   );

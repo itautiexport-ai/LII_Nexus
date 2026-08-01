@@ -143,6 +143,7 @@ import { ComplaintsHubPage } from "../../modules/crm/pages/ComplaintsHubPage";
 import { HelpTicketHubPage } from "../../modules/admin/helptickets/pages/HelpTicketHubPage";
 import { ProductionReportHubPage } from "../../modules/reports/pages/ProductionReportHubPage";
 import TaskCenterDashboardPage from "../../modules/taskcenter/pages/TaskCenterDashboardPage";
+import FormatsPage from "../../modules/formats/pages/FormatsPage";
 
 export default function AppRouter() {
   return (
@@ -258,6 +259,7 @@ export default function AppRouter() {
           <Route path="escalation-rules" element={<EscalationRulesPage />} />
           <Route path="reports" element={<ReportsHubPage />} />
           <Route path="reports/dashboard" element={<DashboardWidgetsPage />} />
+          <Route path="formats" element={<FormatsPage />} />
           <Route path="reports/production-hub" element={<ProductionReportHubPage />} />
           <Route path="reports/daily-production" element={<DailyProductionReportPage />} />
           <Route path="reports/detailed-production" element={<DetailedProductionReportPage />} />

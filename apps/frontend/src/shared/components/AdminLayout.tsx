@@ -73,7 +73,7 @@ export const SECTIONS: NavSection[] = [
         to: "/admin/checklist",
         hideChildrenInSidebar: true,
         items: [
-          { label: "My Checklists", to: "/admin/my-checklists" },
+          { label: "MY Checklist", to: "/admin/my-checklists" },
           { label: "List Checklist", to: "/admin/standalone-checklist/list" },
           { label: "Add Checklist", to: "/admin/standalone-checklist/add" },
         ]
@@ -93,6 +93,7 @@ export const SECTIONS: NavSection[] = [
         to: "/admin/fms",
         hideChildrenInSidebar: true,
         items: [
+          { label: "My FMS", to: "/admin/user-dashboard/fms" },
           { label: "List FMS Manager", to: "/admin/fms/list" },
           { label: "Add FMS Manager", to: "/admin/fms/add" },
           { label: "FMS Grid View", to: "/admin/fms/manager" },
@@ -254,6 +255,14 @@ export const SECTIONS: NavSection[] = [
           { label: "Appraisal Index", to: "/admin/reports/appraisal-index" },
         ]
       }
+    ],
+  },
+  {
+    key: "formats",
+    label: "Formats",
+    allowedRoles: ["System Admin"],
+    items: [
+      { label: "Formats Library", to: "/admin/formats" }
     ],
   }
 ];
@@ -430,6 +439,8 @@ export default function AdminLayout() {
                   toggleSection(section.key);
                   if (section.key === 'task-center') {
                     navigate(`/admin/task-center`);
+                  } else if (section.key === 'formats') {
+                    navigate(`/admin/formats`);
                   } else {
                     navigate(`/admin/modules/${section.key}`);
                   }

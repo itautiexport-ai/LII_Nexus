@@ -11,14 +11,21 @@ export function ManageFmsStepsPage() {
   const [allGlobalSteps, setAllGlobalSteps] = useState<(FmsStep & { managerName: string })[]>([]);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [fmsList, setFmsList] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     stepName: "",
     doerEmployeeIds: [] as string[],
     timelineHours: 0,
     timelineUnit: "hours" as "hours" | "days",
+    sequenceOrder: 1,
     dependsOnStepIds: [] as string[],
     stepType: "sequential" as "sequential" | "parallel",
+  });
+  
+  const [globalDependency, setGlobalDependency] = useState({
+    crossFmsId: null as string | null,
+    crossFmsStepId: null as string | null,
   });
 
   const [loading, setLoading] = useState(true);
@@ -54,10 +61,19 @@ export function ManageFmsStepsPage() {
           fmsApi.getAllStepsGlobal()
         ]);
         setSteps(stepsRes);
+        setFormData(prev => ({ ...prev, sequenceOrder: stepsRes.length + 1 }));
         setAllGlobalSteps(globalStepsRes);
         setEmployees(empRes);
-        const fms = fmsListRes.find((f) => f.id === fmsId);
-        if (fms) setFmsName(fms.name);
+        const fmsList = fmsListRes || [];
+        setFmsList(fmsList);
+        const fms = fmsList.find((f: any) => f.id === fmsId);
+        if (fms) {
+          setFmsName(fms.name);
+          setGlobalDependency({
+            crossFmsId: fms.crossFmsId || null,
+            crossFmsStepId: fms.crossFmsStepId || null,
+          });
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -94,16 +110,21 @@ export function ManageFmsStepsPage() {
           doerEmployeeIds: formData.doerEmployeeIds,
           timelineHours: formData.timelineHours,
           timelineUnit: formData.timelineUnit,
+          sequenceOrder: formData.sequenceOrder,
           dependsOnStepIds: formData.dependsOnStepIds,
         });
-        setSteps(prev => prev.map(s => s.id === editingStepId ? updatedStep : s));
+        const updatedSteps = await fmsApi.getSteps(fmsId);
+        setSteps(updatedSteps);
         setEditingStepId(null);
+        alert("Step updated successfully!");
+        window.location.reload();
       } else {
-        await fmsApi.addStep(fmsId, {
+        const newStep = await fmsApi.addStep(fmsId, {
           stepName: formData.stepName,
           doerEmployeeIds: formData.doerEmployeeIds,
           timelineHours: formData.timelineHours,
           timelineUnit: formData.timelineUnit,
+          sequenceOrder: formData.sequenceOrder,
           dependsOnStepIds: formData.dependsOnStepIds,
         });
 
@@ -117,6 +138,7 @@ export function ManageFmsStepsPage() {
         doerEmployeeIds: [],
         timelineHours: 0,
         timelineUnit: "hours",
+        sequenceOrder: steps.length + (editingStepId ? 1 : 2), // +2 because steps isn't updated yet for add
         dependsOnStepIds: [],
         stepType: "sequential",
       });
@@ -133,6 +155,7 @@ export function ManageFmsStepsPage() {
       doerEmployeeIds: step.doerEmployeeIds || [],
       timelineHours: step.timelineHours,
       timelineUnit: step.timelineUnit,
+      sequenceOrder: step.sequenceOrder || 1,
       dependsOnStepIds: step.dependsOnStepIds || [],
       stepType: (!step.dependsOnStepIds || step.dependsOnStepIds.length === 0) ? "parallel" : "sequential",
     });
@@ -150,6 +173,26 @@ export function ManageFmsStepsPage() {
     }
   };
 
+  const handleSaveGlobalDependency = async () => {
+    if (!fmsId) return;
+    try {
+      const currentFms = fmsList.find(f => f.id === fmsId);
+      if (!currentFms) return;
+      await fmsApi.update(fmsId, {
+        name: currentFms.name,
+        description: currentFms.description,
+        formFields: currentFms.formFields,
+        sopVideoLink: currentFms.sopVideoLink,
+        crossFmsId: globalDependency.crossFmsId,
+        crossFmsStepId: globalDependency.crossFmsStepId,
+      });
+      alert("Global FMS dependency saved!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save global FMS dependency.");
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -157,16 +200,91 @@ export function ManageFmsStepsPage() {
       <div className="fms-card">
         <div className="fms-card-header">
           <h2 className="fms-title">MANAGE STEPS: {fmsName.toUpperCase()}</h2>
-          <button 
-            className="fms-btn-primary" 
-            onClick={() => navigate("/admin/fms/list")}
-            style={{ background: "#ffc107", color: "#333", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
-          >
-            BACK TO LIST
-          </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button 
+              type="button"
+              className="fms-btn-primary" 
+              onClick={() => navigate("/admin/fms/list")}
+              style={{ background: "#6c757d", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+            >
+              BACK TO LIST
+            </button>
+            <button 
+              type="button"
+              className="fms-btn-primary" 
+              onClick={() => {
+                alert("FMS Steps setup completed and saved!");
+                navigate("/admin/fms/list");
+              }}
+              style={{ background: "#28a745", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+            >
+              SAVE FMS
+            </button>
+          </div>
         </div>
 
         <div className="fms-card-content">
+          <div style={{ background: "#f8f9fa", padding: "16px", borderRadius: "8px", border: "1px solid #dee2e6", marginBottom: "2rem" }}>
+            <h3 className="fms-title" style={{ marginTop: 0, marginBottom: "1rem", fontSize: "1.1rem" }}>Global FMS Dependency</h3>
+            <p style={{ fontSize: "0.9rem", color: "#6c757d", marginBottom: "1rem" }}>
+              Configure if this ENTIRE FMS should wait for a specific step in another FMS to complete before starting.
+            </p>
+            <div className="fms-grid" style={{ alignItems: "end" }}>
+              <div className="fms-form-group" style={{ marginBottom: 0 }}>
+                <label className="fms-label">Depends On Another FMS</label>
+                <select
+                  value={globalDependency.crossFmsId || ""}
+                  onChange={(e) => setGlobalDependency(prev => ({ ...prev, crossFmsId: e.target.value || null, crossFmsStepId: null }))}
+                  className="fms-select"
+                >
+                  <option value="">None</option>
+                  {fmsList.filter(f => f.id !== fmsId).map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {globalDependency.crossFmsId && (
+                <div className="fms-form-group" style={{ marginBottom: 0 }}>
+                  <label className="fms-label">Cross-FMS Step</label>
+                  <select
+                    value={globalDependency.crossFmsStepId || ""}
+                    onChange={(e) => setGlobalDependency(prev => ({ ...prev, crossFmsStepId: e.target.value || null }))}
+                    className="fms-select"
+                  >
+                    <option value="">Select a step...</option>
+                    {allGlobalSteps.filter(s => s.fmsId === globalDependency.crossFmsId).map((step, index) => (
+                      <option key={step.id} value={step.id}>Step-{index + 1}: {step.stepName}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              <div className="fms-form-group" style={{ marginBottom: 0 }}>
+                <button 
+                  type="button" 
+                  className="fms-btn-primary" 
+                  onClick={handleSaveGlobalDependency}
+                  style={{ width: "100%", height: "42px" }}
+                >
+                  SAVE DEPENDENCY
+                </button>
+              </div>
+            </div>
+
+            {globalDependency.crossFmsId && globalDependency.crossFmsStepId && (
+              <div style={{ background: "#fff3cd", color: "#856404", padding: "12px", borderRadius: "6px", fontSize: "0.95rem", border: "1px solid #ffeeba", marginTop: "1rem", fontWeight: "bold" }}>
+                Note: This FMS depends on {fmsList.find(f => f.id === globalDependency.crossFmsId)?.name} Step - {(() => {
+                  const step = allGlobalSteps.find(s => s.id === globalDependency.crossFmsStepId);
+                  if (!step) return "?";
+                  const mgrSteps = allGlobalSteps.filter(st => st.fmsId === globalDependency.crossFmsId);
+                  return mgrSteps.findIndex(st => st.id === globalDependency.crossFmsStepId) + 1;
+                })()}. Once it will be completed, then only it will start.
+              </div>
+            )}
+          </div>
+
+          <h3 className="fms-title" style={{ marginTop: 0, marginBottom: "1rem", fontSize: "1.1rem" }}>{editingStepId ? "Edit Step" : "Add New Step"}</h3>
           <form onSubmit={handleAddOrUpdateStep} className="fms-grid" style={{ marginBottom: "2rem" }}>
             <div className="fms-form-group">
               <label className="fms-label">Task Name <span className="fms-required">*</span></label>
@@ -178,6 +296,19 @@ export function ManageFmsStepsPage() {
                 onChange={handleChange}
                 className="fms-input"
                 placeholder="e.g. Quality Check"
+              />
+            </div>
+
+            <div className="fms-form-group">
+              <label className="fms-label">Sequence Order <span className="fms-required">*</span></label>
+              <input
+                type="number"
+                name="sequenceOrder"
+                min="1"
+                required
+                value={formData.sequenceOrder}
+                onChange={handleChange}
+                className="fms-input"
               />
             </div>
 
@@ -384,9 +515,11 @@ export function ManageFmsStepsPage() {
               </div>
             )}
 
+
+
             <div className="fms-form-group full-width" style={{ marginTop: "1rem", display: "flex", gap: "10px" }}>
               <button type="submit" className="fms-btn-primary">
-                {editingStepId ? "UPDATE STEP" : "ADD STEP"}
+                {editingStepId ? "UPDATE STEP" : "SAVE STEP"}
               </button>
               {editingStepId && (
                 <button 
@@ -399,6 +532,7 @@ export function ManageFmsStepsPage() {
                       doerEmployeeIds: [],
                       timelineHours: 0,
                       timelineUnit: "hours",
+                      sequenceOrder: steps.length + 1,
                       dependsOnStepIds: [],
                       stepType: "sequential"
                     });
@@ -436,7 +570,7 @@ export function ManageFmsStepsPage() {
                     let empNames = emps.length > 0 ? emps.map(e => e.fullName).join(", ") : "Form Creator (Dynamic)";
                     return (
                       <tr key={step.id} className="fms-tr">
-                        <td className="fms-td">{index + 1}</td>
+                        <td className="fms-td">{step.sequenceOrder}</td>
                         <td className="fms-td">{step.stepName}</td>
                         <td className="fms-td">{empNames}</td>
                         <td className="fms-td">{step.timelineHours} {step.timelineUnit}</td>
@@ -448,17 +582,15 @@ export function ManageFmsStepsPage() {
                               const depStep = allGlobalSteps.find(s => s.id === depId);
                               if (!depStep) return null;
                               
-                              const isCurrentFms = depStep.fmsId === fmsId;
                               const mgrSteps = allGlobalSteps.filter(s => s.fmsId === depStep.fmsId);
-                              const depIndex = mgrSteps.findIndex(s => s.id === depId);
-                              
+                              const stepIndex = mgrSteps.findIndex(s => s.id === depId);
                               return (
-                                <div key={depId} style={{ fontSize: "0.80rem", background: isCurrentFms ? "#f8f9fa" : "#e0e7ff", padding: "3px 6px", borderRadius: "4px", marginBottom: "4px", display: "inline-block", marginRight: "4px", fontWeight: "bold", border: isCurrentFms ? "1px solid #dee2e6" : "1px solid #c7d2fe" }}>
-                                  {isCurrentFms ? `Step-${depIndex + 1}` : `[${depStep.managerName}] Step-${depIndex + 1}`}
+                                <div key={depId} style={{ fontSize: "0.85rem", color: "#475569" }}>
+                                  Step-{stepIndex + 1}: {depStep.stepName}
                                 </div>
                               );
                             })
-                          )}
+                           )}
                         </td>
                         <td className="fms-td">
                           <div style={{ display: "flex", gap: "8px" }}>

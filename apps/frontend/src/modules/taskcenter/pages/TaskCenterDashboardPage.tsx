@@ -25,7 +25,7 @@ export default function TaskCenterDashboardPage() {
       title: "Checklist",
       description: "Manage standalone checklist tasks",
       stats: stats?.checklist,
-      to: "/admin/checklist/list",
+      to: "/admin/checklist",
       color: "#4f46e5", // Indigo
       bg: "#eef2ff",
       icon: "C"
@@ -34,7 +34,7 @@ export default function TaskCenterDashboardPage() {
       title: "Delegation",
       description: "Manage delegated tasks",
       stats: stats?.delegation,
-      to: isSystemAdmin ? "/admin/delegation/list" : "/admin/delegation/user",
+      to: "/admin/delegation",
       color: "#0ea5e9", // Sky Blue
       bg: "#f0f9ff",
       icon: "D"
@@ -43,7 +43,7 @@ export default function TaskCenterDashboardPage() {
       title: "FMS",
       description: "Flow Management System Tasks",
       stats: stats?.fms,
-      to: isSystemAdmin ? "/admin/fms" : "/admin/user-dashboard/fms",
+      to: "/admin/fms",
       color: "#8b5cf6", // Violet
       bg: "#f5f3ff",
       icon: "F"

@@ -33,14 +33,16 @@ export function ListChecklistPage() {
     });
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this checklist?")) {
+  const handleAction = async (id: string) => {
+    const isAdmin = user && user.roles.includes("System Admin");
+    const actionName = isAdmin ? "delete" : "complete";
+    if (confirm(`Are you sure you want to ${actionName} this checklist?`)) {
       try {
         await standaloneChecklistApi.delete(id);
         fetchChecklists(); // Refresh
       } catch (err) {
-        console.error("Failed to delete", err);
-        alert("Failed to delete checklist");
+        console.error(`Failed to ${actionName}`, err);
+        alert(`Failed to ${actionName} checklist`);
       }
     }
   };
@@ -90,12 +92,21 @@ export function ListChecklistPage() {
                       <td className="chk-td">{c.mode}</td>
                       <td className="chk-td">{c.frequency}</td>
                       <td className="chk-td">
-                        <button 
-                          onClick={() => handleDelete(c.id)}
-                          style={{ background: "#ef4444", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
-                        >
-                          Delete
-                        </button>
+                        {user && user.roles.includes("System Admin") ? (
+                          <button 
+                            onClick={() => handleAction(c.id)}
+                            style={{ background: "#ef4444", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
+                          >
+                            Delete
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleAction(c.id)}
+                            style={{ background: "#10b981", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
+                          >
+                            Complete
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

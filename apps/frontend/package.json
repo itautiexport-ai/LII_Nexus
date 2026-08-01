@@ -17,6 +17,7 @@
     "react-confetti": "^6.4.0",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.24.0",
+    "react-select": "^5.10.2",
     "reactflow": "^11.11.4",
     "recharts": "^3.9.2",
     "tesseract.js": "^7.0.0",

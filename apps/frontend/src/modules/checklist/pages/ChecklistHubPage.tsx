@@ -7,8 +7,9 @@ export default function ChecklistHubPage() {
   const isSystemAdmin = userRoles.includes("System Admin");
 
   const allItems = [
-    { label: "List Checklist", to: "/admin/checklist/list", desc: "Access checklist tools" },
-    { label: "Add Checklist", to: "/admin/checklist/new", desc: "Create new checklists" },
+    { label: "MY Checklist", to: "/admin/my-checklists", desc: "View your personal checklists" },
+    { label: "List Checklist", to: "/admin/standalone-checklist/list", desc: "Access checklist tools" },
+    { label: "Add Checklist", to: "/admin/standalone-checklist/add", desc: "Create new checklists" },
   ];
 
   const items = allItems.filter(item => {

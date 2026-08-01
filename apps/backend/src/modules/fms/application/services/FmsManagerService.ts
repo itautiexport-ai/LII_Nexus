@@ -9,6 +9,8 @@ export interface FmsManagerEntity {
   globalPc: string | null;
   tField: string | null;
   formFields: any[] | null;
+  crossFmsId?: string | null;
+  crossFmsStepId?: string | null;
   createdAt: string;
 }
 
@@ -22,6 +24,8 @@ export interface FmsStepEntity {
   isSequential: boolean;
   sequenceOrder: number;
   dependsOnStepIds?: string[];
+  crossFmsId?: string | null;
+  crossFmsStepId?: string | null;
   createdAt: string;
 }
 
@@ -32,8 +36,8 @@ export class FmsManagerService {
     const id = uuidv4();
     const query = `
       INSERT INTO fms_managers (
-        id, name, sop_video_link, description, global_pc, t_field, conditional_step, consolidated_entry, form_fields
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, name, sop_video_link, description, global_pc, t_field, conditional_step, consolidated_entry, form_fields, cross_fms_id, cross_fms_step_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       id,
@@ -44,7 +48,9 @@ export class FmsManagerService {
       null,
       false,
       false,
-      dto.formFields ? JSON.stringify(dto.formFields) : null
+      dto.formFields ? JSON.stringify(dto.formFields) : null,
+      dto.crossFmsId || null,
+      dto.crossFmsStepId || null,
     ];
 
     await this.dbPool.query(query, params);
@@ -71,8 +77,8 @@ export class FmsManagerService {
 
   async updateFms(fmsId: string, dto: CreateFmsManagerDto): Promise<FmsManagerEntity> {
     const query = `
-      UPDATE fms_managers
-      SET name = ?, sop_video_link = ?, description = ?, form_fields = ?
+      UPDATE fms_managers 
+      SET name = ?, sop_video_link = ?, description = ?, form_fields = ?, cross_fms_id = ?, cross_fms_step_id = ?
       WHERE id = ?
     `;
     const params = [
@@ -80,6 +86,8 @@ export class FmsManagerService {
       dto.sopVideoLink || null,
       dto.description,
       dto.formFields ? JSON.stringify(dto.formFields) : null,
+      dto.crossFmsId || null,
+      dto.crossFmsStepId || null,
       fmsId
     ];
 
@@ -98,6 +106,8 @@ export class FmsManagerService {
       globalPc: row.global_pc,
       tField: row.t_field,
       formFields: typeof row.form_fields === "string" ? JSON.parse(row.form_fields) : row.form_fields,
+      crossFmsId: row.cross_fms_id || null,
+      crossFmsStepId: row.cross_fms_step_id || null,
       createdAt: row.created_at,
     };
   }
@@ -106,8 +116,8 @@ export class FmsManagerService {
     const id = uuidv4();
     const query = `
       INSERT INTO fms_steps (
-        id, fms_id, step_name, doer_employee_ids, timeline_hours, timeline_unit, is_sequential, sequence_order, depends_on_step_ids
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, fms_id, step_name, doer_employee_ids, timeline_hours, timeline_unit, is_sequential, sequence_order, depends_on_step_ids, cross_fms_id, cross_fms_step_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       id,
@@ -118,10 +128,14 @@ export class FmsManagerService {
       dto.timelineUnit,
       dto.isSequential !== undefined ? dto.isSequential : true,
       dto.sequenceOrder || 0,
-      JSON.stringify(dto.dependsOnStepIds || [])
+      JSON.stringify(dto.dependsOnStepIds || []),
+      dto.crossFmsId || null,
+      dto.crossFmsStepId || null
     ];
 
     await this.dbPool.query(query, params);
+    
+    await this.reorderSteps(fmsId, id, dto.sequenceOrder || 0);
 
     const [rows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE id = ?", [id]);
     return this.mapToStepEntity(rows[0]);
@@ -147,13 +161,17 @@ export class FmsManagerService {
   }
 
   async deleteStep(stepId: string): Promise<void> {
-    await this.dbPool.query("DELETE FROM fms_steps WHERE id = ?", [stepId]);
+    const [step] = await this.dbPool.query("SELECT fms_id FROM fms_steps WHERE id = ?", [stepId]);
+    if (step.length > 0) {
+      await this.dbPool.query("DELETE FROM fms_steps WHERE id = ?", [stepId]);
+      await this.reorderSteps(step[0].fms_id, null, -1);
+    }
   }
 
   async updateStep(stepId: string, dto: CreateFmsStepDto): Promise<FmsStepEntity> {
     const query = `
       UPDATE fms_steps 
-      SET step_name = ?, doer_employee_ids = ?, timeline_hours = ?, timeline_unit = ?, is_sequential = ?, sequence_order = ?, depends_on_step_ids = ?
+      SET step_name = ?, doer_employee_ids = ?, timeline_hours = ?, timeline_unit = ?, is_sequential = ?, sequence_order = ?, depends_on_step_ids = ?, cross_fms_id = ?, cross_fms_step_id = ?
       WHERE id = ?
     `;
     const params = [
@@ -164,9 +182,16 @@ export class FmsManagerService {
       dto.isSequential !== undefined ? dto.isSequential : true,
       dto.sequenceOrder || 0,
       JSON.stringify(dto.dependsOnStepIds || []),
+      dto.crossFmsId || null,
+      dto.crossFmsStepId || null,
       stepId
     ];
     await this.dbPool.query(query, params);
+    
+    const [stepData] = await this.dbPool.query("SELECT fms_id FROM fms_steps WHERE id = ?", [stepId]);
+    if (stepData.length > 0) {
+      await this.reorderSteps(stepData[0].fms_id, stepId, dto.sequenceOrder || 0);
+    }
     
     const [rows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE id = ?", [stepId]);
     return this.mapToStepEntity(rows[0]);
@@ -183,7 +208,33 @@ export class FmsManagerService {
       isSequential: !!row.is_sequential,
       sequenceOrder: row.sequence_order,
       dependsOnStepIds: typeof row.depends_on_step_ids === "string" ? JSON.parse(row.depends_on_step_ids) : (row.depends_on_step_ids || []),
+      crossFmsId: row.cross_fms_id || null,
+      crossFmsStepId: row.cross_fms_step_id || null,
       createdAt: row.created_at,
     };
+  }
+
+  private async reorderSteps(fmsId: string, movedStepId: string | null, targetOrder: number): Promise<void> {
+    let query = "SELECT id, sequence_order FROM fms_steps WHERE fms_id = ?";
+    let params: any[] = [fmsId];
+    
+    if (movedStepId) {
+      query += " AND id != ?";
+      params.push(movedStepId);
+    }
+    
+    query += " ORDER BY sequence_order ASC, created_at ASC";
+    const [rows] = await this.dbPool.query(query, params);
+    
+    const steps = rows.map((r: any) => r.id);
+    
+    if (movedStepId) {
+      const targetIndex = Math.max(0, Math.min(targetOrder - 1, steps.length));
+      steps.splice(targetIndex, 0, movedStepId);
+    }
+
+    for (let i = 0; i < steps.length; i++) {
+      await this.dbPool.query("UPDATE fms_steps SET sequence_order = ? WHERE id = ?", [i + 1, steps[i]]);
+    }
   }
 }

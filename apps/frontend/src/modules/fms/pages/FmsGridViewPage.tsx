@@ -162,7 +162,7 @@ export function FmsGridViewPage() {
               </button>
             )}
             <button 
-              onClick={() => navigate("/admin/fms/list")}
+              onClick={() => navigate("/admin/fms/manager")}
               className="fms-btn-primary"
             style={{ 
               background: "#ffc107", 

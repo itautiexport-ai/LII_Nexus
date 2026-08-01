@@ -6,6 +6,8 @@ export interface FmsManager {
   sopVideoLink: string | null;
   description: string;
   formFields?: any[];
+  crossFmsId?: string | null;
+  crossFmsStepId?: string | null;
   createdAt: string;
 }
 
@@ -14,6 +16,8 @@ export interface CreateFmsManagerDto {
   sopVideoLink?: string;
   description: string;
   formFields?: any[];
+  crossFmsId?: string | null;
+  crossFmsStepId?: string | null;
 }
 
 export interface FmsStep {
@@ -26,6 +30,8 @@ export interface FmsStep {
   isSequential: boolean;
   sequenceOrder: number;
   dependsOnStepIds?: string[];
+  crossFmsId?: string | null;
+  crossFmsStepId?: string | null;
   createdAt: string;
 }
 
@@ -37,6 +43,8 @@ export interface CreateFmsStepDto {
   isSequential?: boolean;
   sequenceOrder?: number;
   dependsOnStepIds?: string[];
+  crossFmsId?: string | null;
+  crossFmsStepId?: string | null;
 }
 
 export const fmsApi = {

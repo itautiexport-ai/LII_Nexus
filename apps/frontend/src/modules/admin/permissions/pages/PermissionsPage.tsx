@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { rolesApi, RoleRecord, PermissionRecord, permissionsApi } from "../../roles/api/rolesApi";
 import { usersApi, UserRecord } from "../../users/api/usersApi";
 import { SECTIONS } from "../../../../shared/components/AdminLayout";
+import { CustomSelect } from "../../../../shared/components/CustomSelect";
 
 export default function PermissionsPage() {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
@@ -94,16 +95,14 @@ export default function PermissionsPage() {
           <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
             Select User
           </label>
-          <select 
-            value={selectedUserId} 
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            style={{ width: "100%", maxWidth: 400, padding: "10px 14px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 15 }}
-          >
-            <option value="">-- Select a User --</option>
-            {users.map(u => (
-              <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
-            ))}
-          </select>
+          <div style={{ width: "100%", maxWidth: 400 }}>
+            <CustomSelect
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              placeholder="-- Select a User --"
+              options={users.map(u => ({ value: u.id, label: `${u.fullName} (${u.email})` }))}
+            />
+          </div>
         </div>
 
         {selectedUser && (
