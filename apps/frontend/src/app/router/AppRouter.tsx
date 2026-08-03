@@ -134,6 +134,7 @@ import FormsPage from "../../modules/resourcescenter/pages/FormsPage";
 import TemplatesPage from "../../modules/resourcescenter/pages/TemplatesPage";
 import ManualsPage from "../../modules/resourcescenter/pages/ManualsPage";
 import NoticesPage from "../../modules/hr/pages/NoticesPage";
+import SecurityPage from "../../modules/hr/pages/SecurityPage";
 import WeeklyPayrollPage from "../../modules/hr/pages/WeeklyPayrollPage";
 import MonthlySalarySheetPage from "../../modules/hr/pages/MonthlySalarySheetPage";
 import { MasterDataHubPage } from "../../modules/admin/masterdata/pages/MasterDataHubPage";
@@ -271,6 +272,7 @@ export default function AppRouter() {
           <Route path="hr/weekly-payroll" element={<WeeklyPayrollPage />} />
           <Route path="hr/monthly-salary-sheet" element={<MonthlySalarySheetPage />} />
           <Route path="hr/notices" element={<NoticesPage />} />
+          <Route path="hr/security" element={<SecurityPage />} />
           <Route path="hr/annual-training-planner" element={<AnnualTrainingPlannerPage />} />
           <Route path="hr/kra" element={<KraPage />} />
           <Route path="reports/appraisal-index" element={<AppraisalIndexPage />} />

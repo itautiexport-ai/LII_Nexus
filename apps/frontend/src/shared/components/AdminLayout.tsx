@@ -199,6 +199,7 @@ export const SECTIONS: NavSection[] = [
       { label: "Weekly Payroll", to: "/admin/hr/weekly-payroll" },
       { label: "Monthly Salary Sheet", to: "/admin/hr/monthly-salary-sheet" },
       { label: "Notices", to: "/admin/hr/notices" },
+      { label: "Security", to: "/admin/hr/security" },
       { label: "Annual Training Planner", to: "/admin/hr/annual-training-planner" },
       { label: "KRA", to: "/admin/hr/kra" },
       {
