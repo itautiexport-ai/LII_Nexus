@@ -1,0 +1,523 @@
+.notices-page {
+  padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.notices-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.notices-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.notices-tabs {
+  display: flex;
+  background-color: #e9ecef;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.tab-btn {
+  padding: 8px 24px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  background: transparent;
+  color: #6c757d;
+  transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+  background-color: #ffffff;
+  color: #0d6efd;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.notices-layout {
+  display: flex;
+  gap: 32px;
+  height: calc(100vh - 120px);
+}
+
+/* Left Form Area */
+.notices-form-container {
+  width: 380px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.form-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.form-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #343a40;
+}
+
+.form-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #212529;
+  background-color: #f8f9fa;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #86b7fe;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+}
+
+.dynamic-fields-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #f1f3f5;
+}
+
+.dynamic-fields-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #868e96;
+  margin-bottom: 16px;
+  letter-spacing: 0.5px;
+}
+
+.form-footer {
+  padding: 24px;
+  border-top: 1px solid #f1f3f5;
+  background-color: #f8f9fa;
+  border-radius: 0 0 12px 12px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background-color: #0d6efd;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #0b5ed7;
+}
+
+/* Right Preview Area */
+.notices-preview-container {
+  flex: 1;
+  background-color: #e9ecef;
+  border-radius: 12px;
+  border: 1px solid #ced4da;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6c757d;
+  margin: auto;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* A4 Page Styling */
+.a4-page {
+  background-color: #ffffff;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 20mm;
+  box-sizing: border-box;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  color: #000000;
+  font-family: Arial, sans-serif;
+  flex-shrink: 0;
+  margin: 0 auto;
+}
+
+
+
+
+.a4-page.birthday-theme {
+  background-color: transparent;
+  background-image: url('/birthday-bg.svg');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 1;
+}
+
+.a4-page.anniversary-theme {
+  background-color: transparent;
+  background-image: url('/anniversary-bg.svg');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 1;
+}
+
+.a4-page.marriage-anniversary-theme,
+.a4-page.marriage-theme {
+  background-color: transparent;
+  background-image: url('/marriage-bg.svg');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 1;
+}
+
+.a4-page.baby-theme {
+  background-color: transparent;
+  background-image: url('/baby-bg.svg');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 1;
+}
+
+.a4-page.welcome-theme {
+  background-color: transparent;
+  background-image: url('/welcome-bg.svg');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Simple ribbon on the right hand side */
+.a4-page.anniversary-theme::before,
+.a4-page.welcome-theme::before,
+.a4-page.marriage-anniversary-theme::before,
+.a4-page.marriage-theme::before,
+.a4-page.baby-theme::before {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 16px;
+  z-index: -1;
+}
+
+/* Specific cheerful gradients for the right ribbon */
+.a4-page.anniversary-theme::before {
+  background: linear-gradient(to bottom, #a18cd1 0%, #fbc2eb 100%);
+}
+.a4-page.welcome-theme::before {
+  background: linear-gradient(to bottom, #84fab0 0%, #8fd3f4 100%);
+}
+.a4-page.marriage-anniversary-theme::before,
+.a4-page.marriage-theme::before {
+  background: linear-gradient(to bottom, #f6d365 0%, #fda085 100%);
+}
+.a4-page.baby-theme::before {
+  background: linear-gradient(to bottom, #ffecd2 0%, #fcb69f 100%);
+}
+
+/* Ensure no watermark or other pseudo elements remain */
+.a4-page.birthday-theme::after,
+.a4-page.anniversary-theme::after,
+.a4-page.welcome-theme::after,
+.a4-page.marriage-anniversary-theme::after,
+.a4-page.marriage-theme::after,
+.a4-page.baby-theme::after {
+  display: none !important;
+}
+
+@media screen {
+  .a4-page {
+    transform: scale(0.85);
+    transform-origin: top center;
+    margin-bottom: -15%;
+  }
+}
+
+.letter-head {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px solid #333;
+  padding-bottom: 16px;
+  margin-bottom: 32px;
+}
+
+.brand-name {
+  color: #3a8b66;
+  font-weight: bold;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.brand-sub {
+  color: #777;
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+
+.company-address {
+  text-align: right;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.4;
+}
+
+.company-address p {
+  margin: 0;
+}
+
+.notice-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.notice-meta p {
+  margin: 0 0 4px;
+}
+
+.notice-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 24px;
+  text-decoration: underline;
+  margin: 0 0 32px;
+}
+
+.notice-subject {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.notice-body {
+  font-size: 15px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  text-align: justify;
+  margin-bottom: 48px;
+}
+
+.notice-signature p {
+  margin: 0 0 4px;
+  font-weight: bold;
+}
+.notice-signature p.company {
+  font-size: 16px;
+  margin-top: 8px;
+}
+
+/* History Table */
+.history-container {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.history-table th {
+  background-color: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: #495057;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.history-table td {
+  padding: 16px;
+  font-size: 14px;
+  color: #212529;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.history-table tr:hover td {
+  background-color: #f8f9fa;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge.worker {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge.employee {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.badge.category {
+  background-color: #e2e3e5;
+  color: #383d41;
+  border-radius: 12px;
+  padding: 4px 12px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  overflow: auto;
+  padding: 40px;
+}
+
+.modal-content {
+  background: transparent;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.modal-btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  background: white;
+}
+
+.modal-btn.primary {
+  background: #0d6efd;
+  color: white;
+}
+
+
+/* Print Styles - Overriding layout completely */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  /* Hide all generic app layout and UI elements */
+  body > *:not(#root) { display: none !important; }
+  .admin-sidebar, .content-topbar, .mobile-topbar, .notices-header, .notices-form-container, .history-container, .modal-actions {
+    display: none !important;
+  }
+  
+  /* Reset container structures so absolutely nothing wraps or hides our print area */
+  .admin-content, .content-inner, .notices-page, .notices-layout, .notices-preview-container, .modal-overlay, .modal-content {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .a4-page {
+    position: relative !important;
+    width: 210mm !important;
+    height: auto !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 20mm !important;
+    box-shadow: none !important;
+    transform: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}

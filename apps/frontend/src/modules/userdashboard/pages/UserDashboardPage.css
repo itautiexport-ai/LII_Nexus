@@ -1,0 +1,76 @@
+.user-dashboard-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.user-dashboard-title {
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.user-dashboard-section {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.user-dashboard-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+  color: #444;
+}
+
+.user-dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-dashboard-table th,
+.user-dashboard-table td {
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 1px solid #eee;
+}
+
+.user-dashboard-table th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+  color: #555;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #fff;
+  background-color: #999;
+}
+
+.status-pill.high, .status-pill.urgent {
+  background-color: #e08e0b;
+}
+.status-pill.low {
+  background-color: #999;
+}
+.status-pill.medium {
+  background-color: #4a90d9;
+}
+.status-pill.running {
+  background-color: #4a90d9;
+}
+.status-pill.completed {
+  background-color: #1a7f37;
+}
+.status-pill.delayed {
+  background-color: #c0392b;
+}

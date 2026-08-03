@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS fms_steps (
+  id CHAR(36) PRIMARY KEY,
+  fms_id CHAR(36) NOT NULL,
+  step_name VARCHAR(255) NOT NULL,
+  doer_employee_id CHAR(36) NOT NULL,
+  timeline_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
+  is_sequential BOOLEAN NOT NULL DEFAULT TRUE,
+  sequence_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (fms_id) REFERENCES fms_managers(id) ON DELETE CASCADE,
+  FOREIGN KEY (doer_employee_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

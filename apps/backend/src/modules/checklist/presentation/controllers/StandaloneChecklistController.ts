@@ -1,0 +1,26 @@
+import { Request, Response } from "express";
+import { StandaloneChecklistService } from "../../application/services/StandaloneChecklistService";
+import { CreateStandaloneChecklistSchema } from "../../application/dto/checklist.dto";
+
+export class StandaloneChecklistController {
+  constructor(private service: StandaloneChecklistService) {}
+
+  createChecklist = async (req: Request, res: Response) => {
+    const dto = CreateStandaloneChecklistSchema.parse(req.body);
+    const assignedBy = dto.assignBy;
+    
+    const checklist = await this.service.createChecklist(dto, assignedBy);
+    res.status(201).json({ success: true, data: checklist });
+  };
+
+  getAllChecklists = async (req: Request, res: Response) => {
+    const checklists = await this.service.getAllChecklists();
+    res.json({ success: true, data: checklists });
+  };
+
+  deleteChecklist = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    await this.service.deleteChecklist(id);
+    res.json({ success: true, message: "Checklist deleted successfully" });
+  };
+}
