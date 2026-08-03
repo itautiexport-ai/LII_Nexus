@@ -35,7 +35,7 @@ export function FmsGridViewPage() {
           fmsApi.getInstances(fmsId as string)
         ]);
         
-        empRes: any[] = []; 
+        let empRes: any[] = [];
         try {
           empRes = await employeesApi.list();
         } catch (e) {
