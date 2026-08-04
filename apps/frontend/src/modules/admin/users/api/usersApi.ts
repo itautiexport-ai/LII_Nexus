@@ -16,8 +16,12 @@ export interface UserRecord {
 
 export const usersApi = {
   async list(search = ""): Promise<UserRecord[]> {
-    const res = await axiosInstance.get("/users", { params: { search, page: 1, pageSize: 50 } });
+    const res = await axiosInstance.get("/users", { params: { search, page: 1, pageSize: 300 } });
     return res.data.data;
+  },
+  async listPaginated(page = 1, pageSize = 300, search = ""): Promise<{ data: UserRecord[], meta: any }> {
+    const res = await axiosInstance.get("/users", { params: { search, page, pageSize } });
+    return { data: res.data.data, meta: res.data.meta };
   },
   async create(payload: {
     email: string;

@@ -26,7 +26,7 @@ export const employeesApi = {
     return res.data.data;
   },
   async list(search = ""): Promise<EmployeeRecord[]> {
-    const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 50 } });
+    const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 1000 } });
     return res.data.data;
   },
   async create(payload: {

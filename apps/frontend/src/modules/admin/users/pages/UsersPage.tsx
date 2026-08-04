@@ -102,6 +102,9 @@ export default function UsersPage() {
   const [departmentsList, setDepartmentsList] = useState<any[]>([]);
   const [designationsList, setDesignationsList] = useState<any[]>([]);
   const [shiftsList, setShiftsList] = useState<any[]>([]);
+  
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
@@ -213,16 +216,17 @@ export default function UsersPage() {
     }
   }
 
-  async function load() {
+  async function load(currentPage = page) {
     try {
-      const [uList, rList, deps, desigs, shs] = await Promise.all([
-        usersApi.list(),
+      const [uRes, rList, deps, desigs, shs] = await Promise.all([
+        usersApi.listPaginated(currentPage, 300),
         rolesApi.list(),
         departmentsApi.list(),
         designationsApi.list(),
         shiftsApi.list(),
       ]);
-      setUsers(uList);
+      setUsers(uRes.data);
+      setTotalPages(Math.ceil((uRes.meta?.totalItems || 0) / 300) || 1);
       setRoles(rList);
       setDepartmentsList(deps);
       setDesignationsList(desigs);
@@ -239,7 +243,7 @@ export default function UsersPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(page); }, [page]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -559,7 +563,31 @@ export default function UsersPage() {
           })}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderTop: "1px solid #e5e7eb" }}>
+            <span style={{ fontSize: 13, color: "#6b7280" }}>
+              Page {page} of {totalPages}
+            </span>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                style={{ padding: "6px 12px", border: "1px solid #d1d5db", borderRadius: "6px", background: page === 1 ? "#f3f4f6" : "#fff", cursor: page === 1 ? "not-allowed" : "pointer" }}
+              >
+                Previous
+              </button>
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                style={{ padding: "6px 12px", border: "1px solid #d1d5db", borderRadius: "6px", background: page === totalPages ? "#f3f4f6" : "#fff", cursor: page === totalPages ? "not-allowed" : "pointer" }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
 
       {editingUser && (
         <div style={{
