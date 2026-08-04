@@ -1,4 +1,0 @@
-ALTER TABLE production_planning_records
-ADD COLUMN sez_cbm DECIMAL(10,2) DEFAULT 0.00,
-ADD COLUMN sirsi_cbm DECIMAL(10,2) DEFAULT 0.00,
-ADD COLUMN vendor_cbm DECIMAL(10,2) DEFAULT 0.00;

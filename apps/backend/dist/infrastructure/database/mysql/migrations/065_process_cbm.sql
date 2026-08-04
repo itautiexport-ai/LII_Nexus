@@ -1,6 +1,0 @@
-ALTER TABLE production_planning_records
-ADD COLUMN machine_shop_cbm DECIMAL(10,2) DEFAULT 0.00,
-ADD COLUMN assembly_cbm DECIMAL(10,2) DEFAULT 0.00,
-ADD COLUMN sanding_cbm DECIMAL(10,2) DEFAULT 0.00,
-ADD COLUMN finishing_cbm DECIMAL(10,2) DEFAULT 0.00,
-ADD COLUMN packing_cbm DECIMAL(10,2) DEFAULT 0.00;

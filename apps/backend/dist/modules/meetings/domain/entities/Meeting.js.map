@@ -1,1 +1,0 @@
-{"version":3,"file":"Meeting.js","sourceRoot":"","sources":["../../../../../src/modules/meetings/domain/entities/Meeting.ts"],"names":[],"mappings":";;;AAgEA;;;uEAGuE;AAC1D,QAAA,sBAAsB,GAAwC;IACzE,UAAU,EAAE,wBAAwB;IACpC,WAAW,EAAE,sBAAsB;IACnC,OAAO,EAAE,qBAAqB;IAC9B,GAAG,EAAE,aAAa;IAClB,KAAK,EAAE,gBAAgB;IACvB,UAAU,EAAE,oBAAoB;IAChC,SAAS,EAAE,oBAAoB;CAChC,CAAC"}

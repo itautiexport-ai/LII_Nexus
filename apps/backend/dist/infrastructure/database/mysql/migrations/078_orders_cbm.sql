@@ -1,2 +1,0 @@
-ALTER TABLE orders_in_hand
-ADD COLUMN total_cbm DECIMAL(10,2) DEFAULT 0.00;
