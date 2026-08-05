@@ -32,7 +32,7 @@ export interface IDelegationRepository {
   update(id: string, changes: UpdateDelegatedTaskData): Promise<DelegatedTask>;
   updateStatus(id: string, status: "running" | "completed"): Promise<DelegatedTask>;
   setExtensionRequest(id: string, reason: string, requestedDate: string): Promise<DelegatedTask>;
-  respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null): Promise<DelegatedTask>;
+  respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null, updatedDate?: string | null): Promise<DelegatedTask>;
   escalate(id: string, escalateTo: string, notes: string | null): Promise<DelegatedTask>;
   softDelete(id: string): Promise<void>;
   addFile(taskId: string, kind: DelegationFileKind, fileName: string, fileUrl: string, uploadedBy: string): Promise<void>;

@@ -28,6 +28,7 @@ export default function DelegationPage() {
   const [reviewTaskId, setReviewTaskId] = useState<string | null>(null);
   const [reviewStatus, setReviewStatus] = useState<"approved" | "rejected">("approved");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [extensionUpdatedDate, setExtensionUpdatedDate] = useState("");
   const [selectedTaskForReview, setSelectedTaskForReview] = useState<DisplayTask | null>(null);
 
   async function load() {
@@ -139,6 +140,7 @@ export default function DelegationPage() {
     setReviewTaskId(task.id);
     setReviewStatus(status);
     setRejectionReason("");
+    setExtensionUpdatedDate("");
     setShowExtensionReview(true);
   }
 
@@ -146,7 +148,12 @@ export default function DelegationPage() {
     e.preventDefault();
     if (!reviewTaskId) return;
     try {
-      await delegationApi.respondToExtension(reviewTaskId, reviewStatus, reviewStatus === "rejected" ? rejectionReason : undefined);
+      await delegationApi.respondToExtension(
+        reviewTaskId, 
+        reviewStatus, 
+        reviewStatus === "rejected" ? rejectionReason : undefined,
+        reviewStatus === "approved" && extensionUpdatedDate ? extensionUpdatedDate : undefined
+      );
       setShowExtensionReview(false);
       await load();
     } catch (err) {
@@ -310,7 +317,7 @@ export default function DelegationPage() {
                       📱 WhatsApp
                     </button>
                   )}
-                  {tab === "delegated" && t.extensionStatus === "pending" && (
+                  {(tab === "delegated" || isAdmin) && t.extensionStatus === "pending" && (
                     <div style={{ display: "flex", gap: 4 }}>
                       <button 
                         onClick={() => openExtensionReview(t, "approved")}
@@ -370,9 +377,21 @@ export default function DelegationPage() {
                 </div>
               )}
               {reviewStatus === "approved" && (
-                <p style={{ fontSize: "0.9rem", color: "#065f46", background: "#d1fae5", padding: "0.5rem", borderRadius: "4px" }}>
-                  Approving this will update the task's due date to {selectedTaskForReview.extensionRequestedDate}.
-                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <p style={{ fontSize: "0.9rem", color: "#065f46", background: "#d1fae5", padding: "0.5rem", borderRadius: "4px", margin: 0 }}>
+                    Leave the date below blank to approve the requested date ({selectedTaskForReview.extensionRequestedDate}), or select a new date to override it.
+                  </p>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "bold", fontSize: "0.9rem" }}>New Due Date (Optional)</label>
+                    <input 
+                      type="date" 
+                      value={extensionUpdatedDate}
+                      onChange={e => setExtensionUpdatedDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px" }}
+                    />
+                  </div>
+                </div>
               )}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "1rem" }}>
                 <button 

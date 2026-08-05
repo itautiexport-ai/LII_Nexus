@@ -83,8 +83,8 @@ export const delegationApi = {
     const res = await axiosInstance.post(`/delegation/tasks/${id}/extension`, { reason, requestedDate });
     return res.data.data;
   },
-  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason?: string) {
-    const res = await axiosInstance.post(`/delegation/tasks/${id}/extension-response`, { status, rejectionReason });
+  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason?: string, updatedDate?: string) {
+    const res = await axiosInstance.post(`/delegation/tasks/${id}/extension-response`, { status, rejectionReason, updatedDate });
     return res.data.data;
   }
 };

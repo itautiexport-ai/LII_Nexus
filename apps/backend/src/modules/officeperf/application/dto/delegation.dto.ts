@@ -45,4 +45,5 @@ export const requestExtensionSchema = z.object({
 export const respondExtensionSchema = z.object({
   status: z.enum(["approved", "rejected"]),
   rejectionReason: z.string().max(1000).optional().nullable(),
+  updatedDate: z.string().optional().nullable(),
 });

@@ -141,13 +141,19 @@ export class MySqlDelegationRepository implements IDelegationRepository {
     return (await this.findById(id))!;
   }
 
-  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null): Promise<DelegatedTask> {
+  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null, updatedDate?: string | null): Promise<DelegatedTask> {
     if (status === "approved") {
-      // Due date needs to be updated. Since it's done in the service or here, we do it here based on requested date.
-      await pool.query(
-        "UPDATE delegated_tasks SET extension_status = 'approved', due_date = extension_requested_date WHERE id = ?",
-        [id]
-      );
+      if (updatedDate) {
+        await pool.query(
+          "UPDATE delegated_tasks SET extension_status = 'approved', due_date = ? WHERE id = ?",
+          [updatedDate, id]
+        );
+      } else {
+        await pool.query(
+          "UPDATE delegated_tasks SET extension_status = 'approved', due_date = extension_requested_date WHERE id = ?",
+          [id]
+        );
+      }
     } else {
       await pool.query(
         "UPDATE delegated_tasks SET extension_status = 'rejected', extension_rejection_reason = ? WHERE id = ?",

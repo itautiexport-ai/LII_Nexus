@@ -213,7 +213,7 @@ export class DelegationService {
     await AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_REQUESTED", entityType: "delegated_task", entityId: id, afterState: { reason, requestedDate } });
 
     // Notify assigner
-    const assignerUser = await pool.query<any[]>("SELECT id FROM users WHERE employee_id = ?", [existing.assignedBy]);
+    const assignerUser = await pool.query<any[]>("SELECT user_id as id FROM employees WHERE id = ?", [existing.assignedBy]);
     if (assignerUser[0] && assignerUser[0][0]) {
       await notificationService.notify({
         type: "delegation_extension_requested",
@@ -228,7 +228,7 @@ export class DelegationService {
     return updated;
   }
 
-  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null, actorUserId: string, hasUpdateOverride: boolean) {
+  async respondToExtension(id: string, status: "approved" | "rejected", rejectionReason: string | null, updatedDate: string | null | undefined, actorUserId: string, hasUpdateOverride: boolean) {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("Delegated task not found.");
 
@@ -239,11 +239,11 @@ export class DelegationService {
       }
     }
 
-    const updated = await this.repo.respondToExtension(id, status, rejectionReason);
+    const updated = await this.repo.respondToExtension(id, status, rejectionReason, updatedDate);
     await AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_RESPONDED", entityType: "delegated_task", entityId: id, afterState: { status, rejectionReason } });
 
     // Notify assignee
-    const assigneeUser = await pool.query<any[]>("SELECT id FROM users WHERE employee_id = ?", [existing.assignedTo]);
+    const assigneeUser = await pool.query<any[]>("SELECT user_id as id FROM employees WHERE id = ?", [existing.assignedTo]);
     if (assigneeUser[0] && assigneeUser[0][0]) {
       await notificationService.notify({
         type: status === "approved" ? "delegation_extension_approved" : "delegation_extension_rejected",

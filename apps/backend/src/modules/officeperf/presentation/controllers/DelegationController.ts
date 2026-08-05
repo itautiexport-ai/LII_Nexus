@@ -76,6 +76,6 @@ export const DelegationController = {
 
   async respondToExtension(req: AuthenticatedRequest, res: Response) {
     const override = await hasPermission(req.user!.sub, "delegation.task.update");
-    return ok(res, await service.respondToExtension(req.params.id, req.body.status, req.body.rejectionReason, req.user!.sub, override));
+    return ok(res, await service.respondToExtension(req.params.id, req.body.status, req.body.rejectionReason, req.body.updatedDate, req.user!.sub, override));
   },
 };
