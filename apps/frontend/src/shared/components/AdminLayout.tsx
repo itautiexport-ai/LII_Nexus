@@ -220,6 +220,20 @@ export const SECTIONS: NavSection[] = [
         ]
       },
       {
+        label: "Recruitment & Induction",
+        to: "/admin/hr/recruitment-induction",
+        items: [
+          { label: "Job Requisitions", to: "/admin/hr/recruitment-induction/jobs" },
+          { label: "Job Requisition List", to: "/admin/hr/recruitment-induction/job-list" },
+          { label: "Online Assessment Test", to: "/admin/hr/recruitment-induction/assessment" },
+          { label: "Employee Induction Completion Form", to: "/admin/hr/recruitment-induction/induction-completion" },
+          { label: "Employee Induction Completion Form List", to: "/admin/hr/recruitment-induction/induction-completion-list" },
+          { label: "Employee Asset Management", to: "/admin/hr/recruitment-induction/employee-assets" },
+          { label: "Employee Separation & F&F Settlement", to: "/admin/hr/recruitment-induction/separation-settlement" },
+          { label: "New Hire Induction", to: "/admin/hr/recruitment-induction/onboarding" }
+        ]
+      },
+      {
         label: "Help Ticket",
         to: "/admin/help-tickets/hub",
         hideChildrenInSidebar: true,
@@ -228,6 +242,24 @@ export const SECTIONS: NavSection[] = [
           { label: "Add New Ticket", to: "/admin/help-tickets/new" },
           { label: "Assigned to Me", to: "/admin/help-tickets/assigned-to-me" },
           { label: "Assigned by Me", to: "/admin/help-tickets/assigned-by-me" },
+        ]
+      }
+    ],
+  },
+  {
+    key: "maintenance-module",
+    label: "Maintenance",
+    allowedRoles: ["System Admin", "Maintenance", "Maintenance Access", "CEO", "HOD", "Supervisor"],
+    items: [
+      { label: "Machine Details", to: "/admin/maintenance/machine-details" },
+      { label: "Machine Maintenance Details", to: "/admin/maintenance/machine-maintenance-details" },
+      { label: "Machine Breakdown Details", to: "/admin/maintenance/machine-breakdown-details" },
+      { label: "AMC Management", to: "/admin/maintenance/amc-management" },
+      {
+        label: "Preventive Maintenance",
+        to: "/admin/maintenance/preventive-maintenance/pmc",
+        items: [
+          { label: "PMC (Preventive Maintenance Checklist)", to: "/admin/maintenance/preventive-maintenance/pmc" }
         ]
       }
     ],

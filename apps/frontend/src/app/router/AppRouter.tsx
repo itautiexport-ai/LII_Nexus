@@ -143,6 +143,13 @@ import VisitorEntryHistoryPage from "../../modules/hr/pages/VisitorEntryHistoryP
 import VehicleRequirementFormPage from "../../modules/hr/pages/VehicleRequirementFormPage";
 import VehicleRequestHistoryPage from "../../modules/hr/pages/VehicleRequestHistoryPage";
 import DriverRoutePlanningPage from "../../modules/hr/pages/DriverRoutePlanningPage";
+import RecruitmentInductionPage from "../../modules/hr/pages/RecruitmentInductionPage";
+import JobRequisitionListPage from "../../modules/hr/pages/JobRequisitionListPage";
+import CandidateAssessmentPage from "../../modules/hr/pages/CandidateAssessmentPage";
+import EmployeeInductionCompletionPage from "../../modules/hr/pages/EmployeeInductionCompletionPage";
+import EmployeeInductionCompletionListPage from "../../modules/hr/pages/EmployeeInductionCompletionListPage";
+import EmployeeAssetManagementPage from "../../modules/hr/pages/EmployeeAssetManagementPage";
+import EmployeeSeparationSettlementPage from "../../modules/hr/pages/EmployeeSeparationSettlementPage";
 import { MasterDataHubPage } from "../../modules/admin/masterdata/pages/MasterDataHubPage";
 import { MachineEfficiencyHubPage } from "../../modules/admin/machineefficiency/pages/MachineEfficiencyHubPage";
 import { QuotationsHubPage } from "../../modules/crm/pages/QuotationsHubPage";
@@ -150,6 +157,17 @@ import { ComplaintsHubPage } from "../../modules/crm/pages/ComplaintsHubPage";
 import { HelpTicketHubPage } from "../../modules/admin/helptickets/pages/HelpTicketHubPage";
 import { ProductionReportHubPage } from "../../modules/reports/pages/ProductionReportHubPage";
 import TaskCenterDashboardPage from "../../modules/taskcenter/pages/TaskCenterDashboardPage";
+import MaintenanceDashboardPage from "../../modules/maintenance/pages/MaintenanceDashboardPage";
+import WorkOrdersPage from "../../modules/maintenance/pages/WorkOrdersPage";
+import PreventiveMaintenancePage from "../../modules/maintenance/pages/PreventiveMaintenancePage";
+import EquipmentAssetsPage from "../../modules/maintenance/pages/EquipmentAssetsPage";
+import BreakdownLogsPage from "../../modules/maintenance/pages/BreakdownLogsPage";
+import SparePartsPage from "../../modules/maintenance/pages/SparePartsPage";
+import MachineDetailsPage from "../../modules/maintenance/pages/MachineDetailsPage";
+import MachineMaintenanceDetailsPage from "../../modules/maintenance/pages/MachineMaintenanceDetailsPage";
+import MachineBreakdownDetailsPage from "../../modules/maintenance/pages/MachineBreakdownDetailsPage";
+import AmcManagementPage from "../../modules/maintenance/pages/AmcManagementPage";
+import MaintenanceChecklistPage from "../../modules/maintenance/pages/MaintenanceChecklistPage";
 
 export default function AppRouter() {
   return (
@@ -232,6 +250,20 @@ export default function AppRouter() {
           <Route path="my-score" element={<MyScorePage />} />
           <Route path="rankings" element={<RankingsPage />} />
           <Route path="command-center" element={<CommandCenterPage />} />
+          {/* Maintenance Module */}
+          <Route path="maintenance/machine-details" element={<MachineDetailsPage />} />
+          <Route path="maintenance/machine-maintenance-details" element={<MachineMaintenanceDetailsPage />} />
+          <Route path="maintenance/machine-breakdown-details" element={<MachineBreakdownDetailsPage />} />
+          <Route path="maintenance/amc-management" element={<AmcManagementPage />} />
+          <Route path="maintenance/preventive-maintenance/pmc" element={<MaintenanceChecklistPage />} />
+          <Route path="maintenance/maintenance-checklist" element={<MaintenanceChecklistPage />} />
+          <Route path="maintenance/dashboard" element={<MaintenanceDashboardPage />} />
+          <Route path="maintenance/work-orders" element={<WorkOrdersPage />} />
+          <Route path="maintenance/preventive" element={<PreventiveMaintenancePage />} />
+          <Route path="maintenance/equipment" element={<EquipmentAssetsPage />} />
+          <Route path="maintenance/breakdowns" element={<BreakdownLogsPage />} />
+          <Route path="maintenance/spare-parts" element={<SparePartsPage />} />
+
           {/* Order Management Module */}
           <Route path="order-management/new" element={<OrderInHandFormPage />} />
           <Route path="order-management/list" element={<OrdersInHandListPage />} />
@@ -286,6 +318,17 @@ export default function AppRouter() {
           <Route path="hr/vehicle-request/form" element={<VehicleRequirementFormPage />} />
           <Route path="hr/vehicle-request/history" element={<VehicleRequestHistoryPage />} />
           <Route path="hr/vehicle-request/route-planning" element={<DriverRoutePlanningPage />} />
+          <Route path="hr/recruitment-induction" element={<RecruitmentInductionPage />} />
+          <Route path="hr/recruitment-induction/jobs" element={<RecruitmentInductionPage />} />
+          <Route path="hr/recruitment-induction/job-list" element={<JobRequisitionListPage />} />
+          <Route path="hr/recruitment-induction/candidates" element={<RecruitmentInductionPage />} />
+          <Route path="hr/recruitment-induction/assessment" element={<CandidateAssessmentPage />} />
+          <Route path="hr/recruitment-induction/induction-completion" element={<EmployeeInductionCompletionPage />} />
+          <Route path="hr/recruitment-induction/induction-completion-list" element={<EmployeeInductionCompletionListPage />} />
+          <Route path="hr/recruitment-induction/employee-assets" element={<EmployeeAssetManagementPage />} />
+          <Route path="hr/recruitment-induction/separation-settlement" element={<EmployeeSeparationSettlementPage />} />
+          <Route path="hr/recruitment-induction/onboarding" element={<RecruitmentInductionPage />} />
+          <Route path="hr/candidate-assessment" element={<CandidateAssessmentPage />} />
           <Route path="reports/appraisal-index" element={<AppraisalIndexPage />} />
           <Route path="scheduled-reports" element={<ScheduledReportsPage />} />
           <Route path="my-dashboard" element={<DashboardWidgetsPage />} />

@@ -41,6 +41,8 @@ import { attendanceRouter } from "../../modules/hr/api/attendance.router";
 import { payrollRouter } from "../../modules/hr/api/payroll.router";
 import { securityCustomRouter } from "../../modules/hr/api/securityCustom.router";
 import { vehicleRequestRouter } from "../../modules/hr/api/vehicleRequest.router";
+import { recruitmentRouter } from "../../modules/hr/api/recruitment.router";
+import maintenanceRoutes from "../../modules/maintenance/presentation/routes/maintenance.routes";
 import { orderInHandRoutes } from "../../modules/ordermanagement/presentation/routes/orderInHandRoutes";
 import cartonOrderRoutes from "../../modules/ordermanagement/presentation/routes/cartonOrder.routes";
 import taskCenterRoutes from "../../modules/taskcenter/presentation/routes/taskcenter.routes";
@@ -52,7 +54,9 @@ router.use("/hr/kras", kraRouter);
 router.use("/hr/payroll", payrollRouter);
 router.use("/hr/security", securityCustomRouter);
 router.use("/hr/vehicle-request", vehicleRequestRouter);
+router.use("/hr/recruitment", recruitmentRouter);
 router.use("/hr", attendanceRouter);
+router.use("/maintenance", maintenanceRoutes);
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);

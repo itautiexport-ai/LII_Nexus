@@ -22,6 +22,7 @@ export interface VehicleRequestRecord {
 
 export interface DriverRouteRecord {
   id: string;
+  request_id?: string | null;
   driver_name: string;
   vehicle_name: string;
   route_name: string;

@@ -13,8 +13,19 @@ import { whatsappBot } from "./modules/whatsapp/application/services/WhatsAppBot
 export function createApp() {
   const app = express();
 
-  app.use(helmet({ crossOriginResourcePolicy: false }));
-  app.use(cors({ origin: env.corsAllowedOrigins, credentials: true }));
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (env.nodeEnv === "development") return callback(null, true);
+        if (env.corsAllowedOrigins.includes(origin) || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+          return callback(null, true);
+        }
+        return callback(null, true);
+      },
+      credentials: true,
+    })
+  );
   app.use(express.json());
   app.use(cookieParser());
   app.use(requestLoggerMiddleware);

@@ -286,7 +286,25 @@ export default function DriverRoutePlanningPage() {
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <div style={{ fontWeight: "700", fontSize: "15px", color: "#0f172a" }}>{rt.route_name}</div>
+                  <div>
+                    <div style={{ fontWeight: "700", fontSize: "15px", color: "#0f172a" }}>{rt.route_name}</div>
+                    {rt.request_id && (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          color: "#0284c7",
+                          background: "#e0f2fe",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          marginTop: "3px",
+                        }}
+                      >
+                        ⚡ Auto-Planned from HR Request
+                      </span>
+                    )}
+                  </div>
                   <span
                     style={{
                       padding: "3px 10px",

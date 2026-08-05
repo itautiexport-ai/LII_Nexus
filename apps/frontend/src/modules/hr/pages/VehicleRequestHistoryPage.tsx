@@ -121,7 +121,7 @@ export default function VehicleRequestHistoryPage() {
             Vehicle Request History & HR Planning
           </h1>
           <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-            HR Team Planning Center: Direct inline driver and vehicle allotment for each fed request.
+            HR Team Planning Center: Direct inline driver & vehicle allotment. Saving a plan auto-generates the route in Driver Route Planning.
           </p>
         </div>
         <button
