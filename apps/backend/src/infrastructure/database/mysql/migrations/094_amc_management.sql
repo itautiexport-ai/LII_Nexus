@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS maintenance_amc_contracts (
+  id VARCHAR(36) PRIMARY KEY,
+  contract_no VARCHAR(50) NOT NULL UNIQUE,
+  vendor_name VARCHAR(255) NOT NULL,
+  vendor_contact VARCHAR(255) NULL,
+  equipment_id VARCHAR(36) NULL,
+  equipment_name VARCHAR(255) NOT NULL,
+  contract_value DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  visit_schedule VARCHAR(100) NOT NULL DEFAULT 'Quarterly',
+  documents_url LONGTEXT NULL,
+  renewal_reminder_days INT NOT NULL DEFAULT 30,
+  status ENUM('Active', 'Expiring Soon', 'Expired', 'Terminated') NOT NULL DEFAULT 'Active',
+  notes TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_amc_equipment (equipment_id),
+  INDEX idx_amc_dates (start_date, end_date),
+  INDEX idx_amc_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

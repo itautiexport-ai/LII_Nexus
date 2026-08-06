@@ -135,6 +135,18 @@ import TemplatesPage from "../../modules/resourcescenter/pages/TemplatesPage";
 import ManualsPage from "../../modules/resourcescenter/pages/ManualsPage";
 import NoticesPage from "../../modules/hr/pages/NoticesPage";
 import SecurityPage from "../../modules/hr/pages/SecurityPage";
+import MaintenanceDashboardPage from "../../modules/maintenance/pages/MaintenanceDashboardPage";
+import WorkOrdersPage from "../../modules/maintenance/pages/WorkOrdersPage";
+import PreventiveMaintenancePage from "../../modules/maintenance/pages/PreventiveMaintenancePage";
+import EquipmentAssetsPage from "../../modules/maintenance/pages/EquipmentAssetsPage";
+import BreakdownLogsPage from "../../modules/maintenance/pages/BreakdownLogsPage";
+import SparePartsPage from "../../modules/maintenance/pages/SparePartsPage";
+import MachineDetailsPage from "../../modules/maintenance/pages/MachineDetailsPage";
+import MachineMaintenanceDetailsPage from "../../modules/maintenance/pages/MachineMaintenanceDetailsPage";
+import MachineBreakdownDetailsPage from "../../modules/maintenance/pages/MachineBreakdownDetailsPage";
+import AmcManagementPage from "../../modules/maintenance/pages/AmcManagementPage";
+import MaintenanceChecklistPage from "../../modules/maintenance/pages/MaintenanceChecklistPage";
+
 import WeeklyPayrollPage from "../../modules/hr/pages/WeeklyPayrollPage";
 import MonthlySalarySheetPage from "../../modules/hr/pages/MonthlySalarySheetPage";
 import { MasterDataHubPage } from "../../modules/admin/masterdata/pages/MasterDataHubPage";
@@ -197,7 +209,19 @@ export default function AppRouter() {
           <Route path="checklist/new" element={<AddChecklistPage />} />
           <Route path="checklist/list" element={<ListChecklistPage />} />
           <Route path="fms" element={<FmsHubPage />} />
-          <Route path="fms/add" element={<AddFmsManagerPage />} />
+	  <Route path="maintenance/machine-details" element={<MachineDetailsPage />} />
+	  <Route path="maintenance/machine-maintenance-details" element={<MachineMaintenanceDetailsPage />} />
+	  <Route path="maintenance/machine-breakdown-details" element={<MachineBreakdownDetailsPage />} />
+	  <Route path="maintenance/amc-management" element={<AmcManagementPage />} />
+	  <Route path="maintenance/preventive-maintenance/pmc" element={<MaintenanceChecklistPage />} />
+	  <Route path="maintenance/maintenance-checklist" element={<MaintenanceChecklistPage />} />
+	  <Route path="maintenance/dashboard" element={<MaintenanceDashboardPage />} />
+	  <Route path="maintenance/work-orders" element={<WorkOrdersPage />} />
+	  <Route path="maintenance/preventive" element={<PreventiveMaintenancePage />} />
+	  <Route path="maintenance/equipment" element={<EquipmentAssetsPage />} />
+	  <Route path="maintenance/breakdowns" element={<BreakdownLogsPage />} />
+	  <Route path="maintenance/spare-parts" element={<SparePartsPage />} />
+	  <Route path="fms/add" element={<AddFmsManagerPage />} />
           <Route path="fms/list" element={<ListFmsManagerPage />} />
           <Route path="fms/manager" element={<FmsManagerPage />} />
           <Route path="fms/forms" element={<FmsFormsHubPage />} />

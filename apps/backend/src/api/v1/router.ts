@@ -34,6 +34,7 @@ import whatsappRoutes from "../../modules/whatsapp/presentation/whatsapp.routes"
 import urlRoutes from "../../modules/urls/presentation/routes/url.routes";
 import uploadRoutes from "../../modules/upload/presentation/routes/upload.routes";
 import formatsRoutes from "../../modules/formats/presentation/routes/formats.routes";
+import maintenanceRoutes from "../../modules/maintenance/presentation/routes/maintenance.routes";
 
 import { trainingRoutes } from "../../modules/training/presentation/routes/trainingRoutes";
 import { noticeRoutes } from "../../modules/notices/presentation/routes/noticeRoutes";
@@ -88,5 +89,6 @@ router.use("/orders-in-hand", orderInHandRoutes);
 router.use("/", cartonOrderRoutes);
 router.use("/task-center", taskCenterRoutes);
 router.use("/formats", formatsRoutes);
+router.use("/maintenance", maintenanceRoutes);
 
 export default router;
