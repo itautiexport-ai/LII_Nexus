@@ -84,7 +84,7 @@ export function UserFmsPage() {
                       style={{ background: "#007bff", color: "white", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}
                       onClick={() => handleCompleteClick(t)}
                     >
-                      Execute Task
+                      Complete
                     </button>
                   </td>
                 </tr>

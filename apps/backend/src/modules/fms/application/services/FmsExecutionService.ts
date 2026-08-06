@@ -46,7 +46,7 @@ export class FmsExecutionService {
     const actionableStepIds = await this._computeActionableSteps(instanceId);
     if (actionableStepIds.length > 0) {
       const placeholders = actionableStepIds.map(() => '?').join(',');
-      await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'Under Process' WHERE id IN (${placeholders})`, actionableStepIds);
+      await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'In Progress' WHERE id IN (${placeholders})`, actionableStepIds);
       
       const [initialSteps] = await this.dbPool.query(`
         SELECT fis.id as instanceStepId, fs.step_name as stepName, fs.doer_employee_ids as doerEmployeeIds, fi.creator_id as creatorId, fm.name as managerName
@@ -215,7 +215,7 @@ export class FmsExecutionService {
           description: `A task in the FMS workflow "${step.managerName}" is now ready for your action.`,
           priority: "medium",
           actionLabel: "View Tasks",
-          actionUrl: "/admin/fms/tasks"
+          actionUrl: "/admin/user-dashboard/fms"
         });
       } catch (err) {
         console.error("Failed to send notification:", err);
@@ -245,7 +245,7 @@ export class FmsExecutionService {
       JOIN fms_steps fs ON fis.fms_step_id = fs.id
       JOIN fms_managers fm ON fi.fms_manager_id = fm.id
       WHERE fi.status = 'In Progress' 
-        AND fis.status = 'Under Process'
+        AND fis.status = 'In Progress'
       ORDER BY fis.created_at ASC
     `;
     const [rows] = await this.dbPool.query(query);
@@ -403,7 +403,7 @@ export class FmsExecutionService {
     const actionableStepIds = await this._computeActionableSteps(step.instance_id);
     if (actionableStepIds.length > 0) {
       const placeholders = actionableStepIds.map(() => '?').join(',');
-      await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'Under Process' WHERE id IN (${placeholders})`, actionableStepIds);
+      await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'In Progress' WHERE id IN (${placeholders})`, actionableStepIds);
       
       const [actionableSteps] = await this.dbPool.query(`
         SELECT fis.id as instanceStepId, fs.step_name as stepName, fs.doer_employee_ids as doerEmployeeIds, fi.creator_id as creatorId, fm.name as managerName
@@ -421,7 +421,7 @@ export class FmsExecutionService {
 
     // Check if all steps are done/skipped
     const [pendingSteps] = await this.dbPool.query(
-      "SELECT id FROM fms_instance_steps WHERE instance_id = ? AND status IN ('Pending', 'Under Process')",
+      "SELECT id FROM fms_instance_steps WHERE instance_id = ? AND status IN ('Pending', 'In Progress')",
       [step.instance_id]
     );
     if (pendingSteps.length === 0) {

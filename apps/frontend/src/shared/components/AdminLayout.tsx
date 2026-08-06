@@ -91,7 +91,6 @@ export const SECTIONS: NavSection[] = [
       {
         label: "FMS",
         to: "/admin/fms",
-        hideChildrenInSidebar: true,
         items: [
           { label: "My FMS", to: "/admin/user-dashboard/fms" },
           { label: "List FMS Manager", to: "/admin/fms/list" },
