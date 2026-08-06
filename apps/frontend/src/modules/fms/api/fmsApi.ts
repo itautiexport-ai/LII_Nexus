@@ -98,8 +98,8 @@ export const fmsApi = {
     return res.data;
   },
 
-  async getMyTasks() {
-    const res = await axiosInstance.get(`/fms-tasks/me`);
+  async getMyTasks(status?: string) {
+    const res = await axiosInstance.get(`/fms-tasks/me`, { params: status ? { status } : {} });
     return res.data.data;
   },
 

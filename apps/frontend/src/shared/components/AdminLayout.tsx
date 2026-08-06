@@ -93,6 +93,7 @@ export const SECTIONS: NavSection[] = [
         to: "/admin/fms",
         hideChildrenInSidebar: true,
         items: [
+          { label: "My FMS", to: "/admin/fms/my-fms" },
           { label: "List FMS Manager", to: "/admin/fms/list" },
           { label: "Add FMS Manager", to: "/admin/fms/add" },
           { label: "FMS Grid View", to: "/admin/fms/manager" },
@@ -445,6 +446,7 @@ export default function AdminLayout() {
           if (userRoles.includes("System Admin")) {
             return true;
           }
+          if (section.key === "task-center") return true;
           
           // Granular check: Check if user has "Menu: Section" OR ANY "Menu: Section -> Item"
           const sectionRolePrefix = `Menu: ${section.label}`;
@@ -460,12 +462,13 @@ export default function AdminLayout() {
           
           const visibleItems = section.items.filter((item: any) => {
             if (isSystemAdmin) return true; // System Admin sees all
+            if (item.label === "FMS") return true;
             
             // Check specific item role
             const itemRole = `${sectionRolePrefix} -> ${item.label}`;
             if (userRoles.includes(itemRole)) return true;
             if (item.items) {
-              return item.items.some((sub: any) => userRoles.includes(`${itemRole} -> ${sub.label}`));
+              return item.items.some((sub: any) => sub.label === "My FMS" || userRoles.includes(`${itemRole} -> ${sub.label}`));
             }
             return false;
           });

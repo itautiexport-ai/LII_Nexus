@@ -55,7 +55,8 @@ export class FmsExecutionController {
       const employeeId = (empRows as any)[0]?.id;
       if (!employeeId) return res.status(403).json({ success: false, message: "User not linked to employee" });
 
-      const tasks = await this.service.getMyPendingTasks(employeeId);
+      const statusFilter = req.query.status as string | undefined;
+      const tasks = await this.service.getMyPendingTasks(employeeId, statusFilter);
       res.json({ success: true, data: tasks });
     } catch (err: any) {
       console.error(err);

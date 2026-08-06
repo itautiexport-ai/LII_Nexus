@@ -7,15 +7,19 @@ export default function DelegationHubPage() {
   const isSystemAdmin = userRoles.includes("System Admin");
 
   const allItems = [
-    { label: "List Delegation", to: "/admin/delegation/list", desc: "Access delegation tools" },
+    { label: "My Delegation", to: "/admin/delegation/user", desc: "View and manage your assigned delegations" },
+    { label: "List Delegation", to: "/admin/delegation/list", desc: "Access delegation management tools" },
     { label: "Add Delegation", to: "/admin/delegation/new", desc: "Create new delegations" },
-    { label: "My Delegation", to: "/admin/delegation/user", desc: "Manage your assigned delegations" },
   ];
 
   const items = allItems.filter(item => {
-    if (isSystemAdmin) return true;
-    const itemRole = `Menu: Task Center -> Delegation -> ${item.label}`;
-    return userRoles.includes(itemRole);
+    if (isSystemAdmin || item.label === "My Delegation") return true;
+    
+    const roleFormat1 = `Menu: Task Center -> Delegation -> ${item.label}`;
+    const roleFormat2 = `Menu: Task Center -> ${item.label}`;
+    const roleFormat3 = `Menu: Task Center -> Delegation`;
+    
+    return userRoles.includes(roleFormat1) || userRoles.includes(roleFormat2) || userRoles.includes(roleFormat3);
   });
 
   return (

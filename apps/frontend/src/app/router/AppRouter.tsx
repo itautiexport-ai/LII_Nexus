@@ -45,6 +45,7 @@ import CrmDashboardsPage from "../../modules/crm/pages/CrmDashboardsPage";
 import { UserDelegationPage } from "../../modules/userdashboard/pages/UserDelegationPage";
 import { UserChecklistPage } from "../../modules/userdashboard/pages/UserChecklistPage";
 import { UserFmsPage } from "../../modules/userdashboard/pages/UserFmsPage";
+import { MyFmsPage } from "../../modules/fms/pages/MyFmsPage";
 import QuotationsListPage from "../../modules/crm/pages/QuotationsListPage";
 import QuotationFormPage from "../../modules/crm/pages/QuotationFormPage";
 import ComplaintsListPage from "../../modules/crm/pages/ComplaintsListPage";
@@ -220,6 +221,7 @@ export default function AppRouter() {
           <Route path="checklist/new" element={<AddChecklistPage />} />
           <Route path="checklist/list" element={<ListChecklistPage />} />
           <Route path="fms" element={<FmsHubPage />} />
+          <Route path="fms/my-fms" element={<MyFmsPage />} />
           <Route path="fms/add" element={<AddFmsManagerPage />} />
           <Route path="fms/list" element={<ListFmsManagerPage />} />
           <Route path="fms/manager" element={<FmsManagerPage />} />
@@ -278,7 +280,7 @@ export default function AppRouter() {
           <Route path="crm/dashboards" element={<CrmDashboardsPage />} />
           <Route path="user-dashboard/delegation" element={<UserDelegationPage />} />
           <Route path="user-dashboard/checklist" element={<UserChecklistPage />} />
-          <Route path="user-dashboard/fms" element={<UserFmsPage />} />
+          <Route path="user-dashboard/fms" element={<MyFmsPage />} />
           <Route path="crm/quotations/hub" element={<QuotationsHubPage />} />
           <Route path="crm/quotations" element={<QuotationsListPage />} />
           <Route path="crm/quotations/new" element={<QuotationFormPage />} />

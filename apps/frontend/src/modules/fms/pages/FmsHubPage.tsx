@@ -7,6 +7,7 @@ export default function FmsHubPage() {
   const isSystemAdmin = userRoles.includes("System Admin");
 
   const allItems = [
+    { label: "My FMS", to: "/admin/fms/my-fms", desc: "View, track, and execute all FMS workflow tasks assigned to you" },
     { label: "List FMS Manager", to: "/admin/fms/list", desc: "View and manage all FMS definitions" },
     { label: "Add FMS Manager", to: "/admin/fms/add", desc: "Create a new FMS definition" },
     { label: "FMS Grid View", to: "/admin/fms/manager", desc: "Access the main FMS management dashboard" },
@@ -14,9 +15,13 @@ export default function FmsHubPage() {
   ];
 
   const items = allItems.filter(item => {
-    if (isSystemAdmin) return true;
-    const itemRole = `Menu: Task Center -> FMS -> ${item.label}`;
-    return userRoles.includes(itemRole);
+    if (isSystemAdmin || item.label === "My FMS") return true;
+    
+    const roleFormat1 = `Menu: Task Center -> FMS -> ${item.label}`;
+    const roleFormat2 = `Menu: Task Center -> ${item.label}`;
+    const roleFormat3 = `Menu: Task Center -> FMS`;
+    
+    return userRoles.includes(roleFormat1) || userRoles.includes(roleFormat2) || userRoles.includes(roleFormat3);
   });
 
   return (

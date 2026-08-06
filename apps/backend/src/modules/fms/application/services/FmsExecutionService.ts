@@ -177,7 +177,18 @@ export class FmsExecutionService {
     }
   }
 
-  async getMyPendingTasks(employeeId: string) {
+  async getMyPendingTasks(employeeId: string, statusFilter?: string) {
+    let statusClause = "AND fis.status = 'Under Process'";
+    if (statusFilter === "all") {
+      statusClause = "";
+    } else if (statusFilter === "completed") {
+      statusClause = "AND fis.status IN ('Completed', 'Skipped')";
+    } else if (statusFilter === "pending") {
+      statusClause = "AND fis.status = 'Pending'";
+    } else if (statusFilter === "under_process") {
+      statusClause = "AND fis.status = 'Under Process'";
+    }
+
     const query = `
       SELECT 
         fis.id as instanceStepId,
@@ -193,18 +204,22 @@ export class FmsExecutionService {
         fs.sequence_order as sequenceOrder,
         fi.creator_id as creatorId,
         fis.status,
-        fis.created_at as assignedAt
+        fis.created_at as assignedAt,
+        fis.completed_at as completedAt,
+        fis.completed_by as completedBy,
+        fis.input_data as inputData,
+        ce.full_name as completedByName
       FROM fms_instance_steps fis
       JOIN fms_instances fi ON fis.instance_id = fi.id
       JOIN fms_steps fs ON fis.fms_step_id = fs.id
       JOIN fms_managers fm ON fi.fms_manager_id = fm.id
-      WHERE fi.status = 'In Progress' 
-        AND fis.status = 'Under Process'
-      ORDER BY fis.created_at ASC
+      LEFT JOIN employees ce ON fis.completed_by = ce.id
+      WHERE 1=1 ${statusClause}
+      ORDER BY fis.created_at DESC
     `;
     const [rows] = await this.dbPool.query(query);
 
-    // Filter where employee is a doer
+    // Filter where employee is a doer or creator or completedBy
     return rows.filter((row: any) => {
       let doers = [];
       try {
@@ -215,13 +230,14 @@ export class FmsExecutionService {
 
       const isDoer = doers.includes(employeeId);
       const isCreator = row.creatorId === employeeId;
+      const isCompletedBy = row.completedBy === employeeId;
 
       // If a step has no assigned doers, default to the creator of the FMS instance
       if (doers.length === 0 && isCreator) {
         return true;
       }
 
-      return isDoer;
+      return isDoer || isCompletedBy;
     }).map((row: any) => ({
       instanceStepId: row.instanceStepId,
       instanceId: row.instanceId,
@@ -229,11 +245,15 @@ export class FmsExecutionService {
       managerName: row.managerName,
       formData: typeof row.formData === 'string' && row.formData ? JSON.parse(row.formData) : (row.formData || {}),
       stepName: row.stepName,
+      sequenceOrder: row.sequenceOrder,
       timelineHours: parseFloat(row.timelineHours),
       timelineUnit: row.timelineUnit,
       isSequential: !!row.isSequential,
       status: row.status,
-      assignedAt: row.assignedAt
+      assignedAt: row.assignedAt,
+      completedAt: row.completedAt,
+      completedByName: row.completedByName,
+      inputData: typeof row.inputData === 'string' && row.inputData ? JSON.parse(row.inputData) : (row.inputData || {})
     }));
   }
 
