@@ -134,7 +134,20 @@ import FormsPage from "../../modules/resourcescenter/pages/FormsPage";
 import TemplatesPage from "../../modules/resourcescenter/pages/TemplatesPage";
 import ManualsPage from "../../modules/resourcescenter/pages/ManualsPage";
 import NoticesPage from "../../modules/hr/pages/NoticesPage";
-import SecurityPage from "../../modules/hr/pages/SecurityPage";
+import SecurityNightFormPage from "../../modules/hr/pages/SecurityNightFormPage";
+import SecurityNightLogHistoryPage from "../../modules/hr/pages/SecurityNightLogHistoryPage";
+import VisitorEntryPage from "../../modules/hr/pages/VisitorEntryPage";
+import VisitorEntryHistoryPage from "../../modules/hr/pages/VisitorEntryHistoryPage";
+import VehicleRequirementFormPage from "../../modules/hr/pages/VehicleRequirementFormPage";
+import VehicleRequestHistoryPage from "../../modules/hr/pages/VehicleRequestHistoryPage";
+import DriverRoutePlanningPage from "../../modules/hr/pages/DriverRoutePlanningPage";
+import RecruitmentInductionPage from "../../modules/hr/pages/RecruitmentInductionPage";
+import JobRequisitionListPage from "../../modules/hr/pages/JobRequisitionListPage";
+import CandidateAssessmentPage from "../../modules/hr/pages/CandidateAssessmentPage";
+import EmployeeInductionCompletionPage from "../../modules/hr/pages/EmployeeInductionCompletionPage";
+import EmployeeInductionCompletionListPage from "../../modules/hr/pages/EmployeeInductionCompletionListPage";
+import EmployeeAssetManagementPage from "../../modules/hr/pages/EmployeeAssetManagementPage";
+import EmployeeSeparationSettlementPage from "../../modules/hr/pages/EmployeeSeparationSettlementPage";
 import MaintenanceDashboardPage from "../../modules/maintenance/pages/MaintenanceDashboardPage";
 import WorkOrdersPage from "../../modules/maintenance/pages/WorkOrdersPage";
 import PreventiveMaintenancePage from "../../modules/maintenance/pages/PreventiveMaintenancePage";
@@ -296,7 +309,25 @@ export default function AppRouter() {
           <Route path="hr/weekly-payroll" element={<WeeklyPayrollPage />} />
           <Route path="hr/monthly-salary-sheet" element={<MonthlySalarySheetPage />} />
           <Route path="hr/notices" element={<NoticesPage />} />
-          <Route path="hr/security" element={<SecurityPage />} />
+          <Route path="hr/security" element={<SecurityNightFormPage />} />
+          <Route path="hr/security/night-form" element={<SecurityNightFormPage />} />
+          <Route path="hr/security/night-log-history" element={<SecurityNightLogHistoryPage />} />
+          <Route path="hr/security/visitor-entry" element={<VisitorEntryPage />} />
+          <Route path="hr/security/visitor-entry-history" element={<VisitorEntryHistoryPage />} />
+          <Route path="hr/vehicle-request/form" element={<VehicleRequirementFormPage />} />
+          <Route path="hr/vehicle-request/history" element={<VehicleRequestHistoryPage />} />
+          <Route path="hr/vehicle-request/route-planning" element={<DriverRoutePlanningPage />} />
+          <Route path="hr/recruitment-induction" element={<RecruitmentInductionPage />} />
+          <Route path="hr/recruitment-induction/jobs" element={<RecruitmentInductionPage />} />
+          <Route path="hr/recruitment-induction/job-list" element={<JobRequisitionListPage />} />
+          <Route path="hr/recruitment-induction/candidates" element={<RecruitmentInductionPage />} />
+          <Route path="hr/recruitment-induction/assessment" element={<CandidateAssessmentPage />} />
+          <Route path="hr/recruitment-induction/induction-completion" element={<EmployeeInductionCompletionPage />} />
+          <Route path="hr/recruitment-induction/induction-completion-list" element={<EmployeeInductionCompletionListPage />} />
+          <Route path="hr/recruitment-induction/employee-assets" element={<EmployeeAssetManagementPage />} />
+          <Route path="hr/recruitment-induction/separation-settlement" element={<EmployeeSeparationSettlementPage />} />
+          <Route path="hr/recruitment-induction/onboarding" element={<RecruitmentInductionPage />} />
+          <Route path="hr/candidate-assessment" element={<CandidateAssessmentPage />} />
           <Route path="hr/annual-training-planner" element={<AnnualTrainingPlannerPage />} />
           <Route path="hr/kra" element={<KraPage />} />
           <Route path="reports/appraisal-index" element={<AppraisalIndexPage />} />
