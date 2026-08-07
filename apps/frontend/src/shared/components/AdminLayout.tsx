@@ -236,6 +236,21 @@ export const SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: "maintenance",
+    label: "Maintenance",
+    allowedRoles: ["System Admin", "CEO", "HOD"],
+    items: [
+      { label: "Maintenance Dashboard", to: "/admin/maintenance/dashboard" },
+      { label: "Equipment Assets", to: "/admin/maintenance/equipment" },
+      { label: "Work Orders", to: "/admin/maintenance/work-orders" },
+      { label: "Preventive Maintenance", to: "/admin/maintenance/preventive" },
+      { label: "Breakdown Logs", to: "/admin/maintenance/breakdowns" },
+      { label: "Spare Parts", to: "/admin/maintenance/spare-parts" },
+      { label: "AMC Management", to: "/admin/maintenance/amc-management" },
+      { label: "Maintenance Checklist", to: "/admin/maintenance/checklist" },
+    ],
+  },
+  {
     key: "reports",
     label: "Reports",
     allowedRoles: ["System Admin", "CEO", "HOD", "Supervisor", "HR"],
