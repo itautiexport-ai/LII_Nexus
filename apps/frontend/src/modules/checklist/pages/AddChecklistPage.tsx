@@ -80,30 +80,55 @@ export function AddChecklistPage() {
         setLoading(true);
         let successCount = 0;
         let failCount = 0;
+        const errors: string[] = [];
+        let rowIndex = 2; // Assuming headers are row 1
 
-        for (const row of data as any[]) {
-          const taskName = row["Task Name"];
-          const assignToName = row["Assign To"];
-          const assignByName = row["Assign By"];
-          const plannedDateRaw = row["Planned Date"];
-          const priorityRaw = row["Priority"];
-          const attachmentReq = row["Make Attachment Mandatory"];
-          const noteReq = row["Make Note Mandatory"];
-          const modeRaw = row["Mode"];
-          const freqRaw = row["Frequency"];
-          const remindRaw = row["Remind Before Days"];
-          const skipHolidaysRaw = row["Skip On Holidays"];
+        for (const rawRow of data as any[]) {
+          // Normalize row keys to lowercase to handle header case mismatches (e.g. "TASK NAME" vs "Task Name")
+          const row: Record<string, any> = {};
+          for (const key in rawRow) {
+            row[key.toLowerCase().trim()] = rawRow[key];
+          }
+
+          const taskName = row["task name"];
+          const assignToName = row["assign to"];
+          const assignByName = row["assign by"];
+          const plannedDateRaw = row["planned date"];
+          const priorityRaw = row["priority"];
+          const attachmentReq = row["make attachment mandatory"];
+          const noteReq = row["make note mandatory"];
+          const modeRaw = row["mode"];
+          const freqRaw = row["frequency"];
+          const remindRaw = row["remind before days"];
+          const skipHolidaysRaw = row["skip on holidays"];
 
           if (!taskName || !assignToName || !assignByName || !plannedDateRaw) {
             failCount++;
+            
+            const missing = [];
+            if (!taskName) missing.push("Task Name");
+            if (!assignToName) missing.push("Assign To");
+            if (!assignByName) missing.push("Assign By");
+            if (!plannedDateRaw) missing.push("Planned Date");
+            
+            errors.push(`Row ${rowIndex}: Missing required fields (${missing.join(", ")})`);
+            rowIndex++;
             continue;
           }
 
-          const assignToEmp = employees.find(emp => emp.fullName.toLowerCase() === assignToName.toString().toLowerCase());
-          const assignByEmp = employees.find(emp => emp.fullName.toLowerCase() === assignByName.toString().toLowerCase());
+          const assignToEmp = employees.find(emp => emp.fullName.toLowerCase() === assignToName.toString().toLowerCase().trim());
+          const assignByEmp = employees.find(emp => emp.fullName.toLowerCase() === assignByName.toString().toLowerCase().trim());
 
-          if (!assignToEmp || !assignByEmp) {
+          if (!assignToEmp) {
             failCount++;
+            errors.push(`Row ${rowIndex}: Assign To employee '${assignToName}' not found`);
+            rowIndex++;
+            continue;
+          }
+          if (!assignByEmp) {
+            failCount++;
+            errors.push(`Row ${rowIndex}: Assign By employee '${assignByName}' not found`);
+            rowIndex++;
             continue;
           }
 
@@ -115,14 +140,18 @@ export function AddChecklistPage() {
             plannedDateStr = new Date(plannedDateRaw).toISOString();
           }
 
-          const priority = (priorityRaw?.toString()) || "Low";
-          const mode = (modeRaw?.toString()) || "Online";
-          const frequency = (freqRaw?.toString()) || "Daily";
+          let pRaw = (priorityRaw?.toString().toLowerCase().trim()) || "low";
+          const priority = pRaw === "high" ? "High" : pRaw === "medium" ? "Medium" : "Low";
+          
+          let mRaw = (modeRaw?.toString().toLowerCase().trim()) || "online";
+          const mode = mRaw === "offline" ? "Offline" : mRaw === "hybrid" ? "Hybrid" : "Online";
+          
+          const frequency = (freqRaw?.toString().trim()) || "Daily";
           const remindBeforeDays = parseInt(remindRaw) || 0;
 
-          const makeAttachmentMandatory = (attachmentReq?.toString().toLowerCase() === "yes" || attachmentReq === true);
-          const makeNoteMandatory = (noteReq?.toString().toLowerCase() === "yes" || noteReq === true);
-          const skipOnHolidays = (skipHolidaysRaw?.toString().toLowerCase() === "yes" || skipHolidaysRaw === true);
+          const makeAttachmentMandatory = (attachmentReq?.toString().toLowerCase().trim() === "yes" || attachmentReq === true);
+          const makeNoteMandatory = (noteReq?.toString().toLowerCase().trim() === "yes" || noteReq === true);
+          const skipOnHolidays = (skipHolidaysRaw?.toString().toLowerCase().trim() === "yes" || skipHolidaysRaw === true);
 
           try {
             await standaloneChecklistApi.create({
@@ -139,12 +168,18 @@ export function AddChecklistPage() {
               skipOnHolidays
             });
             successCount++;
-          } catch (err) {
+          } catch (err: any) {
             failCount++;
+            errors.push(`Row ${rowIndex}: API Error - ${err?.response?.data?.message || err.message}`);
           }
+          rowIndex++;
         }
 
-        alert(`Bulk Upload Complete.\nSuccess: ${successCount}\nFailed/Skipped: ${failCount}`);
+        if (errors.length > 0) {
+          alert(`Bulk Upload Complete.\nSuccess: ${successCount}\nFailed/Skipped: ${failCount}\n\nErrors:\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? '\n...and more' : ''}`);
+        } else {
+          alert(`Bulk Upload Complete.\nSuccess: ${successCount}\nFailed/Skipped: ${failCount}`);
+        }
       } catch (err) {
         console.error(err);
         alert("Failed to parse Excel file.");
