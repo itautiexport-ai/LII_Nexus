@@ -3,13 +3,11 @@ export interface StandaloneChecklist {
   assignedBy: string;
   taskName: string;
   assignTo: string;
-  plannedDate: Date;
-  priority: "Low" | "Medium" | "High";
   makeAttachmentMandatory: boolean;
   makeNoteMandatory: boolean;
   mode: string;
   frequency: string;
-  remindBeforeDays: number;
+  remindBeforeDays: string;
   skipOnHolidays: boolean;
   createdAt: Date;
   updatedAt: Date;

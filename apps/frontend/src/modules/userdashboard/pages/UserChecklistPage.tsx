@@ -62,8 +62,6 @@ export function UserChecklistPage() {
             <thead>
               <tr>
                 <th>Task Name</th>
-                <th>Planned Date</th>
-                <th>Priority</th>
                 <th>Mode</th>
                 <th>Frequency</th>
               </tr>
@@ -72,8 +70,6 @@ export function UserChecklistPage() {
               {checklists.map(c => (
                 <tr key={c.id}>
                   <td>{c.taskName}</td>
-                  <td>{new Date(c.plannedDate).toLocaleDateString()}</td>
-                  <td><span className={`status-pill ${c.priority.toLowerCase()}`}>{c.priority}</span></td>
                   <td>{c.mode}</td>
                   <td>{c.frequency}</td>
                 </tr>

@@ -1,7 +1,8 @@
 .user-dashboard-container {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .user-dashboard-title {
@@ -17,6 +18,7 @@
   padding: 1.5rem;
   margin-bottom: 2rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  overflow-x: auto;
 }
 
 .user-dashboard-section h2 {
@@ -73,4 +75,17 @@
 }
 .status-pill.delayed {
   background-color: #c0392b;
+}
+
+@media (max-width: 768px) {
+  .user-dashboard-container {
+    padding: 1rem;
+  }
+  .user-dashboard-section {
+    padding: 1rem;
+  }
+  .user-dashboard-table th,
+  .user-dashboard-table td {
+    padding: 0.5rem;
+  }
 }

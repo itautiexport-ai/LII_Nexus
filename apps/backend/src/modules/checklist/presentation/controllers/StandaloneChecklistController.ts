@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { StandaloneChecklistService } from "../../application/services/StandaloneChecklistService";
-import { CreateStandaloneChecklistSchema } from "../../application/dto/checklist.dto";
+import { CreateStandaloneChecklistSchema, BulkDeleteStandaloneChecklistSchema } from "../../application/dto/checklist.dto";
 
 export class StandaloneChecklistController {
   constructor(private service: StandaloneChecklistService) {}
@@ -22,5 +22,11 @@ export class StandaloneChecklistController {
     const { id } = req.params;
     await this.service.deleteChecklist(id);
     res.json({ success: true, message: "Checklist deleted successfully" });
+  };
+
+  bulkDeleteChecklists = async (req: Request, res: Response) => {
+    const { ids } = BulkDeleteStandaloneChecklistSchema.parse(req.body);
+    await this.service.bulkDeleteChecklists(ids);
+    res.json({ success: true, message: "Checklists deleted successfully" });
   };
 }

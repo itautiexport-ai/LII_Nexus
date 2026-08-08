@@ -9,6 +9,7 @@ const controller = new StandaloneChecklistController(service);
 
 router.post("/standalone-checklists", authMiddleware, controller.createChecklist);
 router.get("/standalone-checklists", authMiddleware, controller.getAllChecklists);
+router.post("/standalone-checklists/bulk-delete", authMiddleware, controller.bulkDeleteChecklists);
 router.delete("/standalone-checklists/:id", authMiddleware, controller.deleteChecklist);
 
 export default router;

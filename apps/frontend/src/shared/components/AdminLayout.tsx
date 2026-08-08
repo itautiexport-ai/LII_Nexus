@@ -865,5 +865,13 @@ const SIDEBAR_STYLES = `
       margin-top: 52px;
       height: calc(100vh - 52px);
     }
+
+    .content-topbar {
+      padding: 12px 16px 0;
+    }
+
+    .content-inner {
+      padding: 12px 16px 24px;
+    }
   }
 `;

@@ -5,6 +5,7 @@ import "./Checklist.css";
 
 export function ListChecklistPage() {
   const [checklists, setChecklists] = useState<StandaloneChecklist[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const user = useAuthStore(state => state.user);
 
@@ -26,6 +27,7 @@ export function ListChecklistPage() {
       } else {
         setChecklists(data);
       }
+      setSelectedIds([]);
       setLoading(false);
     }).catch(err => {
       console.error(err);
@@ -47,11 +49,45 @@ export function ListChecklistPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (confirm(`Are you sure you want to delete ${selectedIds.length} checklists?`)) {
+      try {
+        await standaloneChecklistApi.bulkDelete(selectedIds);
+        fetchChecklists();
+      } catch (err) {
+        console.error("Failed to bulk delete", err);
+        alert("Failed to delete selected checklists");
+      }
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === checklists.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(checklists.map(c => c.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   return (
     <div className="chk-container">
       <div className="chk-card">
-        <div className="chk-card-header">
-          <h2 className="chk-title">LIST CHECKLISTS</h2>
+        <div className="chk-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 className="chk-title" style={{ margin: 0 }}>LIST CHECKLISTS</h2>
+          {user && user.roles.includes("System Admin") && selectedIds.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              style={{ background: "#ef4444", color: "white", border: "none", padding: "8px 16px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: 14 }}
+            >
+              Delete Selected ({selectedIds.length})
+            </button>
+          )}
         </div>
         <div className="chk-card-content" style={{ padding: 0 }}>
           {loading ? (
@@ -63,10 +99,18 @@ export function ListChecklistPage() {
               <table className="chk-table">
                 <thead>
                   <tr>
+                    {user && user.roles.includes("System Admin") && (
+                      <th className="chk-th" style={{ width: '40px' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={checklists.length > 0 && selectedIds.length === checklists.length} 
+                          onChange={toggleSelectAll} 
+                          style={{ cursor: "pointer" }}
+                        />
+                      </th>
+                    )}
                     <th className="chk-th">Task Name</th>
                     <th className="chk-th">Assigned To</th>
-                    <th className="chk-th">Planned Date</th>
-                    <th className="chk-th">Priority</th>
                     <th className="chk-th">Mode</th>
                     <th className="chk-th">Frequency</th>
                     <th className="chk-th">Actions</th>
@@ -75,19 +119,19 @@ export function ListChecklistPage() {
                 <tbody>
                   {checklists.map(c => (
                     <tr key={c.id} className="chk-tr">
+                      {user && user.roles.includes("System Admin") && (
+                        <td className="chk-td">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(c.id)} 
+                            onChange={() => toggleSelect(c.id)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        </td>
+                      )}
                       <td className="chk-td chk-td-strong">{(c as any).task_name || c.taskName}</td>
                       <td className="chk-td">
                         {(c as any).assignee_name || "Unknown"}
-                      </td>
-                      <td className="chk-td">{new Date((c as any).planned_date || c.plannedDate).toLocaleString()}</td>
-                      <td className="chk-td">
-                        <span className={`chk-pill ${
-                          c.priority === 'High' ? 'chk-pill-high' :
-                          c.priority === 'Medium' ? 'chk-pill-medium' :
-                          'chk-pill-low'
-                        }`}>
-                          {c.priority}
-                        </span>
                       </td>
                       <td className="chk-td">{c.mode}</td>
                       <td className="chk-td">{c.frequency}</td>

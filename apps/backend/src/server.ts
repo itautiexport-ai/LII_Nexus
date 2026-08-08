@@ -2,11 +2,15 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import { logger } from "./infrastructure/logging/logger";
 import { pool } from "./infrastructure/database/mysql/connection";
+import { ChecklistReminderJob } from "./modules/checklist/application/services/ChecklistReminderJob";
 
 const app = createApp();
 
 const server = app.listen(env.port, () => {
   logger.info(`LII Performance Nexus API listening on port ${env.port} [${env.nodeEnv}]`);
+  
+  // Initialize Cron Jobs
+  ChecklistReminderJob.getInstance().init();
 });
 
 async function shutdown(signal: string) {

@@ -11,13 +11,11 @@ export function AddChecklistPage() {
     taskName: "",
     assignBy: "",
     assignTo: "",
-    plannedDate: "",
-    priority: "Low" as "Low" | "Medium" | "High",
     makeAttachmentMandatory: false,
     makeNoteMandatory: false,
     mode: "Online",
     frequency: "",
-    remindBeforeDays: 0,
+    remindBeforeDays: "",
     skipOnHolidays: false,
   });
   const [loading, setLoading] = useState(false);
@@ -30,8 +28,6 @@ export function AddChecklistPage() {
     const { name, value, type } = e.target;
     if (type === "checkbox") {
       setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
-    } else if (name === "remindBeforeDays") {
-      setFormData(prev => ({ ...prev, [name]: parseInt(value, 10) || 0 }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -41,21 +37,18 @@ export function AddChecklistPage() {
     e.preventDefault();
     try {
       await standaloneChecklistApi.create({
-        ...formData,
-        plannedDate: new Date(formData.plannedDate).toISOString()
+        ...formData
       });
       alert("Checklist created successfully!");
       setFormData({
         taskName: "",
         assignBy: "",
         assignTo: "",
-        plannedDate: "",
-        priority: "Low",
         makeAttachmentMandatory: false,
         makeNoteMandatory: false,
         mode: "Online",
         frequency: "",
-        remindBeforeDays: 0,
+        remindBeforeDays: "",
         skipOnHolidays: false,
       });
     } catch (err) {
@@ -93,8 +86,6 @@ export function AddChecklistPage() {
           const taskName = row["task name"];
           const assignToName = row["assign to"];
           const assignByName = row["assign by"];
-          const plannedDateRaw = row["planned date"];
-          const priorityRaw = row["priority"];
           const attachmentReq = row["make attachment mandatory"];
           const noteReq = row["make note mandatory"];
           const modeRaw = row["mode"];
@@ -102,14 +93,13 @@ export function AddChecklistPage() {
           const remindRaw = row["remind before days"];
           const skipHolidaysRaw = row["skip on holidays"];
 
-          if (!taskName || !assignToName || !assignByName || !plannedDateRaw) {
+          if (!taskName || !assignToName || !assignByName) {
             failCount++;
             
             const missing = [];
             if (!taskName) missing.push("Task Name");
             if (!assignToName) missing.push("Assign To");
             if (!assignByName) missing.push("Assign By");
-            if (!plannedDateRaw) missing.push("Planned Date");
             
             errors.push(`Row ${rowIndex}: Missing required fields (${missing.join(", ")})`);
             rowIndex++;
@@ -132,22 +122,11 @@ export function AddChecklistPage() {
             continue;
           }
 
-          let plannedDateStr = plannedDateRaw;
-          if (typeof plannedDateRaw === 'number') {
-            const date = new Date(Math.round((plannedDateRaw - 25569) * 86400 * 1000));
-            plannedDateStr = date.toISOString();
-          } else {
-            plannedDateStr = new Date(plannedDateRaw).toISOString();
-          }
-
-          let pRaw = (priorityRaw?.toString().toLowerCase().trim()) || "low";
-          const priority = pRaw === "high" ? "High" : pRaw === "medium" ? "Medium" : "Low";
-          
           let mRaw = (modeRaw?.toString().toLowerCase().trim()) || "online";
           const mode = mRaw === "offline" ? "Offline" : mRaw === "hybrid" ? "Hybrid" : "Online";
           
           const frequency = (freqRaw?.toString().trim()) || "Daily";
-          const remindBeforeDays = parseInt(remindRaw) || 0;
+          const remindBeforeDays = remindRaw?.toString() || "";
 
           const makeAttachmentMandatory = (attachmentReq?.toString().toLowerCase().trim() === "yes" || attachmentReq === true);
           const makeNoteMandatory = (noteReq?.toString().toLowerCase().trim() === "yes" || noteReq === true);
@@ -158,8 +137,6 @@ export function AddChecklistPage() {
               taskName,
               assignBy: assignByEmp.id,
               assignTo: assignToEmp.id,
-              plannedDate: plannedDateStr,
-              priority: priority as any,
               makeAttachmentMandatory,
               makeNoteMandatory,
               mode,
@@ -240,20 +217,6 @@ export function AddChecklistPage() {
                 />
               </div>
 
-              <div className="chk-form-group">
-                <label className="chk-label">Planned Date <span className="chk-required">*</span></label>
-                <input type="datetime-local" name="plannedDate" required value={formData.plannedDate} onChange={handleChange} className="chk-input" />
-              </div>
-
-              <div className="chk-form-group">
-                <label className="chk-label">Priority <span className="chk-required">*</span></label>
-                <select name="priority" required value={formData.priority} onChange={handleChange} className="chk-select">
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
-
               <div className="chk-form-group" style={{ justifyContent: 'center' }}>
                 <label className="chk-checkbox-group">
                   <input type="checkbox" name="makeAttachmentMandatory" checked={formData.makeAttachmentMandatory} onChange={handleChange} className="chk-checkbox" />
@@ -298,8 +261,8 @@ export function AddChecklistPage() {
               </div>
 
               <div className="chk-form-group">
-                <label className="chk-label">Remind Before Days <span className="chk-required">*</span></label>
-                <input type="number" name="remindBeforeDays" required min={0} value={formData.remindBeforeDays} onChange={handleChange} className="chk-input" />
+                <label className="chk-label">Remind Before Days / Schedule <span className="chk-required">*</span></label>
+                <input type="text" name="remindBeforeDays" required value={formData.remindBeforeDays} onChange={handleChange} className="chk-input" placeholder="e.g. 2, or 15/7, or sat" />
               </div>
 
               <div className="chk-form-group" style={{ gridColumn: '1 / -1' }}>

@@ -2,9 +2,10 @@
 
 .chk-container {
   padding: 24px;
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
 }
 
 .chk-card {
@@ -245,5 +246,38 @@
   100% {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .chk-container {
+    padding: 12px;
+  }
+  .chk-card-header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .chk-card-header button {
+    width: 100%;
+  }
+  .chk-card-content {
+    padding: 16px;
+  }
+  .chk-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .chk-th, .chk-td {
+    padding: 12px 16px;
+  }
+  .chk-btn-primary {
+    width: 100%;
+    margin-top: 8px;
+  }
+  .chk-actions {
+    flex-direction: column;
   }
 }

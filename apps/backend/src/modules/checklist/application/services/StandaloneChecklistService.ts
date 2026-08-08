@@ -16,8 +16,6 @@ export class StandaloneChecklistService {
       assignedBy,
       taskName: dto.taskName,
       assignTo: dto.assignTo,
-      plannedDate: new Date(dto.plannedDate),
-      priority: dto.priority,
       makeAttachmentMandatory: dto.makeAttachmentMandatory,
       makeNoteMandatory: dto.makeNoteMandatory,
       mode: dto.mode,
@@ -39,8 +37,8 @@ export class StandaloneChecklistService {
         checklist.assignedBy,
         checklist.taskName,
         checklist.assignTo,
-        checklist.plannedDate,
-        checklist.priority,
+        new Date(), // dummy plannedDate
+        "Low", // dummy priority
         checklist.makeAttachmentMandatory,
         checklist.makeNoteMandatory,
         checklist.mode,
@@ -72,8 +70,6 @@ export class StandaloneChecklistService {
       assignBy: row.assigned_by,
       assignTo: row.assign_to,
       taskName: row.task_name,
-      plannedDate: row.planned_date,
-      priority: row.priority,
       makeAttachmentMandatory: !!row.make_attachment_mandatory,
       makeNoteMandatory: !!row.make_note_mandatory,
       mode: row.mode,
@@ -91,6 +87,15 @@ export class StandaloneChecklistService {
     await pool.query(
       "UPDATE standalone_checklists SET deleted_at = NOW() WHERE id = ?",
       [id]
+    );
+  }
+
+  async bulkDeleteChecklists(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const placeholders = ids.map(() => "?").join(",");
+    await pool.query(
+      `UPDATE standalone_checklists SET deleted_at = NOW() WHERE id IN (${placeholders})`,
+      ids
     );
   }
 }

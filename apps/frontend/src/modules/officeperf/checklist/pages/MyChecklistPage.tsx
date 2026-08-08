@@ -60,8 +60,6 @@ export default function MyChecklistPage() {
                   <tr>
                     <th className="chk-th">Task Name</th>
                     <th className="chk-th">Assigned By</th>
-                    <th className="chk-th">Planned Date</th>
-                    <th className="chk-th">Priority</th>
                     <th className="chk-th">Mode</th>
                     <th className="chk-th">Frequency</th>
                     <th className="chk-th">Actions</th>
@@ -73,16 +71,6 @@ export default function MyChecklistPage() {
                       <td className="chk-td chk-td-strong">{(c as any).task_name || c.taskName}</td>
                       <td className="chk-td">
                         {c.assigner_name || "Unknown"}
-                      </td>
-                      <td className="chk-td">{new Date((c as any).planned_date || c.plannedDate).toLocaleString()}</td>
-                      <td className="chk-td">
-                        <span className={`chk-pill ${
-                          c.priority === 'High' ? 'chk-pill-high' :
-                          c.priority === 'Medium' ? 'chk-pill-medium' :
-                          'chk-pill-low'
-                        }`}>
-                          {c.priority}
-                        </span>
                       </td>
                       <td className="chk-td">{c.mode}</td>
                       <td className="chk-td">{c.frequency}</td>

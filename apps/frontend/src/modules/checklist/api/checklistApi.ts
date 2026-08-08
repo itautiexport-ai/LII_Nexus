@@ -4,13 +4,11 @@ export interface CreateStandaloneChecklistDto {
   taskName: string;
   assignBy: string;
   assignTo: string;
-  plannedDate: string;
-  priority: "Low" | "Medium" | "High";
   makeAttachmentMandatory: boolean;
   makeNoteMandatory: boolean;
   mode: string;
   frequency: string;
-  remindBeforeDays: number;
+  remindBeforeDays: string;
   skipOnHolidays: boolean;
 }
 
@@ -36,6 +34,11 @@ export const standaloneChecklistApi = {
 
   delete: async (id: string) => {
     const res = await axiosInstance.delete<{ success: boolean; message: string }>(`/standalone-checklists/${id}`);
+    return res.data;
+  },
+
+  bulkDelete: async (ids: string[]) => {
+    const res = await axiosInstance.post<{ success: boolean; message: string }>("/standalone-checklists/bulk-delete", { ids });
     return res.data;
   }
 };
