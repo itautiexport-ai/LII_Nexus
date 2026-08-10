@@ -98,6 +98,7 @@ import KpiDetailPage from "../../modules/kpiengine/pages/KpiDetailPage";
 import KpiEngineDashboardPage from "../../modules/kpiengine/pages/KpiEngineDashboardPage";
 import KpiEngineScoresPage from "../../modules/kpiengine/pages/KpiEngineScoresPage";
 import DprEntryPage from "../../modules/dpr/pages/DprEntryPage";
+import DataExportPage from "../../modules/export/pages/DataExportPage";
 import { AddChecklistPage } from "../../modules/checklist/pages/AddChecklistPage";
 import { ListChecklistPage } from "../../modules/checklist/pages/ListChecklistPage";
 import ChecklistHubPage from "../../modules/checklist/pages/ChecklistHubPage";
@@ -297,6 +298,7 @@ export default function AppRouter() {
           <Route path="escalation-rules" element={<EscalationRulesPage />} />
           <Route path="reports" element={<ReportsHubPage />} />
           <Route path="reports/dashboard" element={<DashboardWidgetsPage />} />
+          <Route path="export" element={<DataExportPage />} />
           <Route path="formats" element={<FormatsPage />} />
           <Route path="reports/production-hub" element={<ProductionReportHubPage />} />
           <Route path="reports/daily-production" element={<DailyProductionReportPage />} />

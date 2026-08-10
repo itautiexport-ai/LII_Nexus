@@ -24,6 +24,7 @@ export const SECTIONS: NavSection[] = [
     label: "Administration",
     allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin"],
     items: [
+      { label: "Data Export", to: "/admin/export" },
       { label: "Users", to: "/admin/users" },
       { label: "Permissions", to: "/admin/permissions" },
       {

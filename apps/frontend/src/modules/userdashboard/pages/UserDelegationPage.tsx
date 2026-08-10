@@ -12,6 +12,11 @@ export function UserDelegationPage() {
   const [delegations, setDelegations] = useState<DisplayDelegation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Filters
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [userFilter, setUserFilter] = useState("");
+
   // Extension Modal State
   const [showExtensionModal, setShowExtensionModal] = useState(false);
   const [extensionTaskId, setExtensionTaskId] = useState<string | null>(null);
@@ -94,12 +99,42 @@ export function UserDelegationPage() {
     );
   }
 
+  const uniqueUsers = Array.from(new Set(delegations.map(d => d.assignedByName))).filter(Boolean);
+
+  let filteredDelegations = delegations;
+  if (statusFilter) filteredDelegations = filteredDelegations.filter(d => (d.displayStatus || d.baseStatus) === statusFilter);
+  if (priorityFilter) filteredDelegations = filteredDelegations.filter(d => d.priority === priorityFilter);
+  if (userFilter) filteredDelegations = filteredDelegations.filter(d => d.assignedByName === userFilter);
+
   return (
     <div className="user-dashboard-container">
       <h1 className="user-dashboard-title">My Delegated Tasks</h1>
       
+      <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="running">Running</option>
+          <option value="delayed">Delayed</option>
+          <option value="completed">Completed</option>
+        </select>
+
+        <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="">All Priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+
+        <select value={userFilter} onChange={e => setUserFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="">All Assigned By</option>
+          {uniqueUsers.map(u => <option key={u} value={u as string}>{u as string}</option>)}
+        </select>
+      </div>
+
       <section className="user-dashboard-section">
-        {delegations.length === 0 ? (
+        {filteredDelegations.length === 0 ? (
           <p>No delegated tasks assigned to you.</p>
         ) : (
           <table className="user-dashboard-table">
@@ -114,7 +149,7 @@ export function UserDelegationPage() {
               </tr>
             </thead>
             <tbody>
-              {delegations.map(d => (
+              {filteredDelegations.map(d => (
                 <tr key={d.id}>
                   <td>{d.title}</td>
                   <td>{d.assignedByName}</td>

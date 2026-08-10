@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { usersApi, UserRecord } from "../../admin/users/api/usersApi";
 import { officeEmApi, OfficeEmReport, OfficeEmModuleScore, OfficeEmTaskDetail } from "../api/officeEmApi";
 import { misScoreApi, MisScoreReport } from "../api/misScoreApi";
+import Select from "react-select";
 
 function getCurrentWeekString() {
   const d = new Date();
@@ -193,12 +194,25 @@ export default function OfficeEmReportPage() {
       <h1 style={{ fontSize: "24px", marginBottom: "24px", color: "#0f172a", fontWeight: 600 }}>LII Performance Gap Score (Office EM)</h1>
 
       <div style={{ display: "flex", gap: "16px", marginBottom: "32px", alignItems: "center" }}>
-        <select className="professional-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
-          <option value="">-- Select Employee --</option>
-          {users.map(u => (
-            <option key={u.id} value={u.id}>{u.fullName}</option>
-          ))}
-        </select>
+        <div style={{ width: "300px" }}>
+          <Select 
+            options={users.map(u => ({ value: u.id, label: u.fullName }))}
+            value={users.find(u => u.id === selectedUser) ? { value: selectedUser, label: users.find(u => u.id === selectedUser)?.fullName } : null}
+            onChange={(selectedOption: any) => setSelectedUser(selectedOption?.value || "")}
+            placeholder="-- Select Employee --"
+            isClearable
+            styles={{
+              control: (base) => ({
+                ...base,
+                padding: "4px 8px",
+                borderRadius: "8px",
+                borderColor: "#cbd5e1",
+                boxShadow: "none",
+                "&:hover": { borderColor: "#3b82f6" }
+              })
+            }}
+          />
+        </div>
 
         <input 
           type="week" 

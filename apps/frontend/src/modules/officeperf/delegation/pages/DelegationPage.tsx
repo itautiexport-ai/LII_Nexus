@@ -23,6 +23,11 @@ export default function DelegationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [proofTaskId, setProofTaskId] = useState<string | null>(null);
 
+  // Filters
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [userFilter, setUserFilter] = useState("");
+
   // Extension Review State
   const [showExtensionReview, setShowExtensionReview] = useState(false);
   const [reviewTaskId, setReviewTaskId] = useState<string | null>(null);
@@ -162,7 +167,13 @@ export default function DelegationPage() {
     }
   }
 
-  const list = tab === "received" ? received : delegated;
+  let list = tab === "received" ? received : delegated;
+
+  const uniqueUsers = Array.from(new Set(list.map(t => t.assignedToName))).filter(Boolean);
+
+  if (statusFilter) list = list.filter(t => t.displayStatus === statusFilter);
+  if (priorityFilter) list = list.filter(t => t.priority === priorityFilter);
+  if (userFilter) list = list.filter(t => t.assignedToName === userFilter);
 
   return (
     <div>
@@ -208,8 +219,31 @@ export default function DelegationPage() {
       )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid #ddd" }}>
-        <button onClick={() => { setTab("received"); setSelectedIds([]); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "received" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "received" ? 600 : 400 }}>Assigned to Me</button>
-        <button onClick={() => { setTab("delegated"); setSelectedIds([]); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "delegated" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "delegated" ? 600 : 400 }}>Tasks I Delegated</button>
+        <button onClick={() => { setTab("received"); setSelectedIds([]); setUserFilter(""); setStatusFilter(""); setPriorityFilter(""); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "received" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "received" ? 600 : 400 }}>Assigned to Me</button>
+        <button onClick={() => { setTab("delegated"); setSelectedIds([]); setUserFilter(""); setStatusFilter(""); setPriorityFilter(""); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "delegated" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "delegated" ? 600 : 400 }}>Tasks I Delegated</button>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="running">Running</option>
+          <option value="delayed">Delayed</option>
+          <option value="completed">Completed</option>
+        </select>
+
+        <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="">All Priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+
+        <select value={userFilter} onChange={e => setUserFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="">All Assigned To</option>
+          {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
       </div>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
