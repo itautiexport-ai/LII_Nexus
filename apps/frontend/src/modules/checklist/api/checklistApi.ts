@@ -8,7 +8,8 @@ export interface CreateStandaloneChecklistDto {
   makeNoteMandatory: boolean;
   mode: string;
   frequency: string;
-  remindBeforeDays: string;
+  remindBeforeDays?: string;
+  reminderDays?: number;
   skipOnHolidays: boolean;
 }
 
@@ -17,6 +18,7 @@ export interface StandaloneChecklist extends CreateStandaloneChecklistDto {
   assignedBy: string;
   assigner_name?: string;
   assignee_name?: string;
+  isVisible?: boolean;
   createdAt: string;
   updatedAt: string;
 }

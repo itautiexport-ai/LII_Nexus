@@ -23,8 +23,11 @@ export function UserChecklistPage() {
 
         const chkRes = await standaloneChecklistApi.getAll();
         const myFullName = empRes.data?.data?.fullName;
-        const myChecklists = chkRes.filter(
-          c => c.assignTo === myEmployeeId || (c as any).assignee_name === myFullName
+        const myChecklists = chkRes.filter(c => 
+          (c.isVisible !== false) && (
+            (c as any).assignTo == myEmployeeId || 
+            ((c as any).assignee_name && myFullName && (c as any).assignee_name.toLowerCase() === myFullName.toLowerCase())
+          )
         );
         setChecklists(myChecklists);
 

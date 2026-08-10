@@ -9,6 +9,7 @@ export const CreateStandaloneChecklistSchema = z.object({
   mode: z.string().min(1, "Mode is required"),
   frequency: z.string().min(1, "Frequency is required"),
   remindBeforeDays: z.string().default(""),
+  reminderDays: z.number().optional(),
   skipOnHolidays: z.boolean().default(false),
 });
 
