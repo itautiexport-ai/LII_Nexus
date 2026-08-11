@@ -29,7 +29,7 @@ export default function EmployeeScorePage() {
     try {
       const [scores, empList] = await Promise.all([
         misScoreApi.getCumulativeScores(periodRange),
-        employeesApi.list()
+        employeesApi.listForDropdown()
       ]);
       setReports(scores);
       setEmployees(empList);

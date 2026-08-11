@@ -79,6 +79,10 @@ export const fmsApi = {
     return res.data.data;
   },
 
+  async reorderStep(stepId: string, direction: "up" | "down"): Promise<void> {
+    await axiosInstance.put(`/fms/steps/${stepId}/reorder`, { direction });
+  },
+
   async deleteStep(stepId: string): Promise<void> {
     await axiosInstance.delete(`/fms/steps/${stepId}`);
   },

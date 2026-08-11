@@ -3,6 +3,16 @@ import { standaloneChecklistApi } from "../api/checklistApi";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
 import "./Checklist.css";
 
+const DAYS_OF_WEEK = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 },
+];
+
 export function AddChecklistPage() {
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [formData, setFormData] = useState({
@@ -14,14 +24,136 @@ export function AddChecklistPage() {
     makeAttachmentMandatory: false,
     makeNoteMandatory: false,
     mode: "Online",
-    frequency: "",
+    frequency: "Daily",
+    whenRule: "",
     remindBeforeDays: 0,
     skipOnHolidays: false,
   });
 
+  const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<number[]>([1, 3, 5]); // default Mon, Wed, Fri
+  const [selectedDayOfMonth, setSelectedDayOfMonth] = useState<number>(1);
+  const [selectedQuarterMonth, setSelectedQuarterMonth] = useState<number>(1); // 1st, 2nd, or 3rd month of quarter
+  const [selectedYearMonth, setSelectedYearMonth] = useState<number>(0); // 0 = Jan, 11 = Dec
+
+  const MONTHS_OF_YEAR = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
   useEffect(() => {
     employeesApi.list().then(setEmployees).catch(console.error);
   }, []);
+
+  // Calculate next planned date whenever frequency or days rules change
+  useEffect(() => {
+    const calculatedDate = calculateNextPlannedDate(
+      formData.frequency,
+      selectedDaysOfWeek,
+      selectedDayOfMonth,
+      selectedQuarterMonth,
+      selectedYearMonth
+    );
+    const whenStr = buildWhenRuleString(
+      formData.frequency,
+      selectedDaysOfWeek,
+      selectedDayOfMonth,
+      selectedQuarterMonth,
+      selectedYearMonth
+    );
+    setFormData(prev => ({
+      ...prev,
+      plannedDate: calculatedDate,
+      whenRule: whenStr
+    }));
+  }, [formData.frequency, selectedDaysOfWeek, selectedDayOfMonth, selectedQuarterMonth, selectedYearMonth]);
+
+  const buildWhenRuleString = (
+    freq: string,
+    daysWeek: number[],
+    dayMonth: number,
+    qMonth: number = 1,
+    yMonth: number = 0
+  ) => {
+    if (freq === "Daily") return "Daily execution";
+    if (freq === "Weekly" || freq === "Alternate") {
+      const names = daysWeek.map(d => DAYS_OF_WEEK.find(dw => dw.value === d)?.label).filter(Boolean);
+      return names.length > 0 ? `Every ${names.join(", ")}` : "Select days";
+    }
+    if (freq === "Monthly") {
+      return `Day ${dayMonth} of every month`;
+    }
+    if (freq === "Quarterly") {
+      const ord = qMonth === 1 ? "1st" : qMonth === 2 ? "2nd" : "3rd";
+      return `Quarterly - ${ord} Month of Quarter, Day ${dayMonth}`;
+    }
+    if (freq === "Yearly") {
+      return `Yearly - ${MONTHS_OF_YEAR[yMonth]} ${dayMonth}`;
+    }
+    return "";
+  };
+
+  const calculateNextPlannedDate = (
+    freq: string,
+    daysWeek: number[],
+    dayMonth: number,
+    qMonth: number = 1,
+    yMonth: number = 0
+  ): string => {
+    const now = new Date();
+    let target = new Date();
+    target.setHours(9, 0, 0, 0); // Default to 9:00 AM
+
+    if (freq === "Daily") {
+      if (now.getHours() >= 18) {
+        target.setDate(target.getDate() + 1);
+      }
+    } else if (freq === "Weekly" || freq === "Alternate") {
+      if (daysWeek.length > 0) {
+        let currentDay = now.getDay();
+        let daysToAdd = 0;
+        for (let i = 0; i < 7; i++) {
+          const testDay = (currentDay + i) % 7;
+          if (daysWeek.includes(testDay)) {
+            daysToAdd = i;
+            break;
+          }
+        }
+        target.setDate(target.getDate() + daysToAdd);
+      }
+    } else if (freq === "Monthly") {
+      target.setDate(dayMonth);
+      if (target < now) {
+        target.setMonth(target.getMonth() + 1);
+      }
+    } else if (freq === "Quarterly") {
+      const currentMonth = now.getMonth();
+      const currentQuarterStart = Math.floor(currentMonth / 3) * 3;
+      let targetMonth = currentQuarterStart + (qMonth - 1);
+      target = new Date(now.getFullYear(), targetMonth, dayMonth, 9, 0, 0);
+      if (target < now) {
+        target = new Date(now.getFullYear(), targetMonth + 3, dayMonth, 9, 0, 0);
+      }
+    } else if (freq === "Yearly") {
+      target = new Date(now.getFullYear(), yMonth, dayMonth, 9, 0, 0);
+      if (target < now) {
+        target = new Date(now.getFullYear() + 1, yMonth, dayMonth, 9, 0, 0);
+      }
+    }
+
+    // Format for datetime-local: YYYY-MM-DDTHH:mm
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, "0");
+    const date = String(target.getDate()).padStart(2, "0");
+    const hours = String(target.getHours()).padStart(2, "0");
+    const minutes = String(target.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${date}T${hours}:${minutes}`;
+  };
+
+  const toggleDayOfWeek = (val: number) => {
+    setSelectedDaysOfWeek(prev => 
+      prev.includes(val) ? prev.filter(d => d !== val) : [...prev, val].sort()
+    );
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -46,12 +178,13 @@ export function AddChecklistPage() {
         taskName: "",
         assignBy: "",
         assignTo: "",
-        plannedDate: "",
+        plannedDate: calculateNextPlannedDate("Daily", [1, 3, 5], 1),
         priority: "Low",
         makeAttachmentMandatory: false,
         makeNoteMandatory: false,
         mode: "Online",
-        frequency: "",
+        frequency: "Daily",
+        whenRule: "Daily execution",
         remindBeforeDays: 0,
         skipOnHolidays: false,
       });
@@ -66,7 +199,6 @@ export function AddChecklistPage() {
       <div className="chk-card">
         <div className="chk-card-header">
           <h2 className="chk-title">ADD CHECKLIST</h2>
-
         </div>
         
         <div className="chk-card-content">
@@ -95,7 +227,127 @@ export function AddChecklistPage() {
               </div>
 
               <div className="chk-form-group">
-                <label className="chk-label">Planned Date <span className="chk-required">*</span></label>
+                <label className="chk-label">Frequency <span className="chk-required">*</span></label>
+                <select name="frequency" required value={formData.frequency} onChange={handleChange} className="chk-select">
+                  <option value="Daily">Daily</option>
+                  <option value="Alternate">Alternate</option>
+                  <option value="Weekly">Weekly</option>
+                  <option value="Monthly">Monthly</option>
+                  <option value="Quarterly">Quarterly</option>
+                  <option value="Yearly">Yearly</option>
+                </select>
+              </div>
+
+              {/* Dynamic Days / Month selection based on Frequency */}
+              {(formData.frequency === "Weekly" || formData.frequency === "Alternate") && (
+                <div className="chk-form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="chk-label">Select Scheduled Days (e.g. Every Tue, Thu, Sat) <span className="chk-required">*</span></label>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
+                    {DAYS_OF_WEEK.map(d => {
+                      const isSelected = selectedDaysOfWeek.includes(d.value);
+                      return (
+                        <button
+                          key={d.value}
+                          type="button"
+                          onClick={() => toggleDayOfWeek(d.value)}
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: 20,
+                            border: isSelected ? "2px solid #3b82f6" : "1px solid #cbd5e1",
+                            background: isSelected ? "#eff6ff" : "#fff",
+                            color: isSelected ? "#1d4ed8" : "#475569",
+                            fontWeight: isSelected ? 700 : 500,
+                            cursor: "pointer",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                </div>
+              )}
+
+              {formData.frequency === "Quarterly" && (
+                <>
+                  <div className="chk-form-group">
+                    <label className="chk-label">Month of Quarter <span className="chk-required">*</span></label>
+                    <select
+                      value={selectedQuarterMonth}
+                      onChange={(e) => setSelectedQuarterMonth(parseInt(e.target.value, 10))}
+                      className="chk-select"
+                    >
+                      <option value={1}>1st Month of Quarter (Jan / Apr / Jul / Oct)</option>
+                      <option value={2}>2nd Month of Quarter (Feb / May / Aug / Nov)</option>
+                      <option value={3}>3rd Month of Quarter (Mar / Jun / Sep / Dec)</option>
+                    </select>
+                  </div>
+                  <div className="chk-form-group">
+                    <label className="chk-label">Day of Month <span className="chk-required">*</span></label>
+                    <select
+                      value={selectedDayOfMonth}
+                      onChange={(e) => setSelectedDayOfMonth(parseInt(e.target.value, 10))}
+                      className="chk-select"
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <option key={day} value={day}>Day {day}</option>
+                      ))}
+                    </select>
+                    <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                  </div>
+                </>
+              )}
+
+              {formData.frequency === "Yearly" && (
+                <>
+                  <div className="chk-form-group">
+                    <label className="chk-label">Month of Year <span className="chk-required">*</span></label>
+                    <select
+                      value={selectedYearMonth}
+                      onChange={(e) => setSelectedYearMonth(parseInt(e.target.value, 10))}
+                      className="chk-select"
+                    >
+                      {MONTHS_OF_YEAR.map((mName, idx) => (
+                        <option key={idx} value={idx}>{mName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="chk-form-group">
+                    <label className="chk-label">Day of Month <span className="chk-required">*</span></label>
+                    <select
+                      value={selectedDayOfMonth}
+                      onChange={(e) => setSelectedDayOfMonth(parseInt(e.target.value, 10))}
+                      className="chk-select"
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <option key={day} value={day}>Day {day}</option>
+                      ))}
+                    </select>
+                    <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                  </div>
+                </>
+              )}
+
+              {formData.frequency === "Monthly" && (
+                <div className="chk-form-group">
+                  <label className="chk-label">Day of Month <span className="chk-required">*</span></label>
+                  <select
+                    value={selectedDayOfMonth}
+                    onChange={(e) => setSelectedDayOfMonth(parseInt(e.target.value, 10))}
+                    className="chk-select"
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>Day {day}</option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                </div>
+              )}
+
+              <div className="chk-form-group">
+                <label className="chk-label">Planned Date <span className="chk-required">*</span> (Auto-calculated)</label>
                 <input type="datetime-local" name="plannedDate" required value={formData.plannedDate} onChange={handleChange} className="chk-input" />
               </div>
 
@@ -136,11 +388,6 @@ export function AddChecklistPage() {
               </div>
 
               <div className="chk-form-group">
-                <label className="chk-label">Frequency <span className="chk-required">*</span></label>
-                <input type="text" name="frequency" required value={formData.frequency} onChange={handleChange} className="chk-input" placeholder="e.g. Daily, Weekly" />
-              </div>
-
-              <div className="chk-form-group">
                 <label className="chk-label">Remind Before Days <span className="chk-required">*</span></label>
                 <input type="number" name="remindBeforeDays" required min={0} value={formData.remindBeforeDays} onChange={handleChange} className="chk-input" />
               </div>
@@ -162,3 +409,4 @@ export function AddChecklistPage() {
     </div>
   );
 }
+

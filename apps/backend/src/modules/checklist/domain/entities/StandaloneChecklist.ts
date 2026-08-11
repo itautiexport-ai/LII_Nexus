@@ -9,6 +9,7 @@ export interface StandaloneChecklist {
   makeNoteMandatory: boolean;
   mode: string;
   frequency: string;
+  whenRule?: string;
   remindBeforeDays: number;
   skipOnHolidays: boolean;
   createdAt: Date;

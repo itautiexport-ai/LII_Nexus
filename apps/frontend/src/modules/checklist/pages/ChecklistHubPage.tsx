@@ -10,6 +10,7 @@ export default function ChecklistHubPage() {
     { label: "My Checklists", to: "/admin/my-checklists", desc: "View, execute, and submit all checklists assigned to you" },
     { label: "List Checklist", to: "/admin/standalone-checklist/list", desc: "Access and view all checklist templates and definitions" },
     { label: "Add Checklist", to: "/admin/standalone-checklist/add", desc: "Create new checklist templates and definitions" },
+    { label: "Formats Library", to: "/admin/resource-center/formats-library", desc: "Download official Excel formats and templates for bulk checklist uploads" },
   ];
 
   const items = allItems.filter(item => {

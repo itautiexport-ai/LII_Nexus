@@ -96,7 +96,29 @@ export class FmsExecutionService {
       let deps: string[] = [];
 
       if (explicit && explicit.length > 0) {
-        deps = explicit.map((stepId: string) => stepIdToInstanceStepId.get(stepId)).filter(Boolean);
+        const localDeps: string[] = [];
+        let hasUnmetExternalDep = false;
+
+        for (const depStepId of explicit) {
+          const localInstStepId = stepIdToInstanceStepId.get(depStepId);
+          if (localInstStepId) {
+            localDeps.push(localInstStepId);
+          } else {
+            // Check cross-FMS step dependency in database
+            const [extRows] = await this.dbPool.query(
+              "SELECT id FROM fms_instance_steps WHERE fms_step_id = ? AND status IN ('Completed', 'Skipped') LIMIT 1",
+              [depStepId]
+            );
+            if (!extRows || extRows.length === 0) {
+              hasUnmetExternalDep = true;
+            }
+          }
+        }
+
+        deps = localDeps;
+        if (hasUnmetExternalDep) {
+          deps.push("__UNSATISFIED_EXTERNAL_DEP__");
+        }
         previousBlock = currentBlock.length > 0 ? [...currentBlock] : [...previousBlock];
         currentBlock = [row.instanceStepId];
       } else {

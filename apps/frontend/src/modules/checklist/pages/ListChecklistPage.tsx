@@ -67,6 +67,7 @@ export function ListChecklistPage() {
                     <th className="chk-th">Priority</th>
                     <th className="chk-th">Mode</th>
                     <th className="chk-th">Frequency</th>
+                    <th className="chk-th">Schedule Rule</th>
                     <th className="chk-th">Actions</th>
                   </tr>
                 </thead>
@@ -89,6 +90,7 @@ export function ListChecklistPage() {
                       </td>
                       <td className="chk-td">{c.mode}</td>
                       <td className="chk-td">{c.frequency}</td>
+                      <td className="chk-td">{(c as any).whenRule || (c as any).when_rule || "-"}</td>
                       <td className="chk-td">
                         <button 
                           onClick={() => handleDelete(c.id)}

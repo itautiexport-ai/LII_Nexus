@@ -21,6 +21,7 @@ router.delete("/fms/:id", authMiddleware, controller.deleteFms);
 
 router.post("/fms/:fmsId/steps", authMiddleware, controller.addStep);
 router.get("/fms/:fmsId/steps", authMiddleware, controller.getSteps);
+router.put("/fms/steps/:stepId/reorder", authMiddleware, controller.reorderStep);
 router.put("/fms/steps/:stepId", authMiddleware, controller.updateStep);
 router.delete("/fms/steps/:stepId", authMiddleware, controller.deleteStep);
 

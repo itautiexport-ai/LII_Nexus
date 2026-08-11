@@ -31,7 +31,7 @@ export const performanceEvaluationApi = {
 
   getHodEvaluations: async () => {
     const response = await axiosInstance.get("/performance-evaluation/hod");
-    return response.data;
+    return response.data.data || [];
   },
 
   createHrEvaluation: async (data: EvaluationData) => {
@@ -41,6 +41,6 @@ export const performanceEvaluationApi = {
 
   getHrEvaluations: async () => {
     const response = await axiosInstance.get("/performance-evaluation/hr");
-    return response.data;
+    return response.data.data || [];
   }
 };

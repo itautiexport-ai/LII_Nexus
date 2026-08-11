@@ -104,6 +104,23 @@ export class FmsManagerService {
 
   async addStep(fmsId: string, dto: CreateFmsStepDto): Promise<FmsStepEntity> {
     const id = uuidv4();
+    
+    // Get existing steps ordered
+    const [existingSteps] = await this.dbPool.query(
+      "SELECT id, sequence_order FROM fms_steps WHERE fms_id = ? ORDER BY sequence_order ASC, created_at ASC",
+      [fmsId]
+    );
+
+    let targetOrder = existingSteps.length;
+    if (dto.sequenceOrder !== undefined && dto.sequenceOrder !== null && dto.sequenceOrder < existingSteps.length) {
+      targetOrder = dto.sequenceOrder;
+      // Shift steps at or after targetOrder
+      await this.dbPool.query(
+        "UPDATE fms_steps SET sequence_order = sequence_order + 1 WHERE fms_id = ? AND sequence_order >= ?",
+        [fmsId, targetOrder]
+      );
+    }
+
     const query = `
       INSERT INTO fms_steps (
         id, fms_id, step_name, doer_employee_ids, timeline_hours, timeline_unit, is_sequential, sequence_order, depends_on_step_ids
@@ -113,15 +130,16 @@ export class FmsManagerService {
       id,
       fmsId,
       dto.stepName,
-      JSON.stringify(dto.doerEmployeeIds),
+      JSON.stringify(dto.doerEmployeeIds || []),
       dto.timelineHours,
       dto.timelineUnit,
       dto.isSequential !== undefined ? dto.isSequential : true,
-      dto.sequenceOrder || 0,
+      targetOrder,
       JSON.stringify(dto.dependsOnStepIds || [])
     ];
 
     await this.dbPool.query(query, params);
+    await this._normalizeSequenceOrders(fmsId);
 
     const [rows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE id = ?", [id]);
     return this.mapToStepEntity(rows[0]);
@@ -147,10 +165,24 @@ export class FmsManagerService {
   }
 
   async deleteStep(stepId: string): Promise<void> {
+    const [stepRows] = await this.dbPool.query("SELECT fms_id FROM fms_steps WHERE id = ?", [stepId]);
+    const fmsId = stepRows[0]?.fms_id;
     await this.dbPool.query("DELETE FROM fms_steps WHERE id = ?", [stepId]);
+    if (fmsId) {
+      await this._normalizeSequenceOrders(fmsId);
+    }
   }
 
   async updateStep(stepId: string, dto: CreateFmsStepDto): Promise<FmsStepEntity> {
+    const [existingRows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE id = ?", [stepId]);
+    if (existingRows.length === 0) throw new Error("Step not found");
+    const currentStep = existingRows[0];
+    
+    let targetOrder = currentStep.sequence_order;
+    if (dto.sequenceOrder !== undefined && dto.sequenceOrder !== null && dto.sequenceOrder !== currentStep.sequence_order) {
+      targetOrder = dto.sequenceOrder;
+    }
+
     const query = `
       UPDATE fms_steps 
       SET step_name = ?, doer_employee_ids = ?, timeline_hours = ?, timeline_unit = ?, is_sequential = ?, sequence_order = ?, depends_on_step_ids = ?
@@ -158,18 +190,63 @@ export class FmsManagerService {
     `;
     const params = [
       dto.stepName,
-      JSON.stringify(dto.doerEmployeeIds),
+      JSON.stringify(dto.doerEmployeeIds || []),
       dto.timelineHours,
       dto.timelineUnit,
       dto.isSequential !== undefined ? dto.isSequential : true,
-      dto.sequenceOrder || 0,
+      targetOrder,
       JSON.stringify(dto.dependsOnStepIds || []),
       stepId
     ];
     await this.dbPool.query(query, params);
+    await this._normalizeSequenceOrders(currentStep.fms_id);
     
     const [rows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE id = ?", [stepId]);
     return this.mapToStepEntity(rows[0]);
+  }
+
+  async reorderStep(stepId: string, direction: "up" | "down"): Promise<void> {
+    const [rows] = await this.dbPool.query("SELECT * FROM fms_steps WHERE id = ?", [stepId]);
+    if (rows.length === 0) throw new Error("Step not found");
+    const targetStep = rows[0];
+    const fmsId = targetStep.fms_id;
+
+    // First normalize current steps so every step has explicit sequential 0, 1, 2...
+    await this._normalizeSequenceOrders(fmsId);
+
+    const [allSteps] = await this.dbPool.query(
+      "SELECT id, sequence_order FROM fms_steps WHERE fms_id = ? ORDER BY sequence_order ASC, created_at ASC",
+      [fmsId]
+    );
+
+    const currentIndex = allSteps.findIndex((s: any) => s.id === stepId);
+    if (currentIndex === -1) return;
+
+    const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (swapIndex >= 0 && swapIndex < allSteps.length) {
+      // Swap elements in array
+      const temp = allSteps[currentIndex];
+      allSteps[currentIndex] = allSteps[swapIndex];
+      allSteps[swapIndex] = temp;
+
+      // Assign new sequence_order to each step
+      for (let i = 0; i < allSteps.length; i++) {
+        await this.dbPool.query("UPDATE fms_steps SET sequence_order = ? WHERE id = ?", [i, allSteps[i].id]);
+      }
+    }
+  }
+
+  private async _normalizeSequenceOrders(fmsId: string): Promise<void> {
+    const [rows] = await this.dbPool.query(
+      "SELECT id FROM fms_steps WHERE fms_id = ? ORDER BY sequence_order ASC, created_at ASC",
+      [fmsId]
+    );
+    for (let i = 0; i < rows.length; i++) {
+      await this.dbPool.query(
+        "UPDATE fms_steps SET sequence_order = ? WHERE id = ?",
+        [i, rows[i].id]
+      );
+    }
   }
 
   private mapToStepEntity(row: any): FmsStepEntity {

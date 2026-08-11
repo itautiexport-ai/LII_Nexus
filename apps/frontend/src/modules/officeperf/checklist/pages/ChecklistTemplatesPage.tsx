@@ -15,7 +15,7 @@ export default function ChecklistTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
-    const [t, e, r] = await Promise.all([checklistApi.listTemplates(), employeesApi.list(), rolesApi.list()]);
+    const [t, e, r] = await Promise.all([checklistApi.listTemplates(), employeesApi.listForDropdown(), rolesApi.list()]);
     setTemplates(t);
     setEmployees(e);
     setRoles(r);

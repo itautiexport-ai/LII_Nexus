@@ -13,7 +13,7 @@ export default function KpiEngineScoresPage() {
   const [selectedId, setSelectedId] = useState("");
   const [result, setResult] = useState<ScoreResult | null>(null);
 
-  useEffect(() => { employeesApi.list().then(setEmployees); departmentsApi.list().then(setDepartments); }, []);
+  useEffect(() => { employeesApi.listForDropdown().then(setEmployees); departmentsApi.list().then(setDepartments); }, []);
 
   useEffect(() => {
     if (tab === "company") kpiEngineApi.companyScore().then(setResult);

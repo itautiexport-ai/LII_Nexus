@@ -195,7 +195,10 @@ export default function OfficeEmReportPage() {
       <div style={{ display: "flex", gap: "16px", marginBottom: "32px", alignItems: "center" }}>
         <select className="professional-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
           <option value="">-- Select Employee --</option>
-          {users.map(u => (
+          {users.filter(u => !u.roles?.some(r => {
+            const lower = r.toLowerCase();
+            return lower.includes("director") || lower.includes("admin");
+          })).map(u => (
             <option key={u.id} value={u.id}>{u.fullName}</option>
           ))}
         </select>

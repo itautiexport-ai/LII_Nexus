@@ -16,9 +16,11 @@ export class PerformanceEvaluationService {
 
   async getHodEvaluations() {
     const [rows] = await pool.query(
-      `SELECT h.*, e.name as employee_name 
+      `SELECT h.*, e.full_name as employee_name, e.employee_code, d.name as department_name, g.title as designation_title 
        FROM hod_evaluations h 
-       JOIN employees e ON h.employee_id = e.id 
+       LEFT JOIN employees e ON h.employee_id = e.id 
+       LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN designations g ON e.designation_id = g.id
        ORDER BY h.created_at DESC`
     );
     return rows;

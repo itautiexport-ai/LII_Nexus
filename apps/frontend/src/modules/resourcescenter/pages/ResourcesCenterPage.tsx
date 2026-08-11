@@ -5,10 +5,16 @@ export default function ResourcesCenterPage() {
 
   const resources = [
     {
+      title: "Formats Library",
+      description: "Download official Excel formats and templates for bulk uploads.",
+      icon: "📊",
+      to: "/admin/resource-center/formats-library",
+    },
+    {
       title: "Documents",
       description: "Browse, upload and manage all organizational documents.",
       icon: "📄",
-      to: "/admin/documents",
+      to: "/admin/resource-center/document-library",
     },
     {
       title: "Upload Document",

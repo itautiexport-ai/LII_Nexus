@@ -134,6 +134,12 @@ import PoliciesPage from "../../modules/resourcescenter/pages/PoliciesPage";
 import FormsPage from "../../modules/resourcescenter/pages/FormsPage";
 import TemplatesPage from "../../modules/resourcescenter/pages/TemplatesPage";
 import ManualsPage from "../../modules/resourcescenter/pages/ManualsPage";
+import FormatsLibraryPage from "../../modules/resourcescenter/pages/FormatsLibraryPage";
+import SourcewizProductFormPage from "../../modules/sourcewiz/pages/SourcewizProductFormPage";
+import SourcewizProductsPage from "../../modules/sourcewiz/pages/SourcewizProductsPage";
+import SourcewizDashboardPage from "../../modules/sourcewiz/pages/SourcewizDashboardPage";
+import SourcewizQuotationsPage from "../../modules/sourcewiz/pages/SourcewizQuotationsPage";
+import SourcewizRfqsPage from "../../modules/sourcewiz/pages/SourcewizRfqsPage";
 import NoticesPage from "../../modules/hr/pages/NoticesPage";
 import WeeklyPayrollPage from "../../modules/hr/pages/WeeklyPayrollPage";
 import MonthlySalarySheetPage from "../../modules/hr/pages/MonthlySalarySheetPage";
@@ -185,6 +191,8 @@ export default function AppRouter() {
           <Route path="resource-center/forms" element={<FormsPage />} />
           <Route path="resource-center/templates" element={<TemplatesPage />} />
           <Route path="resource-center/manuals" element={<ManualsPage />} />
+          <Route path="resource-center/formats-library" element={<FormatsLibraryPage />} />
+          <Route path="formats-library" element={<FormatsLibraryPage />} />
           <Route path="modules/:moduleKey" element={<ModuleLandingPage />} />
           <Route path="finishing-recipe" element={<FinishingRecipePage />} />
           <Route path="users" element={<UsersPage />} />
@@ -220,6 +228,19 @@ export default function AppRouter() {
           <Route path="my-checklists" element={<MyChecklistPage />} />
           <Route path="checklist/new" element={<AddChecklistPage />} />
           <Route path="checklist/list" element={<ListChecklistPage />} />
+          <Route path="standalone-checklist/add" element={<AddChecklistPage />} />
+          <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
+
+          {/* Product Catalog 2.0 (Sourcewiz) Routes */}
+          <Route path="sourcewiz" element={<SourcewizProductsPage />} />
+          <Route path="sourcewiz/products" element={<SourcewizProductsPage />} />
+          <Route path="sourcewiz/product-form" element={<SourcewizProductFormPage />} />
+          <Route path="sourcewiz/dashboard" element={<SourcewizDashboardPage />} />
+          <Route path="sourcewiz/quotations" element={<SourcewizQuotationsPage />} />
+          <Route path="sourcewiz/rfqs" element={<SourcewizRfqsPage />} />
+
+          <Route path="product-form" element={<SourcewizProductFormPage />} />
+          <Route path="products" element={<SourcewizProductsPage />} />
           <Route path="fms" element={<FmsHubPage />} />
           <Route path="fms/my-fms" element={<MyFmsPage />} />
           <Route path="fms/add" element={<AddFmsManagerPage />} />

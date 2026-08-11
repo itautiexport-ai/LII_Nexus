@@ -22,7 +22,7 @@ export default function AddHelpTicketPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    employeesApi.list("").then(setEmployees).catch(() => {});
+    employeesApi.listForDropdown("").then(setEmployees).catch(() => {});
   }, []);
 
   function handleChange(

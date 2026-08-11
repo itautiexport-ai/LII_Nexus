@@ -20,7 +20,7 @@ export default function HodEvaluationPage() {
   const [message, setMessage] = useState<{type: "error" | "success", text: string} | null>(null);
 
   useEffect(() => {
-    employeesApi.list().then(data => setEmployees(data)).catch(console.error);
+    employeesApi.listForDropdown().then(data => setEmployees(data)).catch(console.error);
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

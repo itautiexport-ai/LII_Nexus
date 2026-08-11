@@ -116,4 +116,19 @@ export class FmsManagerController {
       res.status(500).json({ success: false, message: "Internal server error" });
     }
   };
+
+  reorderStep = async (req: Request, res: Response) => {
+    try {
+      const { stepId } = req.params;
+      const { direction } = req.body;
+      if (direction !== "up" && direction !== "down") {
+        return res.status(400).json({ success: false, message: "Invalid direction" });
+      }
+      await this.service.reorderStep(stepId, direction);
+      res.json({ success: true, message: "Step reordered" });
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  };
 }

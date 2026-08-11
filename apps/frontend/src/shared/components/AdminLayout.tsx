@@ -4,6 +4,7 @@ import { authApi } from "../../modules/auth/api/authApi";
 import { useAuthStore } from "../../modules/auth/hooks/useAuthStore";
 import NotificationBell from "../../modules/notifications/components/NotificationBell";
 import { env } from "../../config/env";
+import { AiHelperWidget } from "./AiHelperWidget";
 
 export interface NavItem {
   label: string;
@@ -55,6 +56,7 @@ export const SECTIONS: NavSection[] = [
     allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin", "HR", "Supervisor"],
     items: [
       { label: "Document Library", to: "/admin/resource-center/document-library" },
+      { label: "Formats Library",  to: "/admin/resource-center/formats-library" },
       { label: "Important URLs",   to: "/admin/resource-center/important-urls" },
       { label: "SOPs",             to: "/admin/resource-center/sops" },
       { label: "Policies",         to: "/admin/resource-center/policies" },
@@ -106,6 +108,14 @@ export const SECTIONS: NavSection[] = [
           },
         ]
       },
+    ],
+  },
+  {
+    key: "sourcewiz",
+    label: "Product Catalog 2.0",
+    items: [
+      { label: "Product Form", to: "/admin/sourcewiz/product-form" },
+      { label: "Product Catalog", to: "/admin/sourcewiz/products" },
     ],
   },
   {
@@ -282,6 +292,7 @@ export const SECTIONS: NavSection[] = [
     allowedRoles: ["System Admin", "HOD", "HR", "CEO"],
     items: [
       { label: "HOD Evaluation", to: "/admin/performance-evaluation/hod" },
+      { label: "HOD's Score List", to: "/admin/performance-evaluation/hod-score-list" },
       { label: "HR Evaluation", to: "/admin/performance-evaluation/hr" },
       { label: "Employee Score", to: "/admin/performance-evaluation/employee-score" }
     ],
@@ -602,6 +613,7 @@ export default function AdminLayout() {
           <Outlet />
         </div>
       </main>
+      <AiHelperWidget />
     </div>
   );
 }

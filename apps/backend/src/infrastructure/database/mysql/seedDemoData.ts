@@ -111,7 +111,7 @@ async function seedDemoUsers() {
   // valid regardless - both are documented as the HR test account).
   await ensureDemoUser({
     email: "hr@liinexus.com", fullName: "HR Test", employeeCode: "EMP-HR01", roleName: "HR Admin",
-    departmentId: hrDeptId, designationId: hrDesignationId, managerEmployeeId: ceoId,
+    departmentId: hrDeptId, designationId: hrDesignationId, managerEmployeeId: null,
   });
 
   // Supervisor Test and Worker Test may already exist from earlier manual

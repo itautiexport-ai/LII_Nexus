@@ -18,7 +18,7 @@ export default function MeetingDetailPage() {
 
   async function load() {
     if (!id) return;
-    const [m, e] = await Promise.all([meetingApi.getById(id), employeesApi.list()]);
+    const [m, e] = await Promise.all([meetingApi.getById(id), employeesApi.listForDropdown()]);
     setMeeting(m);
     setEmployees(e);
     const notes: Record<string, string> = {};

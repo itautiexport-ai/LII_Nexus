@@ -26,8 +26,15 @@ export const employeesApi = {
     return res.data.data;
   },
   async list(search = ""): Promise<EmployeeRecord[]> {
-    const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 50 } });
+    const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 100 } });
     return res.data.data;
+  },
+  async listForDropdown(search = ""): Promise<EmployeeRecord[]> {
+    const items = await this.list(search);
+    return items.filter(emp => {
+      const title = emp.designationTitle?.toLowerCase() || "";
+      return !title.includes("director") && !title.includes("admin");
+    });
   },
   async create(payload: {
     employeeCode: string; fullName: string; email?: string; phone?: string;

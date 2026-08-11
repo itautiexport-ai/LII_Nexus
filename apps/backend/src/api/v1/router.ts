@@ -93,6 +93,8 @@ router.use("/", urlRoutes);
 router.use("/", uploadRoutes);
 router.use("/orders-in-hand", orderInHandRoutes);
 router.use("/", cartonOrderRoutes);
-router.use("/task-center", taskCenterRoutes);
+import aiHelperRoutes from "../../modules/ai-helper/presentation/routes/aiHelper.routes";
+
+router.use("/ai-helper", aiHelperRoutes);
 
 export default router;

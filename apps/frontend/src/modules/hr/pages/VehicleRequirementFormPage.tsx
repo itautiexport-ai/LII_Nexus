@@ -47,7 +47,11 @@ export default function VehicleRequirementFormPage() {
       });
 
       userList.forEach((u: UserRecord) => {
-        if (u.fullName && !nameMap.has(u.fullName.trim().toLowerCase())) {
+        const isExcludedRole = u.roles?.some(r => {
+          const lower = r.toLowerCase();
+          return lower.includes("director") || lower.includes("admin");
+        });
+        if (u.fullName && !isExcludedRole && !nameMap.has(u.fullName.trim().toLowerCase())) {
           nameMap.set(u.fullName.trim().toLowerCase(), {
             id: u.id,
             name: u.fullName.trim(),

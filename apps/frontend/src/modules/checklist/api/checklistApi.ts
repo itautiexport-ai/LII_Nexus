@@ -10,6 +10,7 @@ export interface CreateStandaloneChecklistDto {
   makeNoteMandatory: boolean;
   mode: string;
   frequency: string;
+  whenRule?: string;
   remindBeforeDays: number;
   skipOnHolidays: boolean;
 }

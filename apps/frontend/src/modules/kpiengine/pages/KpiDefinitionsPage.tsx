@@ -21,7 +21,7 @@ export default function KpiDefinitionsPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
-    const [defs, emps, depts] = await Promise.all([kpiEngineApi.listDefinitions(), employeesApi.list(), departmentsApi.list()]);
+    const [defs, emps, depts] = await Promise.all([kpiEngineApi.listDefinitions(), employeesApi.listForDropdown(), departmentsApi.list()]);
     setDefinitions(defs);
     setEmployees(emps);
     setDepartments(depts);
