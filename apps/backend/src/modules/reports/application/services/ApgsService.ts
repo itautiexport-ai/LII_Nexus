@@ -190,16 +190,15 @@ export class MisService {
 
     // 2. Checklist Tasks
     const [chkInstances] = await pool.query<any[]>(
-      `SELECT id, task_name as title, priority, 
-              IF(deleted_at IS NOT NULL, 1, 0) as is_checked, 
-              deleted_at as checked_at, 
-              created_at as period_end
-       FROM standalone_checklists
-       WHERE assign_to = ?
+      `SELECT ci.id, sc.task_name as title, sc.priority, cii.is_checked, cii.checked_at, ci.period_end 
+       FROM checklist_instances ci
+       JOIN standalone_checklists sc ON ci.template_id = sc.id
+       JOIN checklist_instance_items cii ON ci.id = cii.instance_id
+       WHERE ci.employee_id = ?
          AND (
-           (created_at >= ? AND created_at <= ?)
-           OR (deleted_at IS NULL)
-           OR (deleted_at >= ? AND deleted_at <= ?)
+           (ci.period_end >= ? AND ci.period_end <= ?)
+           OR (cii.is_checked = 0)
+           OR (cii.checked_at >= ? AND cii.checked_at <= ?)
          )`,
       [empId, startStr, endStr, startStr, endStr]
     );

@@ -171,49 +171,37 @@ export class OfficeEmService {
     );
     const delegationScore = evaluateModule(delTasks, delegationWeightVal);
 
-    // 2. Checklist (Standalone)
+    // 2. Checklist
     const [chkRuns] = await pool.query<any[]>(
-      `SELECT id, task_name as name, priority, created_at as due_date, 
-              IF(deleted_at IS NOT NULL, 'completed', 'pending') as base_status, 
-              deleted_at as completed_at
-       FROM standalone_checklists
-       WHERE assign_to = ?
+      `SELECT ci.id, sc.task_name as name, sc.priority, ci.period_end as due_date, 
+              IF(cii.is_checked=1, 'completed', 'pending') as base_status, 
+              cii.checked_at as completed_at
+       FROM checklist_instances ci
+       JOIN standalone_checklists sc ON ci.template_id = sc.id
+       JOIN checklist_instance_items cii ON ci.id = cii.instance_id
+       WHERE ci.employee_id = ?
          AND (
-           (created_at >= ? AND created_at <= ?)
-           OR (deleted_at IS NULL)
-           OR (deleted_at >= ? AND deleted_at <= ?)
+           (ci.period_end >= ? AND ci.period_end <= ?)
+           OR (cii.is_checked = 0)
+           OR (cii.checked_at >= ? AND cii.checked_at <= ?)
          )`,
       [empId, startStr, endStr, startStr, endStr]
     );
     const checklistScore = evaluateModule(chkRuns, checklistWeightVal);
 
     // 3. FMS
-    const [fmsTasksRaw] = await pool.query<any[]>(
-      `SELECT fis.id, fs.step_name as name, 'medium' as priority, fis.created_at as due_date, 
-              IF(fis.status = 'In Progress', 'running', IF(fis.status = 'Pending', 'pending', 'completed')) as base_status, 
-              fis.completed_at,
-              fs.doer_employee_ids,
-              fi.creator_id
-       FROM fms_instance_steps fis
-       JOIN fms_steps fs ON fis.fms_step_id = fs.id
-       JOIN fms_instances fi ON fis.instance_id = fi.id
-       WHERE (fis.created_at >= ? AND fis.created_at <= ?)
-          OR fis.status IN ('Pending', 'In Progress')
-          OR (fis.completed_at >= ? AND fis.completed_at <= ?)`,
-      [startStr, endStr, startStr, endStr]
+    const [fmsTasks] = await pool.query<any[]>(
+      `SELECT ft.id, ws.name, 'medium' as priority, ft.due_date, ft.base_status, ft.completed_at
+       FROM flowchart_tasks ft
+       JOIN workflow_stages ws ON ft.stage_id = ws.id
+       WHERE ft.assigned_to = ?
+         AND (
+           (ft.due_date >= ? AND ft.due_date <= ?)
+           OR ft.base_status IN ('pending', 'running')
+           OR (ft.completed_at >= ? AND ft.completed_at <= ?)
+         )`,
+      [empId, startStr, endStr, startStr, endStr]
     );
-    const fmsTasks = fmsTasksRaw.filter(t => {
-      let doers: any[] = [];
-      try {
-        doers = typeof t.doer_employee_ids === 'string' ? JSON.parse(t.doer_employee_ids) : t.doer_employee_ids;
-      } catch(e) {}
-      if (!Array.isArray(doers)) doers = [];
-      
-      const isDoer = doers.includes(empId);
-      const isCreator = t.creator_id === empId;
-      if (doers.length === 0 && isCreator) return true;
-      return isDoer;
-    });
     const fmsScore = evaluateModule(fmsTasks, fmsWeightVal);
 
     // Normalize weights
