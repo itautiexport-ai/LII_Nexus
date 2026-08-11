@@ -15,8 +15,7 @@ export function AddChecklistPage() {
     makeNoteMandatory: false,
     mode: "Online",
     frequency: "",
-    remindBeforeDays: "", // used for schedule
-    reminderDays: "", // actual reminder days
+    remindBeforeDays: "",
     skipOnHolidays: false,
   });
   const [loading, setLoading] = useState(false);
@@ -37,14 +36,9 @@ export function AddChecklistPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload: any = { ...formData };
-      if (payload.reminderDays === "") {
-        delete payload.reminderDays;
-      } else {
-        payload.reminderDays = parseInt(payload.reminderDays, 10);
-      }
-
-      await standaloneChecklistApi.create(payload);
+      await standaloneChecklistApi.create({
+        ...formData
+      });
       alert("Checklist created successfully!");
       setFormData({
         taskName: "",
@@ -55,7 +49,6 @@ export function AddChecklistPage() {
         mode: "Online",
         frequency: "",
         remindBeforeDays: "",
-        reminderDays: "",
         skipOnHolidays: false,
       });
     } catch (err) {
@@ -97,8 +90,7 @@ export function AddChecklistPage() {
           const noteReq = row["make note mandatory"];
           const modeRaw = row["mode"];
           const freqRaw = row["frequency"];
-          const remindRaw = row["schedule"]; // was remind before days
-          const actualReminderRaw = row["reminder days"];
+          const remindRaw = row["remind before days"];
           const skipHolidaysRaw = row["skip on holidays"];
 
           if (!taskName || !assignToName || !assignByName) {
@@ -135,7 +127,6 @@ export function AddChecklistPage() {
           
           const frequency = (freqRaw?.toString().trim()) || "Daily";
           const remindBeforeDays = remindRaw?.toString() || "";
-          const reminderDays = actualReminderRaw ? parseInt(actualReminderRaw.toString(), 10) : undefined;
 
           const makeAttachmentMandatory = (attachmentReq?.toString().toLowerCase().trim() === "yes" || attachmentReq === true);
           const makeNoteMandatory = (noteReq?.toString().toLowerCase().trim() === "yes" || noteReq === true);
@@ -151,7 +142,6 @@ export function AddChecklistPage() {
               mode,
               frequency,
               remindBeforeDays,
-              reminderDays,
               skipOnHolidays
             });
             successCount++;
@@ -271,33 +261,9 @@ export function AddChecklistPage() {
               </div>
 
               <div className="chk-form-group">
-                <label className="chk-label">Schedule {formData.frequency !== "Daily" && <span className="chk-required">*</span>}</label>
-                <input 
-                  type="text" 
-                  name="remindBeforeDays" 
-                  required={formData.frequency !== "Daily"} 
-                  disabled={formData.frequency === "Daily"}
-                  value={formData.remindBeforeDays} 
-                  onChange={handleChange} 
-                  className="chk-input" 
-                  placeholder={formData.frequency === "Daily" ? "Not applicable for Daily" : "e.g. 15/7, or Monday"} 
-                />
+                <label className="chk-label">Remind Before Days / Schedule <span className="chk-required">*</span></label>
+                <input type="text" name="remindBeforeDays" required value={formData.remindBeforeDays} onChange={handleChange} className="chk-input" placeholder="e.g. 2, or 15/7, or sat" />
               </div>
-
-              {(formData.frequency === "Monthly(M)" || formData.frequency === "Quarterly(Q)" || formData.frequency === "Yearly(Y)" || formData.frequency === "Between month(BM)") && (
-                <div className="chk-form-group">
-                  <label className="chk-label">Reminder (Days Before)</label>
-                  <input 
-                    type="number" 
-                    name="reminderDays" 
-                    value={formData.reminderDays} 
-                    onChange={handleChange} 
-                    className="chk-input" 
-                    placeholder="e.g. 5" 
-                    min="1"
-                  />
-                </div>
-              )}
 
               <div className="chk-form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="chk-checkbox-group">

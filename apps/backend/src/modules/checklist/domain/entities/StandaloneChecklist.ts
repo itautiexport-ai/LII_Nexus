@@ -8,7 +8,6 @@ export interface StandaloneChecklist {
   mode: string;
   frequency: string;
   remindBeforeDays: string;
-  reminderDays?: number;
   skipOnHolidays: boolean;
   createdAt: Date;
   updatedAt: Date;

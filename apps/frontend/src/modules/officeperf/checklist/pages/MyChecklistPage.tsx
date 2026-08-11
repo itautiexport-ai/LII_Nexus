@@ -15,15 +15,13 @@ export default function MyChecklistPage() {
   const fetchChecklists = () => {
     if (!user) return;
     standaloneChecklistApi.getAll().then(data => {
-        const filtered = data.filter(c => 
-          (c.isVisible !== false) && (
-            (c as any).assignTo == user.id || 
-            (c.assignee_name && c.assignee_name.toLowerCase() === user.fullName.toLowerCase()) ||
-            (c.assigner_name && c.assigner_name.toLowerCase() === user.fullName.toLowerCase()) ||
-            (c as any).assignBy == user.id ||
-            c.assignedBy == user.id
-          )
-        );
+      const filtered = data.filter(c => 
+        (c as any).assignTo === user.id || 
+        c.assignee_name === user.fullName ||
+        c.assigner_name === user.fullName ||
+        (c as any).assignBy === user.id ||
+        c.assignedBy === user.id
+      );
       setChecklists(filtered);
       setLoading(false);
     }).catch(err => {
