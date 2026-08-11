@@ -1,6 +1,5 @@
 import cron from "node-cron";
 import { StandaloneChecklistService } from "./StandaloneChecklistService";
-import { ScheduleParser } from "../utils/ScheduleParser";
 import { whatsappBot } from "../../../whatsapp/application/services/WhatsAppBotService";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
 
@@ -44,10 +43,17 @@ export class ChecklistReminderJob {
       const today = new Date();
       let sentCount = 0;
 
-      for (const checklist of allChecklists) {
-        if (!checklist.remindBeforeDays) continue;
+      // Normalize "today" to midnight for accurate date-only comparison
+      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-        const shouldRemind = ScheduleParser.isTodayInSchedule(checklist.remindBeforeDays, today);
+      for (const checklist of allChecklists) {
+        if (!checklist.plannedDate || checklist.remindBeforeDays === undefined || checklist.remindBeforeDays === null) continue;
+
+        const planned = new Date(checklist.plannedDate);
+        const reminderDate = new Date(planned.getFullYear(), planned.getMonth(), planned.getDate());
+        reminderDate.setDate(reminderDate.getDate() - checklist.remindBeforeDays);
+
+        const shouldRemind = reminderDate.getTime() === todayDateOnly.getTime();
         if (shouldRemind) {
           // Send reminder to assign_to
           const [employeeRows] = await pool.query<any[]>(

@@ -29,6 +29,13 @@ export const employeesApi = {
     const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 1000 } });
     return res.data.data;
   },
+  async listForDropdown(search = ""): Promise<EmployeeRecord[]> {
+    const items = await this.list(search);
+    return items.filter(emp => {
+      const title = emp.designationTitle?.toLowerCase() || "";
+      return !title.includes("director") && !title.includes("admin");
+    });
+  },
   async create(payload: {
     employeeCode: string; fullName: string; email?: string; phone?: string;
     departmentId?: string | null; designationId?: string | null; managerId?: string | null; dateOfJoining?: string;

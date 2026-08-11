@@ -7,15 +7,20 @@ export default function ChecklistHubPage() {
   const isSystemAdmin = userRoles.includes("System Admin");
 
   const allItems = [
-    { label: "MY Checklist", to: "/admin/my-checklists", desc: "View your personal checklists" },
-    { label: "List Checklist", to: "/admin/standalone-checklist/list", desc: "Access checklist tools" },
-    { label: "Add Checklist", to: "/admin/standalone-checklist/add", desc: "Create new checklists" },
+    { label: "My Checklists", to: "/admin/my-checklists", desc: "View, execute, and submit all checklists assigned to you" },
+    { label: "List Checklist", to: "/admin/standalone-checklist/list", desc: "Access and view all checklist templates and definitions" },
+    { label: "Add Checklist", to: "/admin/standalone-checklist/add", desc: "Create new checklist templates and definitions" },
+    { label: "Formats Library", to: "/admin/resource-center/formats-library", desc: "Download official Excel formats and templates for bulk checklist uploads" },
   ];
 
   const items = allItems.filter(item => {
-    if (isSystemAdmin) return true;
-    const itemRole = `Menu: Task Center -> Checklist -> ${item.label}`;
-    return userRoles.includes(itemRole);
+    if (isSystemAdmin || item.label === "My Checklists") return true;
+    
+    const roleFormat1 = `Menu: Task Center -> Checklist -> ${item.label}`;
+    const roleFormat2 = `Menu: Task Center -> ${item.label}`;
+    const roleFormat3 = `Menu: Task Center -> Checklist`;
+    
+    return userRoles.includes(roleFormat1) || userRoles.includes(roleFormat2) || userRoles.includes(roleFormat3);
   });
 
   return (

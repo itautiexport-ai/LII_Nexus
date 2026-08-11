@@ -4,11 +4,14 @@ export interface CreateStandaloneChecklistDto {
   taskName: string;
   assignBy: string;
   assignTo: string;
+  plannedDate: string;
+  priority: "Low" | "Medium" | "High";
   makeAttachmentMandatory: boolean;
   makeNoteMandatory: boolean;
   mode: string;
   frequency: string;
-  remindBeforeDays: string;
+  whenRule?: string;
+  remindBeforeDays: number;
   skipOnHolidays: boolean;
 }
 

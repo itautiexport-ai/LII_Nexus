@@ -2,6 +2,10 @@ import { v4 as uuidv4 } from "uuid";
 import { StandaloneChecklist } from "../../domain/entities/StandaloneChecklist";
 import { CreateStandaloneChecklistDto } from "../dto/checklist.dto";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
+import { NotificationService } from "../../../notifications/application/services/NotificationService";
+import { MySqlNotificationRepository } from "../../../notifications/infrastructure/repositories/MySqlNotificationRepository";
+
+const notificationService = new NotificationService(new MySqlNotificationRepository());
 
 export class StandaloneChecklistService {
   async createChecklist(
@@ -16,10 +20,13 @@ export class StandaloneChecklistService {
       assignedBy,
       taskName: dto.taskName,
       assignTo: dto.assignTo,
+      plannedDate: new Date(dto.plannedDate),
+      priority: dto.priority,
       makeAttachmentMandatory: dto.makeAttachmentMandatory,
       makeNoteMandatory: dto.makeNoteMandatory,
       mode: dto.mode,
       frequency: dto.frequency,
+      whenRule: dto.whenRule || "",
       remindBeforeDays: dto.remindBeforeDays,
       skipOnHolidays: dto.skipOnHolidays,
       createdAt: now,
@@ -30,25 +37,50 @@ export class StandaloneChecklistService {
       `INSERT INTO standalone_checklists (
         id, assigned_by, task_name, assign_to, planned_date, priority,
         make_attachment_mandatory, make_note_mandatory, mode, frequency,
-        remind_before_days, skip_on_holidays, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        when_rule, remind_before_days, skip_on_holidays, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         checklist.id,
         checklist.assignedBy,
         checklist.taskName,
         checklist.assignTo,
-        new Date(), // dummy plannedDate
-        "Low", // dummy priority
+        checklist.plannedDate,
+        checklist.priority,
         checklist.makeAttachmentMandatory,
         checklist.makeNoteMandatory,
         checklist.mode,
         checklist.frequency,
+        checklist.whenRule,
         checklist.remindBeforeDays,
         checklist.skipOnHolidays,
         checklist.createdAt,
         checklist.updatedAt,
       ]
     );
+
+    // Send pipeline notification to assigned user
+    try {
+      const [empRows] = await pool.query<any[]>("SELECT user_id FROM employees WHERE id = ?", [dto.assignTo]);
+      const targetUserId = empRows[0]?.user_id || dto.assignTo;
+      const formattedDate = new Date(dto.plannedDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+
+      await notificationService.notify({
+        type: "checklist.pipeline" as any,
+        module: "office_performance" as any,
+        assignedUserId: targetUserId,
+        createdBy: assignedBy,
+        title: `Checklist Pipeline: ${dto.taskName}`,
+        description: `Apka task pipeline me hai jo ${formattedDate} ko aane wala hai`,
+        dueDate: dto.plannedDate,
+        priority: (dto.priority.toLowerCase() === "high" ? "high" : dto.priority.toLowerCase() === "medium" ? "medium" : "low") as any,
+      });
+    } catch (e) {
+      console.error("Failed to trigger checklist pipeline notification:", e);
+    }
 
     return checklist;
   }
@@ -70,10 +102,13 @@ export class StandaloneChecklistService {
       assignBy: row.assigned_by,
       assignTo: row.assign_to,
       taskName: row.task_name,
+      plannedDate: row.planned_date,
+      priority: row.priority,
       makeAttachmentMandatory: !!row.make_attachment_mandatory,
       makeNoteMandatory: !!row.make_note_mandatory,
       mode: row.mode,
       frequency: row.frequency,
+      whenRule: row.when_rule || "",
       remindBeforeDays: row.remind_before_days,
       skipOnHolidays: !!row.skip_on_holidays,
       createdAt: row.created_at,
