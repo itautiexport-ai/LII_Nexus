@@ -7,18 +7,18 @@ export class TaskCenterService {
       const [empRows] = await pool.query<any[]>("SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL", [userId]);
       const employeeId = empRows[0]?.id || userId; // fallback to userId if no employee mapping
 
-      // 1. Checklist Stats (standalone_checklists has no completion status natively? We use completed=0 as mock for now, or just return total)
-      // Actually, StandaloneChecklist doesn't have a status column. Let's return total tasks vs completed tasks (0).
-      let chkQuery = `SELECT COUNT(*) as total FROM standalone_checklists WHERE deleted_at IS NULL`;
-      let chkParams: any[] = [];
+      // 1. Checklist Stats
+      // Only count checklists whose planned_date <= NOW() as "pending" (i.e., active/due).
+      // Pipeline checklists (future planned_date) are not yet actionable — they must NOT count as pending.
+      let chkPendingQuery = `SELECT COUNT(*) as total FROM standalone_checklists WHERE deleted_at IS NULL AND planned_date <= NOW()`;
+      let chkPendingParams: any[] = [];
       if (!isSystemAdmin) {
-        chkQuery += ` AND assign_to = ?`;
-        chkParams.push(userId);
+        chkPendingQuery += ` AND assign_to = ?`;
+        chkPendingParams.push(employeeId);
       }
-      const [chkRows] = await pool.query<any[]>(chkQuery, chkParams);
-      const checklistTotal = chkRows[0].total as number;
-      const checklistPending = checklistTotal; // Since there is no status, everything is pending
-      const checklistCompleted = 0;
+      const [chkPendingRows] = await pool.query<any[]>(chkPendingQuery, chkPendingParams);
+      const checklistPending = chkPendingRows[0].total as number;
+      const checklistCompleted = 0; // standalone_checklists has no completed status column
 
       // 2. Delegation Stats
       let delPendingQuery = `SELECT COUNT(*) as total FROM delegated_tasks WHERE base_status IN ('pending', 'running') AND deleted_at IS NULL`;

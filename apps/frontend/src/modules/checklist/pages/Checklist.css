@@ -1,8 +1,9 @@
 /* Checklist.css */
 
 .chk-container {
-  padding: 24px;
-  max-width: 1200px;
+  padding: 16px;
+  max-width: 1600px;
+  width: 100%;
   margin: 0 auto;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }

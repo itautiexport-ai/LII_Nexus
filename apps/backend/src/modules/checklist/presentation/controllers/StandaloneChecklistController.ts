@@ -24,9 +24,30 @@ export class StandaloneChecklistController {
     res.json({ success: true, message: "Checklist deleted successfully" });
   };
 
+  completeChecklist = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    await this.service.completeChecklist(id);
+    res.json({ success: true, message: "Checklist completed successfully and rescheduled" });
+  };
+
   bulkDeleteChecklists = async (req: Request, res: Response) => {
     const { ids } = BulkDeleteStandaloneChecklistSchema.parse(req.body);
     await this.service.bulkDeleteChecklists(ids);
     res.json({ success: true, message: "Checklists deleted successfully" });
+  };
+
+  getBulkTemplate = async (req: Request, res: Response) => {
+    const buffer = await this.service.getBulkTemplate();
+    res.setHeader("Content-Disposition", "attachment; filename=Checklist_Bulk_Upload_Template.xlsx");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
+  };
+
+  bulkUploadChecklists = async (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+    const result = await this.service.bulkUploadChecklists(req.file.buffer, (req as any).user.sub);
+    res.json({ success: true, data: result });
   };
 }

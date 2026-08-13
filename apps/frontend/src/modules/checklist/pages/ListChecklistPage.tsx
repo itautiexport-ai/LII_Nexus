@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { standaloneChecklistApi, StandaloneChecklist } from "../api/checklistApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import "./Checklist.css";
@@ -7,7 +7,9 @@ export function ListChecklistPage() {
   const [checklists, setChecklists] = useState<StandaloneChecklist[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const user = useAuthStore(state => state.user);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchChecklists();
@@ -40,7 +42,11 @@ export function ListChecklistPage() {
     const actionName = isAdmin ? "delete" : "complete";
     if (confirm(`Are you sure you want to ${actionName} this checklist?`)) {
       try {
-        await standaloneChecklistApi.delete(id);
+        if (isAdmin) {
+          await standaloneChecklistApi.delete(id);
+        } else {
+          await standaloneChecklistApi.complete(id);
+        }
         fetchChecklists(); // Refresh
       } catch (err) {
         console.error(`Failed to ${actionName}`, err);
@@ -75,19 +81,74 @@ export function ListChecklistPage() {
     );
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      await standaloneChecklistApi.downloadBulkTemplate();
+    } catch (err) {
+      console.error("Failed to download template", err);
+      alert("Failed to download template");
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      const res = await standaloneChecklistApi.bulkUpload(file);
+      alert(`Successfully uploaded ${res.data.successCount} checklists. Errors: ${res.data.errorCount}`);
+      fetchChecklists();
+    } catch (err: any) {
+      console.error("Failed to upload bulk checklists", err);
+      alert(err?.response?.data?.error || "Failed to upload bulk checklists");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div className="chk-container">
       <div className="chk-card">
         <div className="chk-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 className="chk-title" style={{ margin: 0 }}>LIST CHECKLISTS</h2>
-          {user && user.roles.includes("System Admin") && selectedIds.length > 0 && (
-            <button 
-              onClick={handleBulkDelete}
-              style={{ background: "#ef4444", color: "white", border: "none", padding: "8px 16px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: 14 }}
-            >
-              Delete Selected ({selectedIds.length})
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {user && user.roles.includes("System Admin") && (
+              <>
+                <button 
+                  onClick={handleDownloadTemplate}
+                  style={{ background: "#3b82f6", color: "white", border: "none", padding: "8px 16px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: 14 }}
+                >
+                  Download Template
+                </button>
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls" 
+                  style={{ display: "none" }} 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  style={{ background: "#10b981", color: "white", border: "none", padding: "8px 16px", borderRadius: 4, cursor: uploading ? "not-allowed" : "pointer", fontWeight: 600, fontSize: 14, opacity: uploading ? 0.7 : 1 }}
+                >
+                  {uploading ? "Uploading..." : "Bulk Upload"}
+                </button>
+              </>
+            )}
+            {user && user.roles.includes("System Admin") && selectedIds.length > 0 && (
+              <button 
+                onClick={handleBulkDelete}
+                style={{ background: "#ef4444", color: "white", border: "none", padding: "8px 16px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: 14 }}
+              >
+                Delete Selected ({selectedIds.length})
+              </button>
+            )}
+          </div>
         </div>
         <div className="chk-card-content" style={{ padding: 0 }}>
           {loading ? (

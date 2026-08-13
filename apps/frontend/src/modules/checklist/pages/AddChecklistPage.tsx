@@ -204,6 +204,7 @@ export function AddChecklistPage() {
           const skipHolidaysRaw = row["skip on holidays"];
           const plannedDateRaw = row["planned date"];
           const priorityRaw = row["priority"];
+          const scheduleRuleRaw = row["schedule rule"] || row["when rule"] || "";
 
           if (!taskName || !assignToName || !assignByName) {
             failCount++;
@@ -243,7 +244,14 @@ export function AddChecklistPage() {
 
           let plannedDateISO: string;
           if (plannedDateRaw) {
-            const parsedDate = new Date(plannedDateRaw);
+            let parsedDate: Date;
+            if (typeof plannedDateRaw === 'number') {
+              // Excel date serial number (days since Jan 1, 1900)
+              // 25569 is the number of days between Jan 1, 1900 and Jan 1, 1970
+              parsedDate = new Date(Math.round((plannedDateRaw - 25569) * 86400 * 1000));
+            } else {
+              parsedDate = new Date(plannedDateRaw);
+            }
             plannedDateISO = isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
           } else {
             plannedDateISO = calculateNextPlannedDate(frequency, selectedDaysOfWeek, selectedDayOfMonth);
@@ -265,7 +273,7 @@ export function AddChecklistPage() {
               makeNoteMandatory,
               mode,
               frequency,
-              whenRule: "",
+              whenRule: scheduleRuleRaw.toString().trim(),
               remindBeforeDays,
               skipOnHolidays
             });

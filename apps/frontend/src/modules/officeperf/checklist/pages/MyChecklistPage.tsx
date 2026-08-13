@@ -13,9 +13,10 @@ export default function MyChecklistPage() {
 
   async function load() {
     try {
-      const [officeChecklists, allStandalone] = await Promise.all([
+      const [officeChecklists, allStandalone, myEmployee] = await Promise.all([
         checklistApi.getMyChecklists().catch(() => []),
-        standaloneChecklistApi.getAll().catch(() => [])
+        standaloneChecklistApi.getAll().catch(() => []),
+        import("../../../admin/organization/employees/api/employeesApi").then(m => m.employeesApi.getMe()).catch(() => null)
       ]);
 
       setInstances(officeChecklists || []);
@@ -26,7 +27,8 @@ export default function MyChecklistPage() {
           c.assignTo === user.id ||
           c.assignee_name === user.fullName ||
           c.assignBy === user.id ||
-          c.assignedBy === user.id
+          c.assignedBy === user.id ||
+          (myEmployee && (c.assignTo === myEmployee.id || c.assignedBy === myEmployee.id || c.assignBy === myEmployee.id))
         );
         setStandaloneList(filtered);
       } else {
@@ -49,7 +51,7 @@ export default function MyChecklistPage() {
   async function handleComplete(id: string) {
     if (confirm("Are you sure you want to complete this checklist?")) {
       try {
-        await standaloneChecklistApi.delete(id);
+        await standaloneChecklistApi.complete(id);
         load();
       } catch (err) {
         console.error("Failed to complete", err);
@@ -83,7 +85,7 @@ export default function MyChecklistPage() {
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Loading checklists...</div>;
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 32px" }}>
+    <div style={{ maxWidth: 1600, width: "100%", margin: "0 auto", padding: "16px 24px" }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>
           My Checklists
