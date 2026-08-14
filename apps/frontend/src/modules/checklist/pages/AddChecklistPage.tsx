@@ -329,6 +329,15 @@ export function AddChecklistPage() {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      await standaloneChecklistApi.downloadBulkTemplate();
+    } catch (err) {
+      console.error("Failed to download template", err);
+      alert("Failed to download template");
+    }
+  };
+
   return (
     <div className="chk-container">
       <div className="chk-card">
@@ -339,7 +348,7 @@ export function AddChecklistPage() {
               Upload Excel
               <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{ display: "none" }} />
             </label>
-            <a href="/formats/Checklist_Upload_Format.xlsx" download style={{ color: "#3B82F6", fontSize: 14, textDecoration: "none", fontWeight: 500 }}>Download Template</a>
+            <button type="button" onClick={handleDownloadTemplate} style={{ background: "transparent", border: "none", color: "#3B82F6", fontSize: 14, textDecoration: "none", fontWeight: 500, cursor: "pointer" }}>Download Template</button>
           </div>
         </div>
         

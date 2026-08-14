@@ -139,20 +139,22 @@ export class StandaloneChecklistService {
     const wsData = [
       [
         "Task Name",
-        "Assignee Name",
-        "Planned Date (YYYY-MM-DD HH:mm:ss)",
-        "Priority (Low/Medium/High)",
-        "Mode (Online/Physical)",
-        "Frequency (Daily/Weekly/Monthly/Quarterly/Half-Yearly/Yearly)",
-        "Schedule Rule (e.g., Mon,Wed or 1,15)",
+        "Assign To",
+        "Assign By",
+        "Planned Date",
+        "Priority",
+        "Mode",
+        "Frequency",
+        "Schedule Rule",
         "Remind Before Days",
-        "Mandatory Attachment (Yes/No)",
-        "Mandatory Note (Yes/No)",
-        "Skip On Holidays (Yes/No)",
+        "Make Attachment Mandatory",
+        "Make Note Mandatory",
+        "Skip On Holidays",
       ],
       [
         "Example Task",
         "John Doe",
+        "Admin User",
         "2026-09-01 09:00:00",
         "Medium",
         "Online",
@@ -215,30 +217,42 @@ export class StandaloneChecklistService {
       const rowNum = i + 2; // +1 for 0-index, +1 for header
 
       const taskName = row["Task Name"]?.toString().trim();
-      const assigneeName = row["Assignee Name"]?.toString().trim();
-      const plannedDateStr = row["Planned Date (YYYY-MM-DD HH:mm:ss)"]?.toString().trim();
-      const priorityStr = row["Priority (Low/Medium/High)"]?.toString().trim() || "Medium";
-      const mode = row["Mode (Online/Physical)"]?.toString().trim() || "Online";
-      const frequency = row["Frequency (Daily/Weekly/Monthly/Quarterly/Half-Yearly/Yearly)"]?.toString().trim() || "Daily";
-      const whenRule = row["Schedule Rule (e.g., Mon,Wed or 1,15)"]?.toString().trim() || "";
+      const assignToName = row["Assign To"]?.toString().trim();
+      const assignByName = row["Assign By"]?.toString().trim();
+      const plannedDateStr = row["Planned Date"]?.toString().trim();
+      const priorityStr = row["Priority"]?.toString().trim() || "Medium";
+      const mode = row["Mode"]?.toString().trim() || "Online";
+      const frequency = row["Frequency"]?.toString().trim() || "Daily";
+      const whenRule = row["Schedule Rule"]?.toString().trim() || row["When Rule"]?.toString().trim() || "";
       const remindDays = parseInt(row["Remind Before Days"]?.toString(), 10) || 0;
-      const attMandatory = row["Mandatory Attachment (Yes/No)"]?.toString().trim().toLowerCase() === "yes";
-      const noteMandatory = row["Mandatory Note (Yes/No)"]?.toString().trim().toLowerCase() === "yes";
-      const skipHolidays = row["Skip On Holidays (Yes/No)"]?.toString().trim().toLowerCase() === "yes";
+      const attMandatory = row["Make Attachment Mandatory"]?.toString().trim().toLowerCase() === "yes";
+      const noteMandatory = row["Make Note Mandatory"]?.toString().trim().toLowerCase() === "yes";
+      const skipHolidays = row["Skip On Holidays"]?.toString().trim().toLowerCase() === "yes";
 
       if (!taskName) {
         errors.push(`Row ${rowNum}: Task Name is required.`);
         continue;
       }
-      if (!assigneeName) {
-        errors.push(`Row ${rowNum}: Assignee Name is required.`);
+      if (!assignToName) {
+        errors.push(`Row ${rowNum}: Assign To is required.`);
         continue;
       }
-      const assignTo = empMap.get(assigneeName.toLowerCase());
+      const assignTo = empMap.get(assignToName.toLowerCase());
       if (!assignTo) {
-        errors.push(`Row ${rowNum}: Employee '${assigneeName}' not found.`);
+        errors.push(`Row ${rowNum}: Assign To Employee '${assignToName}' not found.`);
         continue;
       }
+      
+      let actualAssignBy = assignedBy; // default to uploader
+      if (assignByName) {
+        const assignByEmp = empMap.get(assignByName.toLowerCase());
+        if (!assignByEmp) {
+          errors.push(`Row ${rowNum}: Assign By Employee '${assignByName}' not found.`);
+          continue;
+        }
+        actualAssignBy = assignByEmp;
+      }
+
       if (!plannedDateStr) {
         errors.push(`Row ${rowNum}: Planned Date is required.`);
         continue;
@@ -249,7 +263,14 @@ export class StandaloneChecklistService {
       if (priorityStr.toLowerCase() === "low") priority = "Low";
       if (priorityStr.toLowerCase() === "high") priority = "High";
 
-      const plannedDate = new Date(plannedDateStr);
+      let plannedDate: Date;
+      if (typeof row["Planned Date"] === 'number') {
+        // Excel serial date format
+        plannedDate = new Date(Math.round((row["Planned Date"] - 25569) * 86400 * 1000));
+      } else {
+        plannedDate = new Date(plannedDateStr);
+      }
+      
       if (isNaN(plannedDate.getTime())) {
         errors.push(`Row ${rowNum}: Invalid Planned Date format.`);
         continue;
@@ -266,7 +287,7 @@ export class StandaloneChecklistService {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id,
-            assignedBy,
+            actualAssignBy,
             taskName,
             assignTo,
             plannedDate,
