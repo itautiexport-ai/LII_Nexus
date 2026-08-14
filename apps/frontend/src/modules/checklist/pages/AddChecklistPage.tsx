@@ -34,7 +34,7 @@ export function AddChecklistPage() {
 
   const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<number[]>([1, 3, 5]); // default Mon, Wed, Fri
   const [selectedDayOfMonth, setSelectedDayOfMonth] = useState<number>(1);
-  const [selectedQuarterMonth, setSelectedQuarterMonth] = useState<number>(1); // 1st, 2nd, or 3rd month of quarter
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([2, 5, 8, 11]); // default for Quarterly: Mar, Jun, Sep, Dec (0-indexed)
   const [selectedYearMonth, setSelectedYearMonth] = useState<number>(0); // 0 = Jan, 11 = Dec
 
   const MONTHS_OF_YEAR = [
@@ -52,14 +52,14 @@ export function AddChecklistPage() {
       formData.frequency,
       selectedDaysOfWeek,
       selectedDayOfMonth,
-      selectedQuarterMonth,
+      selectedMonths,
       selectedYearMonth
     );
     const whenStr = buildWhenRuleString(
       formData.frequency,
       selectedDaysOfWeek,
       selectedDayOfMonth,
-      selectedQuarterMonth,
+      selectedMonths,
       selectedYearMonth
     );
     setFormData(prev => ({
@@ -67,13 +67,13 @@ export function AddChecklistPage() {
       plannedDate: calculatedDate,
       whenRule: whenStr
     }));
-  }, [formData.frequency, selectedDaysOfWeek, selectedDayOfMonth, selectedQuarterMonth, selectedYearMonth]);
+  }, [formData.frequency, selectedDaysOfWeek, selectedDayOfMonth, selectedMonths, selectedYearMonth]);
 
   const buildWhenRuleString = (
     freq: string,
     daysWeek: number[],
     dayMonth: number,
-    qMonth: number = 1,
+    months: number[] = [],
     yMonth: number = 0
   ) => {
     if (freq === "Daily") return "Daily execution";
@@ -84,9 +84,13 @@ export function AddChecklistPage() {
     if (freq === "Monthly") {
       return `Day ${dayMonth} of every month`;
     }
-    if (freq === "Quarterly") {
-      const ord = qMonth === 1 ? "1st" : qMonth === 2 ? "2nd" : "3rd";
-      return `Quarterly - ${ord} Month of Quarter, Day ${dayMonth}`;
+    if (freq === "Quarterly" || freq === "Half-Yearly") {
+      const formatted = months.map(m => {
+        const dd = String(dayMonth).padStart(2, "0");
+        const mm = String(m + 1).padStart(2, "0");
+        return `${dd}/${mm}`;
+      }).join("; ");
+      return formatted;
     }
     if (freq === "Yearly") {
       return `Yearly - ${MONTHS_OF_YEAR[yMonth]} ${dayMonth}`;
@@ -98,7 +102,7 @@ export function AddChecklistPage() {
     freq: string,
     daysWeek: number[],
     dayMonth: number,
-    qMonth: number = 1,
+    months: number[] = [],
     yMonth: number = 0
   ): string => {
     const now = new Date();
@@ -127,13 +131,19 @@ export function AddChecklistPage() {
       if (target < now) {
         target.setMonth(target.getMonth() + 1);
       }
-    } else if (freq === "Quarterly") {
-      const currentMonth = now.getMonth();
-      const currentQuarterStart = Math.floor(currentMonth / 3) * 3;
-      let targetMonth = currentQuarterStart + (qMonth - 1);
-      target = new Date(now.getFullYear(), targetMonth, dayMonth, 9, 0, 0);
-      if (target < now) {
-        target = new Date(now.getFullYear(), targetMonth + 3, dayMonth, 9, 0, 0);
+    } else if (freq === "Quarterly" || freq === "Half-Yearly") {
+      let bestTarget: Date | null = null;
+      for (const m of months) {
+        let candidate = new Date(now.getFullYear(), m, dayMonth, 9, 0, 0);
+        if (candidate <= now) {
+          candidate = new Date(now.getFullYear() + 1, m, dayMonth, 9, 0, 0);
+        }
+        if (!bestTarget || candidate < bestTarget) {
+          bestTarget = candidate;
+        }
+      }
+      if (bestTarget) {
+        target = bestTarget;
       }
     } else if (freq === "Yearly") {
       target = new Date(now.getFullYear(), yMonth, dayMonth, 9, 0, 0);
@@ -154,6 +164,12 @@ export function AddChecklistPage() {
   const toggleDayOfWeek = (val: number) => {
     setSelectedDaysOfWeek(prev => 
       prev.includes(val) ? prev.filter(d => d !== val) : [...prev, val].sort()
+    );
+  };
+
+  const toggleMonth = (val: number) => {
+    setSelectedMonths(prev => 
+      prev.includes(val) ? prev.filter(m => m !== val) : [...prev, val].sort((a, b) => a - b)
     );
   };
 
@@ -254,7 +270,17 @@ export function AddChecklistPage() {
             }
             plannedDateISO = isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString();
           } else {
-            plannedDateISO = calculateNextPlannedDate(frequency, selectedDaysOfWeek, selectedDayOfMonth);
+            let rowMonths: number[] = [];
+            if (frequency === "Quarterly" || frequency === "Half-Yearly") {
+              const rule = scheduleRuleRaw.toString().trim();
+              const datePairs = rule.split(';').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+              for (const pair of datePairs) {
+                const [dStr, mStr] = pair.split('/');
+                const month = parseInt(mStr, 10) - 1;
+                if (!isNaN(month)) rowMonths.push(month);
+              }
+            }
+            plannedDateISO = calculateNextPlannedDate(frequency, selectedDaysOfWeek, selectedDayOfMonth, rowMonths);
             plannedDateISO = new Date(plannedDateISO).toISOString();
           }
 
@@ -385,6 +411,7 @@ export function AddChecklistPage() {
                   <option value="Weekly">Weekly</option>
                   <option value="Monthly">Monthly</option>
                   <option value="Quarterly">Quarterly</option>
+                  <option value="Half-Yearly">Half-Yearly</option>
                   <option value="Yearly">Yearly</option>
                 </select>
               </div>
@@ -421,19 +448,34 @@ export function AddChecklistPage() {
                 </div>
               )}
 
-              {formData.frequency === "Quarterly" && (
+              {(formData.frequency === "Quarterly" || formData.frequency === "Half-Yearly") && (
                 <>
-                  <div className="chk-form-group">
-                    <label className="chk-label">Month of Quarter <span className="chk-required">*</span></label>
-                    <select
-                      value={selectedQuarterMonth}
-                      onChange={(e) => setSelectedQuarterMonth(parseInt(e.target.value, 10))}
-                      className="chk-select"
-                    >
-                      <option value={1}>1st Month of Quarter (Jan / Apr / Jul / Oct)</option>
-                      <option value={2}>2nd Month of Quarter (Feb / May / Aug / Nov)</option>
-                      <option value={3}>3rd Month of Quarter (Mar / Jun / Sep / Dec)</option>
-                    </select>
+                  <div className="chk-form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="chk-label">Select Months <span className="chk-required">*</span></label>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
+                      {MONTHS_OF_YEAR.map((mName, idx) => {
+                        const isSelected = selectedMonths.includes(idx);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => toggleMonth(idx)}
+                            style={{
+                              padding: "8px 16px",
+                              borderRadius: 20,
+                              border: isSelected ? "2px solid #3b82f6" : "1px solid #cbd5e1",
+                              background: isSelected ? "#eff6ff" : "#fff",
+                              color: isSelected ? "#1d4ed8" : "#475569",
+                              fontWeight: isSelected ? 700 : 500,
+                              cursor: "pointer",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {mName.substring(0, 3)}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="chk-form-group">
                     <label className="chk-label">Day of Month <span className="chk-required">*</span></label>

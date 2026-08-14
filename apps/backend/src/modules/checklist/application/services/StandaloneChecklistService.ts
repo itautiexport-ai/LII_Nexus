@@ -372,6 +372,32 @@ export class StandaloneChecklistService {
          bestDate = new Date(now.getFullYear(), now.getMonth() + 1, days[0], 9, 0, 0);
       }
       return bestDate;
+    } else if (frequency === "Quarterly" || frequency === "Half-Yearly") {
+      // whenRule format is expected to be "DD/MM; DD/MM"
+      const datePairs = whenRule.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      let bestDate: Date | null = null;
+      for (const pair of datePairs) {
+        const [dStr, mStr] = pair.split('/');
+        const day = parseInt(dStr, 10);
+        const month = parseInt(mStr, 10) - 1; // JS months are 0-indexed
+        
+        if (!isNaN(day) && !isNaN(month)) {
+          let candidate = new Date(now.getFullYear(), month, day, 9, 0, 0);
+          if (candidate <= now) {
+            candidate = new Date(now.getFullYear() + 1, month, day, 9, 0, 0);
+          }
+          if (!bestDate || candidate < bestDate) {
+            bestDate = candidate;
+          }
+        }
+      }
+      if (bestDate) {
+        return bestDate;
+      }
+      // Fallback
+      nextDate.setMonth(now.getMonth() + (frequency === "Quarterly" ? 3 : 6));
+      nextDate.setHours(9, 0, 0, 0);
+      return nextDate;
     } else {
        // Fallback for others (just add 1 month for Monthly, 7 days for Weekly etc)
        if (frequency === "Weekly" || frequency === "Alternate") {
