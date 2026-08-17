@@ -11,6 +11,10 @@ export const designationsApi = {
     const res = await axiosInstance.get("/designations");
     return res.data.data;
   },
+  async listForDropdown(): Promise<{ id: string; title: string }[]> {
+    const res = await axiosInstance.get("/designations/lookup");
+    return res.data.data;
+  },
   async create(payload: { title: string; description?: string }) {
     const res = await axiosInstance.post("/designations", payload);
     return res.data.data as DesignationRecord;

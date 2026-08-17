@@ -37,7 +37,7 @@ export function FmsGridViewPage() {
         
         let empRes: any[] = [];
         try {
-          empRes = await employeesApi.list();
+          empRes = await employeesApi.listForDropdown();
         } catch (e) {
           console.warn("Failed to load employees list (possibly lack of permissions)");
         }

@@ -12,6 +12,10 @@ export const departmentsApi = {
     const res = await axiosInstance.get("/departments");
     return res.data.data;
   },
+  async listForDropdown(): Promise<{ id: string; name: string }[]> {
+    const res = await axiosInstance.get("/departments/lookup");
+    return res.data.data;
+  },
   async create(payload: { name: string; code?: string; description?: string }) {
     const res = await axiosInstance.post("/departments", payload);
     return res.data.data as DepartmentRecord;

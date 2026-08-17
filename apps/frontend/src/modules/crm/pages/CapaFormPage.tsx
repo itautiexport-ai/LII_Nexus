@@ -135,7 +135,7 @@ export default function CapaFormPage() {
 
   const fetchOptions = async () => {
     try {
-      const empData = await employeesApi.list();
+      const empData = await employeesApi.listForDropdown();
       setEmployees(empData || []);
     } catch (e) {
       console.error("Failed to fetch employees", e);

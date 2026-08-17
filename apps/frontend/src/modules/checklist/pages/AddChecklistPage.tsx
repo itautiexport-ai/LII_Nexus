@@ -43,7 +43,7 @@ export function AddChecklistPage() {
   ];
 
   useEffect(() => {
-    employeesApi.list().then(setEmployees).catch(console.error);
+    employeesApi.listForDropdown().then(setEmployees).catch(console.error);
   }, []);
 
   // Calculate next planned date whenever frequency or days rules change

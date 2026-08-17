@@ -14,18 +14,21 @@ const router = Router();
 router.use(authMiddleware);
 
 // Department Master
+router.get("/departments/lookup", asyncHandler(DepartmentController.lookup));
 router.get("/departments", requirePermission("organization.department.view"), asyncHandler(DepartmentController.list));
 router.post("/departments", requirePermission("organization.department.create"), validate(createDepartmentSchema), asyncHandler(DepartmentController.create));
 router.patch("/departments/:id", requirePermission("organization.department.update"), validate(updateDepartmentSchema), asyncHandler(DepartmentController.update));
 router.delete("/departments/:id", requirePermission("organization.department.delete"), asyncHandler(DepartmentController.remove));
 
 // Designation Master
+router.get("/designations/lookup", asyncHandler(DesignationController.lookup));
 router.get("/designations", requirePermission("organization.designation.view"), asyncHandler(DesignationController.list));
 router.post("/designations", requirePermission("organization.designation.create"), validate(createDesignationSchema), asyncHandler(DesignationController.create));
 router.patch("/designations/:id", requirePermission("organization.designation.update"), validate(updateDesignationSchema), asyncHandler(DesignationController.update));
 router.delete("/designations/:id", requirePermission("organization.designation.delete"), asyncHandler(DesignationController.remove));
 
 // Employee Master
+router.get("/employees/lookup", asyncHandler(EmployeeController.lookup));
 router.get("/employees/me", asyncHandler(EmployeeController.me));
 router.get("/employees/my-direct-reports", asyncHandler(EmployeeController.myDirectReports));
 router.get("/employees", requirePermission("organization.employee.view"), asyncHandler(EmployeeController.list));

@@ -34,7 +34,7 @@ export default function SopsPage() {
 
   async function loadDepartments() {
     try {
-      const data = await departmentsApi.list();
+      const data = await departmentsApi.listForDropdown();
       setDepartments(data);
     } catch (err) {
       console.error("Failed to load departments", err);

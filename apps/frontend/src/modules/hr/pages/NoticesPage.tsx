@@ -28,7 +28,7 @@ export default function NoticesPage() {
   const selectedTemplate = noticeTemplates.find(t => t.id === selectedTemplateId) || null;
 
   useEffect(() => {
-    departmentsApi.list().then(setDepartmentsList).catch(console.error);
+    departmentsApi.listForDropdown().then(setDepartmentsList).catch(console.error);
   }, []);
 
   useEffect(() => {

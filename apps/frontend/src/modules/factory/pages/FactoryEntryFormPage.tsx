@@ -29,7 +29,7 @@ export default function FactoryEntryFormPage() {
 
   useEffect(() => {
     Promise.all([
-      departmentsApi.list(),
+      departmentsApi.listForDropdown(),
       shiftsApi.list(),
       contractorsApi.list(),
       axiosInstance.get("/employees/me"),

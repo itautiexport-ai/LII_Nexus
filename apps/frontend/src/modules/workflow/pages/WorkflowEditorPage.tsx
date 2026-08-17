@@ -28,7 +28,7 @@ export default function WorkflowEditorPage() {
 
   async function load() {
     if (!id) return;
-    const [wf, roleList, deptList] = await Promise.all([workflowApi.getById(id), rolesApi.list(), departmentsApi.list()]);
+    const [wf, roleList, deptList] = await Promise.all([workflowApi.getById(id), rolesApi.list(), departmentsApi.listForDropdown()]);
     setWorkflow(wf);
     setRoles(roleList);
     setDepartments(deptList);

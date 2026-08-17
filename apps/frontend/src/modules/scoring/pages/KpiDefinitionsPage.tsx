@@ -14,7 +14,7 @@ export default function KpiDefinitionsPage() {
   const [weightDrafts, setWeightDrafts] = useState<Record<string, { departmentId: string; weightage: string }>>({});
 
   async function load() {
-    const [k, d] = await Promise.all([scoringApi.listKpis(), departmentsApi.list()]);
+    const [k, d] = await Promise.all([scoringApi.listKpis(), departmentsApi.listForDropdown()]);
     setKpis(k);
     setDepartments(d);
   }

@@ -221,8 +221,8 @@ export default function UsersPage() {
       const [uRes, rList, deps, desigs, shs] = await Promise.all([
         usersApi.listPaginated(currentPage, 300),
         rolesApi.list(),
-        departmentsApi.list(),
-        designationsApi.list(),
+        departmentsApi.listForDropdown(),
+        designationsApi.listForDropdown(),
         shiftsApi.list(),
       ]);
       setUsers(uRes.data);

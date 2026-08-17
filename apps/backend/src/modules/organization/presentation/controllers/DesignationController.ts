@@ -10,6 +10,11 @@ export const DesignationController = {
   async list(_req: AuthenticatedRequest, res: Response) {
     return ok(res, await service.list());
   },
+  async lookup(_req: AuthenticatedRequest, res: Response) {
+    const list = await service.list();
+    const lookupData = list.map(desig => ({ id: desig.id, title: desig.title }));
+    return ok(res, lookupData);
+  },
   async create(req: AuthenticatedRequest, res: Response) {
     return created(res, await service.create(req.body, req.user!.sub));
   },

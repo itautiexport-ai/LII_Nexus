@@ -9,7 +9,7 @@ export default function MeetingFormPage() {
   const [form, setForm] = useState({ meetingType: "weekly_executive" as MeetingType, title: "", meetingDate: new Date().toISOString().slice(0, 10), attendeeIds: [] as string[], agendaText: "" });
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { employeesApi.list().then(setEmployees); }, []);
+  useEffect(() => { employeesApi.listForDropdown().then(setEmployees); }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

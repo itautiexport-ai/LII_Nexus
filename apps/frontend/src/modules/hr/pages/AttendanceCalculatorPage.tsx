@@ -121,7 +121,7 @@ export default function AttendanceCalculatorPage() {
       }
 
       // Fetch actual employee details to match codes with names
-      const employees = await employeesApi.list();
+      const employees = await employeesApi.listForDropdown();
       
       const results = Object.keys(empStats).map(code => {
         const stats = empStats[code];

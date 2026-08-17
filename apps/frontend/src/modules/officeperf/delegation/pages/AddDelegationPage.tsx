@@ -21,7 +21,7 @@ export default function AddDelegationPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    employeesApi.list().then(res => setEmployees(res));
+    employeesApi.listForDropdown().then(res => setEmployees(res));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

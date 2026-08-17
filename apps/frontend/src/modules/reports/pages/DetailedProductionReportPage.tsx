@@ -13,7 +13,7 @@ export default function DetailedProductionReportPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    departmentsApi.list().then(setDepartments).catch(console.error);
+    departmentsApi.listForDropdown().then(setDepartments).catch(console.error);
     loadReport();
   }, []);
 

@@ -34,7 +34,7 @@ export default function DashboardPage() {
   useEffect(() => { dashboardApi.employee().then(setEmployeeDash); }, []);
   useEffect(() => { if (view === "manager") dashboardApi.manager().then(setManagerDash); }, [view]);
   useEffect(() => { if (view === "company") dashboardApi.company().then(setCompanyDash); }, [view]);
-  useEffect(() => { if (view === "department" && departments.length === 0) departmentsApi.list().then(setDepartments); }, [view, departments.length]);
+  useEffect(() => { if (view === "department" && departments.length === 0) departmentsApi.listForDropdown().then(setDepartments); }, [view, departments.length]);
   useEffect(() => { if (selectedDept) dashboardApi.department(selectedDept).then(setDeptDash); }, [selectedDept]);
 
   return (

@@ -63,9 +63,9 @@ export default function DprEntryPage() {
   const loadData = async () => {
     try {
       const [deps, shiftList, empList, meRes, entriesRes, woodTypesRes, hodsRes] = await Promise.all([
-        departmentsApi.list(),
+        departmentsApi.listForDropdown(),
         shiftsApi.list(),
-        employeesApi.list(),
+        employeesApi.listForDropdown(),
         axiosInstance.get("/employees/me"),
         dprApi.list({ entryDate: getTodayString() }),
         masterDataApi.getWoodTypes(),

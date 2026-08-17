@@ -34,6 +34,20 @@ export const EmployeeController = {
     const { items, total } = await service.list(page, pageSize, search, departmentId);
     return ok(res, items, { page, pageSize, totalItems: total });
   },
+
+  async lookup(req: AuthenticatedRequest, res: Response) {
+    const search = req.query.search as string | undefined;
+    const { items } = await service.list(1, 10000, search);
+    const lookupData = items.map(emp => ({
+      id: emp.id,
+      employeeCode: emp.employeeCode,
+      fullName: emp.fullName,
+      departmentName: emp.departmentName,
+      designationTitle: emp.designationTitle
+    }));
+    return ok(res, lookupData);
+  },
+
   async getById(req: AuthenticatedRequest, res: Response) {
     return ok(res, await service.getById(req.params.id));
   },

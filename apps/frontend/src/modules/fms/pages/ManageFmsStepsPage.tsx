@@ -56,7 +56,7 @@ export function ManageFmsStepsPage() {
       try {
         const [stepsRes, empRes, fmsListRes, globalStepsRes] = await Promise.all([
           fmsApi.getSteps(fmsId),
-          employeesApi.list(),
+          employeesApi.listForDropdown(),
           fmsApi.getAll(),
           fmsApi.getAllStepsGlobal()
         ]);

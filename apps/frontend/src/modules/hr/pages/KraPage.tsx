@@ -30,7 +30,7 @@ export default function KraPage() {
 
   async function loadDepartments() {
     try {
-      const data = await departmentsApi.list();
+      const data = await departmentsApi.listForDropdown();
       setDepartments(data);
     } catch (err) {
       console.error("Failed to load departments", err);
@@ -39,7 +39,7 @@ export default function KraPage() {
 
   async function loadDesignations() {
     try {
-      const data = await designationsApi.list();
+      const data = await designationsApi.listForDropdown();
       setDesignations(data);
     } catch (err) {
       console.error("Failed to load designations", err);
