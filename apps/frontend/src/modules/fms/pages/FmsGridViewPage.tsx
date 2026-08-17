@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fmsApi, FmsStep } from "../api/fmsApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import "./Fms.css";
@@ -10,7 +10,7 @@ export function FmsGridViewPage() {
   const { fmsId } = useParams();
   const navigate = useNavigate();
   const [steps, setSteps] = useState<FmsStep[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
   const [instances, setInstances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fmsName, setFmsName] = useState<string>("");

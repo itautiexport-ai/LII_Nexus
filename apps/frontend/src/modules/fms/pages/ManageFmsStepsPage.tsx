@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fmsApi, FmsStep } from "../api/fmsApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
 import "./Fms.css";
 
 export function ManageFmsStepsPage() {
@@ -9,7 +9,7 @@ export function ManageFmsStepsPage() {
   const navigate = useNavigate();
   const [steps, setSteps] = useState<FmsStep[]>([]);
   const [allGlobalSteps, setAllGlobalSteps] = useState<(FmsStep & { managerName: string })[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [fmsList, setFmsList] = useState<any[]>([]);
   

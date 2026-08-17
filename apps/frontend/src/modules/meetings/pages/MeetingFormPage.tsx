@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { meetingApi, MEETING_TYPE_LABELS, MeetingType } from "../api/meetingApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
 
 export default function MeetingFormPage() {
   const navigate = useNavigate();
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
   const [form, setForm] = useState({ meetingType: "weekly_executive" as MeetingType, title: "", meetingDate: new Date().toISOString().slice(0, 10), attendeeIds: [] as string[], agendaText: "" });
   const [error, setError] = useState<string | null>(null);
 

@@ -1,13 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { scoringApi, KpiDefinitionRecord, KpiCategory, CalculationType } from "../api/scoringApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
 
 const emptyForm = { name: "", category: "office" as KpiCategory, calculationType: "manual" as CalculationType, defaultWeightage: "10", description: "" };
 
 export default function KpiDefinitionsPage() {
   const [kpis, setKpis] = useState<KpiDefinitionRecord[]>([]);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);

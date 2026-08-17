@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { checklistApi, ChecklistTemplateRecord, ChecklistFrequency } from "../api/checklistApi";
-import { employeesApi, EmployeeRecord } from "../../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../../admin/organization/employees/api/employeesApi";
 import { rolesApi, RoleRecord } from "../../../admin/roles/api/rolesApi";
 import PermissionGate from "../../../../shared/guards/PermissionGate";
 
@@ -8,7 +8,7 @@ const emptyForm = { title: "", description: "", frequency: "daily" as ChecklistF
 
 export default function ChecklistTemplatesPage() {
   const [templates, setTemplates] = useState<ChecklistTemplateRecord[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm);

@@ -2,14 +2,14 @@ import React, { useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import { noticeTemplates, NoticeTemplate } from "../data/noticeTemplates";
 import { noticesApi, IssuedNotice } from "../api/noticesApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import "./NoticesPage.css";
 
 export default function NoticesPage() {
   const [activeTab, setActiveTab] = useState<"form" | "history">("form");
   const [history, setHistory] = useState<IssuedNotice[]>([]);
-  const [departmentsList, setDepartmentsList] = useState<DepartmentRecord[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<DepartmentDropdownRecord[]>([]);
   
   // Form States
   const [selectedCategory, setSelectedCategory] = useState<string>("");

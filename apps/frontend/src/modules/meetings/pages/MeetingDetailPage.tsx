@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { meetingApi, MeetingDetail, ReviewType, REVIEW_TYPES } from "../api/meetingApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
 
 const priorityColors: Record<string, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
@@ -10,7 +10,7 @@ const statusColors: Record<string, string> = { pending: "#4a4a4a", running: "#4a
 export default function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [meeting, setMeeting] = useState<MeetingDetail | null>(null);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
   const [decisionText, setDecisionText] = useState("");
   const [reviewNotes, setReviewNotes] = useState<Record<ReviewType, string>>({} as any);
   const [actionForm, setActionForm] = useState({ description: "", assignedTo: "", targetDate: "", priority: "medium" });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { reportApi, ReportFilters, ReportResult } from "../api/reportApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
 
 export default function DetailedProductionReportPage() {
@@ -8,7 +8,7 @@ export default function DetailedProductionReportPage() {
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
 
   const [filters, setFilters] = useState<ReportFilters>({ dateFrom: monthAgo, dateTo: today });
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [loading, setLoading] = useState(false);
 

@@ -1,10 +1,10 @@
 import React, { FormEvent, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { dprApi, DprEntryRecord, DprItemRecord } from "../api/dprApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 import { masterDataApi, WoodType, Hod } from "../../admin/masterdata/api/masterDataApi";
 import { shiftsApi, ShiftRecord } from "../../admin/factory/shifts/api/shiftsApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import Tesseract from 'tesseract.js';
 import * as XLSX from "xlsx";
@@ -19,9 +19,9 @@ export default function DprEntryPage() {
   const navigate = useNavigate();
 
   // Masters
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [shifts, setShifts] = useState<ShiftRecord[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
   const [woodTypes, setWoodTypes] = useState<WoodType[]>([]);
   const [hods, setHods] = useState<Hod[]>([]);
   const [todayEntries, setTodayEntries] = useState<DprEntryRecord[]>([]);

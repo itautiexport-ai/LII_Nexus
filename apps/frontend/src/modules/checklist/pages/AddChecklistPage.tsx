@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { standaloneChecklistApi } from "../api/checklistApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
 import * as XLSX from "xlsx";
 import "./Checklist.css";
 
@@ -15,7 +15,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export function AddChecklistPage() {
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     taskName: "",

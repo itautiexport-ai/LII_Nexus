@@ -1,8 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { kpiEngineApi, KpiDefinitionRecord, CATEGORY_LABELS, KpiCategory, KpiFrequency } from "../api/kpiEngineApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
 
 const emptyForm = {
@@ -13,8 +13,8 @@ const emptyForm = {
 export default function KpiDefinitionsPage() {
   const navigate = useNavigate();
   const [definitions, setDefinitions] = useState<KpiDefinitionRecord[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [formulaTest, setFormulaTest] = useState<{ valid: boolean; sample: number } | null>(null);

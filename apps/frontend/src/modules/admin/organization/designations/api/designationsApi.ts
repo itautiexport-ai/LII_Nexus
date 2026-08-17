@@ -6,12 +6,17 @@ export interface DesignationRecord {
   description: string | null;
 }
 
+export interface DesignationDropdownRecord {
+  id: string;
+  title: string;
+}
+
 export const designationsApi = {
   async list(): Promise<DesignationRecord[]> {
     const res = await axiosInstance.get("/designations");
     return res.data.data;
   },
-  async listForDropdown(): Promise<{ id: string; title: string }[]> {
+  async listForDropdown(): Promise<DesignationDropdownRecord[]> {
     const res = await axiosInstance.get("/designations/lookup");
     return res.data.data;
   },

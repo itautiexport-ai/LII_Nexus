@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { dashboardApi, EmployeeDashboard, ManagerDashboard, CompanyDashboard, DepartmentDashboard, WindowScore } from "../api/dashboardApi";
-import { departmentsApi, DepartmentRecord } from "../../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../../admin/organization/departments/api/departmentsApi";
 import { useHasPermission } from "../../../auth/hooks/usePermissions";
 
 function ScoreCard({ label, score }: { label: string; score: WindowScore }) {
@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [employeeDash, setEmployeeDash] = useState<EmployeeDashboard | null>(null);
   const [managerDash, setManagerDash] = useState<ManagerDashboard | null>(null);
   const [companyDash, setCompanyDash] = useState<CompanyDashboard | null>(null);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [selectedDept, setSelectedDept] = useState("");
   const [deptDash, setDeptDash] = useState<DepartmentDashboard | null>(null);
 

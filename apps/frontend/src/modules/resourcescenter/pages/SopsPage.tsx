@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { documentApi, DocumentRecord, DocumentCategory } from "../../documents/api/documentApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 
 type Tab = "upload" | "list";
 
@@ -26,7 +26,7 @@ export default function SopsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [docs, setDocs] = useState<DocumentRecord[]>([]);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");

@@ -28,7 +28,7 @@ export default function AppraisalIndexPage() {
     try {
       const [scores, empList] = await Promise.all([
         misScoreApi.getCumulativeScores(periodRange),
-        employeesApi.listForDropdown()
+        employeesApi.list()
       ]);
       setReports(scores);
       setEmployees(empList);

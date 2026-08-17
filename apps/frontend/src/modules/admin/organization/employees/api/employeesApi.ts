@@ -20,6 +20,14 @@ export interface EmployeeRecord {
   salary: number;
 }
 
+export interface EmployeeDropdownRecord {
+  id: string;
+  employeeCode: string;
+  fullName: string;
+  departmentName: string;
+  designationTitle: string;
+}
+
 export const employeesApi = {
   async getMe(): Promise<EmployeeRecord | null> {
     const res = await axiosInstance.get("/employees/me");
@@ -29,7 +37,7 @@ export const employeesApi = {
     const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 1000 } });
     return res.data.data;
   },
-  async listForDropdown(search = ""): Promise<{ id: string; employeeCode: string; fullName: string; departmentName: string; designationTitle: string }[]> {
+  async listForDropdown(search = ""): Promise<EmployeeDropdownRecord[]> {
     const res = await axiosInstance.get("/employees/lookup", { params: { search } });
     const items = res.data.data;
     return items.filter((emp: any) => {

@@ -13,7 +13,7 @@ export default function MisScoreReportPage() {
 
 
   useEffect(() => {
-    employeesApi.listForDropdown().then(setEmployees);
+    employeesApi.list().then(setEmployees);
   }, []);
 
   const fetchReport = () => {

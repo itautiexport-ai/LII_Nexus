@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { kpiEngineApi, ScoreResult } from "../api/kpiEngineApi";
-import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { employeesApi, EmployeeRecord, EmployeeDropdownRecord } from "../../admin/organization/employees/api/employeesApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 
 type TabKey = "employee" | "department" | "company";
 const trafficColors: Record<string, string> = { red: "#c0392b", amber: "#e08e0b", green: "#1a7f37" };
 
 export default function KpiEngineScoresPage() {
   const [tab, setTab] = useState<TabKey>("company");
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDropdownRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [result, setResult] = useState<ScoreResult | null>(null);
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { workflowApi, WorkflowDetail, StageInput, WorkflowStatus } from "../api/workflowApi";
 import { rolesApi, RoleRecord } from "../../admin/roles/api/rolesApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 import StageCard from "../components/StageCard";
 import FlowchartView from "../components/FlowchartView";
 import PermissionGate from "../../../shared/guards/PermissionGate";
@@ -19,7 +19,7 @@ export default function WorkflowEditorPage() {
   const navigate = useNavigate();
   const [workflow, setWorkflow] = useState<WorkflowDetail | null>(null);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [view, setView] = useState<"form" | "flowchart">("form");
   const [metaForm, setMetaForm] = useState({ name: "", departmentId: "", description: "" });
   const [dragIndex, setDragIndex] = useState<number | null>(null);

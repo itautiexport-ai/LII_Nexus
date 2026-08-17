@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { factoryEntriesApi } from "../api/factoryEntriesApi";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
 import { shiftsApi, ShiftRecord } from "../../admin/factory/shifts/api/shiftsApi";
 import { contractorsApi, ContractorRecord } from "../../admin/factory/contractors/api/contractorsApi";
 import { axiosInstance } from "../../../services/api/axiosInstance";
@@ -13,7 +13,7 @@ const labelStyle: React.CSSProperties = { display: "block", fontSize: 13, fontWe
 
 export default function FactoryEntryFormPage() {
   const navigate = useNavigate();
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
   const [shifts, setShifts] = useState<ShiftRecord[]>([]);
   const [contractors, setContractors] = useState<ContractorRecord[]>([]);
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);

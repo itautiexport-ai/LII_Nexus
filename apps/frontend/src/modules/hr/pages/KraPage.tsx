@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
-import { designationsApi, DesignationRecord } from "../../admin/organization/designations/api/designationsApi";
+import { departmentsApi, DepartmentRecord, DepartmentDropdownRecord } from "../../admin/organization/departments/api/departmentsApi";
+import { designationsApi, DesignationRecord, DesignationDropdownRecord } from "../../admin/organization/designations/api/designationsApi";
 import { kraApi, KraRecord } from "../api/kraApi";
 
 export default function KraPage() {
   const [activeTab, setActiveTab] = useState<"list" | "add">("list");
   
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
-  const [designations, setDesignations] = useState<DesignationRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentDropdownRecord[]>([]);
+  const [designations, setDesignations] = useState<DesignationDropdownRecord[]>([]);
   const [kras, setKras] = useState<KraRecord[]>([]);
   
   // Form State
