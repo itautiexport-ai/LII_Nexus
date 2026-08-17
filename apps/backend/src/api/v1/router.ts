@@ -36,7 +36,7 @@ import uploadRoutes from "../../modules/upload/presentation/routes/upload.routes
 import formatsRoutes from "../../modules/formats/presentation/routes/formats.routes";
 import maintenanceRoutes from "../../modules/maintenance/presentation/routes/maintenance.routes";
 import exportRoutes from "../../modules/export/presentation/routes/export.routes";
-
+import finishingRoutes from "../../modules/finishing/presentation/routes/finishing.routes";
 import { trainingRoutes } from "../../modules/training/presentation/routes/trainingRoutes";
 import { noticeRoutes } from "../../modules/notices/presentation/routes/noticeRoutes";
 import { kraRouter } from "../../modules/hr/api/kra.router";
@@ -98,5 +98,6 @@ router.use("/task-center", taskCenterRoutes);
 router.use("/formats", formatsRoutes);
 router.use("/maintenance", maintenanceRoutes);
 router.use("/", exportRoutes);
+router.use("/finishing-recipes", finishingRoutes);
 
 export default router;

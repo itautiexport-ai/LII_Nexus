@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import "../../fms/pages/Fms.css";
 import { masterDataApi } from "../../admin/masterdata/api/masterDataApi";
-
-interface RecipeStep {
-  id: string;
-  stepNo: number;
-  processMaterial: string;
-  toolMachine: string;
-  gritQuantity: string;
-  dryingTime: string;
-  notes: string;
-  noOfCoats: string;
-}
+import { finishingApi, FinishingRecipeStep } from "../api/finishingApi";
 
 export function FinishingRecipePage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const isEditMode = !!id;
+
   const [formData, setFormData] = useState({
     itemCode: "",
     finishCode: "",
@@ -25,12 +20,50 @@ export function FinishingRecipePage() {
   });
 
   const [woodTypes, setWoodTypes] = useState<{id: string, name: string}[]>([]);
+  const [steps, setSteps] = useState<FinishingRecipeStep[]>([]);
+  const [loading, setLoading] = useState(isEditMode);
 
   useEffect(() => {
     masterDataApi.getWoodTypes()
       .then(data => setWoodTypes(data.filter((w: any) => w.status === 'active')))
       .catch(console.error);
-  }, []);
+
+    if (isEditMode && id) {
+      finishingApi.getRecipeById(id)
+        .then(data => {
+          setFormData({
+            itemCode: data.itemCode || "",
+            finishCode: data.finishCode || "",
+            itemDescription: data.itemDescription || "",
+            createdOn: data.createdOn || new Date().toISOString().split("T")[0],
+            buyerCode: data.buyerCode || "",
+            glossLevel: data.glossLevel || "",
+            woodType: data.woodType || "",
+          });
+          setSteps(data.steps || []);
+        })
+        .catch(error => {
+          console.error("Error fetching recipe:", error);
+          alert("Failed to load recipe details.");
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setSteps([
+        {
+          id: generateId(),
+          stepNo: 1,
+          processMaterial: "",
+          toolMachine: "",
+          gritQuantity: "",
+          dryingTime: "",
+          notes: "",
+          noOfCoats: "",
+        }
+      ]);
+    }
+  }, [id, isEditMode]);
 
   const generateId = () => {
     return typeof crypto !== 'undefined' && crypto.randomUUID 
@@ -38,27 +71,14 @@ export function FinishingRecipePage() {
       : Date.now().toString(36) + Math.random().toString(36).substring(2);
   };
 
-  const [steps, setSteps] = useState<RecipeStep[]>([
-    {
-      id: generateId(),
-      stepNo: 1,
-      processMaterial: "",
-      toolMachine: "",
-      gritQuantity: "",
-      dryingTime: "",
-      notes: "",
-      noOfCoats: "",
-    }
-  ]);
-
-  const handleHeaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeaderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleStepChange = (id: string, field: keyof RecipeStep, value: string) => {
+  const handleStepChange = (stepId: string | undefined, field: keyof FinishingRecipeStep, value: string) => {
     setSteps(prev => prev.map(step => 
-      step.id === id ? { ...step, [field]: value } : step
+      step.id === stepId ? { ...step, [field]: value } : step
     ));
   };
 
@@ -78,24 +98,61 @@ export function FinishingRecipePage() {
     ]);
   };
 
-  const removeStep = (id: string) => {
+  const removeStep = (stepId: string | undefined) => {
     setSteps(prev => {
-      const filtered = prev.filter(step => step.id !== id);
+      const filtered = prev.filter(step => step.id !== stepId);
       return filtered.map((step, index) => ({ ...step, stepNo: index + 1 }));
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitting Recipe:", { header: formData, steps });
-    alert("Form submitted successfully! (Check console for data)");
+    try {
+      const payload = {
+        ...formData,
+        steps: steps.map(s => ({
+          id: s.id,
+          stepNo: s.stepNo,
+          processMaterial: s.processMaterial,
+          toolMachine: s.toolMachine,
+          gritQuantity: s.gritQuantity,
+          dryingTime: s.dryingTime,
+          notes: s.notes,
+          noOfCoats: s.noOfCoats,
+        }))
+      };
+
+      if (isEditMode && id) {
+        await finishingApi.updateRecipe(id, payload);
+        alert("Recipe updated successfully!");
+      } else {
+        await finishingApi.createRecipe(payload);
+        alert("Recipe created successfully!");
+      }
+      navigate("/admin/finishing-recipes");
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+      alert("An error occurred while saving the recipe. Please try again.");
+    }
   };
+
+  if (loading) {
+    return <div style={{ padding: "20px" }}>Loading recipe...</div>;
+  }
 
   return (
     <div className="fms-container">
       <div className="fms-card" style={{ maxWidth: "1200px" }}>
-        <div className="fms-card-header">
-          <h2 className="fms-title">FINISHING RECIPE FORM</h2>
+        <div className="fms-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 className="fms-title">{isEditMode ? "EDIT FINISHING RECIPE" : "FINISHING RECIPE FORM"}</h2>
+          <button 
+            type="button" 
+            className="fms-btn-secondary" 
+            onClick={() => navigate("/admin/finishing-recipes")}
+            style={{ background: "#6c757d", color: "white", padding: "6px 12px", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
+          >
+            Back to List
+          </button>
         </div>
 
         <div className="fms-card-content">
@@ -103,7 +160,7 @@ export function FinishingRecipePage() {
             {/* Header Section */}
             <div className="fms-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
               <div className="fms-form-group">
-                <label className="fms-label">Item Code</label>
+                <label className="fms-label">Item Code <span style={{color: "red"}}>*</span></label>
                 <input
                   type="text"
                   name="itemCode"
@@ -111,11 +168,12 @@ export function FinishingRecipePage() {
                   onChange={handleHeaderChange}
                   className="fms-input"
                   placeholder="e.g. 11806, 11807"
+                  required
                 />
               </div>
               
               <div className="fms-form-group">
-                <label className="fms-label">Finish Code</label>
+                <label className="fms-label">Finish Code <span style={{color: "red"}}>*</span></label>
                 <input
                   type="text"
                   name="finishCode"
@@ -123,11 +181,12 @@ export function FinishingRecipePage() {
                   onChange={handleHeaderChange}
                   className="fms-input"
                   placeholder="e.g. Dark Honey"
+                  required
                 />
               </div>
 
               <div className="fms-form-group">
-                <label className="fms-label">Item Description</label>
+                <label className="fms-label">Item Description <span style={{color: "red"}}>*</span></label>
                 <input
                   type="text"
                   name="itemDescription"
@@ -135,17 +194,19 @@ export function FinishingRecipePage() {
                   onChange={handleHeaderChange}
                   className="fms-input"
                   placeholder="e.g. Bathroom Cabinet"
+                  required
                 />
               </div>
 
               <div className="fms-form-group">
-                <label className="fms-label">Created On</label>
+                <label className="fms-label">Created On <span style={{color: "red"}}>*</span></label>
                 <input
                   type="date"
                   name="createdOn"
                   value={formData.createdOn}
                   onChange={handleHeaderChange}
                   className="fms-input"
+                  required
                 />
               </div>
 
@@ -178,7 +239,7 @@ export function FinishingRecipePage() {
                 <select
                   name="woodType"
                   value={formData.woodType}
-                  onChange={handleHeaderChange as any}
+                  onChange={handleHeaderChange}
                   className="fms-input"
                   style={{ padding: "8px", border: "1px solid #ced4da", borderRadius: "4px" }}
                 >
@@ -206,12 +267,12 @@ export function FinishingRecipePage() {
                     <th className="fms-th" style={{ width: "120px" }}>Drying Time<br/><small>(सूखने का समय)</small></th>
                     <th className="fms-th">Notes<br/><small>(नोट्स)</small></th>
                     <th className="fms-th" style={{ width: "100px" }}>No. of Coats<br/><small>(कितने कोट)</small></th>
-                    <th className="fms-th" style={{ width: "60px" }}>Actions</th>
+                    <th className="fms-th" style={{ width: "60px", textAlign: "center" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {steps.map((step) => (
-                    <tr key={step.id} className="fms-tr">
+                    <tr key={step.id || step.stepNo} className="fms-tr">
                       <td className="fms-td" style={{ textAlign: "center", fontWeight: "bold" }}>{step.stepNo}</td>
                       <td className="fms-td">
                         <input 
@@ -288,6 +349,9 @@ export function FinishingRecipePage() {
                 </tbody>
               </table>
             </div>
+            {steps.length === 0 && (
+              <p style={{ color: "#6c757d", fontStyle: "italic", marginTop: "10px" }}>No steps added yet.</p>
+            )}
 
             <div style={{ marginTop: "15px", display: "flex", gap: "10px", justifyContent: "space-between" }}>
               <button 
@@ -302,7 +366,7 @@ export function FinishingRecipePage() {
                 type="submit" 
                 className="fms-btn-primary"
               >
-                SAVE FINISHING RECIPE
+                {isEditMode ? "UPDATE FINISHING RECIPE" : "SAVE FINISHING RECIPE"}
               </button>
             </div>
           </form>

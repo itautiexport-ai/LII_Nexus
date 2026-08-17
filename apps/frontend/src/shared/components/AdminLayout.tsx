@@ -137,7 +137,8 @@ export const SECTIONS: NavSection[] = [
     label: "Finishing",
     allowedRoles: ["System Admin", "Finishing Access"],
     items: [
-      { label: "Finishing Recipe", to: "/admin/finishing-recipe" }
+      { label: "Finishing Recipe List", to: "/admin/finishing-recipes" },
+      { label: "Add Finishing Recipe", to: "/admin/finishing-recipes/new" }
     ],
   },
   {
