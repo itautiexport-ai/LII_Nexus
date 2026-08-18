@@ -18,6 +18,8 @@ export default function EmployeeScorePage() {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDept, setSelectedDept] = useState("");
 
+  const [me, setMe] = useState<EmployeeRecord | null>(null);
+
   useEffect(() => {
     fetchScores();
   }, [startMonth, endMonth]);
@@ -27,12 +29,19 @@ export default function EmployeeScorePage() {
     setLoading(true);
     const periodRange = `${startMonth}_${endMonth}`;
     try {
-      const [scores, empList] = await Promise.all([
-        misScoreApi.getCumulativeScores(periodRange),
-        employeesApi.list()
+      const [scores, empList, myProfile] = await Promise.all([
+        misScoreApi.getCumulativeScores(periodRange).catch(() => []),
+        employeesApi.list().catch(() => []),
+        employeesApi.getMe().catch(() => null)
       ]);
+      let filteredEmpList = empList;
+      if (myProfile && myProfile.departmentName) {
+        filteredEmpList = empList.filter(e => e.departmentName === myProfile.departmentName && e.id !== myProfile.id);
+      }
+
       setReports(scores);
-      setEmployees(empList);
+      setEmployees(filteredEmpList);
+      setMe(myProfile);
     } catch (err) {
       console.error("Failed to load employee scores:", err);
     } finally {
@@ -47,6 +56,12 @@ export default function EmployeeScorePage() {
   const filteredReports = reports.filter(r => {
     const emp = employees.find(e => e.userId === r.employeeId || e.fullName === r.employeeName);
     
+    // HOD logic: if the logged-in user has an employee record, restrict view to their own department only
+    // Since 'employees' is already filtered to only contain their department, if emp is not found, hide the report
+    if (me && me.departmentName && !emp) {
+      return false;
+    }
+
     // Match selected employee by ID or full name match
     const matchesEmployee = !selectedEmployee || 
                             r.employeeId === selectedEmployee || 
@@ -54,7 +69,7 @@ export default function EmployeeScorePage() {
                             emp?.id === selectedEmployee ||
                             emp?.userId === selectedEmployee;
                             
-    const matchesDept = !selectedDept || emp?.departmentName === selectedDept;
+    const matchesDept = !selectedDept || emp?.departmentName === selectedDept || (r as any).departmentName === selectedDept;
 
     return matchesEmployee && matchesDept;
   });
