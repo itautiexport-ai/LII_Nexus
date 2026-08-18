@@ -220,10 +220,10 @@ export default function UsersPage() {
     try {
       const [uRes, rList, deps, desigs, shs] = await Promise.all([
         usersApi.listPaginated(currentPage, 100000),
-        rolesApi.list(),
-        departmentsApi.listForDropdown(),
-        designationsApi.listForDropdown(),
-        shiftsApi.list(),
+        rolesApi.list().catch((err) => { console.warn("Failed to load roles:", err.message); return []; }),
+        departmentsApi.listForDropdown().catch((err) => { console.warn("Failed to load departments:", err.message); return []; }),
+        designationsApi.listForDropdown().catch((err) => { console.warn("Failed to load designations:", err.message); return []; }),
+        shiftsApi.list().catch((err) => { console.warn("Failed to load shifts:", err.message); return []; }),
       ]);
       setUsers(uRes.data);
       setTotalPages(Math.ceil((uRes.meta?.totalItems || 0) / 100000) || 1);

@@ -29,10 +29,10 @@ export default function EmployeesPage() {
   async function load(currentSearch = search) {
     const [emp, deps, desigs, userList, hodList] = await Promise.all([
       employeesApi.list(currentSearch),
-      departmentsApi.list(),
-      designationsApi.list(),
-      usersApi.list(),
-      masterDataApi.getHods(),
+      departmentsApi.list().catch(() => []),
+      designationsApi.list().catch(() => []),
+      usersApi.list().catch(() => []),
+      masterDataApi.getHods().catch(() => []),
     ]);
     setEmployees(emp);
     setDepartments(deps);
