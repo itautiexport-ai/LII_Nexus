@@ -34,7 +34,7 @@ export default function AddDelegationPage() {
     try {
       await delegationApi.create({
         title,
-        assignedBy: assignedBy || user?.id,
+        assignedBy: assignedBy || undefined,
         assignedTo,
         dueDate,
         priority,

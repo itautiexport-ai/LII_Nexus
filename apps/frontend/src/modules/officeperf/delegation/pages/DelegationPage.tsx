@@ -37,18 +37,26 @@ export default function DelegationPage() {
   const [selectedTaskForReview, setSelectedTaskForReview] = useState<DisplayTask | null>(null);
 
   async function load() {
-    const [receivedRes, delegatedRes, reports] = await Promise.all([
+    const [receivedRes, delegatedRes, reports, meRes] = await Promise.all([
       delegationApi.list({}),
       delegationApi.listIDelegated(),
       factoryApi.myDirectReports(),
+      employeesApi.getMe().catch(() => null),
     ]);
     
     let rItems = receivedRes.items as DisplayTask[];
     let dItems = delegatedRes as DisplayTask[];
     
     if (user && !user.roles.includes("System Admin")) {
-      rItems = rItems.filter(t => t.assignedToName === user.fullName || t.assignedByName === user.fullName);
-      dItems = dItems.filter(t => t.assignedByName === user.fullName || t.assignedToName === user.fullName);
+      const myEmployeeId = meRes?.id;
+      if (myEmployeeId) {
+        rItems = rItems.filter(t => t.assignedTo === myEmployeeId || t.assignedBy === myEmployeeId);
+        dItems = dItems.filter(t => t.assignedBy === myEmployeeId || t.assignedTo === myEmployeeId);
+      } else {
+        // Fallback to name if no employee record found
+        rItems = rItems.filter(t => t.assignedToName?.toLowerCase() === user.fullName?.toLowerCase() || t.assignedByName?.toLowerCase() === user.fullName?.toLowerCase());
+        dItems = dItems.filter(t => t.assignedByName?.toLowerCase() === user.fullName?.toLowerCase() || t.assignedToName?.toLowerCase() === user.fullName?.toLowerCase());
+      }
     }
     
     setReceived(rItems);

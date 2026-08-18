@@ -34,8 +34,8 @@ function mapTask(row: any): DelegatedTask {
 const WITH_CONTEXT_SELECT = `
   SELECT dt.*, eb.full_name AS assigned_by_name, ea.full_name AS assigned_to_name, ee.full_name AS escalated_to_name
   FROM delegated_tasks dt
-  JOIN employees eb ON eb.id = dt.assigned_by
-  JOIN employees ea ON ea.id = dt.assigned_to
+  LEFT JOIN employees eb ON eb.id = dt.assigned_by
+  LEFT JOIN employees ea ON ea.id = dt.assigned_to
   LEFT JOIN employees ee ON ee.id = dt.escalated_to
 `;
 
