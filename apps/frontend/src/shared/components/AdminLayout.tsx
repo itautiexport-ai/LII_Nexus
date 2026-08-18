@@ -411,11 +411,13 @@ export default function AdminLayout() {
   useEffect(() => {
     // Refresh user object and roles from server on route change to strictly enforce permissions
     if (accessToken) {
-      authApi.getMe().then(({ user: refreshedUser }) => {
-        setSession(accessToken, refreshedUser, permissions);
-      }).catch((err) => {
-        console.error("Failed to refresh user profile:", err);
-      });
+      Promise.all([authApi.getMe(), authApi.getMyPermissions()])
+        .then(([{ user: refreshedUser }, newPermissions]) => {
+          setSession(accessToken, refreshedUser, newPermissions);
+        })
+        .catch((err) => {
+          console.error("Failed to refresh user profile:", err);
+        });
     }
   }, [location.pathname]);
 
