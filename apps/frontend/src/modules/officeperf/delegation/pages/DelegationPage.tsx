@@ -37,9 +37,13 @@ export default function DelegationPage() {
   const [extensionUpdatedDate, setExtensionUpdatedDate] = useState("");
   const [selectedTaskForReview, setSelectedTaskForReview] = useState<DisplayTask | null>(null);
 
+  const [receivedPage, setReceivedPage] = useState(1);
+  const [delegatedPage, setDelegatedPage] = useState(1);
+  const pageSize = 20;
+
   async function load() {
     const [receivedRes, delegatedRes, reports, meRes] = await Promise.all([
-      delegationApi.list({}),
+      delegationApi.list({ pageSize: 500 }), // Increase limit to ensure we get all relevant tasks
       delegationApi.listIDelegated(),
       factoryApi.myDirectReports(),
       employeesApi.getMe().catch(() => null),
@@ -54,7 +58,6 @@ export default function DelegationPage() {
         rItems = rItems.filter(t => t.assignedTo === myEmployeeId || t.assignedBy === myEmployeeId);
         dItems = dItems.filter(t => t.assignedBy === myEmployeeId || t.assignedTo === myEmployeeId);
       } else {
-        // Fallback to name if no employee record found
         rItems = rItems.filter(t => t.assignedToName?.toLowerCase() === user.fullName?.toLowerCase() || t.assignedByName?.toLowerCase() === user.fullName?.toLowerCase());
         dItems = dItems.filter(t => t.assignedByName?.toLowerCase() === user.fullName?.toLowerCase() || t.assignedToName?.toLowerCase() === user.fullName?.toLowerCase());
       }
@@ -64,9 +67,10 @@ export default function DelegationPage() {
     setDelegated(dItems);
     setDirectReports(reports);
   }
+
   useEffect(() => { 
     load(); 
-    const interval = setInterval(load, 10000);
+    const interval = setInterval(load, 30000); // reduced frequency to 30s for better performance
     return () => clearInterval(interval);
   }, []);
 
@@ -184,6 +188,16 @@ export default function DelegationPage() {
   if (priorityFilter) list = list.filter(t => t.priority === priorityFilter);
   if (userFilter) list = list.filter(t => t.assignedToName === userFilter);
 
+  const totalItems = list.length;
+  const currentPage = tab === "received" ? receivedPage : delegatedPage;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const paginatedList = list.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const handlePageChange = (newPage: number) => {
+    if (tab === "received") setReceivedPage(newPage);
+    else setDelegatedPage(newPage);
+  };
+
   return (
     <div>
       <input 
@@ -228,12 +242,12 @@ export default function DelegationPage() {
       )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid #ddd" }}>
-        <button onClick={() => { setTab("received"); setSelectedIds([]); setUserFilter(""); setStatusFilter(""); setPriorityFilter(""); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "received" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "received" ? 600 : 400 }}>Assigned to Me</button>
-        <button onClick={() => { setTab("delegated"); setSelectedIds([]); setUserFilter(""); setStatusFilter(""); setPriorityFilter(""); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "delegated" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "delegated" ? 600 : 400 }}>Tasks I Delegated</button>
+        <button onClick={() => { setTab("received"); setSelectedIds([]); setUserFilter(""); setStatusFilter(""); setPriorityFilter(""); setReceivedPage(1); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "received" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "received" ? 600 : 400 }}>Assigned to Me</button>
+        <button onClick={() => { setTab("delegated"); setSelectedIds([]); setUserFilter(""); setStatusFilter(""); setPriorityFilter(""); setDelegatedPage(1); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "delegated" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "delegated" ? 600 : 400 }}>Tasks I Delegated</button>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); handlePageChange(1); }} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="running">Running</option>
@@ -241,7 +255,7 @@ export default function DelegationPage() {
           <option value="completed">Completed</option>
         </select>
 
-        <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+        <select value={priorityFilter} onChange={e => { setPriorityFilter(e.target.value); handlePageChange(1); }} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
           <option value="">All Priorities</option>
           <option value="low">Low</option>
           <option value="medium">Medium</option>
@@ -249,100 +263,75 @@ export default function DelegationPage() {
           <option value="urgent">Urgent</option>
         </select>
 
-        <select value={userFilter} onChange={e => setUserFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
-          <option value="">All Assigned To</option>
-          {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
+        {tab === "delegated" && (
+          <select value={userFilter} onChange={e => { setUserFilter(e.target.value); handlePageChange(1); }} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+            <option value="">All Users</option>
+            {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        )}
       </div>
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff" }}>
         <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-              <th style={{ padding: 8, width: 30 }}>
-                {isAdmin && (
-                  <input 
-                    type="checkbox" 
-                    checked={list.length > 0 && selectedIds.length === list.length}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedIds(list.map(t => t.id));
-                      } else {
-                        setSelectedIds([]);
-                      }
-                    }}
-                  />
-                )}
-              </th>
-            <th style={{ padding: 8 }}>Task Title</th>
-            <th style={{ padding: 8 }}>From</th>
-            <th style={{ padding: 8 }}>Assigned To</th>
-            <th style={{ padding: 8 }}>Planned Date</th>
-            <th style={{ padding: 8 }}>Priority</th>
-            <th style={{ padding: 8 }}>Status</th>
-            <th style={{ padding: 8 }}>Files</th>
-            <th style={{ padding: 8 }}>Actions</th>
+          <tr style={{ background: "#f9fafb", textAlign: "left", borderBottom: "1px solid #eee" }}>
+            {isAdmin && <th style={{ padding: 12, width: 40 }}><input type="checkbox" onChange={(e) => setSelectedIds(e.target.checked ? list.map(t => t.id) : [])} checked={list.length > 0 && selectedIds.length === list.length} /></th>}
+            <th style={{ padding: 12 }}>Task</th>
+            <th style={{ padding: 12 }}>{tab === "received" ? "From" : "To"}</th>
+            <th style={{ padding: 12 }}>Due</th>
+            <th style={{ padding: 12 }}>Priority</th>
+            <th style={{ padding: 12 }}>Status</th>
+            <th style={{ padding: 12 }}>Attachments</th>
+            <th style={{ padding: 12 }}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {list.map((t) => (
+          {paginatedList.map((t) => (
             <tr key={t.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td style={{ padding: 8 }}>
-                  {isAdmin && (
-                    <input 
-                      type="checkbox" 
-                      checked={selectedIds.includes(t.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds([...selectedIds, t.id]);
-                        } else {
-                          setSelectedIds(selectedIds.filter(id => id !== t.id));
-                        }
-                      }}
-                    />
-                  )}
-                </td>
-              <td style={{ padding: 8, fontWeight: 600 }}>{t.title}</td>
-              <td style={{ padding: 8 }}>{t.assignedByName}</td>
-              <td style={{ padding: 8, color: "#2563eb", fontWeight: 500 }}>{t.assignedToName}</td>
-              <td style={{ padding: 8 }}>{t.dueDate}</td>
-              <td style={{ padding: 8 }}><span style={{ color: priorityColors[t.priority], fontWeight: 600, textTransform: "capitalize" }}>{t.priority}</span></td>
-              <td style={{ padding: 8 }}>
+              {isAdmin && <td style={{ padding: 12 }}><input type="checkbox" checked={selectedIds.includes(t.id)} onChange={(e) => { if (e.target.checked) setSelectedIds([...selectedIds, t.id]); else setSelectedIds(selectedIds.filter(id => id !== t.id)); }} /></td>}
+              <td style={{ padding: 12, maxWidth: 200 }}>
+                <div style={{ fontWeight: 600, color: "#111" }}>{t.title}</div>
+                <div style={{ fontSize: 12, color: "#666", whiteSpace: "pre-wrap" }}>{t.description}</div>
+                {t.remarks && <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>Remarks: {t.remarks}</div>}
+              </td>
+              <td style={{ padding: 12 }}>{tab === "received" ? t.assignedByName : t.assignedToName}</td>
+              <td style={{ padding: 12, color: new Date(t.dueDate) < new Date(new Date().toDateString()) && t.displayStatus !== "completed" ? "crimson" : "inherit" }}>{t.dueDate}</td>
+              <td style={{ padding: 12 }}><span style={{ color: "white", background: priorityColors[t.priority], padding: "2px 6px", borderRadius: 4, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>{t.priority}</span></td>
+              <td style={{ padding: 12 }}>
+                <select
+                  value={t.displayStatus === "delayed" ? "running" : t.displayStatus}
+                  onChange={(e) => handleStatusChange(t.id, e.target.value as any)}
+                  disabled={t.displayStatus === "completed" || tab === "delegated"}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    border: `1px solid ${statusColors[t.displayStatus]}`,
+                    color: statusColors[t.displayStatus],
+                    fontWeight: 600,
+                    outline: "none",
+                    background: "#fff"
+                  }}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="running">Running</option>
+                  <option value="completed">Completed</option>
+                </select>
+                {t.displayStatus === "delayed" && <div style={{ fontSize: 11, color: "crimson", marginTop: 4, fontWeight: 600 }}>DELAYED</div>}
+              </td>
+              <td style={{ padding: 12 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ color: statusColors[t.displayStatus], fontWeight: 600 }}>{t.displayStatus}</span>
-                  {t.extensionStatus === "pending" && <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: "bold" }}>Extension Pending</span>}
-                  {t.extensionStatus === "rejected" && <span style={{ fontSize: 11, color: "#ef4444" }}>Extension Rejected</span>}
+                  {t.files?.map(f => (
+                    <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: f.kind === "proof" ? "#10b981" : "#3b82f6", textDecoration: "none" }}>
+                      {f.kind === "proof" ? "✅ " : "📎 "}{f.fileName}
+                    </a>
+                  ))}
+                  {t.displayStatus !== "completed" && tab === "received" && (
+                    <button onClick={() => { setProofTaskId(t.id); fileInputRef.current?.click(); }} style={{ background: "none", border: "1px dashed #ccc", padding: "4px 8px", fontSize: 11, cursor: "pointer", color: "#666", borderRadius: 4 }}>+ Add Proof</button>
+                  )}
                 </div>
               </td>
-              <td style={{ padding: 8, fontSize: 12 }}>
-                {t.files.length > 0 
-                  ? t.files.map((f, i) => (
-                      <span key={f.id}>
-                        <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>{f.fileName}</a>
-                        {i < t.files.length - 1 ? ", " : ""}
-                      </span>
-                    ))
-                  : "—"}
-              </td>
-              <td style={{ padding: 8 }}>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <td style={{ padding: 12 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   {tab === "received" && t.displayStatus !== "completed" && (
-                    <select 
-                      value=""
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "start") handleStatusChange(t.id, "running");
-                        if (val === "proof") handleAddProof(t.id);
-                        if (val === "complete") handleStatusChange(t.id, "completed");
-                      }}
-                      style={{ padding: 4 }}
-                    >
-                      <option value="">Select Action...</option>
-                      {t.displayStatus === "pending" && <option value="start">Start</option>}
-                      <option value="proof">Add Proof</option>
-                      <option value="complete">Complete</option>
-                    </select>
-                  )}
-                  {tab === "delegated" && t.displayStatus === "delayed" && (
                     <div style={{ display: "flex", gap: 4 }}>
                       <select value={escalateDrafts[t.id] ?? ""} onChange={(e) => setEscalateDrafts({ ...escalateDrafts, [t.id]: e.target.value })} style={{ padding: 4 }}>
                         <option value="">Escalate to...</option>
@@ -352,47 +341,48 @@ export default function DelegationPage() {
                     </div>
                   )}
                   {tab === "delegated" && t.displayStatus !== "completed" && (
-                    <button
-                      onClick={() => handleWhatsAppReminder(t.id)}
-                      title="Send WhatsApp Reminder"
-                      style={{ padding: "3px 10px", background: "#d1fae5", color: "#065f46", border: "1px solid #a7f3d0", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                    >
-                      📱 WhatsApp
-                    </button>
+                    <button onClick={() => handleWhatsAppReminder(t.id)} style={{ padding: "4px 8px", background: "#d1fae5", border: "1px solid #a7f3d0", borderRadius: 4, cursor: "pointer" }}>📱</button>
                   )}
-                  {(tab === "delegated" || isAdmin) && t.extensionStatus === "pending" && (
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button 
-                        onClick={() => openExtensionReview(t, "approved")}
-                        style={{ padding: "3px 10px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                      >
-                        Accept Ext.
-                      </button>
-                      <button 
-                        onClick={() => openExtensionReview(t, "rejected")}
-                        style={{ padding: "3px 10px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                      >
-                        Reject Ext.
-                      </button>
-                    </div>
+                  {t.extensionStatus === "pending" && (
+                    <button onClick={() => openExtensionReview(t, "approved")} style={{ padding: "4px 8px", background: "#fff", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer" }}>Check Extension</button>
                   )}
-                  {t.escalatedToName && <div style={{ fontSize: 11, color: "#c0392b" }}>Escalated to {t.escalatedToName}</div>}
                   {isAdmin && (
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      title="Delete task"
-                      style={{ padding: "3px 10px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                    >
-                      🗑 Delete
-                    </button>
+                    <button onClick={() => handleDelete(t.id)} style={{ padding: "4px 8px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", color: "#dc2626" }}>🗑</button>
                   )}
                 </div>
               </td>
             </tr>
           ))}
-          {list.length === 0 && <tr><td colSpan={8} style={{ padding: 16, textAlign: "center", color: "#777" }}>Nothing here.</td></tr>}
+          {paginatedList.length === 0 && <tr><td colSpan={8} style={{ padding: 16, textAlign: "center", color: "#777" }}>Nothing here.</td></tr>}
         </tbody>
       </table>
+
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "8px 16px", background: "#f9fafb", border: "1px solid #eee", borderRadius: 6 }}>
+          <div style={{ fontSize: 14, color: "#666" }}>
+            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} tasks
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              style={{ padding: "6px 12px", border: "1px solid #ccc", background: currentPage === 1 ? "#eee" : "#fff", borderRadius: 4, cursor: currentPage === 1 ? "not-allowed" : "pointer" }}
+            >
+              Previous
+            </button>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Page {currentPage} of {totalPages}</span>
+            </div>
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              style={{ padding: "6px 12px", border: "1px solid #ccc", background: currentPage === totalPages ? "#eee" : "#fff", borderRadius: 4, cursor: currentPage === totalPages ? "not-allowed" : "pointer" }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {showExtensionReview && selectedTaskForReview && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>

@@ -25,7 +25,7 @@ export class DelegationService {
   async listIDelegated(actorUserId: string) {
     const actor = await this.scope.getEmployeeForUser(actorUserId);
     if (!actor) return [];
-    const { items } = await this.repo.list({ page: 1, pageSize: 100, assignedBy: actor.id });
+    const { items } = await this.repo.list({ page: 1, pageSize: 500, assignedBy: actor.id });
     return items;
   }
 
