@@ -60,8 +60,15 @@ export default function PermissionsPage() {
       for (const roleName of rolesToAdd) {
         const role = await getOrCreateRole(roleName);
         await rolesApi.assignToUser(selectedUserId, role.id);
+      }
 
-        // Map backend permissions dynamically
+      // Map backend permissions dynamically for ALL staged roles (ensures backfill)
+      for (const roleName of stagedRoles) {
+        let role = roles.find(r => r.name === roleName);
+        if (!role) {
+          role = await getOrCreateRole(roleName); // Just in case it was created in the loop above
+        }
+        
         const assignedModules = new Set<string>();
         SECTIONS.forEach(section => {
           section.items.forEach(item => {
