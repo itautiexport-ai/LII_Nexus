@@ -14,6 +14,8 @@ export interface DelegatedTaskRecord {
   id: string;
   title: string;
   description: string | null;
+  assignedTo: string;
+  assignedBy: string;
   assignedByName: string;
   assignedToName: string;
   dueDate: string;
