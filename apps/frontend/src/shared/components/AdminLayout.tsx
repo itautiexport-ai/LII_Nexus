@@ -10,6 +10,7 @@ export interface NavItem {
   to?: string;
   items?: NavItem[];
   hideChildrenInSidebar?: boolean;
+  backendModules?: string[];
 }
 
 export interface NavSection {
@@ -24,9 +25,9 @@ export const SECTIONS: NavSection[] = [
     label: "Administration",
     allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin"],
     items: [
-      { label: "Data Export", to: "/admin/export" },
-      { label: "Users", to: "/admin/users" },
-      { label: "Permissions", to: "/admin/permissions" },
+      { label: "Data Export", to: "/admin/export", backendModules: ["export"] },
+      { label: "Users", to: "/admin/users", backendModules: ["identity"] },
+      { label: "Permissions", to: "/admin/permissions", backendModules: ["rbac"] },
       {
         label: "Master Data",
         to: "/admin/master-data",
@@ -74,9 +75,9 @@ export const SECTIONS: NavSection[] = [
         to: "/admin/checklist",
         hideChildrenInSidebar: true,
         items: [
-          { label: "MY Checklist", to: "/admin/my-checklists" },
-          { label: "List Checklist", to: "/admin/standalone-checklist/list" },
-          { label: "Add Checklist", to: "/admin/standalone-checklist/add" },
+          { label: "MY Checklist", to: "/admin/my-checklists", backendModules: ["officeperf"] },
+          { label: "List Checklist", to: "/admin/standalone-checklist/list", backendModules: ["officeperf"] },
+          { label: "Add Checklist", to: "/admin/standalone-checklist/add", backendModules: ["officeperf"] },
         ]
       },
       {
@@ -84,24 +85,24 @@ export const SECTIONS: NavSection[] = [
         to: "/admin/delegation",
         hideChildrenInSidebar: true,
         items: [
-          { label: "List Delegation", to: "/admin/delegation/list" },
-          { label: "Add Delegation", to: "/admin/delegation/new" },
-          { label: "My Delegation", to: "/admin/delegation/user" },
+          { label: "List Delegation", to: "/admin/delegation/list", backendModules: ["officeperf"] },
+          { label: "Add Delegation", to: "/admin/delegation/new", backendModules: ["officeperf"] },
+          { label: "My Delegation", to: "/admin/delegation/user", backendModules: ["officeperf"] },
         ]
       },
       {
         label: "FMS",
         to: "/admin/fms",
         items: [
-          { label: "My FMS", to: "/admin/user-dashboard/fms" },
-          { label: "List FMS Manager", to: "/admin/fms/list" },
-          { label: "Add FMS Manager", to: "/admin/fms/add" },
-          { label: "FMS Grid View", to: "/admin/fms/manager" },
+          { label: "My FMS", to: "/admin/user-dashboard/fms", backendModules: ["fms"] },
+          { label: "List FMS Manager", to: "/admin/fms/list", backendModules: ["fms"] },
+          { label: "Add FMS Manager", to: "/admin/fms/add", backendModules: ["fms"] },
+          { label: "FMS Grid View", to: "/admin/fms/manager", backendModules: ["fms"] },
           {
             label: "Forms",
             items: [
-              { label: "Form Builder", to: "/admin/fms/forms" },
-              { label: "List Form", to: "/admin/fms/list-forms" },
+              { label: "Form Builder", to: "/admin/fms/forms", backendModules: ["fms"] },
+              { label: "List Form", to: "/admin/fms/list-forms", backendModules: ["fms"] },
             ]
           },
         ]
@@ -146,15 +147,15 @@ export const SECTIONS: NavSection[] = [
     label: "CRM",
     allowedRoles: ["System Admin", "Merchant", "CEO"],
     items: [
-      { label: "Add Lead", to: "/admin/crm/leads/new" },
-      { label: "List Leads", to: "/admin/crm/leads" },
+      { label: "Add Lead", to: "/admin/crm/leads/new", backendModules: ["crm"] },
+      { label: "List Leads", to: "/admin/crm/leads", backendModules: ["crm"] },
       { 
         label: "Quotations", 
         to: "/admin/crm/quotations/hub",
         hideChildrenInSidebar: true,
         items: [
-          { label: "Add Quotation", to: "/admin/crm/quotations/new" },
-          { label: "List Quotations", to: "/admin/crm/quotations" },
+          { label: "Add Quotation", to: "/admin/crm/quotations/new", backendModules: ["crm"] },
+          { label: "List Quotations", to: "/admin/crm/quotations", backendModules: ["crm"] },
         ]
       },
       {
@@ -162,10 +163,10 @@ export const SECTIONS: NavSection[] = [
         to: "/admin/crm/complaints/hub",
         hideChildrenInSidebar: true,
         items: [
-          { label: "New Complaint", to: "/admin/crm/complaints/new" },
-          { label: "List Complaints", to: "/admin/crm/complaints" },
-          { label: "Investigation", to: "/admin/crm/investigation" },
-          { label: "CAPA", to: "/admin/crm/capa" },
+          { label: "New Complaint", to: "/admin/crm/complaints/new", backendModules: ["crm"] },
+          { label: "List Complaints", to: "/admin/crm/complaints", backendModules: ["crm"] },
+          { label: "Investigation", to: "/admin/crm/investigation", backendModules: ["crm"] },
+          { label: "CAPA", to: "/admin/crm/capa", backendModules: ["crm"] },
         ]
       }
     ],

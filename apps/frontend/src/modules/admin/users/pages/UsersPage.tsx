@@ -219,14 +219,14 @@ export default function UsersPage() {
   async function load(currentPage = page) {
     try {
       const [uRes, rList, deps, desigs, shs] = await Promise.all([
-        usersApi.listPaginated(currentPage, 300),
+        usersApi.listPaginated(currentPage, 100000),
         rolesApi.list(),
         departmentsApi.listForDropdown(),
         designationsApi.listForDropdown(),
         shiftsApi.list(),
       ]);
       setUsers(uRes.data);
-      setTotalPages(Math.ceil((uRes.meta?.totalItems || 0) / 300) || 1);
+      setTotalPages(Math.ceil((uRes.meta?.totalItems || 0) / 100000) || 1);
       setRoles(rList);
       setDepartmentsList(deps);
       setDesignationsList(desigs);

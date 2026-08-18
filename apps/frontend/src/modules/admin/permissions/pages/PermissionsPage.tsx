@@ -55,9 +55,36 @@ export default function PermissionsPage() {
       const rolesToAdd = stagedRoles.filter(r => !originalRoles.includes(r));
       const rolesToRemove = originalRoles.filter(r => !stagedRoles.includes(r));
       
+      const allPermissions = await permissionsApi.list();
+
       for (const roleName of rolesToAdd) {
         const role = await getOrCreateRole(roleName);
         await rolesApi.assignToUser(selectedUserId, role.id);
+
+        // Map backend permissions dynamically
+        const assignedModules = new Set<string>();
+        SECTIONS.forEach(section => {
+          section.items.forEach(item => {
+            if (item.items) {
+              item.items.forEach(sub => {
+                if (roleName === `Menu: ${section.label} -> ${item.label} -> ${sub.label}` && sub.backendModules) {
+                  sub.backendModules.forEach(m => assignedModules.add(m));
+                }
+              });
+            } else {
+              if (roleName === `Menu: ${section.label} -> ${item.label}` && item.backendModules) {
+                item.backendModules.forEach(m => assignedModules.add(m));
+              }
+            }
+          });
+        });
+
+        if (assignedModules.size > 0) {
+          const matchingPerms = allPermissions.filter(p => assignedModules.has(p.module));
+          if (matchingPerms.length > 0) {
+            await rolesApi.setPermissions(role.id, matchingPerms.map(p => p.id));
+          }
+        }
       }
       
       for (const roleName of rolesToRemove) {

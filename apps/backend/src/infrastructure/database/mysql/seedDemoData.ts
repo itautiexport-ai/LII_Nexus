@@ -210,7 +210,7 @@ async function seedDemoFactoryEntry() {
     console.log("Demo production line seeded: Line A");
   }
 
-  const [deptRow] = await pool.query<any[]>("SELECT id FROM departments LIMIT 1");
+  const [deptRow] = await pool.query<any[]>("SELECT id FROM factory_departments LIMIT 1");
   const [supervisorRow] = await pool.query<any[]>(
     "SELECT e.id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.email = 'supervisor@liinexus.com'"
   );

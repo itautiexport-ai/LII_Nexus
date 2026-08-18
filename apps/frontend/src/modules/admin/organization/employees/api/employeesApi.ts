@@ -34,16 +34,12 @@ export const employeesApi = {
     return res.data.data;
   },
   async list(search = ""): Promise<EmployeeRecord[]> {
-    const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 1000 } });
+    const res = await axiosInstance.get("/employees", { params: { search, page: 1, pageSize: 100000 } });
     return res.data.data;
   },
   async listForDropdown(search = ""): Promise<EmployeeDropdownRecord[]> {
     const res = await axiosInstance.get("/employees/lookup", { params: { search } });
-    const items = res.data.data;
-    return items.filter((emp: any) => {
-      const title = emp.designationTitle?.toLowerCase() || "";
-      return !title.includes("director") && !title.includes("admin");
-    });
+    return res.data.data;
   },
   async create(payload: {
     employeeCode: string; fullName: string; email?: string; phone?: string;
