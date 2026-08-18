@@ -21,3 +21,17 @@ export function requirePermission(permissionKey: string) {
     next();
   };
 }
+
+export function requireAnyPermission(permissionKeys: string[]) {
+  return async (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      throw new UnauthorizedError();
+    }
+    const userKeys = await roleRepository.getPermissionKeysForUser(req.user.sub);
+    const hasAny = permissionKeys.some(key => userKeys.includes(key));
+    if (!hasAny) {
+      throw new ForbiddenError(`Missing one of required permissions: ${permissionKeys.join(", ")}`);
+    }
+    next();
+  };
+}

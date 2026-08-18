@@ -4,7 +4,7 @@ import { employeesApi, EmployeeRecord } from "../../admin/organization/employees
 
 export default function EmployeeScorePage() {
   const [reports, setReports] = useState<MisScoreReport[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   
   // Custom range filters
@@ -31,10 +31,10 @@ export default function EmployeeScorePage() {
     try {
       const [scores, empList, myProfile] = await Promise.all([
         misScoreApi.getCumulativeScores(periodRange).catch(() => []),
-        employeesApi.list().catch(() => []),
+        employeesApi.listForDropdown().catch(() => []),
         employeesApi.getMe().catch(() => null)
       ]);
-      let filteredEmpList = empList;
+      let filteredEmpList = empList as any[];
       if (myProfile && myProfile.departmentName) {
         filteredEmpList = empList.filter(e => e.departmentName === myProfile.departmentName && e.id !== myProfile.id);
       }

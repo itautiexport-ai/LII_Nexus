@@ -27,6 +27,7 @@ export interface EmployeeDropdownRecord {
   departmentName: string;
   departmentId: string | null;
   designationTitle: string;
+  userId: string | null;
 }
 
 export const employeesApi = {

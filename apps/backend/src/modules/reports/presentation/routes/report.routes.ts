@@ -4,7 +4,7 @@ import { ApgsController } from "../controllers/ApgsController";
 import { runReportSchema, saveReportSchema, addFavouriteSchema, createScheduledReportSchema, addWidgetSchema, reorderWidgetsSchema } from "../../application/dto/report.dto";
 import { validate } from "../../../../shared/middlewares/validate-request.middleware";
 import { authMiddleware } from "../../../../shared/middlewares/auth.middleware";
-import { requirePermission } from "../../../../shared/middlewares/rbac.middleware";
+import { requirePermission, requireAnyPermission } from "../../../../shared/middlewares/rbac.middleware";
 import { asyncHandler } from "../../../../shared/utils/asyncHandler";
 
 import { OfficeEmController } from "../controllers/OfficeEmController";
@@ -17,7 +17,7 @@ router.use(authMiddleware);
 router.get("/reports/office-em-list", requirePermission("report.view"), asyncHandler(OfficeEmController.getGapScoreList));
 router.get("/reports/office-em/:employeeId", requirePermission("report.view"), asyncHandler(OfficeEmController.getGapScore));
 router.get("/reports/production-em", requirePermission("report.view"), asyncHandler(ProductionEmController.getReport));
-router.get("/reports/cumulative-scores", requirePermission("report.view"), asyncHandler(ApgsController.getCumulativeScores));
+router.get("/reports/cumulative-scores", requireAnyPermission(["report.view", "performance.dashboard.department.view", "performance.dashboard.company.view"]), asyncHandler(ApgsController.getCumulativeScores));
 router.get("/reports/apgs/:employeeId", requirePermission("report.view"), asyncHandler(ApgsController.getScore));
 router.post("/reports/apgs/:employeeId/manager-evaluation", requirePermission("report.view"), asyncHandler(ApgsController.saveManagerEvaluation));
 router.post("/reports/run", requirePermission("report.view"), validate(runReportSchema), asyncHandler(ReportController.run));
