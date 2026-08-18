@@ -35,8 +35,8 @@ export default function EmployeeScorePage() {
         employeesApi.getMe().catch(() => null)
       ]);
       let filteredEmpList = empList as any[];
-      if (myProfile && myProfile.departmentName) {
-        filteredEmpList = empList.filter(e => e.departmentName === myProfile.departmentName && e.id !== myProfile.id);
+      if (myProfile && myProfile.departmentId) {
+        filteredEmpList = empList.filter(e => e.departmentId === myProfile.departmentId && e.id !== myProfile.id);
       }
 
       setReports(scores);
@@ -58,7 +58,7 @@ export default function EmployeeScorePage() {
     
     // HOD logic: if the logged-in user has an employee record, restrict view to their own department only
     // Since 'employees' is already filtered to only contain their department, if emp is not found, hide the report
-    if (me && me.departmentName && !emp) {
+    if (me && me.departmentId && !emp) {
       return false;
     }
 
