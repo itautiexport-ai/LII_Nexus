@@ -25,6 +25,7 @@ export interface EmployeeDropdownRecord {
   employeeCode: string;
   fullName: string;
   departmentName: string;
+  departmentId: string | null;
   designationTitle: string;
 }
 

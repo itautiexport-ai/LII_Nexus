@@ -20,7 +20,19 @@ export default function HodEvaluationPage() {
   const [message, setMessage] = useState<{type: "error" | "success", text: string} | null>(null);
 
   useEffect(() => {
-    employeesApi.listForDropdown().then(data => setEmployees(data)).catch(console.error);
+    Promise.all([
+      employeesApi.getMe(),
+      employeesApi.listForDropdown()
+    ])
+    .then(([me, allEmployees]) => {
+      if (me) {
+        const filtered = allEmployees.filter(emp => emp.departmentId === me.departmentId && emp.id !== me.id);
+        setEmployees(filtered);
+      } else {
+        setEmployees(allEmployees);
+      }
+    })
+    .catch(console.error);
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

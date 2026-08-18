@@ -43,6 +43,7 @@ export const EmployeeController = {
       employeeCode: emp.employeeCode,
       fullName: emp.fullName,
       departmentName: emp.departmentName,
+      departmentId: emp.departmentId,
       designationTitle: emp.designationTitle
     }));
     return ok(res, lookupData);
