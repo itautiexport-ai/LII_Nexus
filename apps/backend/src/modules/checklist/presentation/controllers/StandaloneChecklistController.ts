@@ -26,7 +26,7 @@ export class StandaloneChecklistController {
 
   completeChecklist = async (req: Request, res: Response) => {
     const { id } = req.params;
-    const userId = req.user?.id; // Assumes authMiddleware sets req.user
+    const userId = (req as any).user?.id; // Assumes authMiddleware sets req.user
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
