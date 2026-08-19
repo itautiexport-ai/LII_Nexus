@@ -36,10 +36,10 @@ export function UserDelegationPage() {
         }
         setEmployeeId(myEmployeeId);
 
-        const delRes = await delegationApi.list({});
+        const delRes = await delegationApi.list({ pageSize: 500 });
         const myFullName = empRes.data?.data?.fullName;
         const myDelegations = (delRes.items as DisplayDelegation[]).filter(
-          d => (d as any).assignedTo === myEmployeeId || d.assignedToName === myFullName
+          d => (d as any).assignedTo === myEmployeeId || d.assignedToName?.toLowerCase() === myFullName?.toLowerCase()
         );
         setDelegations(myDelegations);
 
