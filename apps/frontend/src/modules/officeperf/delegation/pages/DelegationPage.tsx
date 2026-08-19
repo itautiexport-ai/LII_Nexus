@@ -198,7 +198,7 @@ export default function DelegationPage() {
       return b.title.localeCompare(a.title);
     }
     // Newest first (default)
-    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    return new Date((b as any).createdAt || 0).getTime() - new Date((a as any).createdAt || 0).getTime();
   });
 
   const totalItems = list.length;
