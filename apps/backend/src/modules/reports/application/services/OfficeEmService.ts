@@ -173,34 +173,43 @@ export class OfficeEmService {
 
     // 2. Checklist
     const [chkRuns] = await pool.query<any[]>(
-      `SELECT ci.id, sc.task_name as name, sc.priority, ci.period_end as due_date, 
-              IF(cii.is_checked=1, 'completed', 'pending') as base_status, 
-              cii.checked_at as completed_at
-       FROM checklist_instances ci
-       JOIN standalone_checklists sc ON ci.template_id = sc.id
-       JOIN checklist_instance_items cii ON ci.id = cii.instance_id
-       WHERE ci.employee_id = ?
-         AND (
-           (ci.period_end >= ? AND ci.period_end <= ?)
-           OR (cii.is_checked = 0)
-           OR (cii.checked_at >= ? AND cii.checked_at <= ?)
-         )`,
-      [empId, startStr, endStr, startStr, endStr]
+      `SELECT id, name, priority, due_date, base_status, completed_at FROM (
+         SELECT id, task_name as name, priority, planned_date as due_date, 'pending' as base_status, NULL as completed_at
+         FROM standalone_checklists
+         WHERE assign_to = ? AND deleted_at IS NULL
+           AND planned_date <= ?
+           
+         UNION ALL
+         
+         SELECT l.id, sc.task_name as name, sc.priority, l.planned_date as due_date, 'completed' as base_status, l.completed_at
+         FROM standalone_checklist_logs l
+         JOIN standalone_checklists sc ON l.checklist_id = sc.id
+         WHERE (sc.assign_to = ? OR l.completed_by = ?)
+           AND (l.completed_at >= ? AND l.completed_at <= ?)
+       ) as checklist_combined`,
+      [empId, endStr, empId, empId, startStr, endStr]
     );
     const checklistScore = evaluateModule(chkRuns, checklistWeightVal);
 
     // 3. FMS
     const [fmsTasks] = await pool.query<any[]>(
-      `SELECT ft.id, ws.name, 'medium' as priority, ft.due_date, ft.base_status, ft.completed_at
-       FROM flowchart_tasks ft
-       JOIN workflow_stages ws ON ft.stage_id = ws.id
-       WHERE ft.assigned_to = ?
+      `SELECT fis.id, fs.step_name as name, 'medium' as priority, 
+              IF(fs.timeline_unit = 'days', DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours DAY), DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours HOUR)) as due_date,
+              IF(fis.status = 'Completed', 'completed', IF(fis.status = 'In Progress', 'running', 'pending')) as base_status, 
+              fis.completed_at
+       FROM fms_instance_steps fis
+       JOIN fms_instances fi ON fis.instance_id = fi.id
+       JOIN fms_steps fs ON fis.fms_step_id = fs.id
+       WHERE (
+         (fs.doer_employee_ids IS NULL OR JSON_LENGTH(fs.doer_employee_ids) = 0) AND fi.creator_id = ?
+         OR JSON_CONTAINS(fs.doer_employee_ids, JSON_QUOTE(?))
+       )
          AND (
-           (ft.due_date >= ? AND ft.due_date <= ?)
-           OR ft.base_status IN ('pending', 'running')
-           OR (ft.completed_at >= ? AND ft.completed_at <= ?)
+           (IF(fs.timeline_unit = 'days', DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours DAY), DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours HOUR)) >= ? AND IF(fs.timeline_unit = 'days', DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours DAY), DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours HOUR)) <= ?)
+           OR fis.status IN ('Pending', 'In Progress')
+           OR (fis.completed_at >= ? AND fis.completed_at <= ?)
          )`,
-      [empId, startStr, endStr, startStr, endStr]
+      [empId, empId, startStr, endStr, startStr, endStr]
     );
     const fmsScore = evaluateModule(fmsTasks, fmsWeightVal);
 

@@ -24,10 +24,11 @@ export default function DelegationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [proofTaskId, setProofTaskId] = useState<string | null>(null);
 
-  // Filters
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [userFilter, setUserFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [sortFilter, setSortFilter] = useState("newest");
 
   // Extension Review State
   const [showExtensionReview, setShowExtensionReview] = useState(false);
@@ -186,7 +187,19 @@ export default function DelegationPage() {
 
   if (statusFilter) list = list.filter(t => t.displayStatus === statusFilter);
   if (priorityFilter) list = list.filter(t => t.priority === priorityFilter);
-  if (userFilter) list = list.filter(t => t.assignedToName === userFilter);
+  if (userFilter) list = list.filter(t => t.assignedToName === userFilter || t.assignedByName === userFilter);
+  if (dateFilter) list = list.filter(t => t.dueDate === dateFilter);
+
+  // Sorting
+  list.sort((a, b) => {
+    if (sortFilter === "a-z") {
+      return a.title.localeCompare(b.title);
+    } else if (sortFilter === "z-a") {
+      return b.title.localeCompare(a.title);
+    }
+    // Newest first (default)
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
 
   const totalItems = list.length;
   const currentPage = tab === "received" ? receivedPage : delegatedPage;
@@ -263,24 +276,30 @@ export default function DelegationPage() {
           <option value="urgent">Urgent</option>
         </select>
 
-        {tab === "delegated" && (
-          <select value={userFilter} onChange={e => { setUserFilter(e.target.value); handlePageChange(1); }} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
-            <option value="">All Users</option>
-            {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-        )}
+        <select value={userFilter} onChange={e => { setUserFilter(e.target.value); handlePageChange(1); }} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="">All Users</option>
+          {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+
+        <input type="date" value={dateFilter} onChange={e => { setDateFilter(e.target.value); handlePageChange(1); }} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }} />
+
+        <select value={sortFilter} onChange={e => { setSortFilter(e.target.value); handlePageChange(1); }} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+          <option value="newest">Newest First</option>
+          <option value="a-z">Alphabetical (A-Z)</option>
+          <option value="z-a">Alphabetical (Z-A)</option>
+        </select>
       </div>
 
       <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff" }}>
         <thead>
           <tr style={{ background: "#f9fafb", textAlign: "left", borderBottom: "1px solid #eee" }}>
             {isAdmin && <th style={{ padding: 12, width: 40 }}><input type="checkbox" onChange={(e) => setSelectedIds(e.target.checked ? list.map(t => t.id) : [])} checked={list.length > 0 && selectedIds.length === list.length} /></th>}
-            <th style={{ padding: 12 }}>Task</th>
-            <th style={{ padding: 12 }}>{tab === "received" ? "From" : "To"}</th>
-            <th style={{ padding: 12 }}>Due</th>
+            <th style={{ padding: 12 }}>Task Name</th>
+            <th style={{ padding: 12 }}>Assign To</th>
+            <th style={{ padding: 12 }}>Assign By</th>
+            <th style={{ padding: 12 }}>Planned Date</th>
             <th style={{ padding: 12 }}>Priority</th>
             <th style={{ padding: 12 }}>Status</th>
-            <th style={{ padding: 12 }}>Attachments</th>
             <th style={{ padding: 12 }}>Actions</th>
           </tr>
         </thead>
@@ -293,63 +312,85 @@ export default function DelegationPage() {
                 <div style={{ fontSize: 12, color: "#666", whiteSpace: "pre-wrap" }}>{t.description}</div>
                 {t.remarks && <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>Remarks: {t.remarks}</div>}
               </td>
-              <td style={{ padding: 12 }}>{tab === "received" ? t.assignedByName : t.assignedToName}</td>
+              <td style={{ padding: 12 }}>{t.assignedToName}</td>
+              <td style={{ padding: 12 }}>{t.assignedByName}</td>
               <td style={{ padding: 12, color: new Date(t.dueDate) < new Date(new Date().toDateString()) && t.displayStatus !== "completed" ? "crimson" : "inherit" }}>{t.dueDate}</td>
               <td style={{ padding: 12 }}><span style={{ color: "white", background: priorityColors[t.priority], padding: "2px 6px", borderRadius: 4, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>{t.priority}</span></td>
               <td style={{ padding: 12 }}>
-                <select
-                  value={t.displayStatus === "delayed" ? "running" : t.displayStatus}
-                  onChange={(e) => handleStatusChange(t.id, e.target.value as any)}
-                  disabled={t.displayStatus === "completed" || tab === "delegated"}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: 4,
-                    border: `1px solid ${statusColors[t.displayStatus]}`,
-                    color: statusColors[t.displayStatus],
-                    fontWeight: 600,
-                    outline: "none",
-                    background: "#fff"
-                  }}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="running">Running</option>
-                  <option value="completed">Completed</option>
-                </select>
+                <div style={{ color: statusColors[t.displayStatus], fontWeight: 600, textTransform: "capitalize" }}>{t.displayStatus}</div>
                 {t.displayStatus === "delayed" && <div style={{ fontSize: 11, color: "crimson", marginTop: 4, fontWeight: 600 }}>DELAYED</div>}
               </td>
               <td style={{ padding: 12 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {t.files?.map(f => (
-                    <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: f.kind === "proof" ? "#10b981" : "#3b82f6", textDecoration: "none" }}>
-                      {f.kind === "proof" ? "✅ " : "📎 "}{f.fileName}
-                    </a>
-                  ))}
-                  {t.displayStatus !== "completed" && tab === "received" && (
-                    <button onClick={() => { setProofTaskId(t.id); fileInputRef.current?.click(); }} style={{ background: "none", border: "1px dashed #ccc", padding: "4px 8px", fontSize: 11, cursor: "pointer", color: "#666", borderRadius: 4 }}>+ Add Proof</button>
-                  )}
-                </div>
-              </td>
-              <td style={{ padding: 12 }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <select
+                    value={t.displayStatus === "delayed" ? "running" : t.displayStatus}
+                    onChange={(e) => handleStatusChange(t.id, e.target.value as any)}
+                    disabled={t.displayStatus === "completed" || tab === "delegated"}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                      border: `1px solid ${statusColors[t.displayStatus]}`,
+                      color: statusColors[t.displayStatus],
+                      fontWeight: 600,
+                      fontSize: 12,
+                      outline: "none",
+                      background: `${statusColors[t.displayStatus]}15`, // Light transparent background
+                      cursor: t.displayStatus === "completed" || tab === "delegated" ? "not-allowed" : "pointer",
+                      width: "100%",
+                      maxWidth: "140px",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                    }}
+                  >
+                    <option value="pending">Start (Pending)</option>
+                    <option value="running">In Progress</option>
+                    <option value="completed">Complete</option>
+                  </select>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {t.files?.map(f => (
+                      <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: f.kind === "proof" ? "#059669" : "#2563eb", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, background: "#f8fafc", padding: "2px 6px", borderRadius: 4, border: "1px solid #e2e8f0" }}>
+                        {f.kind === "proof" ? "✅" : "📎"} <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: 100 }}>{f.fileName}</span>
+                      </a>
+                    ))}
+                    {t.displayStatus !== "completed" && tab === "received" && (
+                      <button 
+                        onClick={() => { setProofTaskId(t.id); fileInputRef.current?.click(); }} 
+                        style={{ background: "#fff", border: "1px dashed #94a3b8", padding: "4px 8px", fontSize: 11, cursor: "pointer", color: "#475569", borderRadius: 4, fontWeight: 500, display: "flex", alignItems: "center", gap: 4, justifyContent: "center", transition: "all 0.2s" }}
+                        onMouseOver={e => e.currentTarget.style.background = "#f1f5f9"}
+                        onMouseOut={e => e.currentTarget.style.background = "#fff"}
+                      >
+                        <span style={{ fontSize: 12 }}>+</span> Add Attachments
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center", marginTop: 2 }}>
                   {tab === "received" && t.displayStatus !== "completed" && (
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <select value={escalateDrafts[t.id] ?? ""} onChange={(e) => setEscalateDrafts({ ...escalateDrafts, [t.id]: e.target.value })} style={{ padding: 4 }}>
+                    <div style={{ display: "flex", gap: 0, borderRadius: 4, overflow: "hidden", border: "1px solid #cbd5e1", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                      <select value={escalateDrafts[t.id] ?? ""} onChange={(e) => setEscalateDrafts({ ...escalateDrafts, [t.id]: e.target.value })} style={{ padding: "2px 6px", border: "none", borderRight: "1px solid #cbd5e1", background: "#f8fafc", fontSize: 11, outline: "none", color: "#334155" }}>
                         <option value="">Escalate to...</option>
                         {directReports.map((r) => <option key={r.id} value={r.id}>{r.fullName}</option>)}
                       </select>
-                      <button onClick={() => handleEscalate(t.id)}>Escalate</button>
+                      <button onClick={() => handleEscalate(t.id)} style={{ padding: "2px 8px", background: "#fff", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "#2563eb" }} onMouseOver={e => e.currentTarget.style.background = "#eff6ff"} onMouseOut={e => e.currentTarget.style.background = "#fff"}>
+                        Go
+                      </button>
                     </div>
                   )}
                   {tab === "delegated" && t.displayStatus !== "completed" && (
-                    <button onClick={() => handleWhatsAppReminder(t.id)} style={{ padding: "4px 8px", background: "#d1fae5", border: "1px solid #a7f3d0", borderRadius: 4, cursor: "pointer" }}>📱</button>
+                    <button onClick={() => handleWhatsAppReminder(t.id)} title="Send WhatsApp Reminder" style={{ padding: "4px", background: "#d1fae5", border: "1px solid #34d399", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#059669"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    </button>
                   )}
                   {t.extensionStatus === "pending" && (
-                    <button onClick={() => openExtensionReview(t, "approved")} style={{ padding: "4px 8px", background: "#fff", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer" }}>Check Extension</button>
+                    <button onClick={() => openExtensionReview(t, "approved")} style={{ padding: "4px 8px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 4, cursor: "pointer", fontSize: 11, fontWeight: 600, color: "#b45309", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>Review Extension</button>
                   )}
                   {isAdmin && (
-                    <button onClick={() => handleDelete(t.id)} style={{ padding: "4px 8px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", color: "#dc2626" }}>🗑</button>
+                    <button onClick={() => handleDelete(t.id)} title="Delete" style={{ padding: "4px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
                   )}
                 </div>
+              </div>
               </td>
             </tr>
           ))}

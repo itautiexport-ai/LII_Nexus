@@ -415,13 +415,20 @@ export class StandaloneChecklistService {
     return nextDate;
   }
 
-  async completeChecklist(id: string): Promise<void> {
+  async completeChecklist(id: string, userId: string): Promise<void> {
     const [rows] = await pool.query<any[]>("SELECT frequency, when_rule, planned_date FROM standalone_checklists WHERE id = ?", [id]);
     if (rows.length === 0) return;
 
     const row = rows[0];
     const nextDate = this.calculateNextDate(new Date(row.planned_date), row.frequency, row.when_rule || "");
 
+    // Log the completion for historical tracking and performance evaluation
+    await pool.query(
+      "INSERT INTO standalone_checklist_logs (id, checklist_id, planned_date, completed_at, completed_by) VALUES (UUID(), ?, ?, NOW(), ?)",
+      [id, row.planned_date, userId]
+    );
+
+    // Reschedule
     await pool.query(
       "UPDATE standalone_checklists SET planned_date = ? WHERE id = ?",
       [nextDate, id]

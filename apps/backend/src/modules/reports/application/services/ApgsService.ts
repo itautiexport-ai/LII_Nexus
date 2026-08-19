@@ -190,17 +190,21 @@ export class MisService {
 
     // 2. Checklist Tasks
     const [chkInstances] = await pool.query<any[]>(
-      `SELECT ci.id, sc.task_name as title, sc.priority, cii.is_checked, cii.checked_at, ci.period_end 
-       FROM checklist_instances ci
-       JOIN standalone_checklists sc ON ci.template_id = sc.id
-       JOIN checklist_instance_items cii ON ci.id = cii.instance_id
-       WHERE ci.employee_id = ?
-         AND (
-           (ci.period_end >= ? AND ci.period_end <= ?)
-           OR (cii.is_checked = 0)
-           OR (cii.checked_at >= ? AND cii.checked_at <= ?)
-         )`,
-      [empId, startStr, endStr, startStr, endStr]
+      `SELECT id, name as title, priority, is_checked, checked_at, due_date as period_end FROM (
+         SELECT id, task_name as name, priority, 0 as is_checked, NULL as checked_at, planned_date as due_date
+         FROM standalone_checklists
+         WHERE assign_to = ? AND deleted_at IS NULL
+           AND planned_date <= ?
+           
+         UNION ALL
+         
+         SELECT l.id, sc.task_name as name, sc.priority, 1 as is_checked, l.completed_at as checked_at, l.planned_date as due_date
+         FROM standalone_checklist_logs l
+         JOIN standalone_checklists sc ON l.checklist_id = sc.id
+         WHERE (sc.assign_to = ? OR l.completed_by = ?)
+           AND (l.completed_at >= ? AND l.completed_at <= ?)
+       ) as checklist_combined`,
+      [empId, endStr, empId, empId, startStr, endStr]
     );
 
     let chkTotalDue = 0;
@@ -247,17 +251,22 @@ export class MisService {
 
     // 3. FMS Steps (Flowchart Tasks)
     const [fmsRows] = await pool.query<any[]>(
-      `SELECT ft.id, ft.base_status, ft.due_date, ft.completed_at, w.name as title 
-       FROM flowchart_tasks ft
-       LEFT JOIN workflow_runs wr ON ft.workflow_run_id = wr.id
-       LEFT JOIN workflows w ON wr.workflow_id = w.id
-       WHERE ft.assigned_to = ?
+      `SELECT fis.id, IF(fis.status = 'Completed', 'completed', IF(fis.status = 'In Progress', 'running', 'pending')) as base_status, 
+              IF(fs.timeline_unit = 'days', DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours DAY), DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours HOUR)) as due_date,
+              fis.completed_at, fs.step_name as title 
+       FROM fms_instance_steps fis
+       JOIN fms_instances fi ON fis.instance_id = fi.id
+       JOIN fms_steps fs ON fis.fms_step_id = fs.id
+       WHERE (
+         (fs.doer_employee_ids IS NULL OR JSON_LENGTH(fs.doer_employee_ids) = 0) AND fi.creator_id = ?
+         OR JSON_CONTAINS(fs.doer_employee_ids, JSON_QUOTE(?))
+       )
          AND (
-           (ft.due_date >= ? AND ft.due_date <= ?)
-           OR (ft.base_status IN ('pending', 'running'))
-           OR (ft.completed_at >= ? AND ft.completed_at <= ?)
+           (IF(fs.timeline_unit = 'days', DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours DAY), DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours HOUR)) >= ? AND IF(fs.timeline_unit = 'days', DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours DAY), DATE_ADD(fis.created_at, INTERVAL fs.timeline_hours HOUR)) <= ?)
+           OR fis.status IN ('Pending', 'In Progress')
+           OR (fis.completed_at >= ? AND fis.completed_at <= ?)
          )`,
-      [empId, startStr, endStr, startStr, endStr]
+      [empId, empId, startStr, endStr, startStr, endStr]
     );
 
     let fmsTotalDue = 0;

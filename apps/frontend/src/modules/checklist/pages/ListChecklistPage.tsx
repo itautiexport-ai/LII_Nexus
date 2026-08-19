@@ -11,6 +11,12 @@ export function ListChecklistPage() {
   const user = useAuthStore(state => state.user);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Filters
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [userFilter, setUserFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [sortFilter, setSortFilter] = useState("newest");
+
   useEffect(() => {
     fetchChecklists();
   }, []);
@@ -150,89 +156,135 @@ export function ListChecklistPage() {
             )}
           </div>
         </div>
+
+        <div style={{ padding: "16px", display: "flex", gap: "12px", borderBottom: "1px solid #e5e7eb", flexWrap: "wrap", alignItems: "center" }}>
+          <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+            <option value="">All Priorities</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+
+          <select value={userFilter} onChange={e => setUserFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+            <option value="">All Users</option>
+            {Array.from(new Set(checklists.map((c: any) => c.assignee_name || "Unknown"))).map(u => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+
+          <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }} />
+
+          <select value={sortFilter} onChange={e => setSortFilter(e.target.value)} style={{ padding: "6px 12px", borderRadius: 4, border: "1px solid #ccc" }}>
+            <option value="newest">Newest First</option>
+            <option value="a-z">Alphabetical (A-Z)</option>
+            <option value="z-a">Alphabetical (Z-A)</option>
+          </select>
+        </div>
+
         <div className="chk-card-content" style={{ padding: 0 }}>
-          {loading ? (
-            <div className="chk-empty">Loading...</div>
-          ) : checklists.length === 0 ? (
-            <div className="chk-empty">No checklists found.</div>
-          ) : (
-            <div className="chk-table-container">
-              <table className="chk-table">
-                <thead>
-                  <tr>
-                    {user && user.roles.includes("System Admin") && (
-                      <th className="chk-th" style={{ width: '40px' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={checklists.length > 0 && selectedIds.length === checklists.length} 
-                          onChange={toggleSelectAll} 
-                          style={{ cursor: "pointer" }}
-                        />
-                      </th>
-                    )}
-                    <th className="chk-th">Task Name</th>
-                    <th className="chk-th">Assigned To</th>
-                    <th className="chk-th">Planned Date</th>
-                    <th className="chk-th">Priority</th>
-                    <th className="chk-th">Mode</th>
-                    <th className="chk-th">Frequency</th>
-                    <th className="chk-th">Schedule Rule</th>
-                    <th className="chk-th">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {checklists.map(c => (
-                    <tr key={c.id} className="chk-tr">
+          {(() => {
+            let displayedChecklists = [...checklists];
+
+            if (priorityFilter) displayedChecklists = displayedChecklists.filter((c: any) => c.priority === priorityFilter);
+            if (userFilter) displayedChecklists = displayedChecklists.filter((c: any) => (c.assignee_name || "Unknown") === userFilter);
+            if (dateFilter) displayedChecklists = displayedChecklists.filter((c: any) => new Date(c.planned_date || c.plannedDate).toISOString().split('T')[0] === dateFilter);
+
+            displayedChecklists.sort((a: any, b: any) => {
+              const aTitle = String(a.task_name || a.taskName || "");
+              const bTitle = String(b.task_name || b.taskName || "");
+              if (sortFilter === "a-z") {
+                return aTitle.localeCompare(bTitle);
+              } else if (sortFilter === "z-a") {
+                return bTitle.localeCompare(aTitle);
+              }
+              const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+              const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+              return dateB - dateA;
+            });
+
+            return loading ? (
+              <div className="chk-empty">Loading...</div>
+            ) : displayedChecklists.length === 0 ? (
+              <div className="chk-empty">No checklists found.</div>
+            ) : (
+              <div className="chk-table-container">
+                <table className="chk-table">
+                  <thead>
+                    <tr>
                       {user && user.roles.includes("System Admin") && (
-                        <td className="chk-td">
+                        <th className="chk-th" style={{ width: '40px' }}>
                           <input 
                             type="checkbox" 
-                            checked={selectedIds.includes(c.id)} 
-                            onChange={() => toggleSelect(c.id)}
+                            checked={displayedChecklists.length > 0 && selectedIds.length === displayedChecklists.length} 
+                            onChange={toggleSelectAll} 
                             style={{ cursor: "pointer" }}
                           />
-                        </td>
+                        </th>
                       )}
-                      <td className="chk-td chk-td-strong">{(c as any).task_name || c.taskName}</td>
-                      <td className="chk-td">
-                        {(c as any).assignee_name || "Unknown"}
-                      </td>
-                      <td className="chk-td">{new Date((c as any).planned_date || c.plannedDate).toLocaleString()}</td>
-                      <td className="chk-td">
-                        <span className={`chk-pill ${
-                          c.priority === 'High' ? 'chk-pill-high' :
-                          c.priority === 'Medium' ? 'chk-pill-medium' :
-                          'chk-pill-low'
-                        }`}>
-                          {c.priority}
-                        </span>
-                      </td>
-                      <td className="chk-td">{c.mode}</td>
-                      <td className="chk-td">{c.frequency}</td>
-                      <td className="chk-td">{(c as any).whenRule || (c as any).when_rule || "-"}</td>
-                      <td className="chk-td">
-                        {user && user.roles.includes("System Admin") ? (
-                          <button 
-                            onClick={() => handleAction(c.id)}
-                            style={{ background: "#ef4444", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
-                          >
-                            Delete
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => handleAction(c.id)}
-                            style={{ background: "#10b981", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
-                          >
-                            Complete
-                          </button>
-                        )}
-                      </td>
+                      <th className="chk-th">Task Name</th>
+                      <th className="chk-th">Assign To</th>
+                      <th className="chk-th">Planned Date</th>
+                      <th className="chk-th">Priority</th>
+                      <th className="chk-th">Mode</th>
+                      <th className="chk-th">Frequency</th>
+                      <th className="chk-th">Schedule Rule</th>
+                      <th className="chk-th">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {displayedChecklists.map(c => (
+                      <tr key={c.id} className="chk-tr">
+                        {user && user.roles.includes("System Admin") && (
+                          <td className="chk-td">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedIds.includes(c.id)} 
+                              onChange={() => toggleSelect(c.id)}
+                              style={{ cursor: "pointer" }}
+                            />
+                          </td>
+                        )}
+                        <td className="chk-td chk-td-strong">{(c as any).task_name || c.taskName}</td>
+                        <td className="chk-td">
+                          {(c as any).assignee_name || "Unknown"}
+                        </td>
+                        <td className="chk-td">{new Date((c as any).planned_date || c.plannedDate).toLocaleDateString()}</td>
+                        <td className="chk-td">
+                          <span className={`chk-pill ${
+                            c.priority === 'High' ? 'chk-pill-high' :
+                            c.priority === 'Medium' ? 'chk-pill-medium' :
+                            'chk-pill-low'
+                          }`}>
+                            {c.priority}
+                          </span>
+                        </td>
+                        <td className="chk-td">{c.mode}</td>
+                        <td className="chk-td">{c.frequency}</td>
+                        <td className="chk-td">{(c as any).whenRule || (c as any).when_rule || "-"}</td>
+                        <td className="chk-td">
+                          {user && user.roles.includes("System Admin") ? (
+                            <button 
+                              onClick={() => handleAction(c.id)}
+                              style={{ background: "#ef4444", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
+                            >
+                              Delete
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleAction(c.id)}
+                              style={{ background: "#10b981", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
+                            >
+                              Complete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

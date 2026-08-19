@@ -26,7 +26,11 @@ export class StandaloneChecklistController {
 
   completeChecklist = async (req: Request, res: Response) => {
     const { id } = req.params;
-    await this.service.completeChecklist(id);
+    const userId = req.user?.id; // Assumes authMiddleware sets req.user
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    await this.service.completeChecklist(id, userId);
     res.json({ success: true, message: "Checklist completed successfully and rescheduled" });
   };
 
