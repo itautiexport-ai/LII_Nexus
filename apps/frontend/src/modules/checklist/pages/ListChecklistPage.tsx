@@ -73,11 +73,29 @@ export function ListChecklistPage() {
     }
   };
 
+  let displayedChecklists = [...checklists];
+  if (priorityFilter) displayedChecklists = displayedChecklists.filter((c: any) => c.priority === priorityFilter);
+  if (userFilter) displayedChecklists = displayedChecklists.filter((c: any) => (c.assignee_name || "Unknown") === userFilter);
+  if (dateFilter) displayedChecklists = displayedChecklists.filter((c: any) => new Date(c.planned_date || c.plannedDate).toISOString().split('T')[0] === dateFilter);
+
+  displayedChecklists.sort((a: any, b: any) => {
+    const aTitle = String(a.task_name || a.taskName || "");
+    const bTitle = String(b.task_name || b.taskName || "");
+    if (sortFilter === "a-z") {
+      return aTitle.localeCompare(bTitle);
+    } else if (sortFilter === "z-a") {
+      return bTitle.localeCompare(aTitle);
+    }
+    const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+    const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+    return dateB - dateA;
+  });
+
   const toggleSelectAll = () => {
-    if (selectedIds.length === checklists.length) {
+    if (selectedIds.length === displayedChecklists.length && displayedChecklists.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(checklists.map(c => c.id));
+      setSelectedIds(displayedChecklists.map(c => c.id));
     }
   };
 
@@ -183,27 +201,10 @@ export function ListChecklistPage() {
 
         <div className="chk-card-content" style={{ padding: 0 }}>
           {(() => {
-            let displayedChecklists = [...checklists];
-
-            if (priorityFilter) displayedChecklists = displayedChecklists.filter((c: any) => c.priority === priorityFilter);
-            if (userFilter) displayedChecklists = displayedChecklists.filter((c: any) => (c.assignee_name || "Unknown") === userFilter);
-            if (dateFilter) displayedChecklists = displayedChecklists.filter((c: any) => new Date(c.planned_date || c.plannedDate).toISOString().split('T')[0] === dateFilter);
-
-            displayedChecklists.sort((a: any, b: any) => {
-              const aTitle = String(a.task_name || a.taskName || "");
-              const bTitle = String(b.task_name || b.taskName || "");
-              if (sortFilter === "a-z") {
-                return aTitle.localeCompare(bTitle);
-              } else if (sortFilter === "z-a") {
-                return bTitle.localeCompare(aTitle);
-              }
-              const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-              const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-              return dateB - dateA;
-            });
-
-            return loading ? (
-              <div className="chk-empty">Loading...</div>
+            return displayedChecklists.length === 0 && loading ? (
+              <div style={{ padding: "32px", textAlign: "center", color: "#6b7280" }}>
+                Loading checklists...
+              </div>
             ) : displayedChecklists.length === 0 ? (
               <div className="chk-empty">No checklists found.</div>
             ) : (
