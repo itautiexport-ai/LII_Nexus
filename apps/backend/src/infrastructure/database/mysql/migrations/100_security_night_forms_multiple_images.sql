@@ -1,1 +1,1 @@
-ALTER TABLE security_night_forms MODIFY COLUMN image_url TEXT NULL;
+ALTER TABLE security_night_forms ADD COLUMN image_url TEXT NULL;
