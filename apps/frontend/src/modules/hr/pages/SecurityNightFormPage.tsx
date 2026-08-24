@@ -3,6 +3,11 @@ import { securityCustomApi } from "../api/securityCustomApi";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 
+interface UploadedImage {
+  url: string;
+  capturedAt: string;
+}
+
 export default function SecurityNightFormPage() {
   const navigate = useNavigate();
 
@@ -18,22 +23,50 @@ export default function SecurityNightFormPage() {
   const [observations, setObservations] = useState("");
   const [remarks, setRemarks] = useState("");
 
-  // Photo & Real-Time Lock State
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [photoCapturedAt, setPhotoCapturedAt] = useState<string | null>(null);
+  // Multiple Photos state array
+  const [images, setImages] = useState<UploadedImage[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Handle Photo Selection & Automatic Real-Time Timestamp Stamping
-  function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      const exactRealTime = new Date().toISOString(); // Real-time timestamp at exact capture moment
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setPhotoCapturedAt(exactRealTime); // Locked real-time
+  // Upload and Capture Multiple Images
+  async function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      const newImages = [...images];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const exactRealTime = new Date().toISOString();
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const uploadRes = await axiosInstance.post("/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        const url = uploadRes.data.data.fileUrl;
+        newImages.push({
+          url,
+          capturedAt: exactRealTime,
+        });
+      }
+      setImages(newImages);
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || "Failed to upload image(s).");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  // Remove individual photo
+  function handleRemoveImage(indexToRemove: number) {
+    setImages(images.filter((_, idx) => idx !== indexToRemove));
   }
 
   // Submit Form
@@ -45,15 +78,10 @@ export default function SecurityNightFormPage() {
     setUploading(true);
 
     try {
-      let uploadedImageUrl = "";
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        const uploadRes = await axiosInstance.post("/upload", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        uploadedImageUrl = uploadRes.data.data.fileUrl;
-      }
+      // Join all image URLs with comma
+      const imageUrlsStr = images.map(img => img.url).join(",");
+      // Lock first photo time, or default to undefined
+      const primaryPhotoTime = images.length > 0 ? images[0].capturedAt : undefined;
 
       await securityCustomApi.createNightForm({
         guardName,
@@ -62,19 +90,17 @@ export default function SecurityNightFormPage() {
         patrolStatus,
         observations,
         remarks,
-        imageUrl: uploadedImageUrl,
-        photoCapturedAt: photoCapturedAt || undefined,
+        imageUrl: imageUrlsStr,
+        photoCapturedAt: primaryPhotoTime,
       });
 
-      // Reset Form & Photo state
+      // Reset Form & Photos state
       setGuardName("");
       setGateLocation("");
       setPatrolStatus("Normal");
       setObservations("");
       setRemarks("");
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setPhotoCapturedAt(null);
+      setImages([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
       setSuccessMsg("Security Night Log submitted successfully! You can view it in Security Night Log History.");
@@ -192,55 +218,102 @@ export default function SecurityNightFormPage() {
           {/* Photo Capture & Real-Time Timestamp Section */}
           <div style={{ padding: "16px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
             <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#1e293b", marginBottom: "6px" }}>
-              📷 Live Camera Photo / Image Capture
+              📷 Live Camera Photos / Image Capture
             </label>
             <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 12px 0" }}>
-              The system automatically captures and locks the exact real-time timestamp when the guard clicks the photo to prevent cheating.
+              The system automatically captures and locks the exact real-time timestamp when each guard photo is uploaded.
             </p>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                ref={fileInputRef}
-                onChange={handlePhotoCapture}
-                style={{ display: "none" }}
-                id="camera-file-input"
-              />
-              <label
-                htmlFor="camera-file-input"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 16px",
-                  background: "#0284c7",
-                  color: "#ffffff",
-                  borderRadius: "6px",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                }}
-              >
-                📷 Capture / Upload Photo
-              </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  ref={fileInputRef}
+                  onChange={handlePhotoCapture}
+                  style={{ display: "none" }}
+                  id="camera-file-input"
+                />
+                <label
+                  htmlFor="camera-file-input"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    background: "#0284c7",
+                    color: "#ffffff",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  📷 Capture / Upload Photos
+                </label>
+                {uploading && <span style={{ marginLeft: "12px", fontSize: "13px", color: "#0284c7", fontWeight: "500" }}>Uploading images...</span>}
+              </div>
 
-              {previewUrl && photoCapturedAt && (
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", background: "#ffffff", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-                  <img
-                    src={previewUrl}
-                    alt="Captured"
-                    style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "4px" }}
-                  />
-                  <div>
-                    <div style={{ fontSize: "12px", fontWeight: "600", color: "#166534" }}>
-                      🔒 Real-Time Photo Locked
+              {/* Uploaded Thumbnail Grid */}
+              {images.length > 0 && (
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  {images.map((img, index) => (
+                    <div 
+                      key={index} 
+                      style={{ 
+                        position: "relative", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "10px", 
+                        background: "#ffffff", 
+                        padding: "8px 12px", 
+                        borderRadius: "6px", 
+                        border: "1px solid #cbd5e1" 
+                      }}
+                    >
+                      <img
+                        src={img.url}
+                        alt={`Captured ${index + 1}`}
+                        style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "4px" }}
+                      />
+                      <div style={{ marginRight: "16px" }}>
+                        <div style={{ fontSize: "11px", fontWeight: "600", color: "#166534" }}>
+                          🔒 Photo #{index + 1} Locked
+                        </div>
+                        <div style={{ fontSize: "10px", color: "#475569" }}>
+                          🕒 {new Date(img.capturedAt).toLocaleString()}
+                        </div>
+                      </div>
+                      
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(index)}
+                        style={{
+                          position: "absolute",
+                          top: "-8px",
+                          right: "-8px",
+                          background: "#ef4444",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "18px",
+                          height: "18px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "10px",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.2)"
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <div style={{ fontSize: "11px", color: "#475569" }}>
-                      🕒 {new Date(photoCapturedAt).toLocaleString()}
-                    </div>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>

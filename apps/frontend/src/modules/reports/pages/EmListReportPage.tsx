@@ -85,7 +85,9 @@ export default function EmListReportPage() {
                         )}
                       </td>
                       <td>
-                        <span className="bold-red" style={{ fontSize: "1.1rem" }}>{r.finalGapScore.toFixed(1)}</span>
+                        <span className="bold-red" style={{ fontSize: "1.1rem" }}>
+                          {r.finalGapScore !== null && r.finalGapScore !== undefined ? r.finalGapScore.toFixed(1) : "Pending"}
+                        </span>
                       </td>
                     </tr>
                   ))

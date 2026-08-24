@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../auth/hooks/useAuthStore";
 import { delegationApi, DelegationPriority } from "../api/delegationApi";
-import { employeesApi } from "../../../admin/organization/employees/api/employeesApi";
+import { employeesApi, EmployeeRecord } from "../../../admin/organization/employees/api/employeesApi";
 
 export default function AddDelegationPage() {
   const user = useAuthStore(s => s.user);
@@ -15,12 +15,31 @@ export default function AddDelegationPage() {
   const [priority, setPriority] = useState<DelegationPriority>("low");
   const [sendAppNotification, setSendAppNotification] = useState(true);
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
-  const [employees, setEmployees] = useState<{ id: string; fullName: string }[]>([]);
+  const [allEmployees, setAllEmployees] = useState<EmployeeRecord[]>([]);
+  const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    employeesApi.listForDropdown().then(res => setEmployees(res));
-  }, []);
+    // Check System Admin bypass
+    const isSystemAdmin = user?.roles.includes("System Admin");
+    if (isSystemAdmin) {
+      setIsAllowed(true);
+    } else {
+      // Check designation permission
+      employeesApi.getMe()
+        .then((me) => {
+          if (!me) {
+            setIsAllowed(false);
+            return;
+          }
+          const title = me.designationTitle?.trim().toLowerCase() || "";
+          setIsAllowed(title === "admin" || title === "admin executive" || title === "director" || title === "executive director");
+        })
+        .catch(() => setIsAllowed(false));
+    }
+
+    employeesApi.list().then(res => setAllEmployees(res));
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +66,21 @@ export default function AddDelegationPage() {
     }
   };
 
+  if (isAllowed === null) {
+    return <div style={{ padding: 24, textAlign: "center", color: "#64748b" }}>Checking permissions...</div>;
+  }
+
+  if (isAllowed === false) {
+    return (
+      <div style={{ maxWidth: 600, margin: "40px auto", padding: 24, backgroundColor: "#fef2f2", border: "1px solid #fee2e2", borderRadius: 12, textAlign: "center" }}>
+        <h2 style={{ color: "#991b1b", marginTop: 0, fontSize: 20, fontWeight: 600 }}>Access Denied</h2>
+        <p style={{ color: "#7f1d1d", margin: "10px 0 0 0" }}>
+          Only employees with the designation <strong>Admin</strong>, <strong>Admin Executive</strong>, <strong>Director</strong>, or <strong>Executive Director</strong> are allowed to add delegations.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 900 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -66,9 +100,15 @@ export default function AddDelegationPage() {
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #D1D5DB", borderRadius: 4, boxSizing: "border-box" }}
               >
                 <option value="">Select One</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.fullName}</option>
-                ))}
+                {allEmployees
+                  .filter(emp => {
+                    const title = emp.designationTitle?.trim().toLowerCase() || "";
+                    return title === "admin" || title === "director" || title === "executive director";
+                  })
+                  .map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.fullName}</option>
+                  ))
+                }
               </select>
             </div>
             <div>
@@ -90,9 +130,15 @@ export default function AddDelegationPage() {
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #D1D5DB", borderRadius: 4, boxSizing: "border-box" }}
               >
                 <option value="">Select One</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.fullName}</option>
-                ))}
+                {allEmployees
+                  .filter(emp => {
+                    const title = emp.designationTitle?.toLowerCase() || "";
+                    return !title.includes("director") && !title.includes("admin");
+                  })
+                  .map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.fullName}</option>
+                  ))
+                }
               </select>
             </div>
 

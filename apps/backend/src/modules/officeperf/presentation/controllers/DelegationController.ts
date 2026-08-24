@@ -6,6 +6,7 @@ import { MySqlRoleRepository } from "../../../rbac/infrastructure/repositories/M
 import { ok, created } from "../../../../shared/utils/apiResponse";
 import { AuthenticatedRequest } from "../../../../shared/middlewares/auth.middleware";
 import { DelegationBaseStatus } from "../../domain/entities/Delegation";
+import { MySqlEmployeeRepository } from "../../../organization/infrastructure/repositories/MySqlEmployeeRepository";
 
 const service = new DelegationService(new MySqlDelegationRepository(), new EmployeeScopeService());
 const roleRepo = new MySqlRoleRepository();
@@ -36,6 +37,22 @@ export const DelegationController = {
 
   async create(req: AuthenticatedRequest, res: Response) {
     const override = await hasPermission(req.user!.sub, "delegation.task.create");
+    const roleRepo = new MySqlRoleRepository();
+    const userRoles = await roleRepo.getRolesForUser(req.user!.sub);
+    const isSystemAdmin = userRoles.some(r => r.name === "System Admin");
+
+    if (!isSystemAdmin) {
+      const repo = new MySqlEmployeeRepository();
+      const employee = await repo.findByUserId(req.user!.sub);
+      if (!employee) {
+        return res.status(403).json({ success: false, message: "Only employees can create delegations." });
+      }
+      const title = employee.designationTitle?.trim().toLowerCase() || "";
+      const isAllowed = title === "admin" || title === "admin executive" || title === "director" || title === "executive director";
+      if (!isAllowed) {
+        return res.status(403).json({ success: false, message: "Access Denied: Only employees with designation Admin, Admin Executive, Director, or Executive Director are allowed to add delegations." });
+      }
+    }
     return created(res, await service.create(req.body, req.user!.sub, override));
   },
 

@@ -30,11 +30,7 @@ export const employeesApi = {
     return res.data.data;
   },
   async listForDropdown(search = ""): Promise<EmployeeRecord[]> {
-    const items = await this.list(search);
-    return items.filter(emp => {
-      const title = emp.designationTitle?.toLowerCase() || "";
-      return !title.includes("director") && !title.includes("admin");
-    });
+    return this.list(search);
   },
   async create(payload: {
     employeeCode: string; fullName: string; email?: string; phone?: string;

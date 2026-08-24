@@ -57,6 +57,7 @@ import CapaListPage from "../../modules/crm/pages/CapaListPage";
 import CapaFormPage from "../../modules/crm/pages/CapaFormPage";
 import BuyersPage from "../../modules/admin/masterdata/pages/BuyersPage";
 import UomsPage from "../../modules/admin/masterdata/pages/UomsPage";
+import FinishCodesPage from "../../modules/admin/masterdata/pages/FinishCodesPage";
 import HodsPage from "../../modules/admin/masterdata/pages/HodsPage";
 import MerchantsPage from "../../modules/admin/masterdata/pages/MerchantsPage";
 import ModuleWeightsPage from "../../modules/admin/masterdata/pages/ModuleWeightsPage";
@@ -116,6 +117,8 @@ import MachineTargetsPage from "../../modules/admin/masterdata/pages/MachineTarg
 import AddMachineEfficiencyPage from "../../modules/admin/machineefficiency/pages/AddMachineEfficiencyPage";
 import ListMachineEfficiencyPage from "../../modules/admin/machineefficiency/pages/ListMachineEfficiencyPage";
 import ModuleLandingPage from "../../shared/pages/ModuleLandingPage";
+import MaterialInwardFormPage from "../../modules/material-inward/pages/MaterialInwardFormPage";
+import MaterialInwardListPage from "../../modules/material-inward/pages/MaterialInwardListPage";
 
 import ProductionProgressPage from "../../modules/manufacturing/pages/ProductionProgressPage";
 import { FmsManagerPage } from "../../modules/fms/pages/FmsManagerPage";
@@ -210,6 +213,7 @@ export default function AppRouter() {
           <Route path="priorities" element={<PrioritiesPage />} />
           <Route path="buyers" element={<BuyersPage />} />
           <Route path="uoms" element={<UomsPage />} />
+          <Route path="finish-codes" element={<FinishCodesPage />} />
           <Route path="hods" element={<HodsPage />} />
           <Route path="merchants" element={<MerchantsPage />} />
           <Route path="module-weights" element={<ModuleWeightsPage />} />
@@ -246,6 +250,10 @@ export default function AppRouter() {
           <Route path="fms/add" element={<AddFmsManagerPage />} />
           <Route path="fms/list" element={<ListFmsManagerPage />} />
           <Route path="fms/manager" element={<FmsManagerPage />} />
+
+          {/* Material Inward Routes */}
+          <Route path="material-inward/form" element={<MaterialInwardFormPage />} />
+          <Route path="material-inward/list" element={<MaterialInwardListPage />} />
           <Route path="fms/forms" element={<FmsFormsHubPage />} />
           <Route path="fms/list-forms" element={<FmsFillListPage />} />
           <Route path="fms/fill/:fmsId" element={<FmsFillPage />} />

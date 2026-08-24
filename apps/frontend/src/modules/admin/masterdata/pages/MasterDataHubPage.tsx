@@ -20,6 +20,7 @@ export function MasterDataHubPage() {
     { label: "Machine Names", to: "/admin/machines-products", desc: "Manage machine and product configurations" },
     { label: "Employees", to: "/admin/employees", desc: "Manage employee records" },
     { label: "Buyers", to: "/admin/buyers", desc: "Manage buyers" },
+    { label: "Finish Codes", to: "/admin/finish-codes", desc: "Manage finish codes" },
   ];
 
   const items = allItems.filter(item => {

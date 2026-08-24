@@ -33,6 +33,13 @@ export interface Merchant {
   status: "active" | "inactive";
 }
 
+export interface FinishCode {
+  id: string;
+  code: string;
+  name: string;
+  createdAt: string;
+}
+
 export const masterDataApi = {
   // Wood Types
   async getWoodTypes(): Promise<WoodType[]> {
@@ -123,5 +130,22 @@ export const masterDataApi = {
   async getMerchants(): Promise<Merchant[]> {
     const res = await axiosInstance.get("/merchants");
     return res.data.data;
+  },
+
+  // Finish Codes
+  async getFinishCodes(): Promise<FinishCode[]> {
+    const res = await axiosInstance.get("/finish-codes");
+    return res.data.data;
+  },
+  async createFinishCode(code: string, name: string): Promise<FinishCode> {
+    const res = await axiosInstance.post("/finish-codes", { code, name });
+    return res.data.data;
+  },
+  async updateFinishCode(id: string, code: string, name: string): Promise<FinishCode> {
+    const res = await axiosInstance.put(`/finish-codes/${id}`, { code, name });
+    return res.data.data;
+  },
+  async deleteFinishCode(id: string): Promise<void> {
+    await axiosInstance.delete(`/finish-codes/${id}`);
   },
 };

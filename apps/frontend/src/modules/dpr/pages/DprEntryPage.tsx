@@ -13,7 +13,7 @@ function getTodayString() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const UOM_OPTIONS = ["Pcs", "Sqft", "Nos", "Kg", "Mtr", "CBM"];
+const UOM_OPTIONS = ["Pcs", "Sqft", "Nos", "Kg", "Mtr", "CBM", "CFT"];
 
 export default function DprEntryPage() {
   const navigate = useNavigate();

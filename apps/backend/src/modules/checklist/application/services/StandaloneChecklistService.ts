@@ -124,4 +124,196 @@ export class StandaloneChecklistService {
       [id]
     );
   }
+
+  async completeChecklist(
+    id: string,
+    userId: string,
+    notes?: string,
+    attachmentUrl?: string
+  ): Promise<void> {
+    // 1. Fetch employee ID from user ID
+    const [empRows] = await pool.query<any[]>(
+      "SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL",
+      [userId]
+    );
+    const employeeId = empRows[0]?.id;
+    if (!employeeId) {
+      throw new Error("Employee record not found for logged in user.");
+    }
+
+    // 2. Verify checklist exists and is assigned to the employee
+    const [chkRows] = await pool.query<any[]>(
+      "SELECT * FROM standalone_checklists WHERE id = ? AND deleted_at IS NULL",
+      [id]
+    );
+    const checklist = chkRows[0];
+    if (!checklist) {
+      throw new Error("Checklist not found.");
+    }
+
+    // 3. Log the completion
+    const completionId = uuidv4();
+    await pool.query(
+      `INSERT INTO standalone_checklist_completions (
+        id, checklist_id, completed_at, completed_by, notes, attachment_url
+      ) VALUES (?, ?, NOW(), ?, ?, ?)`,
+      [completionId, id, employeeId, notes || null, attachmentUrl || null]
+    );
+
+    // 4. Calculate next occurrence
+    const nextPlanned = calculateNextOccurrence(new Date(checklist.planned_date), checklist.frequency);
+    
+    // 5. Update next planned date
+    await pool.query(
+      "UPDATE standalone_checklists SET planned_date = ?, updated_at = NOW() WHERE id = ?",
+      [nextPlanned, id]
+    );
+  }
+
+  async getDashboardData(userId: string): Promise<any> {
+    // Fetch employee
+    const [empRows] = await pool.query<any[]>(
+      "SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL",
+      [userId]
+    );
+    const employeeId = empRows[0]?.id;
+    if (!employeeId) {
+      return {
+        metrics: { pendingCount: 0, completedToday: 0, totalCompleted: 0 },
+        active: [],
+        pipeline: [],
+        history: [],
+      };
+    }
+
+    // Fetch all checklists for this employee
+    const [rows] = await pool.query<any[]>(
+      `SELECT c.*, 
+        e1.full_name as assigner_name
+       FROM standalone_checklists c
+       LEFT JOIN employees e1 ON e1.id = c.assigned_by
+       WHERE c.assign_to = ? AND c.deleted_at IS NULL`,
+      [employeeId]
+    );
+
+    const now = new Date();
+
+    const checklists = rows.map((row: any) => ({
+      id: row.id,
+      assignedBy: row.assigned_by,
+      assignBy: row.assigned_by,
+      assignTo: row.assign_to,
+      taskName: row.task_name,
+      plannedDate: row.planned_date,
+      priority: row.priority,
+      makeAttachmentMandatory: !!row.make_attachment_mandatory,
+      makeNoteMandatory: !!row.make_note_mandatory,
+      mode: row.mode,
+      frequency: row.frequency,
+      whenRule: row.when_rule || "",
+      remindBeforeDays: row.remind_before_days,
+      skipOnHolidays: !!row.skip_on_holidays,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      assigner_name: row.assigner_name,
+    }));
+
+    // Classify checklists
+    const active = checklists.filter(c => {
+      const planned = new Date(c.plannedDate);
+      return now >= planned;
+    });
+
+    const pipeline = checklists.filter(c => {
+      const freq = c.frequency.toLowerCase();
+      if (freq === "daily") return false; // Daily never goes to pipeline
+
+      const planned = new Date(c.plannedDate);
+      const diffTime = planned.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return planned > now && diffDays <= 7;
+    });
+
+    // Counts
+    const [todayRows] = await pool.query<any[]>(
+      `SELECT COUNT(*) as count 
+       FROM standalone_checklist_completions 
+       WHERE completed_by = ? 
+         AND completed_at >= DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00')`,
+      [employeeId]
+    );
+    const completedToday = todayRows[0]?.count || 0;
+
+    const [totalRows] = await pool.query<any[]>(
+      `SELECT COUNT(*) as count 
+       FROM standalone_checklist_completions 
+       WHERE completed_by = ?`,
+      [employeeId]
+    );
+    const totalCompleted = totalRows[0]?.count || 0;
+
+    // History
+    const [historyRows] = await pool.query<any[]>(
+      `SELECT comp.*, chk.task_name, chk.priority, chk.frequency
+       FROM standalone_checklist_completions comp
+       JOIN standalone_checklists chk ON chk.id = comp.checklist_id
+       WHERE comp.completed_by = ?
+       ORDER BY comp.completed_at DESC
+       LIMIT 10`,
+      [employeeId]
+    );
+
+    const history = historyRows.map((row: any) => ({
+      id: row.id,
+      checklistId: row.checklist_id,
+      completedAt: row.completed_at,
+      notes: row.notes,
+      attachmentUrl: row.attachment_url,
+      taskName: row.task_name,
+      priority: row.priority,
+      frequency: row.frequency,
+    }));
+
+    return {
+      metrics: {
+        pendingCount: active.length,
+        completedToday,
+        totalCompleted,
+      },
+      active,
+      pipeline,
+      history,
+    };
+  }
 }
+
+function calculateNextOccurrence(current: Date, frequency: string): Date {
+  const next = new Date(current);
+  const now = new Date();
+  const freq = frequency.toLowerCase();
+
+  if (freq === "daily") {
+    const baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + 1);
+    baseDate.setHours(9, 0, 0, 0); // tomorrow morning at 9:00 AM
+    return baseDate;
+  }
+
+  // Increment until next scheduled date is in the future
+  while (next <= now) {
+    if (freq === "weekly") {
+      next.setDate(next.getDate() + 7);
+    } else if (freq === "monthly") {
+      next.setMonth(next.getMonth() + 1);
+    } else if (freq === "quarterly") {
+      next.setMonth(next.getMonth() + 3);
+    } else if (freq === "yearly") {
+      next.setFullYear(next.getFullYear() + 1);
+    } else {
+      next.setDate(next.getDate() + 1);
+    }
+  }
+
+  return next;
+}
+

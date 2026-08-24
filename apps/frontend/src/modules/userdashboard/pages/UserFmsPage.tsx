@@ -102,21 +102,19 @@ export function UserFmsPage() {
             <p><strong>Step:</strong> {selectedTask.stepName}</p>
 
             <form onSubmit={submitComplete}>
-              {selectedTask.stepName.includes("Repeat Order") && (
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ display: "block", marginBottom: "0.5rem" }}>Is this a Repeat Order?</label>
-                  <select 
-                    required 
-                    value={inputData.isRepeatOrder || ""}
-                    onChange={(e) => setInputData({...inputData, isRepeatOrder: e.target.value})}
-                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                  >
-                    <option value="" disabled>Select Yes or No</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                </div>
-              )}
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.5rem" }}>Was this step completed or is it Not Applicable? *</label>
+                <select 
+                  required 
+                  value={inputData.status || ""}
+                  onChange={(e) => setInputData({...inputData, status: e.target.value})}
+                  style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+                >
+                  <option value="" disabled>Select option</option>
+                  <option value="Completed">Yes</option>
+                  <option value="Skipped">Not Applicable</option>
+                </select>
+              </div>
               
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem" }}>Comments (Optional)</label>

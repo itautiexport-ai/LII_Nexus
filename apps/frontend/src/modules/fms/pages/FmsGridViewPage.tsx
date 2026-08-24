@@ -493,11 +493,12 @@ export function FmsGridViewPage() {
                                       >
                                         <option value="Pending" disabled>Pending</option>
                                         <option value="Under Process">Under Process</option>
-                                        <option value="Completed">Completed</option>
+                                        <option value="Completed">Yes</option>
+                                        <option value="Skipped">Not Applicable</option>
                                       </select>
                                     ) : (
                                       <span style={{ fontWeight: 600, fontSize: "0.7rem", color: statusColor }}>
-                                        {statusText}
+                                        {statusText === 'Skipped' ? 'Not Applicable' : statusText}
                                       </span>
                                     )}
                                   </div>

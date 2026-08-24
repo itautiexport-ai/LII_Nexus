@@ -83,9 +83,12 @@ export class MySqlEmployeeRepository implements IEmployeeRepository {
     return rows[0] ? mapRow(rows[0]) : null;
   }
 
-  async findByUserId(userId: string): Promise<Employee | null> {
-    const [rows] = await pool.query<any[]>("SELECT * FROM employees WHERE user_id = ? AND deleted_at IS NULL", [userId]);
-    return rows[0] ? mapRow(rows[0]) : null;
+  async findByUserId(userId: string): Promise<EmployeeWithRelations | null> {
+    const [rows] = await pool.query<any[]>(
+      `${SELECT_WITH_RELATIONS} WHERE e.user_id = ? AND e.deleted_at IS NULL`,
+      [userId]
+    );
+    return rows[0] ? mapRowWithRelations(rows[0]) : null;
   }
 
   async checkHodExists(id: string): Promise<boolean> {

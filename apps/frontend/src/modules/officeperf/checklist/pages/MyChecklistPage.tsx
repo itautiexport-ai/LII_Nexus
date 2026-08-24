@@ -2,31 +2,89 @@ import { useEffect, useState } from "react";
 import { checklistApi, ChecklistInstanceRecord } from "../api/checklistApi";
 import { standaloneChecklistApi, StandaloneChecklist } from "../../../checklist/api/checklistApi";
 import { useAuthStore } from "../../../auth/hooks/useAuthStore";
+import { employeesApi, EmployeeRecord } from "../../../admin/organization/employees/api/employeesApi";
 
 export default function MyChecklistPage() {
   const [instances, setInstances] = useState<ChecklistInstanceRecord[]>([]);
   const [standaloneList, setStandaloneList] = useState<StandaloneChecklist[]>([]);
+  const [employee, setEmployee] = useState<EmployeeRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "pipeline">("active");
 
+  const [showModal, setShowModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<StandaloneChecklist | null>(null);
+  const [notes, setNotes] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [modalError, setModalError] = useState("");
+
   const user = useAuthStore((state: any) => state.user);
+
+  const handleOpenCompleteModal = (task: StandaloneChecklist) => {
+    setSelectedTask(task);
+    setNotes("");
+    setFile(null);
+    setModalError("");
+    setShowModal(true);
+  };
+
+  const handleCompleteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTask) return;
+
+    // Validation
+    if (selectedTask.makeNoteMandatory && !notes.trim()) {
+      setModalError("A completion note is required for this checklist task.");
+      return;
+    }
+    if (selectedTask.makeAttachmentMandatory && !file) {
+      setModalError("A photo or file attachment is required for this checklist task.");
+      return;
+    }
+
+    setSubmitting(true);
+    setModalError("");
+
+    try {
+      let attachmentUrl = "";
+      if (file) {
+        attachmentUrl = await standaloneChecklistApi.uploadAttachment(file);
+      }
+
+      await standaloneChecklistApi.complete(selectedTask.id, notes, attachmentUrl);
+      
+      // Reset & Reload
+      setShowModal(false);
+      setSelectedTask(null);
+      setNotes("");
+      setFile(null);
+      await load();
+    } catch (err: any) {
+      console.error(err);
+      setModalError(err.response?.data?.message || "Failed to submit checklist completion.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   async function load() {
     try {
-      const [officeChecklists, allStandalone] = await Promise.all([
+      const [officeChecklists, allStandalone, me] = await Promise.all([
         checklistApi.getMyChecklists().catch(() => []),
-        standaloneChecklistApi.getAll().catch(() => [])
+        standaloneChecklistApi.getAll().catch(() => []),
+        employeesApi.getMe().catch(() => null)
       ]);
 
       setInstances(officeChecklists || []);
+      setEmployee(me);
 
-      // Filter standalone checklists assigned to current user
-      if (user) {
+      // Filter standalone checklists assigned to current employee ID or assignee name
+      if (me) {
         const filtered = (allStandalone || []).filter((c: any) =>
-          c.assignTo === user.id ||
-          c.assignee_name === user.fullName ||
-          c.assignBy === user.id ||
-          c.assignedBy === user.id
+          c.assignTo === me.id ||
+          c.assignee_name === me.fullName ||
+          c.assignBy === me.id ||
+          c.assignedBy === me.id
         );
         setStandaloneList(filtered);
       } else {
@@ -152,74 +210,101 @@ export default function MyChecklistPage() {
               <p style={{ color: "#64748b", fontSize: 16, margin: 0 }}>No active checklists due right now.</p>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
-              {/* Standalone Active Tasks */}
-              {activeStandalone.map((item) => (
-                <div key={item.id} style={{
-                  background: "#fff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 12,
-                  padding: 20,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                    <div>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>{item.taskName}</h3>
-                      <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>By: {item.assigner_name || "Manager"}</p>
-                    </div>
-                    <span style={{
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: item.priority === 'High' ? '#fee2e2' : item.priority === 'Medium' ? '#fef3c7' : '#f1f5f9',
-                      color: item.priority === 'High' ? '#991b1b' : item.priority === 'Medium' ? '#92400e' : '#475569'
-                    }}>
-                      {item.priority} Priority
-                    </span>
-                  </div>
-
-                  <div style={{ fontSize: 13, color: "#475569", marginBottom: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div>📅 <strong>Planned:</strong> {new Date(item.plannedDate).toLocaleString()}</div>
-                    <div>🔄 <strong>Frequency:</strong> {item.frequency}</div>
-                    {item.whenRule && <div>📌 <strong>Schedule:</strong> {item.whenRule}</div>}
-                  </div>
-
-                  <div style={{ paddingTop: 12, borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>● Active for Execution</span>
-                  </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
+              {/* Standalone Active Tasks List Table */}
+              {activeStandalone.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#475569", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Standalone Tasks
+                  </h3>
+                  <table className="user-dashboard-table" style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden", width: "100%" }}>
+                    <thead>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <th style={{ color: "#475569", fontWeight: "600" }}>Task Name</th>
+                        <th style={{ color: "#475569", fontWeight: "600" }}>Assigned By</th>
+                        <th style={{ color: "#475569", fontWeight: "600" }}>Planned Date</th>
+                        <th style={{ color: "#475569", fontWeight: "600" }}>Priority</th>
+                        <th style={{ color: "#475569", fontWeight: "600" }}>Frequency</th>
+                        <th style={{ color: "#475569", fontWeight: "600" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeStandalone.map((item) => {
+                        const isAssignee = employee && item.assignTo === employee.id;
+                        return (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: "600", color: "#1e293b" }}>{item.taskName}</td>
+                            <td style={{ fontSize: "13px", color: "#475569" }}>{item.assigner_name || "Manager"}</td>
+                            <td style={{ fontSize: "13px", color: "#475569" }}>{new Date(item.plannedDate).toLocaleString()}</td>
+                            <td>
+                              <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", padding: "2px 6px" }}>
+                                {item.priority}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: "13px", color: "#64748b" }}>{item.frequency}</td>
+                            <td>
+                              {isAssignee ? (
+                                <button
+                                  onClick={() => handleOpenCompleteModal(item)}
+                                  style={{
+                                    background: "#2563eb",
+                                    color: "#fff",
+                                    border: "none",
+                                    padding: "6px 12px",
+                                    borderRadius: "6px",
+                                    fontWeight: "600",
+                                    fontSize: "12px",
+                                    cursor: "pointer",
+                                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                                  }}
+                                >
+                                  Complete
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>View Only</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
+              )}
 
               {/* Office Performance Instances */}
-              {instances.map((instance) => {
-                const doneCount = instance.items.filter((i) => i.isChecked).length;
-                return (
-                  <div key={instance.id} style={{
-                    background: "#fff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 12,
-                    padding: 20,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                      <strong style={{ fontSize: 16, color: "#0f172a" }}>{instance.templateTitle}</strong>
-                      <span style={{ fontSize: 11, textTransform: "uppercase", background: "#e0f2fe", color: "#0369a1", padding: "2px 8px", borderRadius: 4, fontWeight: 700 }}>
-                        {instance.frequency}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
-                      {instance.periodStart} – {instance.periodEnd} · <strong>{doneCount}/{instance.items.length}</strong> done
-                    </p>
-                    {instance.items.map((item) => (
-                      <label key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, marginBottom: 8, cursor: "pointer", color: "#334155" }}>
-                        <input type="checkbox" checked={item.isChecked} onChange={(e) => handleToggle(instance, item.id, e.target.checked)} />
-                        <span style={{ textDecoration: item.isChecked ? "line-through" : "none" }}>{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                );
-              })}
+              {instances.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
+                  {instances.map((instance) => {
+                    const doneCount = instance.items.filter((i) => i.isChecked).length;
+                    return (
+                      <div key={instance.id} style={{
+                        background: "#fff",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 12,
+                        padding: 20,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                          <strong style={{ fontSize: 16, color: "#0f172a" }}>{instance.templateTitle}</strong>
+                          <span style={{ fontSize: 11, textTransform: "uppercase", background: "#e0f2fe", color: "#0369a1", padding: "2px 8px", borderRadius: 4, fontWeight: 700 }}>
+                            {instance.frequency}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+                          {instance.periodStart} – {instance.periodEnd} · <strong>{doneCount}/{instance.items.length}</strong> done
+                        </p>
+                        {instance.items.map((item) => (
+                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, marginBottom: 8, cursor: "pointer", color: "#334155" }}>
+                            <input type="checkbox" checked={item.isChecked} onChange={(e) => handleToggle(instance, item.id, e.target.checked)} />
+                            <span style={{ textDecoration: item.isChecked ? "line-through" : "none" }}>{item.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -233,70 +318,144 @@ export default function MyChecklistPage() {
               <p style={{ color: "#64748b", fontSize: 16, margin: 0 }}>No checklists in pipeline for the next 7 days.</p>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
-              {pipelineStandalone.map((item) => {
-                const pDate = new Date(item.plannedDate);
-                const diffTime = Math.abs(pDate.getTime() - now.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                return (
-                  <div key={item.id} style={{
-                    background: "#fff",
-                    border: "1px solid #bfdbfe",
-                    borderRadius: 12,
-                    padding: 20,
-                    boxShadow: "0 2px 4px rgba(59, 130, 246, 0.05)"
-                  }}>
-                    <div style={{
-                      background: "#eff6ff",
-                      border: "1px solid #dbeafe",
-                      color: "#1e40af",
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      marginBottom: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6
-                    }}>
-                      🔔 <span>Apka task pipeline me hai jo <strong>{pDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</strong> ko aane wala hai</span>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                      <div>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", margin: "0 0 4px 0" }}>{item.taskName}</h3>
-                        <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>Assigned by: {item.assigner_name || "Manager"}</p>
-                      </div>
-                      <span style={{
-                        padding: "4px 8px",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        background: '#f1f5f9',
-                        color: '#475569'
-                      }}>
-                        {item.priority} Priority
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: 13, color: "#475569", marginBottom: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-                      <div>🕒 <strong>Due In:</strong> {diffDays} day(s) ({pDate.toLocaleString()})</div>
-                      <div>🔄 <strong>Frequency:</strong> {item.frequency}</div>
-                      {item.whenRule && <div>📌 <strong>Schedule Rule:</strong> {item.whenRule}</div>}
-                    </div>
-
-                    <div style={{ paddingTop: 12, borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>⏳ Pipeline Stage (Reflects on Due Date)</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <table className="user-dashboard-table" style={{ background: "#fff", borderRadius: "8px", border: "1px solid #cbd5e1", overflow: "hidden", width: "100%" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  <th style={{ color: "#475569", fontWeight: "600" }}>Task Name</th>
+                  <th style={{ color: "#475569", fontWeight: "600" }}>Assigned By</th>
+                  <th style={{ color: "#475569", fontWeight: "600" }}>Planned Date</th>
+                  <th style={{ color: "#475569", fontWeight: "600" }}>Priority</th>
+                  <th style={{ color: "#475569", fontWeight: "600" }}>Frequency</th>
+                  <th style={{ color: "#475569", fontWeight: "600" }}>Countdown</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pipelineStandalone.map((item) => {
+                  const pDate = new Date(item.plannedDate);
+                  const diffTime = pDate.getTime() - now.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return (
+                    <tr key={item.id}>
+                      <td style={{ fontWeight: "600", color: "#475569" }}>{item.taskName}</td>
+                      <td style={{ fontSize: "13px", color: "#64748b" }}>{item.assigner_name || "Manager"}</td>
+                      <td style={{ fontSize: "13px", color: "#64748b" }}>{pDate.toLocaleDateString()}</td>
+                      <td>
+                        <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", opacity: 0.8, padding: "2px 6px" }}>
+                          {item.priority}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: "13px", color: "#64748b" }}>{item.frequency}</td>
+                      <td>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#d97706", background: "#fef3c7", padding: "4px 10px", borderRadius: "12px" }}>
+                          In {diffDays} day{diffDays > 1 ? "s" : ""}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
+        </div>
+      )}
+
+      {showModal && selectedTask && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0, 0, 0, 0.4)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", borderRadius: "12px", width: "100%", maxWidth: "500px", padding: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", boxSizing: "border-box" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", margin: "0 0 8px 0" }}>Complete Checklist Task</h3>
+            <p style={{ color: "#64748b", margin: "0 0 20px 0", fontSize: "14px" }}>
+              Task: <strong>{selectedTask.taskName}</strong> ({selectedTask.frequency})
+            </p>
+
+            <form onSubmit={handleCompleteSubmit}>
+              {/* Note Input */}
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                  Completion Notes {selectedTask.makeNoteMandatory && <span style={{ color: "#ef4444" }}>*</span>}
+                </label>
+                <textarea
+                  rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Describe task execution details..."
+                  required={selectedTask.makeNoteMandatory}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    outline: "none",
+                    fontFamily: "inherit",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* Attachment Input */}
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                  Upload Attachment / Photo {selectedTask.makeAttachmentMandatory && <span style={{ color: "#ef4444" }}>*</span>}
+                </label>
+                <input
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  required={selectedTask.makeAttachmentMandatory}
+                  style={{
+                    width: "100%",
+                    fontSize: "14px",
+                    color: "#64748b",
+                  }}
+                />
+              </div>
+
+              {/* Modal Error Alert */}
+              {modalError && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fee2e2", borderRadius: "8px", padding: "12px", color: "#b91c1c", fontSize: "13px", marginBottom: "16px" }}>
+                  {modalError}
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  disabled={submitting}
+                  style={{
+                    background: "#f1f5f9",
+                    color: "#475569",
+                    border: "none",
+                    padding: "10px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    background: "#2563eb",
+                    color: "#fff",
+                    border: "none",
+                    padding: "10px 16px",
+                    borderRadius: "8px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {submitting ? "Submitting..." : "Submit Completion"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
   );
 }
-

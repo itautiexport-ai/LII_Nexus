@@ -38,5 +38,29 @@ export const standaloneChecklistApi = {
   delete: async (id: string) => {
     const res = await axiosInstance.delete<{ success: boolean; message: string }>(`/standalone-checklists/${id}`);
     return res.data;
+  },
+
+  getMyDashboard: async () => {
+    const res = await axiosInstance.get<{ success: boolean; data: any }>("/standalone-checklists/my-dashboard");
+    return res.data.data;
+  },
+
+  complete: async (id: string, notes?: string, attachmentUrl?: string) => {
+    const res = await axiosInstance.post<{ success: boolean; message: string }>(`/standalone-checklists/${id}/complete`, {
+      notes,
+      attachmentUrl,
+    });
+    return res.data;
+  },
+
+  uploadAttachment: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axiosInstance.post<{ success: boolean; data: { fileUrl: string } }>("/standalone-checklists/upload-attachment", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data.data.fileUrl;
   }
 };

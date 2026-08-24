@@ -45,6 +45,7 @@ export const SECTIONS: NavSection[] = [
           { label: "Machine Names", to: "/admin/machines-products" },
           { label: "Employees", to: "/admin/employees" },
           { label: "Buyers", to: "/admin/buyers" },
+          { label: "Finish Codes", to: "/admin/finish-codes" },
           { label: "Weights", to: "/admin/module-weights" },
         ]
       }
@@ -188,6 +189,15 @@ export const SECTIONS: NavSection[] = [
       { label: "Production Planning Sheet", to: "/admin/manufacturing/production-planning-sheet" },
       { label: "Production Insight", to: "/admin/manufacturing/production-insight" }
     ],
+  },
+  {
+    key: "material-inward",
+    label: "Material Inward",
+    allowedRoles: ["System Admin", "Material Inward Access"],
+    items: [
+      { label: "Material Inward Form", to: "/admin/material-inward/form" },
+      { label: "List of Materials", to: "/admin/material-inward/list" }
+    ]
   },
 
   {
@@ -457,7 +467,6 @@ export default function AdminLayout() {
           if (userRoles.includes("System Admin")) {
             return true;
           }
-          if (section.key === "task-center") return true;
           
           // Granular check: Check if user has "Menu: Section" OR ANY "Menu: Section -> Item"
           const sectionRolePrefix = `Menu: ${section.label}`;
@@ -473,13 +482,12 @@ export default function AdminLayout() {
           
           const visibleItems = section.items.filter((item: any) => {
             if (isSystemAdmin) return true; // System Admin sees all
-            if (item.label === "FMS") return true;
             
             // Check specific item role
             const itemRole = `${sectionRolePrefix} -> ${item.label}`;
             if (userRoles.includes(itemRole)) return true;
             if (item.items) {
-              return item.items.some((sub: any) => sub.label === "My FMS" || userRoles.includes(`${itemRole} -> ${sub.label}`));
+              return item.items.some((sub: any) => userRoles.includes(`${itemRole} -> ${sub.label}`));
             }
             return false;
           });

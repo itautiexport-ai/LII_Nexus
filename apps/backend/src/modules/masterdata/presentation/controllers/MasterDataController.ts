@@ -153,4 +153,25 @@ export class MasterDataController {
     await this.service.deleteMerchant(req.params.id);
     res.json({ success: true });
   }
+
+  // Finish Codes
+  async getFinishCodes(req: Request, res: Response) {
+    const data = await this.service.getFinishCodes();
+    res.json({ success: true, data });
+  }
+
+  async createFinishCode(req: Request, res: Response) {
+    const data = await this.service.createFinishCode(req.body.code, req.body.name);
+    res.json({ success: true, data });
+  }
+
+  async updateFinishCode(req: Request, res: Response) {
+    const data = await this.service.updateFinishCode(req.params.id, req.body.code, req.body.name);
+    res.json({ success: true, data });
+  }
+
+  async deleteFinishCode(req: Request, res: Response) {
+    await this.service.deleteFinishCode(req.params.id);
+    res.json({ success: true });
+  }
 }

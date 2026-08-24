@@ -116,4 +116,25 @@ export class MasterDataService {
   async deleteMerchant(id: string) {
     await this.repo.deleteMerchant(id);
   }
+
+  // Finish Codes
+  async getFinishCodes() {
+    return await this.repo.getFinishCodes();
+  }
+
+  async createFinishCode(code: string, name: string) {
+    if (!code) throw new Error("Code is required");
+    if (!name) throw new Error("Finish Name is required");
+    return await this.repo.createFinishCode(code, name);
+  }
+
+  async updateFinishCode(id: string, code: string, name: string) {
+    if (!code) throw new Error("Code is required");
+    if (!name) throw new Error("Finish Name is required");
+    return await this.repo.updateFinishCode(id, code, name);
+  }
+
+  async deleteFinishCode(id: string) {
+    await this.repo.deleteFinishCode(id);
+  }
 }

@@ -163,4 +163,33 @@ export class MySqlMasterDataRepository {
   async deleteMerchant(id: string) {
     await pool.query("DELETE FROM master_merchants WHERE id = ?", [id]);
   }
+
+  // Finish Codes
+  async getFinishCodes() {
+    const [rows] = await pool.query("SELECT * FROM finish_codes WHERE deleted_at IS NULL ORDER BY code ASC");
+    return rows;
+  }
+
+  async createFinishCode(code: string, name: string) {
+    const id = uuid();
+    await pool.query("INSERT INTO finish_codes (id, code, name) VALUES (?, ?, ?)", [id, code, name]);
+    const [rows]: any = await pool.query("SELECT * FROM finish_codes WHERE id = ?", [id]);
+    return rows[0];
+  }
+
+  async updateFinishCode(id: string, code: string, name: string) {
+    await pool.query("UPDATE finish_codes SET code = ?, name = ? WHERE id = ?", [code, name, id]);
+    const [rows]: any = await pool.query("SELECT * FROM finish_codes WHERE id = ?", [id]);
+    return rows[0];
+  }
+
+  async deleteFinishCode(id: string) {
+    try {
+      await pool.query("DELETE FROM finish_codes WHERE id = ?", [id]);
+    } catch (err: any) {
+      if (err.code === "ER_ROW_IS_REFERENCED_2") {
+        await pool.query("UPDATE finish_codes SET deleted_at = CURRENT_TIMESTAMP, code = CONCAT(code, '-del-', SUBSTRING(id, 1, 6)) WHERE id = ?", [id]);
+      } else throw err;
+    }
+  }
 }

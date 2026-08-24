@@ -5,10 +5,10 @@ import { ok } from "../../../../shared/utils/apiResponse";
 export const OfficeEmController = {
   async getGapScore(req: Request, res: Response) {
     const { employeeId } = req.params;
-    const { period = "monthly" } = req.query;
+    const { period } = req.query;
 
-    const report = await officeEmService.generateGapScoreReport(employeeId, period as string);
-    return ok(res, report);
+    const reportHistory = await officeEmService.generateGapScoreHistory(employeeId, period as string);
+    return ok(res, reportHistory);
   },
 
   async getGapScoreList(req: Request, res: Response) {

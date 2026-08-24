@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { usersApi, UserRecord } from "../../admin/users/api/usersApi";
-import { officeEmApi, OfficeEmReport, OfficeEmModuleScore, OfficeEmTaskDetail } from "../api/officeEmApi";
-import { misScoreApi, MisScoreReport } from "../api/misScoreApi";
+import { officeEmApi, OfficeEmReport, OfficeEmTaskDetail, OfficeEmModuleScore } from "../api/officeEmApi";
 
 function getCurrentWeekString() {
   const d = new Date();
@@ -16,10 +15,12 @@ export default function OfficeEmReportPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [selectedUser, setSelectedUser] = useState("");
   const [period, setPeriod] = useState(getCurrentWeekString);
-  const [report, setReport] = useState<OfficeEmReport | null>(null);
-  const [misReport, setMisReport] = useState<MisScoreReport | null>(null);
+  const [reports, setReports] = useState<OfficeEmReport[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"scores" | "tasks">("scores");
+  
+  // Expanded week track state (contains the week string, e.g. "2026-W34")
+  const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+  const activeReport = reports.find(r => r.periodType === expandedWeek);
 
   useEffect(() => {
     usersApi.list().then(setUsers);
@@ -28,19 +29,16 @@ export default function OfficeEmReportPage() {
   useEffect(() => {
     if (selectedUser) {
       setLoading(true);
-      Promise.all([
-        officeEmApi.getGapScore(selectedUser, period),
-        misScoreApi.getReport(selectedUser, period).catch(() => null)
-      ])
-        .then(([gapRes, misRes]) => {
-          setReport(gapRes.data);
-          setMisReport(misRes);
+      officeEmApi.getGapScore(selectedUser, period)
+        .then((res) => {
+          setReports(res.data || []);
+          setExpandedWeek(null);
         })
         .catch(err => console.error(err))
         .finally(() => setLoading(false));
     } else {
-      setReport(null);
-      setMisReport(null);
+      setReports([]);
+      setExpandedWeek(null);
     }
   }, [selectedUser, period]);
 
@@ -54,23 +52,27 @@ export default function OfficeEmReportPage() {
           const dueTime = new Date(t.dueDate).getTime();
           if (compTime <= dueTime) {
             acc.completedOnTime++;
+          } else {
+            acc.completedLate++;
           }
+        } else if (t.baseStatus === "running") {
+          acc.running++;
+        } else {
+          acc.pending++;
         }
-        else if (t.baseStatus === "running") acc.running++;
-        else if (t.baseStatus === "pending") acc.pending++;
         return acc;
       },
-      { total: 0, completed: 0, completedOnTime: 0, running: 0, pending: 0 }
+      { total: 0, completed: 0, completedOnTime: 0, completedLate: 0, running: 0, pending: 0 }
     );
   };
 
   const renderModuleListRow = (title: string, data: OfficeEmModuleScore) => {
     if (!data.isActive) {
       return (
-        <div className="module-list-row inactive">
-          <div className="module-header">
+        <div className="module-list-row inactive" key={title}>
+          <div className="module-header" style={{ borderBottom: "none", paddingBottom: 0 }}>
             <h3>{title}</h3>
-            <span className="status-badge">Not Assigned</span>
+            <span className="status-badge">Not Active (Weight redistributed)</span>
           </div>
         </div>
       );
@@ -79,23 +81,23 @@ export default function OfficeEmReportPage() {
     const taskCounts = calculateTaskCounts(data.tasks);
 
     return (
-      <div className="module-list-row">
+      <div className="module-list-row" key={title}>
         <div className="module-header">
           <div>
             <h3>{title}</h3>
             <div className="module-sub">
-              Normalized Weight: {data.normalizedWeight.toFixed(1)}% (Standard: {data.standardWeight}%)
+              Redistributed Weight: <strong>{data.normalizedWeight.toFixed(1)}%</strong> (Standard Weight: {data.standardWeight}%)
             </div>
           </div>
           <div className="module-gap-score">
-            <span>Gap Score</span>
+            <span>Gap Score contribution</span>
             <span className="bold-red">{data.gapScore.toFixed(1)}</span>
           </div>
         </div>
 
         <div className="module-details">
           <div className="details-group">
-            <h4>Work Completion (60%)</h4>
+            <h4>Completion Metric (60%)</h4>
             <div className="details-stats">
               <div><span>Points:</span> {data.completedPoints} / {data.totalDuePoints}</div>
               <div><span>Rate:</span> {data.completionPercent.toFixed(1)}%</div>
@@ -104,7 +106,7 @@ export default function OfficeEmReportPage() {
           </div>
 
           <div className="details-group">
-            <h4>Timeliness (40%)</h4>
+            <h4>Timeliness Metric (40%)</h4>
             <div className="details-stats">
               <div><span>Points:</span> {data.onTimePoints} / {data.completedPoints}</div>
               <div><span>Rate:</span> {data.onTimePercent.toFixed(1)}%</div>
@@ -113,12 +115,11 @@ export default function OfficeEmReportPage() {
           </div>
 
           <div className="details-group tasks-group">
-            <h4>Task Allocation</h4>
+            <h4>Task Summary</h4>
             <div className="details-stats tasks-stats">
               <div className="task-count total"><span>Total:</span> {taskCounts.total}</div>
               <div className="task-count completed"><span>Completed:</span> {taskCounts.completed}</div>
-              <div className="task-count on-time" style={{ borderLeft: "3px solid #10b981", color: "#047857" }}><span>On Time:</span> {taskCounts.completedOnTime}</div>
-              <div className="task-count running"><span>Running:</span> {taskCounts.running}</div>
+              <div className="task-count on-time" style={{ borderLeft: "3px solid #10b981", color: "#047857" }}><span>On-Time:</span> {taskCounts.completedOnTime}</div>
               <div className="task-count pending"><span>Pending:</span> {taskCounts.pending}</div>
             </div>
           </div>
@@ -150,35 +151,35 @@ export default function OfficeEmReportPage() {
   const renderTaskTable = (title: string, tasks: OfficeEmTaskDetail[] | undefined) => {
     if (!tasks || tasks.length === 0) {
       return (
-        <div className="task-section">
+        <div className="task-section" key={title}>
           <h3>{title}</h3>
-          <p style={{ color: "#64748b", fontStyle: "italic", background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-            No tasks found in this period.
+          <p style={{ color: "#64748b", fontStyle: "italic", background: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px dashed #cbd5e1", fontSize: "14px" }}>
+            No tasks scheduled in this week.
           </p>
         </div>
       );
     }
 
     return (
-      <div className="task-section">
-        <h3>{title}</h3>
+      <div className="task-section" key={title} style={{ marginBottom: "20px" }}>
+        <h4 style={{ color: "#475569", margin: "0 0 10px 0", fontSize: "14px" }}>{title}</h4>
         <div style={{ overflowX: "auto" }}>
-          <table className="task-table">
+          <table className="task-table" style={{ fontSize: "13px" }}>
             <thead>
-              <tr>
-                <th>Task Name</th>
-                <th>Status</th>
-                <th>Due Date</th>
-                <th>Completed At</th>
+              <tr style={{ background: "#f8fafc" }}>
+                <th style={{ padding: "10px 14px" }}>Task Name</th>
+                <th style={{ padding: "10px 14px" }}>Status</th>
+                <th style={{ padding: "10px 14px" }}>Due Date</th>
+                <th style={{ padding: "10px 14px" }}>Completed At</th>
               </tr>
             </thead>
             <tbody>
               {tasks.map(t => (
                 <tr key={t.id}>
-                  <td style={{ fontWeight: 500, color: "#1e293b" }}>{t.name}</td>
-                  <td>{renderStatusBadge(t.baseStatus)}</td>
-                  <td>{new Date(t.dueDate).toLocaleDateString()}</td>
-                  <td>{t.completedAt ? new Date(t.completedAt).toLocaleDateString() : "-"}</td>
+                  <td style={{ fontWeight: 500, color: "#1e293b", padding: "10px 14px" }}>{t.name}</td>
+                  <td style={{ padding: "10px 14px" }}>{renderStatusBadge(t.baseStatus)}</td>
+                  <td style={{ padding: "10px 14px" }}>{new Date(t.dueDate).toLocaleDateString()}</td>
+                  <td style={{ padding: "10px 14px" }}>{t.completedAt ? new Date(t.completedAt).toLocaleDateString() : "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -186,6 +187,19 @@ export default function OfficeEmReportPage() {
         </div>
       </div>
     );
+  };
+
+  const formatWeekName = (weekStr: string) => {
+    const parts = weekStr.split("-W");
+    if (parts.length === 2) {
+      return `Week ${parts[1]}, ${parts[0]}`;
+    }
+    return weekStr;
+  };
+
+  const getBriefSummaryText = (data: OfficeEmModuleScore) => {
+    const counts = calculateTaskCounts(data.tasks);
+    return `${counts.total} due, ${counts.completed} done (${counts.completedOnTime} on-time, ${counts.completedLate} late)`;
   };
 
   return (
@@ -212,95 +226,155 @@ export default function OfficeEmReportPage() {
         />
       </div>
 
-      {loading && <p style={{ color: "#64748b" }}>Loading Gap Score...</p>}
+      {loading && <p style={{ color: "#64748b" }}>Loading Gap Score History...</p>}
 
-      {!loading && report && (
-        <div className="report-container">
-          <div className="final-score-banner">
-            <h2 style={{ margin: 0, color: "#334155", fontWeight: 600, fontSize: "1.25rem" }}>Final Performance Gap Score</h2>
-            <div className="score-display">
-              {report.finalGapScore.toFixed(1)}
+      {!loading && selectedUser && reports.length === 0 && (
+        <p style={{ color: "#64748b", fontStyle: "italic" }}>No report records found for this employee.</p>
+      )}
+
+      {!loading && reports.length > 0 && (
+        <div>
+          {/* Main List Table of Preceding Weeks */}
+          <div className="report-container" style={{ padding: "20px", marginBottom: "24px" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#1e293b", margin: "0 0 16px 0" }}>Weekly Scoring Summary</h3>
+            <div style={{ overflowX: "auto" }}>
+              <table className="task-table" style={{ width: "100%" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    <th>Week</th>
+                    <th>Gap Score</th>
+                    <th>FMS Task Summary</th>
+                    <th>Checklist Summary</th>
+                    <th>Delegation Summary</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((weekRep) => {
+                    return (
+                      <tr key={weekRep.periodType} style={{ background: "#fff" }}>
+                        <td style={{ color: "#1e293b", fontWeight: "600" }}>{formatWeekName(weekRep.periodType)}</td>
+                        <td>
+                          {weekRep.isEvaluationPending ? (
+                            <span style={{ color: "#d97706", fontSize: "12px", background: "#fef3c7", padding: "4px 8px", borderRadius: "6px", fontWeight: "600" }}>
+                              Evaluation Pending
+                            </span>
+                          ) : (
+                            <span style={{ color: "#ef4444", fontWeight: "700" }}>
+                              {weekRep.finalGapScore !== null ? weekRep.finalGapScore.toFixed(1) : "-"}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.fms)}</td>
+                        <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.checklist)}</td>
+                        <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.delegation)}</td>
+                        <td>
+                          <button
+                            onClick={() => setExpandedWeek(weekRep.periodType)}
+                            style={{
+                              background: "#2563eb",
+                              color: "#fff",
+                              border: "none",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              cursor: "pointer",
+                              outline: "none"
+                            }}
+                          >
+                            View Result
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem" }}>Best possible score: 0 &nbsp;|&nbsp; Worst possible score: -100</p>
-            <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: "0.85rem" }}>The closer to 0, the better the performance.</p>
           </div>
+        </div>
+      )}
 
-          {misReport && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", margin: "24px 0" }}>
-              <div style={cardStyle}>
-                <h3 style={cardTitle}>System Execution Score</h3>
-                <p style={{ fontSize: 32, fontWeight: 700, color: "#111827", margin: "10px 0" }}>
-                  {misReport.systemScore} <span style={{ fontSize: 16, color: "#6b7280" }}>/ 5</span>
-                </p>
-                <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>Based on On-Time Task %</p>
+      {expandedWeek && activeReport && (
+        <div className="custom-modal-backdrop" onClick={() => setExpandedWeek(null)}>
+          <div className="custom-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="custom-modal-header">
+              <h2>{formatWeekName(activeReport.periodType)} - Detailed Result</h2>
+              <button className="custom-modal-close" onClick={() => setExpandedWeek(null)}>✕</button>
+            </div>
+            <div className="custom-modal-body">
+              {activeReport.isEvaluationPending && (
+                <div className="modal-pending-banner">
+                  ⚠️ {activeReport.pendingMessage}
+                </div>
+              )}
+
+              <div className="modal-ratings-grid">
+                <div className="modal-rating-card">
+                  <h4>HOD Rating</h4>
+                  <div className="rating-val">
+                    {activeReport.hodScore !== null ? `${activeReport.hodScore} / 5` : "Pending"}
+                  </div>
+                  <span className="rating-weight">Weight: {activeReport.hodWeight}%</span>
+                </div>
+                <div className="modal-rating-card">
+                  <h4>HR Rating</h4>
+                  <div className="rating-val">
+                    {activeReport.hrScore !== null ? `${activeReport.hrScore} / 5` : "Pending"}
+                  </div>
+                  <span className="rating-weight">Weight: {activeReport.hrWeight}%</span>
+                </div>
               </div>
 
-              <div style={cardStyle}>
-                <h3 style={cardTitle}>HOD Evaluation</h3>
-                {misReport.hodScore !== null ? (
-                  <p style={{ fontSize: 32, fontWeight: 700, color: "#111827", margin: "10px 0" }}>
-                    {misReport.hodScore} <span style={{ fontSize: 16, color: "#6b7280" }}>/ 5</span>
-                  </p>
-                ) : (
-                  <p style={{ fontSize: 24, fontWeight: 700, color: "#d97706", margin: "10px 0" }}>Pending</p>
-                )}
+              <div className="modal-modules-stack">
+                {[
+                  { title: "FMS – Flow Management System", module: activeReport.modules.fms },
+                  { title: "Checklist", module: activeReport.modules.checklist },
+                  { title: "Delegation", module: activeReport.modules.delegation }
+                ].map(({ title, module }) => {
+                  const counts = calculateTaskCounts(module.tasks);
+                  return (
+                    <div className="modal-module-card" key={title}>
+                      <h3>{title}</h3>
+                      <div className="modal-stats-grid">
+                        <div className="modal-stat-item">
+                          <span className="stat-lbl">Total Tasks:</span>
+                          <span className="stat-num">{counts.total}</span>
+                        </div>
+                        <div className="modal-stat-item">
+                          <span className="stat-lbl">Completed:</span>
+                          <span className="stat-num">{counts.completed}</span>
+                        </div>
+                        <div className="modal-stat-item">
+                          <span className="stat-lbl">Completed On-Time:</span>
+                          <span className="stat-num green">{counts.completedOnTime}</span>
+                        </div>
+                        <div className="modal-stat-item">
+                          <span className="stat-lbl">Not On-Time:</span>
+                          <span className="stat-num red">{counts.total - counts.completedOnTime}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div style={cardStyle}>
-                <h3 style={cardTitle}>HR Evaluation</h3>
-                {misReport.hrScore !== null ? (
-                  <p style={{ fontSize: 32, fontWeight: 700, color: "#111827", margin: "10px 0" }}>
-                    {misReport.hrScore} <span style={{ fontSize: 16, color: "#6b7280" }}>/ 5</span>
-                  </p>
-                ) : (
-                  <p style={{ fontSize: 24, fontWeight: 700, color: "#d97706", margin: "10px 0" }}>Pending</p>
-                )}
-              </div>
-
-              <div style={cardStyle}>
-                <h3 style={cardTitle}>Attendance</h3>
-                {misReport.attendancePercentage !== null ? (
-                  <p style={{ fontSize: 32, fontWeight: 700, color: "#111827", margin: "10px 0" }}>
-                    {misReport.attendancePercentage}%
-                  </p>
-                ) : (
-                  <p style={{ fontSize: 24, fontWeight: 700, color: "#d97706", margin: "10px 0" }}>Pending</p>
-                )}
+              <div className="modal-footer-summary">
+                <div className="footer-stat">
+                  <span>Average Task Gap Score:</span>
+                  <strong>
+                    {((activeReport.modules.fms.gapScore + activeReport.modules.checklist.gapScore + activeReport.modules.delegation.gapScore) / 3).toFixed(1)}
+                  </strong>
+                </div>
+                <div className="footer-stat" style={{ marginTop: "12px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
+                  <span>Final Gap Score:</span>
+                  <strong className="final-score">
+                    {activeReport.finalGapScore !== null ? activeReport.finalGapScore.toFixed(1) : "Pending"}
+                  </strong>
+                </div>
               </div>
             </div>
-          )}
-
-          <div className="tabs-container">
-            <button 
-              className={`tab-button ${activeTab === "scores" ? "active" : ""}`} 
-              onClick={() => setActiveTab("scores")}
-            >
-              Scores
-            </button>
-            <button 
-              className={`tab-button ${activeTab === "tasks" ? "active" : ""}`} 
-              onClick={() => setActiveTab("tasks")}
-            >
-              View Tasks
-            </button>
-          </div>
-
-          <div className="tab-content">
-            {activeTab === "scores" && (
-              <div className="modules-list-container">
-                {renderModuleListRow("FMS – Flow Management System", report.modules.fms)}
-                {renderModuleListRow("Checklist", report.modules.checklist)}
-                {renderModuleListRow("Delegation", report.modules.delegation)}
-              </div>
-            )}
-
-            {activeTab === "tasks" && (
-              <div className="tasks-view">
-                {renderTaskTable("FMS – Flow Management System", report.modules.fms.tasks)}
-                {renderTaskTable("Checklist", report.modules.checklist.tasks)}
-                {renderTaskTable("Delegation", report.modules.delegation.tasks)}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -330,20 +404,10 @@ export default function OfficeEmReportPage() {
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
           border: 1px solid #e2e8f0;
         }
-        .final-score-banner {
-          text-align: center;
-          background: #f8fafc;
-          padding: 32px 24px;
-          border-radius: 12px;
-          margin-bottom: 32px;
-          border: 1px solid #e2e8f0;
-        }
-        .score-display {
-          font-size: 4rem;
+        .bold-red {
           color: #ef4444;
-          font-weight: 800;
-          margin: 12px 0;
-          letter-spacing: -0.02em;
+          font-weight: 700;
+          font-size: 1.35rem;
         }
         .tabs-container {
           display: flex;
@@ -397,9 +461,6 @@ export default function OfficeEmReportPage() {
         .module-list-row.inactive {
           border-left: 4px solid #cbd5e1;
           opacity: 0.8;
-          flex-direction: row;
-          align-items: center;
-          justify-content: space-between;
         }
         .module-header {
           display: flex;
@@ -428,11 +489,6 @@ export default function OfficeEmReportPage() {
           text-transform: uppercase;
           letter-spacing: 0.05em;
           margin-bottom: 2px;
-        }
-        .bold-red {
-          color: #ef4444;
-          font-weight: 700;
-          font-size: 1.35rem;
         }
         .module-details {
           display: grid;
@@ -540,6 +596,188 @@ export default function OfficeEmReportPage() {
         }
         .task-table tbody tr:hover {
           background: #f8fafc;
+        }
+        .custom-modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(15, 23, 42, 0.6);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          animation: fadeIn 0.25s ease-out;
+        }
+        .custom-modal-content {
+          background: #ffffff;
+          border-radius: 16px;
+          width: 90%;
+          max-width: 550px;
+          max-height: 85vh;
+          overflow-y: auto;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          border: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          animation: slideUp 0.25s ease-out;
+        }
+        .custom-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .custom-modal-header h2 {
+          margin: 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .custom-modal-close {
+          background: #f1f5f9;
+          border: none;
+          font-size: 1.25rem;
+          color: #64748b;
+          cursor: pointer;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.2s, color 0.2s;
+        }
+        .custom-modal-close:hover {
+          background-color: #e2e8f0;
+          color: #0f172a;
+        }
+        .custom-modal-body {
+          padding: 24px;
+        }
+        .modal-pending-banner {
+          background: #fffbeb;
+          border: 1px solid #fef3c7;
+          padding: 12px 16px;
+          border-radius: 8px;
+          color: #b45309;
+          font-weight: 600;
+          font-size: 13px;
+          margin-bottom: 20px;
+          line-height: 1.4;
+        }
+        .modal-ratings-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          margin-bottom: 20px;
+        }
+        .modal-rating-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 16px;
+          text-align: center;
+        }
+        .modal-rating-card h4 {
+          margin: 0 0 6px 0;
+          font-size: 0.8rem;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .rating-val {
+          font-size: 1.4rem;
+          font-weight: 700;
+          color: #0f172a;
+          margin-bottom: 2px;
+        }
+        .rating-weight {
+          font-size: 11px;
+          color: #94a3b8;
+        }
+        .modal-modules-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 20px;
+        }
+        .modal-module-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 16px;
+          border-left: 4px solid #2563eb;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .modal-module-card h3 {
+          margin: 0 0 12px 0;
+          font-size: 0.95rem;
+          color: #1e293b;
+          font-weight: 700;
+        }
+        .modal-stats-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        .modal-stat-item {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.85rem;
+          color: #475569;
+          background: #f8fafc;
+          padding: 6px 10px;
+          border-radius: 6px;
+          border: 1px solid #f1f5f9;
+        }
+        .stat-lbl {
+          font-weight: 500;
+        }
+        .stat-num {
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .stat-num.green {
+          color: #166534;
+        }
+        .stat-num.red {
+          color: #b91c1c;
+        }
+        .modal-footer-summary {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 16px;
+        }
+        .footer-stat {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.95rem;
+          color: #334155;
+        }
+        .footer-stat span {
+          font-weight: 500;
+        }
+        .footer-stat strong {
+          font-size: 1.1rem;
+          color: #0f172a;
+        }
+        .footer-stat strong.final-score {
+          font-size: 1.3rem;
+          color: #ef4444;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
     </div>

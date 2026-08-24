@@ -141,18 +141,23 @@ export default function SecurityNightLogHistoryPage() {
                       {/* Photo Thumbnail */}
                       <td style={{ padding: "10px 12px" }}>
                         {r.image_url ? (
-                          <img
-                            src={r.image_url}
-                            alt="Captured"
-                            onClick={() =>
-                              setActiveImageModal({
-                                url: r.image_url!,
-                                time: r.photo_captured_at ? new Date(r.photo_captured_at).toLocaleString() : new Date(r.created_at).toLocaleString(),
-                                location: r.gate_location || "N/A",
-                              })
-                            }
-                            style={{ width: "42px", height: "42px", objectFit: "cover", borderRadius: "6px", cursor: "pointer", border: "1px solid #cbd5e1" }}
-                          />
+                          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", maxWidth: "160px" }}>
+                            {r.image_url.split(",").map((url, idx) => (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt={`Captured ${idx + 1}`}
+                                onClick={() =>
+                                  setActiveImageModal({
+                                    url: url,
+                                    time: r.photo_captured_at ? new Date(r.photo_captured_at).toLocaleString() : new Date(r.created_at).toLocaleString(),
+                                    location: r.gate_location || "N/A",
+                                  })
+                                }
+                                style={{ width: "38px", height: "38px", objectFit: "cover", borderRadius: "6px", cursor: "pointer", border: "1px solid #cbd5e1" }}
+                              />
+                            ))}
+                          </div>
                         ) : (
                           <span style={{ fontSize: "12px", color: "#94a3b8" }}>No Photo</span>
                         )}

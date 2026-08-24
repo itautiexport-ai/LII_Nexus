@@ -373,27 +373,9 @@ export class FmsExecutionService {
       [newStatus, employeeId, JSON.stringify(dto.inputData || {}), instanceStepId]
     );
 
-    // Hardcoded Condition Check
-    const isRepeatOrderYes = step.step_name.includes("Repeat Order") && dto.inputData?.isRepeatOrder === 'Yes';
-    if (isRepeatOrderYes) {
-      // Find all steps for this instance with sequence order between current and 8
-      const currentOrder = step.sequence_order;
-      // We assume order 8 means sequence_order = 8.
-      // Wait, in FMS, sequence_order is 0-indexed or 1-indexed? Usually 0-indexed in our code.
-      // The frontend shows "Order" as index + 1. So Step 8 means index 7 (sequence_order = 7).
-      const targetOrder = 7;
-      
-      const [skipSteps] = await this.dbPool.query(`
-        SELECT fis.id 
-        FROM fms_instance_steps fis
-        JOIN fms_steps fs ON fis.fms_step_id = fs.id
-        WHERE fis.instance_id = ? AND fs.sequence_order > ? AND fs.sequence_order < ?
-      `, [step.instance_id, currentOrder, targetOrder]);
+    // Hardcoded automatic step skipping logic has been removed as per user requirement.
+    // Every step will go to the concerned user, and they can select "Yes" or "Not Applicable" manually.
 
-      for (const s of skipSteps) {
-        await this.dbPool.query("UPDATE fms_instance_steps SET status = 'Skipped' WHERE id = ?", [s.id]);
-      }
-    }
 
     // Find newly actionable steps dependent on this completed step
     const actionableStepIds = await this._computeActionableSteps(step.instance_id);

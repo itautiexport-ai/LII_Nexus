@@ -30,16 +30,22 @@ export interface OfficeEmReport {
   periodType: string;
   periodStart: string;
   periodEnd: string;
+  isEvaluationPending?: boolean;
+  pendingMessage?: string;
+  hodScore?: number | null;
+  hrScore?: number | null;
+  hodWeight?: number;
+  hrWeight?: number;
   modules: {
     fms: OfficeEmModuleScore;
     checklist: OfficeEmModuleScore;
     delegation: OfficeEmModuleScore;
   };
-  finalGapScore: number;
+  finalGapScore: number | null;
 }
 
 export const officeEmApi = {
-  getGapScore(employeeId: string, period: string): Promise<{ data: OfficeEmReport }> {
+  getGapScore(employeeId: string, period: string): Promise<{ data: OfficeEmReport[] }> {
     return axiosInstance.get(`/reports/office-em/${employeeId}?period=${period}`).then((r: any) => r.data);
   },
 

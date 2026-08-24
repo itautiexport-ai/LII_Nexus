@@ -7,18 +7,24 @@ export class TaskCenterService {
       const [empRows] = await pool.query<any[]>("SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL", [userId]);
       const employeeId = empRows[0]?.id || userId; // fallback to userId if no employee mapping
 
-      // 1. Checklist Stats (standalone_checklists has no completion status natively? We use completed=0 as mock for now, or just return total)
-      // Actually, StandaloneChecklist doesn't have a status column. Let's return total tasks vs completed tasks (0).
-      let chkQuery = `SELECT COUNT(*) as total FROM standalone_checklists WHERE deleted_at IS NULL`;
-      let chkParams: any[] = [];
+      // 1. Checklist Stats (querying active standalone checklists and historical completions)
+      let chkActiveQuery = `SELECT COUNT(*) as total FROM standalone_checklists WHERE deleted_at IS NULL AND planned_date <= NOW()`;
+      let chkActiveParams: any[] = [];
       if (!isSystemAdmin) {
-        chkQuery += ` AND assign_to = ?`;
-        chkParams.push(userId);
+        chkActiveQuery += ` AND assign_to = ?`;
+        chkActiveParams.push(employeeId);
       }
-      const [chkRows] = await pool.query<any[]>(chkQuery, chkParams);
-      const checklistTotal = chkRows[0].total as number;
-      const checklistPending = checklistTotal; // Since there is no status, everything is pending
-      const checklistCompleted = 0;
+      const [chkActiveRows] = await pool.query<any[]>(chkActiveQuery, chkActiveParams);
+      const checklistPending = chkActiveRows[0].total as number;
+
+      let chkCompQuery = `SELECT COUNT(*) as total FROM standalone_checklist_completions`;
+      let chkCompParams: any[] = [];
+      if (!isSystemAdmin) {
+        chkCompQuery += ` WHERE completed_by = ?`;
+        chkCompParams.push(employeeId);
+      }
+      const [chkCompRows] = await pool.query<any[]>(chkCompQuery, chkCompParams);
+      const checklistCompleted = chkCompRows[0].total as number;
 
       // 2. Delegation Stats
       let delPendingQuery = `SELECT COUNT(*) as total FROM delegated_tasks WHERE base_status IN ('pending', 'running') AND deleted_at IS NULL`;

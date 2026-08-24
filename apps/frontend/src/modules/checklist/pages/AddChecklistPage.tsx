@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { standaloneChecklistApi } from "../api/checklistApi";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import "./Checklist.css";
 
 const DAYS_OF_WEEK = [
@@ -14,7 +15,9 @@ const DAYS_OF_WEEK = [
 ];
 
 export function AddChecklistPage() {
+  const user = useAuthStore(s => s.user);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
   const [formData, setFormData] = useState({
     taskName: "",
     assignBy: "",
@@ -41,8 +44,26 @@ export function AddChecklistPage() {
   ];
 
   useEffect(() => {
+    // Check System Admin bypass
+    const isSystemAdmin = user?.roles.includes("System Admin");
+    if (isSystemAdmin) {
+      setIsAllowed(true);
+    } else {
+      // Check designation permission
+      employeesApi.getMe()
+        .then((me) => {
+          if (!me) {
+            setIsAllowed(false);
+            return;
+          }
+          const title = me.designationTitle?.trim().toLowerCase() || "";
+          setIsAllowed(title === "admin" || title === "admin executive" || title === "director" || title === "executive director");
+        })
+        .catch(() => setIsAllowed(false));
+    }
+
     employeesApi.list().then(setEmployees).catch(console.error);
-  }, []);
+  }, [user]);
 
   // Calculate next planned date whenever frequency or days rules change
   useEffect(() => {
@@ -194,6 +215,21 @@ export function AddChecklistPage() {
     }
   };
 
+  if (isAllowed === null) {
+    return <div style={{ padding: 24, textAlign: "center", color: "#64748b" }}>Checking permissions...</div>;
+  }
+
+  if (isAllowed === false) {
+    return (
+      <div style={{ maxWidth: 600, margin: "40px auto", padding: 24, backgroundColor: "#fef2f2", border: "1px solid #fee2e2", borderRadius: 12, textAlign: "center" }}>
+        <h2 style={{ color: "#991b1b", marginTop: 0, fontSize: 20, fontWeight: 600 }}>Access Denied</h2>
+        <p style={{ color: "#7f1d1d", margin: "10px 0 0 0" }}>
+          Only employees with the designation <strong>Admin</strong>, <strong>Admin Executive</strong>, or <strong>Director</strong> are allowed to add checklists.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="chk-container">
       <div className="chk-card">
@@ -209,7 +245,13 @@ export function AddChecklistPage() {
                 <label className="chk-label">Assign By <span className="chk-required">*</span></label>
                 <select name="assignBy" required value={formData.assignBy} onChange={handleChange} className="chk-select">
                   <option value="">Select Employee</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                  {employees
+                    .filter(e => {
+                      const title = e.designationTitle?.trim().toLowerCase() || "";
+                      return title === "admin" || title === "director" || title === "executive director";
+                    })
+                    .map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)
+                  }
                 </select>
               </div>
 

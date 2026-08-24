@@ -56,4 +56,10 @@ router.post("/merchants", asyncHandler(controller.createMerchant.bind(controller
 router.put("/merchants/:id", asyncHandler(controller.updateMerchant.bind(controller)));
 router.delete("/merchants/:id", asyncHandler(controller.deleteMerchant.bind(controller)));
 
+// Finish Codes
+router.get("/finish-codes", asyncHandler(controller.getFinishCodes.bind(controller)));
+router.post("/finish-codes", asyncHandler(controller.createFinishCode.bind(controller)));
+router.put("/finish-codes/:id", asyncHandler(controller.updateFinishCode.bind(controller)));
+router.delete("/finish-codes/:id", asyncHandler(controller.deleteFinishCode.bind(controller)));
+
 export { router as masterDataRoutes };

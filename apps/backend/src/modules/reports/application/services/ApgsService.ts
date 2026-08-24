@@ -188,20 +188,41 @@ export class MisService {
       });
     }
 
-    // 2. Checklist Tasks
+    // 2. Checklist Tasks (Combine Legacy checklists and Standalone checklists)
     const [chkInstances] = await pool.query<any[]>(
-      `SELECT ci.id, sc.task_name as title, sc.priority, cii.is_checked, cii.checked_at, ci.period_end 
+      `SELECT cii.id, sc.task_name as title, sc.priority, cii.is_checked, cii.checked_at, ci.period_end 
        FROM checklist_instances ci
        JOIN standalone_checklists sc ON ci.template_id = sc.id
        JOIN checklist_instance_items cii ON ci.id = cii.instance_id
        WHERE ci.employee_id = ?
          AND (
            (ci.period_end >= ? AND ci.period_end <= ?)
-           OR (cii.is_checked = 0)
+           OR (cii.is_checked = 0 AND ci.period_end <= ?)
            OR (cii.checked_at >= ? AND cii.checked_at <= ?)
          )`,
-      [empId, startStr, endStr, startStr, endStr]
+      [empId, startStr, endStr, endStr, startStr, endStr]
     );
+
+    const [standaloneCompletions] = await pool.query<any[]>(
+      `SELECT c.id, sc.task_name as title, sc.priority, 1 as is_checked, c.completed_at as checked_at, c.completed_at as period_end
+       FROM standalone_checklist_completions c
+       JOIN standalone_checklists sc ON c.checklist_id = sc.id
+       WHERE c.completed_by = ? AND c.completed_at >= ? AND c.completed_at <= ?`,
+      [empId, startStr, endStr]
+    );
+
+    const [standalonePending] = await pool.query<any[]>(
+      `SELECT sc.id, sc.task_name as title, sc.priority, 0 as is_checked, NULL as checked_at, sc.planned_date as period_end
+       FROM standalone_checklists sc
+       WHERE sc.assign_to = ? AND sc.deleted_at IS NULL AND sc.planned_date >= ? AND sc.planned_date <= ?`,
+      [empId, startStr, endStr]
+    );
+
+    const allChecklistInstances = [
+      ...chkInstances,
+      ...standaloneCompletions,
+      ...standalonePending
+    ];
 
     let chkTotalDue = 0;
     let chkCompleted = 0;
@@ -212,7 +233,7 @@ export class MisService {
     let chkRunningTasksCount = 0;
     const chkTasksList: any[] = [];
 
-    for (const ci of chkInstances) {
+    for (const ci of allChecklistInstances) {
       const pts = getPriorityPoints(ci.priority);
       chkTotalDue += pts;
       chkTotalTasksCount++;
@@ -245,7 +266,7 @@ export class MisService {
       });
     }
 
-    // 3. FMS Steps (Flowchart Tasks)
+    // 3. FMS Steps (Combine Flowchart Tasks and FMS Instance Steps)
     const [fmsRows] = await pool.query<any[]>(
       `SELECT ft.id, ft.base_status, ft.due_date, ft.completed_at, w.name as title 
        FROM flowchart_tasks ft
@@ -260,6 +281,58 @@ export class MisService {
       [empId, startStr, endStr, startStr, endStr]
     );
 
+    const [fmsInstanceSteps] = await pool.query<any[]>(
+      `SELECT fis.id, fs.step_name as title, fis.status as base_status, 
+              fis.completed_at, fis.created_at, fs.doer_employee_ids, fi.creator_id, fis.completed_by
+       FROM fms_instance_steps fis
+       JOIN fms_instances fi ON fis.instance_id = fi.id
+       JOIN fms_steps fs ON fis.fms_step_id = fs.id
+       WHERE (
+         (fis.completed_by = ? AND fis.completed_at >= ? AND fis.completed_at <= ?)
+         OR (fis.status IN ('Pending', 'Under Process'))
+       )`,
+      [empId, startStr, endStr]
+    );
+
+    const mappedFmsInstanceSteps = fmsInstanceSteps.filter(fis => {
+      let doers: any[] = [];
+      try {
+        doers = typeof fis.doer_employee_ids === 'string' ? JSON.parse(fis.doer_employee_ids) : fis.doer_employee_ids;
+      } catch (e) {}
+      if (!Array.isArray(doers)) doers = [];
+
+      const isDoer = doers.includes(empId);
+      const isCreator = fis.creator_id === empId;
+      const isCompletedBy = fis.completed_by === empId;
+
+      if (isCompletedBy) return true;
+      if (doers.length === 0 && isCreator) return true;
+      return isDoer;
+    }).map(fis => {
+      let base_status = "pending";
+      if (fis.base_status === "Completed" || fis.base_status === "Skipped") {
+        base_status = "completed";
+      } else if (fis.base_status === "Under Process") {
+        base_status = "running";
+      }
+      
+      const created = new Date(fis.created_at);
+      const due = new Date(created.getTime() + 24 * 60 * 60 * 1000);
+      
+      return {
+        id: fis.id,
+        base_status,
+        due_date: due,
+        completed_at: fis.completed_at,
+        title: fis.title || "FMS Step"
+      };
+    });
+
+    const allFmsRows = [
+      ...fmsRows,
+      ...mappedFmsInstanceSteps
+    ];
+
     let fmsTotalDue = 0;
     let fmsCompleted = 0;
     let fmsOnTime = 0;
@@ -269,7 +342,7 @@ export class MisService {
     let fmsRunningTasksCount = 0;
     const fmsTasksList: any[] = [];
 
-    for (const task of fmsRows) {
+    for (const task of allFmsRows) {
       const priorityPts = 2; // Medium priority default for FMS
       fmsTotalDue += priorityPts;
       fmsTotalTasksCount++;

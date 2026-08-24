@@ -102,7 +102,7 @@ export function MyFmsPage() {
       case "Completed":
         return <span className="status-pill completed">✅ Completed</span>;
       case "Skipped":
-        return <span className="status-pill skipped">⏭️ Skipped</span>;
+        return <span className="status-pill skipped">⏭️ Not Applicable</span>;
       default:
         return <span className="status-pill">{status}</span>;
     }
@@ -343,22 +343,20 @@ export function MyFmsPage() {
                 {/* Form fields if actionable */}
                 {selectedTask.status === "Under Process" ? (
                   <>
-                    {selectedTask.stepName.toLowerCase().includes("repeat order") && (
-                      <div className="my-fms-form-group">
-                        <label className="my-fms-label">Is this a Repeat Order? *</label>
-                        <select 
-                          required 
-                          className="my-fms-select"
-                          style={{ width: "100%" }}
-                          value={inputData.isRepeatOrder || ""}
-                          onChange={(e) => setInputData({ ...inputData, isRepeatOrder: e.target.value })}
-                        >
-                          <option value="" disabled>Select Yes or No</option>
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </select>
-                      </div>
-                    )}
+                    <div className="my-fms-form-group">
+                      <label className="my-fms-label">Was this step completed or is it Not Applicable? *</label>
+                      <select 
+                        required 
+                        className="my-fms-select"
+                        style={{ width: "100%" }}
+                        value={inputData.status || ""}
+                        onChange={(e) => setInputData({ ...inputData, status: e.target.value })}
+                      >
+                        <option value="" disabled>Select option</option>
+                        <option value="Completed">Yes</option>
+                        <option value="Skipped">Not Applicable</option>
+                      </select>
+                    </div>
 
                     <div className="my-fms-form-group">
                       <label className="my-fms-label">Execution Remarks / Comments</label>

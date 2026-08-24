@@ -20,7 +20,7 @@ router.patch("/production-lines/:id", requirePermission("factory.line.update"), 
 router.delete("/production-lines/:id", requirePermission("factory.line.delete"), asyncHandler(ProductionLineController.remove));
 
 // Shift Master
-router.get("/shifts", requirePermission("factory.shift.view"), asyncHandler(ShiftController.list));
+router.get("/shifts", asyncHandler(ShiftController.list));
 router.post("/shifts", requirePermission("factory.shift.create"), validate(createShiftSchema), asyncHandler(ShiftController.create));
 router.patch("/shifts/:id", requirePermission("factory.shift.update"), validate(updateShiftSchema), asyncHandler(ShiftController.update));
 router.delete("/shifts/:id", requirePermission("factory.shift.delete"), asyncHandler(ShiftController.remove));
