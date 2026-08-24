@@ -62,7 +62,7 @@ export default function DprEntryPage() {
   // Load masters & today's entries
   const loadData = async () => {
     try {
-      const [deps, shiftList, empList, meRes, entriesRes, woodTypesRes, hodsRes] = await Promise.all([
+      const [depsRes, shiftListRes, empListRes, meRes, entriesRes, woodTypesRes, hodsRes] = await Promise.allSettled([
         departmentsApi.list(),
         shiftsApi.list(),
         employeesApi.listForDropdown(),
@@ -72,14 +72,22 @@ export default function DprEntryPage() {
         masterDataApi.getHods(),
       ]);
 
+      const deps = depsRes.status === "fulfilled" ? depsRes.value : [];
+      const shiftList = shiftListRes.status === "fulfilled" ? shiftListRes.value : [];
+      const empList = empListRes.status === "fulfilled" ? empListRes.value : [];
+
       setDepartments(deps);
       setShifts(shiftList);
       setEmployees(empList.filter((e: any) => e.status === "active"));
-      setWoodTypes(woodTypesRes.filter((w: any) => w.status === "active"));
-      setHods(hodsRes);
-      setTodayEntries(entriesRes.items);
+      setWoodTypes(woodTypesRes.status === "fulfilled" ? woodTypesRes.value.filter((w: any) => w.status === "active") : []);
+      setHods(hodsRes.status === "fulfilled" ? hodsRes.value : []);
+      setTodayEntries(entriesRes.status === "fulfilled" ? entriesRes.value.items : []);
 
-      const resolvedEmployeeId = meRes.data.data?.id ?? null;
+      if (meRes.status !== "fulfilled") {
+        throw new Error("Failed to load current employee info");
+      }
+
+      const resolvedEmployeeId = meRes.value.data.data?.id ?? null;
       setMyEmployeeId(resolvedEmployeeId);
 
       const generalShift = shiftList.find((s) => s.name.toLowerCase() === "general");
