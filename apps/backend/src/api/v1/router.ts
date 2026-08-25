@@ -95,9 +95,11 @@ router.use("/orders-in-hand", orderInHandRoutes);
 router.use("/", cartonOrderRoutes);
 import aiHelperRoutes from "../../modules/ai-helper/presentation/routes/aiHelper.routes";
 import materialInwardRoutes from "../../modules/material-inward/presentation/routes/material-inward.routes";
+import finishingRecipeRoutes from "../../modules/finishing/presentation/routes/finishingRecipe.routes";
 
 router.use("/ai-helper", aiHelperRoutes);
 router.use("/", materialInwardRoutes);
 router.use("/task-center", taskCenterRoutes);
+router.use("/", finishingRecipeRoutes);
 
 export default router;

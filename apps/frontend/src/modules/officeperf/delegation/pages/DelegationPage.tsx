@@ -225,6 +225,7 @@ export default function DelegationPage() {
               </th>
             <th style={{ padding: 8 }}>Task Title</th>
             <th style={{ padding: 8 }}>From</th>
+            <th style={{ padding: 8 }}>Assigned Date</th>
             <th style={{ padding: 8 }}>Assigned To</th>
             <th style={{ padding: 8 }}>Planned Date</th>
             <th style={{ padding: 8 }}>Priority</th>
@@ -253,6 +254,7 @@ export default function DelegationPage() {
                 </td>
               <td style={{ padding: 8, fontWeight: 600 }}>{t.title}</td>
               <td style={{ padding: 8 }}>{t.assignedByName}</td>
+              <td style={{ padding: 8 }}>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}</td>
               <td style={{ padding: 8, color: "#2563eb", fontWeight: 500 }}>{t.assignedToName}</td>
               <td style={{ padding: 8 }}>{t.dueDate}</td>
               <td style={{ padding: 8 }}><span style={{ color: priorityColors[t.priority], fontWeight: 600, textTransform: "capitalize" }}>{t.priority}</span></td>

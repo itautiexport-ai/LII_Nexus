@@ -211,7 +211,7 @@ export function FmsGridViewPage() {
                   {visibleSteps.map((step) => {
                     const originalIndex = steps.findIndex(s => s.id === step.id);
                     return (
-                    <th key={step.id} colSpan={4} style={{
+                    <th key={step.id} colSpan={4} data-no-filter="true" style={{
                       ...headerStyle,
                       textAlign: "center",
                       borderBottom: "1px solid #e2e8f0"
@@ -250,10 +250,10 @@ export function FmsGridViewPage() {
                 <tr>
                   {visibleSteps.map((step) => (
                     <React.Fragment key={`sub-${step.id}`}>
-                      <th style={subHeaderStyle}>Doer</th>
-                      <th style={subHeaderStyle}>Plan Date</th>
-                      <th style={subHeaderStyle}>Delay</th>
-                      <th style={subHeaderStyle}>Status</th>
+                      <th style={subHeaderStyle} data-no-filter="true">Doer</th>
+                      <th style={subHeaderStyle} data-no-filter="true">Plan Date</th>
+                      <th style={subHeaderStyle} data-no-filter="true">Delay</th>
+                      <th style={subHeaderStyle} data-no-filter="true">Status</th>
                     </React.Fragment>
                   ))}
                 </tr>

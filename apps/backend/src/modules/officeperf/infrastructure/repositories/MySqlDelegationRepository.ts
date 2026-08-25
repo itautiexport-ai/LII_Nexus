@@ -70,7 +70,7 @@ export class MySqlDelegationRepository implements IDelegationRepository {
     const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const [rows] = await pool.query<any[]>(
-      `${WITH_CONTEXT_SELECT} ${whereClause} ORDER BY dt.due_date ASC LIMIT ? OFFSET ?`,
+      `${WITH_CONTEXT_SELECT} ${whereClause} ORDER BY dt.created_at DESC LIMIT ? OFFSET ?`,
       [...values, params.pageSize, offset]
     );
     const [countRows] = await pool.query<any[]>(`SELECT COUNT(*) as total FROM delegated_tasks dt ${whereClause}`, values);
@@ -182,7 +182,7 @@ export class MySqlDelegationRepository implements IDelegationRepository {
     if (params?.from) { conditions.push("dt.due_date >= ?"); values.push(params.from); }
     if (params?.to) { conditions.push("dt.due_date <= ?"); values.push(params.to); }
     const [rows] = await pool.query<any[]>(
-      `${WITH_CONTEXT_SELECT} WHERE ${conditions.join(" AND ")} ORDER BY dt.due_date ASC`,
+      `${WITH_CONTEXT_SELECT} WHERE ${conditions.join(" AND ")} ORDER BY dt.created_at DESC`,
       values
     );
     const items = rows.map((r) => ({ ...mapTask(r), assignedByName: r.assigned_by_name, assignedToName: r.assigned_to_name, escalatedToName: r.escalated_to_name, files: [] }));

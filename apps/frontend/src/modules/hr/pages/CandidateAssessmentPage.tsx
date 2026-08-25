@@ -29,24 +29,18 @@ const SECTION_B_MCQ_KEYS: Record<string, string> = {
 };
 
 export default function CandidateAssessmentPage() {
-  const [mode, setMode] = useState<"take_test" | "view_submissions">("take_test");
-
   // --- CANDIDATE INFO ---
   const [candName, setCandName] = useState("");
   const [candEmail, setCandEmail] = useState("");
   const [positionApplied, setPositionApplied] = useState("CNC Machine Operator");
   const [department, setDepartment] = useState("Production / Machine Shop");
   const [testStarted, setTestStarted] = useState(false);
+  const [testSubmittedSuccessfully, setTestSubmittedSuccessfully] = useState(false);
 
   // --- TIMER (45 Minutes = 2700 Seconds) ---
   const [timeLeft, setTimeLeft] = useState(2700);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<CandidateAssessmentRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // --- SUBMISSIONS LIST ---
-  const [submissions, setSubmissions] = useState<CandidateAssessmentRecord[]>([]);
-  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   // --- SECTION A ANSWERS ---
   const [secAAnswers, setSecAAnswers] = useState<Record<string, string>>({});
@@ -84,33 +78,17 @@ export default function CandidateAssessmentPage() {
   // Timer Effect
   useEffect(() => {
     let interval: any = null;
-    if (testStarted && timeLeft > 0 && !submissionResult) {
+    if (testStarted && timeLeft > 0 && !testSubmittedSuccessfully) {
       interval = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0 && testStarted && !submissionResult) {
+    } else if (timeLeft === 0 && testStarted && !testSubmittedSuccessfully) {
       handleAutoSubmit();
     }
     return () => clearInterval(interval);
-  }, [testStarted, timeLeft, submissionResult]);
+  }, [testStarted, timeLeft, testSubmittedSuccessfully]);
 
-  useEffect(() => {
-    if (mode === "view_submissions") {
-      loadSubmissions();
-    }
-  }, [mode]);
 
-  async function loadSubmissions() {
-    setLoadingSubmissions(true);
-    try {
-      const data = await recruitmentApi.getAssessments();
-      setSubmissions(data || []);
-    } catch (err) {
-      console.error("Failed to load assessments", err);
-    } finally {
-      setLoadingSubmissions(false);
-    }
-  }
 
   function formatTime(seconds: number) {
     const mins = Math.floor(seconds / 60);
@@ -267,7 +245,7 @@ export default function CandidateAssessmentPage() {
         answersJson: answersPayload,
       });
 
-      setSubmissionResult(record);
+      setTestSubmittedSuccessfully(true);
     } catch (err: any) {
       console.error("Failed to submit assessment", err);
       const errMsg = err.response?.data?.error || err.message || "Failed to submit assessment. Please try again.";
@@ -290,43 +268,56 @@ export default function CandidateAssessmentPage() {
             System-Driven Online Assessment Engine with Instant Automatic Evaluation & Candidate Grading.
           </p>
         </div>
-
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => setMode("take_test")}
-            style={{
-              padding: "8px 16px",
-              background: mode === "take_test" ? "#0284c7" : "#ffffff",
-              color: mode === "take_test" ? "#ffffff" : "#334155",
-              border: "1px solid #cbd5e1",
-              borderRadius: "6px",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-            }}
-          >
-            📝 Take / Launch Assessment
-          </button>
-          <button
-            onClick={() => setMode("view_submissions")}
-            style={{
-              padding: "8px 16px",
-              background: mode === "view_submissions" ? "#0284c7" : "#ffffff",
-              color: mode === "view_submissions" ? "#ffffff" : "#334155",
-              border: "1px solid #cbd5e1",
-              borderRadius: "6px",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-            }}
-          >
-            📊 View System Test Submissions
-          </button>
-        </div>
       </div>
 
-      {/* --- MODE 1: TAKE ASSESSMENT --- */}
-      {mode === "take_test" && (
+      {testSubmittedSuccessfully ? (
+        <div style={{ background: "#ffffff", borderRadius: "10px", padding: "40px 28px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", maxWidth: "700px", margin: "40px auto", textAlign: "center" }}>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}>✅</div>
+          <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#0f172a", margin: "0 0 12px 0" }}>
+            Assessment Submitted Successfully / मूल्यांकन सफलतापूर्वक जमा हो गया है
+          </h2>
+          <p style={{ fontSize: "15px", color: "#475569", lineHeight: "1.6", margin: "0 0 24px 0" }}>
+            Thank you, your assessment test paper has been submitted to the HR department for evaluation.
+            <br/>
+            <span style={{ color: "#64748b" }}>धन्यवाद, आपका मूल्यांकन परीक्षा पत्र मूल्यांकन के लिए मानव संसाधन विभाग को सौंप दिया गया है।</span>
+          </p>
+          <button
+            onClick={() => {
+              setTestSubmittedSuccessfully(false);
+              setTestStarted(false);
+              setTimeLeft(2700);
+              setCandName("");
+              setCandEmail("");
+              setSecAAnswers({});
+              setSecBMcqAnswers({});
+              setExcelBorders(false);
+              setExcelHeaderBold(false);
+              setExcelHeaderBg(false);
+              setExcelWidthAdjusted(false);
+              setExcelSumFormula("");
+              setExcelAvgFormula("");
+              setExcelMaxFormula("");
+              setExcelMinFormula("");
+              setExcelSorted(false);
+              setExcelFiltered(false);
+              setExcelCondFormat(false);
+              setExcelChartCreated(false);
+              setWordHeading("");
+              setWordHeadingBold(false);
+              setWordHeadingFontSize("14");
+              setWordHeadingAlign("left");
+              setWordTableRows(0);
+              setWordTableCols(0);
+              setWordPageNumbers(false);
+              setEmailSubject("");
+              setEmailBody("");
+            }}
+            style={{ padding: "10px 24px", background: "#0284c7", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}
+          >
+            Back / वापस
+          </button>
+        </div>
+      ) : (
         <>
           {/* CANDIDATE REGISTRATION CARD */}
           {!testStarted ? (
@@ -350,19 +341,19 @@ export default function CandidateAssessmentPage() {
                 }}
               >
                 <div style={{ marginBottom: "14px" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Candidate Name *</label>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Candidate Name * <span style={{ color: "#94a3b8", fontWeight: "400" }}>/ उम्मीदवार का नाम</span></label>
                   <input
                     type="text"
                     required
                     value={candName}
                     onChange={(e) => setCandName(e.target.value)}
-                    placeholder="Enter full name"
+                    placeholder="Enter full name / पूरा नाम लिखें"
                     style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
                   />
                 </div>
 
                 <div style={{ marginBottom: "14px" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Candidate Email</label>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Candidate Email <span style={{ color: "#94a3b8", fontWeight: "400" }}>/ ईमेल</span></label>
                   <input
                     type="email"
                     value={candEmail}
@@ -374,7 +365,7 @@ export default function CandidateAssessmentPage() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "20px" }}>
                   <div>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Position Applied For</label>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Position Applied For <span style={{ color: "#94a3b8", fontWeight: "400" }}>/ पद का नाम</span></label>
                     <input
                       type="text"
                       value={positionApplied}
@@ -383,7 +374,7 @@ export default function CandidateAssessmentPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Department</label>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Department <span style={{ color: "#94a3b8", fontWeight: "400" }}>/ विभाग</span></label>
                     <input
                       type="text"
                       value={department}
@@ -407,77 +398,9 @@ export default function CandidateAssessmentPage() {
                     cursor: "pointer",
                   }}
                 >
-                  ▶️ Start Online Assessment Now
+                  ▶️ Start Online Assessment Now / परीक्षा शुरू करें
                 </button>
               </form>
-            </div>
-          ) : submissionResult ? (
-            /* SUBMISSION RESULT SCORECARD */
-            <div style={{ background: "#ffffff", borderRadius: "10px", padding: "28px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", maxWidth: "700px", margin: "0 auto", textAlign: "center" }}>
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>
-                {submissionResult.result === "PASSED" ? "🎉" : "⚠️"}
-              </div>
-              <h2 style={{ fontSize: "22px", fontWeight: "700", color: "#0f172a", margin: "0 0 6px 0" }}>
-                Assessment Evaluation Result: <span style={{ color: submissionResult.result === "PASSED" ? "#16a34a" : "#dc2626" }}>{submissionResult.result}</span>
-              </h2>
-              <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 20px 0" }}>
-                Candidate: <strong>{submissionResult.candidate_name}</strong> | Position: {submissionResult.position_applied} ({submissionResult.department})
-              </p>
-
-              {/* Big Score Badge */}
-              <div style={{ background: submissionResult.result === "PASSED" ? "#f0fdf4" : "#fef2f2", border: `2px solid ${submissionResult.result === "PASSED" ? "#bbf7d0" : "#fecaca"}`, borderRadius: "12px", padding: "20px", marginBottom: "24px" }}>
-                <div style={{ fontSize: "14px", fontWeight: "600", color: "#475569" }}>TOTAL SCORE ACHIEVED</div>
-                <div style={{ fontSize: "42px", fontWeight: "800", color: submissionResult.result === "PASSED" ? "#15803d" : "#b91c1c", margin: "4px 0" }}>
-                  {submissionResult.total_score} <span style={{ fontSize: "20px", color: "#64748b" }}>/ 100 Marks</span>
-                </div>
-                <div style={{ fontSize: "13px", color: "#64748b" }}>
-                  Passing Threshold: {submissionResult.passing_score} Marks | Time Taken: {submissionResult.time_taken_minutes} Minutes
-                </div>
-              </div>
-
-              {/* Breakdown Grid */}
-              <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#334155", marginBottom: "12px", textAlign: "left" }}>📊 Section Score Breakdown</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", textAlign: "left", marginBottom: "24px" }}>
-                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Section A – Computer Fundamentals</div>
-                  <div style={{ fontSize: "16px", fontWeight: "700", color: "#0f172a" }}>{submissionResult.section_a_score} / 20 Marks</div>
-                </div>
-                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Section B (Part A) – Excel MCQs</div>
-                  <div style={{ fontSize: "16px", fontWeight: "700", color: "#0f172a" }}>{submissionResult.section_b_mcq_score} / 20 Marks</div>
-                </div>
-                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Section B (Part B) – Excel Practical</div>
-                  <div style={{ fontSize: "16px", fontWeight: "700", color: "#0f172a" }}>{submissionResult.section_b_practical_score} / 20 Marks</div>
-                </div>
-                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Section C – MS Word Formatting</div>
-                  <div style={{ fontSize: "16px", fontWeight: "700", color: "#0f172a" }}>{submissionResult.section_c_score} / 15 Marks</div>
-                </div>
-                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1", gridColumn: "span 2" }}>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Section D – Professional Email Writing</div>
-                  <div style={{ fontSize: "16px", fontWeight: "700", color: "#0f172a" }}>{submissionResult.section_d_score} / 10 Marks</div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-                <button
-                  onClick={() => {
-                    setSubmissionResult(null);
-                    setTestStarted(false);
-                    setTimeLeft(2700);
-                  }}
-                  style={{ padding: "10px 20px", background: "#0284c7", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: "600", cursor: "pointer" }}
-                >
-                  🔄 Take Another Assessment
-                </button>
-                <button
-                  onClick={() => setMode("view_submissions")}
-                  style={{ padding: "10px 20px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "6px", fontWeight: "600", cursor: "pointer" }}
-                >
-                  📁 View All HR Test Records
-                </button>
-              </div>
             </div>
           ) : (
             /* ACTIVE TEST RUNNER WITH STICKY TIMER BAR */
@@ -541,23 +464,23 @@ export default function CandidateAssessmentPage() {
               <div style={{ background: "#ffffff", borderRadius: "10px", padding: "24px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
                 <div style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
                   <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
-                    Section A – Computer Fundamentals (20 Marks)
+                    Section A – Computer Fundamentals (20 Marks) / कंप्यूटर बुनियादी ज्ञान
                   </h3>
                   <span style={{ fontSize: "12px", fontWeight: "600", color: "#0284c7" }}>10 Questions | 2 Marks Each</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {[
-                    { q: "1. Which of the following is an input device?", key: "q1", opts: ["A. Monitor", "B. Keyboard", "C. Printer", "D. Speaker"] },
-                    { q: "2. Which shortcut is used to copy selected text?", key: "q2", opts: ["A. Ctrl + X", "B. Ctrl + C", "C. Ctrl + V", "D. Ctrl + A"] },
-                    { q: "3. Which shortcut is used to undo the last action?", key: "q3", opts: ["A. Ctrl + Y", "B. Ctrl + U", "C. Ctrl + Z", "D. Ctrl + P"] },
-                    { q: "4. Which file format is commonly used for PDF documents?", key: "q4", opts: ["A. .docx", "B. .xlsx", "C. .pdf", "D. .ppt"] },
-                    { q: "5. Which application is mainly used to browse websites?", key: "q5", opts: ["A. MS Word", "B. Google Chrome", "C. Excel", "D. Paint"] },
-                    { q: "6. Which of the following is an operating system?", key: "q6", opts: ["A. Windows", "B. Excel", "C. Gmail", "D. Chrome"] },
-                    { q: "7. Which shortcut saves a document?", key: "q7", opts: ["A. Ctrl + P", "B. Ctrl + S", "C. Ctrl + O", "D. Ctrl + N"] },
-                    { q: "8. Which storage device is portable?", key: "q8", opts: ["A. USB Flash Drive", "B. CPU", "C. RAM", "D. Motherboard"] },
-                    { q: "9. Which folder usually stores deleted files?", key: "q9", opts: ["A. Downloads", "B. Desktop", "C. Recycle Bin", "D. Documents"] },
-                    { q: "10. Which email field is used to send a copy of an email?", key: "q10", opts: ["A. Subject", "B. CC", "C. Inbox", "D. Draft"] },
+                    { q: "1. Which of the following is an input device? / इनमें से कौन सा इनपुट डिवाइस है?", key: "q1", opts: ["A. Monitor", "B. Keyboard", "C. Printer", "D. Speaker"] },
+                    { q: "2. Which shortcut is used to copy selected text? / चुने हुए टेक्स्ट को कॉपी करने का शॉर्टकट क्या है?", key: "q2", opts: ["A. Ctrl + X", "B. Ctrl + C", "C. Ctrl + V", "D. Ctrl + A"] },
+                    { q: "3. Which shortcut is used to undo the last action? / पिछली क्रिया को वापस लेने का शॉर्टकट क्या है?", key: "q3", opts: ["A. Ctrl + Y", "B. Ctrl + U", "C. Ctrl + Z", "D. Ctrl + P"] },
+                    { q: "4. Which file format is commonly used for PDF documents? / PDF के लिए कौन सा फॉर्मेट उपयोग होता है?", key: "q4", opts: ["A. .docx", "B. .xlsx", "C. .pdf", "D. .ppt"] },
+                    { q: "5. Which application is mainly used to browse websites? / वेबसाइट देखने के लिए कौन सा एप्लिकेशन उपयोग होता है?", key: "q5", opts: ["A. MS Word", "B. Google Chrome", "C. Excel", "D. Paint"] },
+                    { q: "6. Which of the following is an operating system? / इनमें से कौन सा ऑपरेटिंग सिस्टम है?", key: "q6", opts: ["A. Windows", "B. Excel", "C. Gmail", "D. Chrome"] },
+                    { q: "7. Which shortcut saves a document? / दस्तावेज़ सेव करने का शॉर्टकट क्या है?", key: "q7", opts: ["A. Ctrl + P", "B. Ctrl + S", "C. Ctrl + O", "D. Ctrl + N"] },
+                    { q: "8. Which storage device is portable? / कौन सा स्टोरेज डिवाइस पोर्टेबल है?", key: "q8", opts: ["A. USB Flash Drive", "B. CPU", "C. RAM", "D. Motherboard"] },
+                    { q: "9. Which folder usually stores deleted files? / डिलीट की गई फाइलें किस फोल्डर में जाती हैं?", key: "q9", opts: ["A. Downloads", "B. Desktop", "C. Recycle Bin", "D. Documents"] },
+                    { q: "10. Which email field is used to send a copy of an email? / ईमेल की कॉपी भेजने के लिए कौन सा फील्ड उपयोग होता है?", key: "q10", opts: ["A. Subject", "B. CC", "C. Inbox", "D. Draft"] },
                   ].map((item) => (
                     <div key={item.key} style={{ background: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
                       <div style={{ fontWeight: "600", fontSize: "14px", color: "#1e293b", marginBottom: "8px" }}>{item.q}</div>
@@ -586,23 +509,23 @@ export default function CandidateAssessmentPage() {
               <div style={{ background: "#ffffff", borderRadius: "10px", padding: "24px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
                 <div style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
                   <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
-                    Section B – Microsoft Excel Basics (Part A: MCQs - 20 Marks)
+                    Section B – Microsoft Excel Basics (Part A: MCQs - 20 Marks) / एक्सेल बुनियादी ज्ञान
                   </h3>
                   <span style={{ fontSize: "12px", fontWeight: "600", color: "#0284c7" }}>10 Questions | 2 Marks Each</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {[
-                    { q: "11. Every Excel file is called a:", key: "q11", opts: ["A. Workbook", "B. Folder", "C. Document", "D. Slide"] },
-                    { q: "12. Rows are identified by:", key: "q12", opts: ["A. Letters", "B. Numbers", "C. Symbols", "D. Colors"] },
-                    { q: "13. Columns are identified by:", key: "q13", opts: ["A. Numbers", "B. Letters", "C. Symbols", "D. Dates"] },
-                    { q: "14. Which formula calculates the total?", key: "q14", opts: ["A. =COUNT()", "B. =SUM()", "C. =MAX()", "D. =AVERAGE()"] },
-                    { q: "15. Which formula calculates the average?", key: "q15", opts: ["A. =SUM()", "B. =AVERAGE()", "C. =COUNT()", "D. =MIN()"] },
-                    { q: "16. Which function returns the highest value?", key: "q16", opts: ["A. MIN", "B. COUNT", "C. MAX", "D. ROUND"] },
-                    { q: "17. Which feature arranges data alphabetically?", key: "q17", opts: ["A. Filter", "B. Sort", "C. Freeze", "D. Merge"] },
-                    { q: "18. Which feature shows only selected records?", key: "q18", opts: ["A. Freeze Panes", "B. Filter", "C. Format Painter", "D. Wrap Text"] },
-                    { q: "19. Which formula checks a condition?", key: "q19", opts: ["A. SUM", "B. IF", "C. COUNT", "D. MAX"] },
-                    { q: "20. Which formula returns today's date?", key: "q20", opts: ["A. NOW()", "B. DATE()", "C. TODAY()", "D. YEAR()"] },
+                    { q: "11. Every Excel file is called a: / हर Excel फाइल को क्या कहते हैं?", key: "q11", opts: ["A. Workbook", "B. Folder", "C. Document", "D. Slide"] },
+                    { q: "12. Rows are identified by: / पंक्तियाँ किससे पहचानी जाती हैं?", key: "q12", opts: ["A. Letters", "B. Numbers", "C. Symbols", "D. Colors"] },
+                    { q: "13. Columns are identified by: / कॉलम किससे पहचाने जाते हैं?", key: "q13", opts: ["A. Numbers", "B. Letters", "C. Symbols", "D. Dates"] },
+                    { q: "14. Which formula calculates the total? / कुल जोड़ के लिए कौन सा फॉर्मूला है?", key: "q14", opts: ["A. =COUNT()", "B. =SUM()", "C. =MAX()", "D. =AVERAGE()"] },
+                    { q: "15. Which formula calculates the average? / औसत निकालने का फॉर्मूला क्या है?", key: "q15", opts: ["A. =SUM()", "B. =AVERAGE()", "C. =COUNT()", "D. =MIN()"] },
+                    { q: "16. Which function returns the highest value? / सबसे अधिक मान देने वाला फंक्शन?", key: "q16", opts: ["A. MIN", "B. COUNT", "C. MAX", "D. ROUND"] },
+                    { q: "17. Which feature arranges data alphabetically? / डेटा को क्रम में लगाने की सुविधा?", key: "q17", opts: ["A. Filter", "B. Sort", "C. Freeze", "D. Merge"] },
+                    { q: "18. Which feature shows only selected records? / केवल चुने हुए रिकॉर्ड दिखाने की सुविधा?", key: "q18", opts: ["A. Freeze Panes", "B. Filter", "C. Format Painter", "D. Wrap Text"] },
+                    { q: "19. Which formula checks a condition? / शर्त जाँचने का फॉर्मूला क्या है?", key: "q19", opts: ["A. SUM", "B. IF", "C. COUNT", "D. MAX"] },
+                    { q: "20. Which formula returns today's date? / आज की तारीख देने वाला फॉर्मूला?", key: "q20", opts: ["A. NOW()", "B. DATE()", "C. TODAY()", "D. YEAR()"] },
                   ].map((item) => (
                     <div key={item.key} style={{ background: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
                       <div style={{ fontWeight: "600", fontSize: "14px", color: "#1e293b", marginBottom: "8px" }}>{item.q}</div>
@@ -631,7 +554,7 @@ export default function CandidateAssessmentPage() {
               <div style={{ background: "#ffffff", borderRadius: "10px", padding: "24px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
                 <div style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
                   <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
-                    Section B – Microsoft Excel Basics (Part B: Practical Excel Simulator - 20 Marks)
+                    Section B – Microsoft Excel Basics (Part B: Practical Excel Simulator - 20 Marks) / एक्सेल अभ्यास
                   </h3>
                   <span style={{ fontSize: "12px", fontWeight: "600", color: "#0284c7" }}>Interactive Table & Formula Engine</span>
                 </div>
@@ -772,7 +695,7 @@ export default function CandidateAssessmentPage() {
                 {/* Excel Formulas Inputs */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                   <div>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Total Salary Formula =SUM(...)</label>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Total Salary Formula =SUM(...) / कुल वेतन</label>
                     <input
                       type="text"
                       value={excelSumFormula}
@@ -782,7 +705,7 @@ export default function CandidateAssessmentPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Average Salary Formula =AVERAGE(...)</label>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Average Salary Formula =AVERAGE(...) / औसत वेतन</label>
                     <input
                       type="text"
                       value={excelAvgFormula}
@@ -792,7 +715,7 @@ export default function CandidateAssessmentPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Highest Salary Formula =MAX(...)</label>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Highest Salary Formula =MAX(...) / सबसे अधिक वेतन</label>
                     <input
                       type="text"
                       value={excelMaxFormula}
@@ -802,7 +725,7 @@ export default function CandidateAssessmentPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Lowest Salary Formula =MIN(...)</label>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Lowest Salary Formula =MIN(...) / सबसे कम वेतन</label>
                     <input
                       type="text"
                       value={excelMinFormula}
@@ -818,13 +741,13 @@ export default function CandidateAssessmentPage() {
               <div style={{ background: "#ffffff", borderRadius: "10px", padding: "24px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
                 <div style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
                   <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
-                    Section C – MS Word Practical Document Builder (15 Marks)
+                    Section C – MS Word Practical Document Builder (15 Marks) / MS Word अभ्यास
                   </h3>
                   <span style={{ fontSize: "12px", fontWeight: "600", color: "#0284c7" }}>Automated Document Format Inspector</span>
                 </div>
 
                 <div style={{ marginBottom: "14px" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Document Heading *</label>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Document Heading * / दस्तावेज़ का शीर्षक</label>
                   <input
                     type="text"
                     value={wordHeading}
@@ -837,11 +760,11 @@ export default function CandidateAssessmentPage() {
                 <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px", background: "#f8fafc", padding: "10px", borderRadius: "6px" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600" }}>
                     <input type="checkbox" checked={wordHeadingBold} onChange={(e) => setWordHeadingBold(e.target.checked)} />
-                    Bold Heading
+                    Bold Heading / मोटा शीर्षक
                   </label>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600" }}>
-                    Font Size:
+                    Font Size / फ़ॉन्ट आकार:
                     <select value={wordHeadingFontSize} onChange={(e) => setWordHeadingFontSize(e.target.value)} style={{ padding: "4px 8px" }}>
                       <option value="12">12 pt</option>
                       <option value="14">14 pt</option>
@@ -851,7 +774,7 @@ export default function CandidateAssessmentPage() {
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600" }}>
-                    Alignment:
+                    Alignment / संरेखन:
                     <select value={wordHeadingAlign} onChange={(e) => setWordHeadingAlign(e.target.value)} style={{ padding: "4px 8px" }}>
                       <option value="left">Left Aligned</option>
                       <option value="center">Center Aligned (Required)</option>
@@ -861,7 +784,7 @@ export default function CandidateAssessmentPage() {
 
                   <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600" }}>
                     <input type="checkbox" checked={wordPageNumbers} onChange={(e) => setWordPageNumbers(e.target.checked)} />
-                    Add Page Numbers
+                    Add Page Numbers / पेज नंबर जोड़ें
                   </label>
                 </div>
 
@@ -920,22 +843,22 @@ export default function CandidateAssessmentPage() {
               <div style={{ background: "#ffffff", borderRadius: "10px", padding: "24px", border: "1px solid #e2e8f0", marginBottom: "24px" }}>
                 <div style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
                   <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
-                    Section D – Professional Email Writing (10 Marks)
+                    Section D – Professional Email Writing (10 Marks) / व्यावसायिक ईमेल लेखन
                   </h3>
                   <span style={{ fontSize: "12px", fontWeight: "600", color: "#0284c7" }}>Automated NLP Grading Engine</span>
                 </div>
 
                 <p style={{ fontSize: "13px", color: "#64748b", marginTop: 0, marginBottom: "14px" }}>
-                  <strong>Task:</strong> Write an email to the HR Department requesting one day's leave due to a medical appointment.
+                  <strong>Task / कार्य:</strong> Write an email to the HR Department requesting one day's leave due to a medical appointment. / HR विभाग को एक दिन की छुट्टी के लिए ईमेल लिखें।
                 </p>
 
                 <div style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>To:</label>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>To: / प्रापतकर्ता:</label>
                   <input type="text" readOnly value="hr.department@liinexus.com" style={{ width: "100%", padding: "8px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "13px" }} />
                 </div>
 
                 <div style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Subject Line *</label>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Subject Line * / विषय:</label>
                   <input
                     type="text"
                     value={emailSubject}
@@ -946,7 +869,7 @@ export default function CandidateAssessmentPage() {
                 </div>
 
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Email Body *</label>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "4px" }}>Email Body * / ईमेल का मुख्य लेख:</label>
                   <textarea
                     rows={6}
                     value={emailBody}
@@ -978,77 +901,6 @@ export default function CandidateAssessmentPage() {
             </div>
           )}
         </>
-      )}
-
-      {/* --- MODE 2: HR SUBMISSIONS DASHBOARD --- */}
-      {mode === "view_submissions" && (
-        <div style={{ background: "#ffffff", borderRadius: "10px", padding: "20px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "700", color: "#0f172a", marginTop: 0, marginBottom: "16px" }}>
-            Candidate Test Paper Submissions & System Evaluation Records
-          </h2>
-
-          {loadingSubmissions ? (
-            <p style={{ color: "#64748b" }}>Loading submissions...</p>
-          ) : submissions.length === 0 ? (
-            <p style={{ color: "#94a3b8", textAlign: "center", padding: "20px" }}>No candidate test submissions recorded yet.</p>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #e2e8f0", background: "#f8fafc" }}>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Candidate Name</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Position Applied</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Department</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Time Taken</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Sec A (20M)</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Sec B MCQ (20M)</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Sec B Prac (20M)</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Sec C (15M)</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Sec D (10M)</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Total Score</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Result</th>
-                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569" }}>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {submissions.map((sub) => (
-                    <tr key={sub.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "12px", fontSize: "14px", fontWeight: "700", color: "#0f172a" }}>{sub.candidate_name}</td>
-                      <td style={{ padding: "12px", fontSize: "13px", color: "#0284c7", fontWeight: "600" }}>{sub.position_applied}</td>
-                      <td style={{ padding: "12px", fontSize: "13px", color: "#334155" }}>{sub.department}</td>
-                      <td style={{ padding: "12px", fontSize: "13px", color: "#64748b" }}>{sub.time_taken_minutes} mins</td>
-                      <td style={{ padding: "12px", fontSize: "13px", fontWeight: "600" }}>{sub.section_a_score}</td>
-                      <td style={{ padding: "12px", fontSize: "13px", fontWeight: "600" }}>{sub.section_b_mcq_score}</td>
-                      <td style={{ padding: "12px", fontSize: "13px", fontWeight: "600" }}>{sub.section_b_practical_score}</td>
-                      <td style={{ padding: "12px", fontSize: "13px", fontWeight: "600" }}>{sub.section_c_score}</td>
-                      <td style={{ padding: "12px", fontSize: "13px", fontWeight: "600" }}>{sub.section_d_score}</td>
-                      <td style={{ padding: "12px", fontSize: "15px", fontWeight: "800", color: sub.result === "PASSED" ? "#16a34a" : "#dc2626" }}>
-                        {sub.total_score} / 100
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <span
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: "12px",
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            background: sub.result === "PASSED" ? "#dcfce7" : "#fee2e2",
-                            color: sub.result === "PASSED" ? "#166534" : "#991b1b",
-                          }}
-                        >
-                          {sub.result}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px", fontSize: "12px", color: "#64748b" }}>
-                        {new Date(sub.submitted_at).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       )}
     </div>
   );

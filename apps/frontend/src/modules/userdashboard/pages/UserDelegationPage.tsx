@@ -107,6 +107,7 @@ export function UserDelegationPage() {
               <tr>
                 <th>Task Title</th>
                 <th>Assigned By</th>
+                <th>Assigned Date</th>
                 <th>Planned Date</th>
                 <th>Priority</th>
                 <th>Status</th>
@@ -118,6 +119,7 @@ export function UserDelegationPage() {
                 <tr key={d.id}>
                   <td>{d.title}</td>
                   <td>{d.assignedByName}</td>
+                  <td>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</td>
                   <td>{new Date(d.dueDate).toLocaleDateString()}</td>
                   <td><span className={`status-pill ${d.priority}`}>{d.priority}</span></td>
                   <td>

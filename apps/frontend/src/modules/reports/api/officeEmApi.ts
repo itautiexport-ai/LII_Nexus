@@ -7,6 +7,7 @@ export interface OfficeEmTaskDetail {
   baseStatus: string;
   dueDate: string;
   completedAt: string | null;
+  isNotApplicable?: boolean;
 }
 
 export interface OfficeEmModuleScore {

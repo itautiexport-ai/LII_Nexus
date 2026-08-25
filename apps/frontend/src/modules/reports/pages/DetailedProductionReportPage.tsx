@@ -11,6 +11,14 @@ export default function DetailedProductionReportPage() {
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+
+  useEffect(() => {
+    if (!showActions) return;
+    const close = () => setShowActions(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [showActions]);
 
   useEffect(() => {
     departmentsApi.list().then(setDepartments).catch(console.error);
@@ -32,6 +40,10 @@ export default function DetailedProductionReportPage() {
 
   function handleExportXlsx() {
     reportApi.downloadExport("dpr_detailed_report", "xlsx", filters, "Detailed_DPR.xlsx");
+  }
+
+  function handleExportPdf() {
+    reportApi.downloadExport("dpr_detailed_report", "pdf", filters, "Detailed_DPR.pdf");
   }
 
   // Column index map for easy lookup
@@ -93,16 +105,101 @@ export default function DetailedProductionReportPage() {
                 style={{ padding: "8px 18px", background: "#1b4332", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
                 {loading ? "Loading…" : "Run Report"}
               </button>
-              <PermissionGate permission="report.export">
-                <button onClick={handleExportXlsx}
-                  style={{ padding: "8px 16px", background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                  ⬇ Export Excel
+              <div style={{ position: "relative", display: "inline-block" }} className="no-print">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowActions(!showActions);
+                  }}
+                  style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  📥 Options <span style={{ fontSize: "10px" }}>▼</span>
                 </button>
-              </PermissionGate>
-              <button onClick={() => window.print()}
-                style={{ padding: "8px 16px", background: "#6b7280", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                🖨️ Print
-              </button>
+                
+                {showActions && (
+                  <div style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    marginTop: "6px",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                    zIndex: 100,
+                    minWidth: "160px",
+                    overflow: "hidden"
+                  }}>
+                    <PermissionGate permission="report.export">
+                      <button 
+                        onClick={() => {
+                          handleExportXlsx();
+                          setShowActions(false);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "10px 16px",
+                          textAlign: "left",
+                          background: "none",
+                          border: "none",
+                          color: "#1e293b",
+                          fontSize: "0.85rem",
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          borderBottom: "1px solid #f1f5f9"
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                      >
+                        🟢 Export Excel
+                      </button>
+                      <button 
+                        onClick={() => {
+                          handleExportPdf();
+                          setShowActions(false);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "10px 16px",
+                          textAlign: "left",
+                          background: "none",
+                          border: "none",
+                          color: "#1e293b",
+                          fontSize: "0.85rem",
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          borderBottom: "1px solid #f1f5f9"
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                      >
+                        🔴 Export PDF
+                      </button>
+                    </PermissionGate>
+                    <button 
+                      onClick={() => {
+                        window.print();
+                        setShowActions(false);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px 16px",
+                        textAlign: "left",
+                        background: "none",
+                        border: "none",
+                        color: "#1e293b",
+                        fontSize: "0.85rem",
+                        fontWeight: 500,
+                        cursor: "pointer"
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                    >
+                      🖨️ Print / PDF
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

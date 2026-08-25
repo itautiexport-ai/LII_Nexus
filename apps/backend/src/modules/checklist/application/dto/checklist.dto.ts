@@ -10,7 +10,6 @@ export const CreateStandaloneChecklistSchema = z.object({
   makeNoteMandatory: z.boolean().default(false),
   mode: z.string().min(1, "Mode is required"),
   frequency: z.string().min(1, "Frequency is required"),
-  whenRule: z.string().optional(),
   remindBeforeDays: z.number().int().min(0).default(0),
   skipOnHolidays: z.boolean().default(false),
 });

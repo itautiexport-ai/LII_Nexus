@@ -148,7 +148,8 @@ export const SECTIONS: NavSection[] = [
     label: "Finishing",
     allowedRoles: ["System Admin", "Finishing Access"],
     items: [
-      { label: "Finishing Recipe", to: "/admin/finishing-recipe" }
+      { label: "Finishing Recipe Form", to: "/admin/finishing-recipe" },
+      { label: "Finishing Recipe List", to: "/admin/finishing-recipe-list" }
     ],
   },
   {
@@ -247,6 +248,7 @@ export const SECTIONS: NavSection[] = [
           { label: "Job Requisitions", to: "/admin/hr/recruitment-induction/jobs" },
           { label: "Job Requisition List", to: "/admin/hr/recruitment-induction/job-list" },
           { label: "Online Assessment Test", to: "/admin/hr/recruitment-induction/assessment" },
+          { label: "Assessment Result", to: "/admin/hr/recruitment-induction/assessment-results" },
           { label: "Employee Induction Completion Form", to: "/admin/hr/recruitment-induction/induction-completion" },
           { label: "Employee Induction Completion Form List", to: "/admin/hr/recruitment-induction/induction-completion-list" },
           { label: "Employee Asset Management", to: "/admin/hr/recruitment-induction/employee-assets" },
@@ -863,5 +865,30 @@ const SIDEBAR_STYLES = `
       margin-top: 52px;
       height: calc(100vh - 52px);
     }
+  }
+
+  /* Professional Darker Table Styles */
+  table {
+    border-collapse: collapse !important;
+  }
+  table th, table td {
+    border: 1px solid #94a3b8 !important; /* Professional Slate border color */
+    padding: 12px 14px !important;
+  }
+  table th {
+    background-color: #e2e8f0 !important; /* Slightly darker slate header */
+    color: #0f172a !important; /* Bold text color */
+    font-weight: 700 !important;
+  }
+  table tr:hover td {
+    background-color: #f1f5f9 !important; /* Hover highlight row */
+  }
+  
+  /* Additional UI tweaks for professional look */
+  .table-pagination-controls, .table-filter-bar {
+    border: 1px solid #94a3b8 !important;
+  }
+  .table-search-input, .table-column-filter, .table-page-size-select, .table-filter-reset-btn {
+    border: 1px solid #94a3b8 !important;
   }
 `;

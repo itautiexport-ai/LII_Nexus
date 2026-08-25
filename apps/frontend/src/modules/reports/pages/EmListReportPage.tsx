@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { officeEmApi, OfficeEmReport } from "../api/officeEmApi";
+import * as XLSX from "xlsx";
 
 function getCurrentWeekString() {
   const d = new Date();
@@ -14,6 +15,14 @@ export default function EmListReportPage() {
   const [period, setPeriod] = useState(getCurrentWeekString);
   const [reports, setReports] = useState<OfficeEmReport[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+
+  useEffect(() => {
+    if (!showActions) return;
+    const close = () => setShowActions(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [showActions]);
 
   useEffect(() => {
     setLoading(true);
@@ -23,11 +32,30 @@ export default function EmListReportPage() {
       .finally(() => setLoading(false));
   }, [period]);
 
+  const exportToExcel = () => {
+    const dataToExport = reports.map(r => ({
+      "Employee Name": r.employeeName,
+      "FMS Score": r.modules.fms.isActive ? r.modules.fms.gapScore.toFixed(1) : "N/A",
+      "Checklist Score": r.modules.checklist.isActive ? r.modules.checklist.gapScore.toFixed(1) : "N/A",
+      "Delegation Score": r.modules.delegation.isActive ? r.modules.delegation.gapScore.toFixed(1) : "N/A",
+      "Final Gap Score": r.finalGapScore !== null && r.finalGapScore !== undefined ? r.finalGapScore.toFixed(1) : "Pending"
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "EM List Gap Scores");
+    XLSX.writeFile(wb, `EM_List_Gap_Scores_${period}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div style={{ padding: "24px 32px", fontFamily: "'Inter', sans-serif", backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       <h1 style={{ fontSize: "24px", marginBottom: "24px", color: "#0f172a", fontWeight: 600 }}>EM List (Gap Scores)</h1>
 
-      <div style={{ display: "flex", gap: "16px", marginBottom: "32px" }}>
+      <div className="no-print" style={{ display: "flex", gap: "12px", marginBottom: "32px", alignItems: "center" }}>
         <input 
           type="week" 
           className="professional-select" 
@@ -35,6 +63,53 @@ export default function EmListReportPage() {
           onChange={e => setPeriod(e.target.value)} 
           style={{ width: "200px" }}
         />
+        
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowActions(!showActions);
+            }} 
+            className="export-btn dropdown-trigger-btn"
+          >
+            📥 Export / Print Option <span style={{ fontSize: "10px", marginLeft: "4px" }}>▼</span>
+          </button>
+          
+          {showActions && (
+            <div style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              marginTop: "6px",
+              background: "#ffffff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "8px",
+              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+              zIndex: 100,
+              minWidth: "180px",
+              overflow: "hidden"
+            }}>
+              <button 
+                onClick={() => {
+                  exportToExcel();
+                  setShowActions(false);
+                }}
+                className="dropdown-menu-item"
+              >
+                🟢 Export to Excel
+              </button>
+              <button 
+                onClick={() => {
+                  handlePrint();
+                  setShowActions(false);
+                }}
+                className="dropdown-menu-item"
+              >
+                🖨️ Print / PDF
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {loading && <p style={{ color: "#64748b" }}>Loading EM List...</p>}
@@ -115,6 +190,47 @@ export default function EmListReportPage() {
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+        .export-btn {
+          padding: 10px 16px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          background: #10b981;
+          color: #ffffff;
+          font-size: 0.95rem;
+          font-weight: 600;
+          cursor: pointer;
+          outline: none;
+          transition: background-color 0.2s;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .export-btn:hover {
+          background: #059669;
+        }
+        .dropdown-trigger-btn {
+          background: #2563eb;
+        }
+        .dropdown-trigger-btn:hover {
+          background: #1d4ed8;
+        }
+        .dropdown-menu-item {
+          width: 100%;
+          padding: 12px 16px;
+          text-align: left;
+          background: none;
+          border: none;
+          color: #1e293b;
+          font-size: 0.9rem;
+          font-weight: 500;
+          cursor: pointer;
+          display: block;
+          transition: background-color 0.15s ease;
+        }
+        .dropdown-menu-item:hover {
+          background-color: #f1f5f9;
+        }
+        .dropdown-menu-item:first-of-type {
+          border-bottom: 1px solid #f1f5f9;
+        }
         .report-container {
           background: #ffffff;
           color: #0f172a;
@@ -169,6 +285,20 @@ export default function EmListReportPage() {
           font-size: 0.8rem;
           color: #64748b;
           font-weight: 500;
+        }
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          body {
+            background: #ffffff !important;
+            padding: 0 !important;
+          }
+          .report-container {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+          }
         }
       `}</style>
     </div>
