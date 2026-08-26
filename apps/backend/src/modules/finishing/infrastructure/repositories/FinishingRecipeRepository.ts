@@ -23,8 +23,8 @@ export interface FinishingRecipeRecord {
   gloss_level: string | null;
   wood_type: string | null;
   swatch_image?: string | null;
-  created_by: string;
-  user_name?: string;
+  created_by: string | null;
+  user_name?: string | null;
   created_at: Date;
   steps?: RecipeStepRecord[];
 }
@@ -34,7 +34,7 @@ export class FinishingRecipeRepository {
     const [rows] = await pool.query(
       `SELECT fr.*, u.full_name as user_name 
        FROM finishing_recipes fr 
-       JOIN users u ON fr.created_by = u.id 
+       LEFT JOIN users u ON fr.created_by = u.id
        ORDER BY fr.created_at DESC`
     );
     return rows as FinishingRecipeRecord[];
@@ -44,7 +44,7 @@ export class FinishingRecipeRepository {
     const [recipes] = await pool.query(
       `SELECT fr.*, u.full_name as user_name 
        FROM finishing_recipes fr 
-       JOIN users u ON fr.created_by = u.id 
+       LEFT JOIN users u ON fr.created_by = u.id
        WHERE fr.id = ?`,
       [id]
     );
