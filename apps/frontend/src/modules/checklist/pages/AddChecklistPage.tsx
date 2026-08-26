@@ -28,7 +28,6 @@ export function AddChecklistPage() {
     makeNoteMandatory: false,
     mode: "Online",
     frequency: "Daily",
-    whenRule: "",
     remindBeforeDays: 0,
     skipOnHolidays: false,
   });
@@ -74,44 +73,12 @@ export function AddChecklistPage() {
       selectedQuarterMonth,
       selectedYearMonth
     );
-    const whenStr = buildWhenRuleString(
-      formData.frequency,
-      selectedDaysOfWeek,
-      selectedDayOfMonth,
-      selectedQuarterMonth,
-      selectedYearMonth
-    );
     setFormData(prev => ({
       ...prev,
-      plannedDate: calculatedDate,
-      whenRule: whenStr
+      plannedDate: calculatedDate
     }));
   }, [formData.frequency, selectedDaysOfWeek, selectedDayOfMonth, selectedQuarterMonth, selectedYearMonth]);
 
-  const buildWhenRuleString = (
-    freq: string,
-    daysWeek: number[],
-    dayMonth: number,
-    qMonth: number = 1,
-    yMonth: number = 0
-  ) => {
-    if (freq === "Daily") return "Daily execution";
-    if (freq === "Weekly" || freq === "Alternate") {
-      const names = daysWeek.map(d => DAYS_OF_WEEK.find(dw => dw.value === d)?.label).filter(Boolean);
-      return names.length > 0 ? `Every ${names.join(", ")}` : "Select days";
-    }
-    if (freq === "Monthly") {
-      return `Day ${dayMonth} of every month`;
-    }
-    if (freq === "Quarterly") {
-      const ord = qMonth === 1 ? "1st" : qMonth === 2 ? "2nd" : "3rd";
-      return `Quarterly - ${ord} Month of Quarter, Day ${dayMonth}`;
-    }
-    if (freq === "Yearly") {
-      return `Yearly - ${MONTHS_OF_YEAR[yMonth]} ${dayMonth}`;
-    }
-    return "";
-  };
 
   const calculateNextPlannedDate = (
     freq: string,
@@ -205,7 +172,6 @@ export function AddChecklistPage() {
         makeNoteMandatory: false,
         mode: "Online",
         frequency: "Daily",
-        whenRule: "Daily execution",
         remindBeforeDays: 0,
         skipOnHolidays: false,
       });
@@ -308,7 +274,7 @@ export function AddChecklistPage() {
                       );
                     })}
                   </div>
-                  <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                  
                 </div>
               )}
 
@@ -337,7 +303,7 @@ export function AddChecklistPage() {
                         <option key={day} value={day}>Day {day}</option>
                       ))}
                     </select>
-                    <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                    
                   </div>
                 </>
               )}
@@ -367,7 +333,7 @@ export function AddChecklistPage() {
                         <option key={day} value={day}>Day {day}</option>
                       ))}
                     </select>
-                    <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                    
                   </div>
                 </>
               )}
@@ -384,7 +350,7 @@ export function AddChecklistPage() {
                       <option key={day} value={day}>Day {day}</option>
                     ))}
                   </select>
-                  <span style={{ fontSize: 12, color: "#2563eb", marginTop: 4, fontWeight: 600 }}>Rule: {formData.whenRule}</span>
+                  
                 </div>
               )}
 

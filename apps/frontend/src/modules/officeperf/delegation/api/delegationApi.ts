@@ -26,6 +26,7 @@ export interface DelegatedTaskRecord {
   extensionRequestedDate: string | null;
   extensionRejectionReason: string | null;
   files: DelegatedTaskFileRecord[];
+  createdAt?: string;
 }
 
 function computeDisplayStatus(t: Pick<DelegatedTaskRecord, "baseStatus" | "dueDate">): DelegationDisplayStatus {

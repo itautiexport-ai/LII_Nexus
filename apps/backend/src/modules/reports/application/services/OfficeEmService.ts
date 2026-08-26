@@ -7,6 +7,7 @@ export interface OfficeEmTaskDetail {
   baseStatus: string;
   dueDate: string;
   completedAt: string | null;
+  isNotApplicable?: boolean;
 }
 
 export interface OfficeEmModuleScore {
@@ -144,7 +145,9 @@ export class OfficeEmService {
         if (isCompleted) {
           completedPoints += points;
           let compTime = new Date(t.completed_at || t.due_date).getTime(); // fallback
-          if (compTime <= dueTime) {
+          if (t.isNotApplicable) {
+            onTimePoints += points;
+          } else if (compTime <= dueTime) {
             onTimePoints += points;
           }
         }
@@ -166,7 +169,8 @@ export class OfficeEmService {
         priority: t.priority,
         baseStatus: t.base_status,
         dueDate: t.due_date,
-        completedAt: t.completed_at || null
+        completedAt: t.completed_at || null,
+        isNotApplicable: t.isNotApplicable
       }));
 
       return {
@@ -313,7 +317,8 @@ export class OfficeEmService {
         priority: "medium",
         due_date: due,
         base_status,
-        completed_at: fis.completed_at
+        completed_at: fis.completed_at,
+        isNotApplicable: fis.base_status === "Skipped"
       };
     });
 
@@ -433,6 +438,27 @@ export class OfficeEmService {
                       (delegationScore.gapScore * (delegationRedistributedWeight / 100)) +
                       (hodGapScore * (hodRedistributedWeight / 100)) +
                       (hrGapScore * (hrRedistributedWeight / 100));
+
+      // Calculate total late tasks across active modules
+      const countLateTasks = (moduleScore: OfficeEmModuleScore): number => {
+        let count = 0;
+        moduleScore.tasks.forEach(t => {
+          if (t.baseStatus === "completed" || t.baseStatus === "verified") {
+            if (t.isNotApplicable) return;
+            const compTime = new Date(t.completedAt || t.dueDate).getTime();
+            const dueTime = new Date(t.dueDate).getTime();
+            if (compTime > dueTime) {
+              count++;
+            }
+          }
+        });
+        return count;
+      };
+
+      const totalLateTasks = countLateTasks(fmsScore) + countLateTasks(checklistScore) + countLateTasks(delegationScore);
+      
+      // Deduct 20 points per late completed task, clamping at -100
+      finalGapScore = Math.max(-100, finalGapScore - (totalLateTasks * 20));
       
       finalGapScore = parseFloat(finalGapScore.toFixed(1));
     }

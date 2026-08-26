@@ -6,6 +6,7 @@ export default function VisitorEntryHistoryPage() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecords();
@@ -125,6 +126,7 @@ export default function VisitorEntryHistoryPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #e2e8f0", background: "#f8fafc" }}>
+                  <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Photo</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Visitor Name</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Phone</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Company</th>
@@ -139,13 +141,32 @@ export default function VisitorEntryHistoryPage() {
               <tbody>
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: "28px", fontStyle: "italic", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+                    <td colSpan={10} style={{ padding: "28px", fontStyle: "italic", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
                       No visitor entry records found.
                     </td>
                   </tr>
                 ) : (
                   filteredRecords.map((r) => (
                     <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px 12px" }}>
+                        {r.image_url ? (
+                          <img 
+                            src={r.image_url} 
+                            alt="Visitor" 
+                            onClick={() => setSelectedPhoto(r.image_url)}
+                            style={{ 
+                              width: "40px", 
+                              height: "40px", 
+                              objectFit: "cover", 
+                              borderRadius: "6px", 
+                              cursor: "pointer", 
+                              border: "1px solid #cbd5e1" 
+                            }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: "12px", color: "#94a3b8" }}>No Photo</span>
+                        )}
+                      </td>
                       <td style={{ padding: "10px 12px", fontWeight: "600", fontSize: "14px", color: "#0f172a" }}>{r.visitor_name}</td>
                       <td style={{ padding: "10px 12px", fontSize: "14px", color: "#334155" }}>{r.phone || "-"}</td>
                       <td style={{ padding: "10px 12px", fontSize: "14px", color: "#334155" }}>{r.company_name || "-"}</td>
@@ -211,6 +232,34 @@ export default function VisitorEntryHistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Modal for full photo view */}
+      {selectedPhoto && (
+        <div 
+          onClick={() => setSelectedPhoto(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.65)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            cursor: "pointer"
+          }}
+        >
+          <div style={{ position: "relative", maxWidth: "90%", maxHeight: "90%" }}>
+            <img 
+              src={selectedPhoto} 
+              alt="Visitor Full" 
+              style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: "8px", border: "4px solid #fff", boxShadow: "0 10px 25px rgba(0,0,0,0.35)" }} 
+            />
+            <div style={{ position: "absolute", top: "-30px", right: "0", color: "#fff", fontWeight: "bold", fontSize: "14px" }}>
+              Click anywhere to close
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

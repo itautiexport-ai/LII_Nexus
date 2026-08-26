@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS finishing_recipes (
+  id CHAR(36) PRIMARY KEY,
+  item_code VARCHAR(255) NOT NULL,
+  finish_code VARCHAR(255) NOT NULL,
+  item_description VARCHAR(255) NULL,
+  created_on DATE NOT NULL,
+  buyer_code VARCHAR(255) NULL,
+  gloss_level VARCHAR(255) NULL,
+  wood_type VARCHAR(255) NULL,
+  created_by CHAR(36) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS finishing_recipe_steps (
+  id CHAR(36) PRIMARY KEY,
+  recipe_id CHAR(36) NOT NULL,
+  step_no INT NOT NULL,
+  process_material VARCHAR(255) NULL,
+  tool_machine VARCHAR(255) NULL,
+  grit_quantity VARCHAR(255) NULL,
+  drying_time VARCHAR(255) NULL,
+  notes TEXT NULL,
+  no_of_coats VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (recipe_id) REFERENCES finishing_recipes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

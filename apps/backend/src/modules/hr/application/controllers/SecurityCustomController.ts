@@ -58,7 +58,7 @@ export class SecurityCustomController {
 
   static async createVisitorEntry(req: Request, res: Response) {
     try {
-      const { visitorName, phone, companyName, personToMeet, purpose } = req.body;
+      const { visitorName, phone, companyName, personToMeet, purpose, imageUrl, photoCapturedAt } = req.body;
       if (!visitorName) {
         return res.status(400).json({ success: false, error: "Visitor name is required." });
       }
@@ -68,6 +68,8 @@ export class SecurityCustomController {
         companyName,
         personToMeet,
         purpose,
+        imageUrl,
+        photoCapturedAt,
       });
       res.status(201).json({ success: true, data: record });
     } catch (err: any) {

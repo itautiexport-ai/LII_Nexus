@@ -26,7 +26,6 @@ export class StandaloneChecklistService {
       makeNoteMandatory: dto.makeNoteMandatory,
       mode: dto.mode,
       frequency: dto.frequency,
-      whenRule: dto.whenRule || "",
       remindBeforeDays: dto.remindBeforeDays,
       skipOnHolidays: dto.skipOnHolidays,
       createdAt: now,
@@ -37,8 +36,8 @@ export class StandaloneChecklistService {
       `INSERT INTO standalone_checklists (
         id, assigned_by, task_name, assign_to, planned_date, priority,
         make_attachment_mandatory, make_note_mandatory, mode, frequency,
-        when_rule, remind_before_days, skip_on_holidays, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        remind_before_days, skip_on_holidays, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         checklist.id,
         checklist.assignedBy,
@@ -50,7 +49,6 @@ export class StandaloneChecklistService {
         checklist.makeNoteMandatory,
         checklist.mode,
         checklist.frequency,
-        checklist.whenRule,
         checklist.remindBeforeDays,
         checklist.skipOnHolidays,
         checklist.createdAt,
@@ -108,7 +106,6 @@ export class StandaloneChecklistService {
       makeNoteMandatory: !!row.make_note_mandatory,
       mode: row.mode,
       frequency: row.frequency,
-      whenRule: row.when_rule || "",
       remindBeforeDays: row.remind_before_days,
       skipOnHolidays: !!row.skip_on_holidays,
       createdAt: row.created_at,
@@ -192,7 +189,8 @@ export class StandaloneChecklistService {
         e1.full_name as assigner_name
        FROM standalone_checklists c
        LEFT JOIN employees e1 ON e1.id = c.assigned_by
-       WHERE c.assign_to = ? AND c.deleted_at IS NULL`,
+       WHERE c.assign_to = ? AND c.deleted_at IS NULL
+       ORDER BY c.created_at DESC`,
       [employeeId]
     );
 
@@ -210,7 +208,6 @@ export class StandaloneChecklistService {
       makeNoteMandatory: !!row.make_note_mandatory,
       mode: row.mode,
       frequency: row.frequency,
-      whenRule: row.when_rule || "",
       remindBeforeDays: row.remind_before_days,
       skipOnHolidays: !!row.skip_on_holidays,
       createdAt: row.created_at,

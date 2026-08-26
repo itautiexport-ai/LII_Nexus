@@ -13,6 +13,14 @@ export default function DailyProductionReportPage() {
   });
   const [result, setResult] = useState<ReportResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+
+  useEffect(() => {
+    if (!showActions) return;
+    const close = () => setShowActions(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [showActions]);
 
   async function loadReport() {
     setLoading(true);
@@ -44,6 +52,10 @@ export default function DailyProductionReportPage() {
 
   function handleExportXlsx() {
     reportApi.downloadExport("daily_production_report", "xlsx", filters, "Daily_Production_Report.xlsx");
+  }
+
+  function handleExportPdf() {
+    reportApi.downloadExport("daily_production_report", "pdf", filters, "Daily_Production_Report.pdf");
   }
 
   return (
@@ -81,20 +93,101 @@ export default function DailyProductionReportPage() {
             {loading ? "Loading..." : "Run Report"}
           </button>
           
-          <PermissionGate permission="report.export">
+          <div style={{ position: "relative", display: "inline-block" }} className="no-print">
             <button 
-              onClick={handleExportXlsx}
-              style={{ padding: "8px 16px", background: "#10b981", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActions(!showActions);
+              }}
+              style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
             >
-              ⬇ Export Excel
+              📥 Options <span style={{ fontSize: "10px" }}>▼</span>
             </button>
-          </PermissionGate>
-          <button 
-            onClick={() => window.print()}
-            style={{ padding: "8px 16px", background: "#6b7280", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
-          >
-            🖨️ Print
-          </button>
+            
+            {showActions && (
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                right: 0,
+                marginTop: "6px",
+                background: "#ffffff",
+                border: "1px solid #cbd5e1",
+                borderRadius: "8px",
+                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                zIndex: 100,
+                minWidth: "160px",
+                overflow: "hidden"
+              }}>
+                <PermissionGate permission="report.export">
+                  <button 
+                    onClick={() => {
+                      handleExportXlsx();
+                      setShowActions(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      color: "#1e293b",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f1f5f9"
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    🟢 Export Excel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handleExportPdf();
+                      setShowActions(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      color: "#1e293b",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f1f5f9"
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    🔴 Export PDF
+                  </button>
+                </PermissionGate>
+                <button 
+                  onClick={() => {
+                    window.print();
+                    setShowActions(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 16px",
+                    textAlign: "left",
+                    background: "none",
+                    border: "none",
+                    color: "#1e293b",
+                    fontSize: "0.85rem",
+                    fontWeight: 500,
+                    cursor: "pointer"
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  🖨️ Print / PDF
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <h1 style={{ fontSize: 24, margin: 0, marginBottom: 16, color: "#111827", display: "none" }} className="print-only" >Daily Production Report ({filters.dateFrom} to {filters.dateTo})</h1>

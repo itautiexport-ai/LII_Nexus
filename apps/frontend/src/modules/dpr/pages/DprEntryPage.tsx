@@ -36,20 +36,20 @@ export default function DprEntryPage() {
     factoryDepartmentId: "",
     supervisorId: "",
     hodId: "",
-    totalTarget: 0,
+    totalTarget: "" as string | number,
     uom: "Pcs",
     totalAchievement: 0,
     totalRework: 0,
   });
 
-  const [items, setItems] = useState<DprItemRecord[]>([
-    { aliasName: "", productCode: "", woodType: "", orderQty: 0, okQty: 0, reworkQty: 0, uom: "Pcs", qtyAsPerUom: null }
+  const [items, setItems] = useState<any[]>([
+    { aliasName: "", productCode: "", woodType: "", orderQty: "", okQty: "", reworkQty: "", uom: "Pcs", qtyAsPerUom: null }
   ]);
 
   const [manpower, setManpower] = useState({
-    totalOperator: 0,
-    totalHelper: 0,
-    totalContractor: 0,
+    totalOperator: "" as string | number,
+    totalHelper: "" as string | number,
+    totalContractor: "" as string | number,
     manpowerDepartmentId: "",
   });
 
@@ -129,7 +129,7 @@ export default function DprEntryPage() {
   const addItemRow = () => {
     setItems([
       ...items,
-      { aliasName: "", productCode: "", woodType: "", orderQty: 0, okQty: 0, reworkQty: 0, uom: header.uom, qtyAsPerUom: null }
+      { aliasName: "", productCode: "", woodType: "", orderQty: "", okQty: "", reworkQty: "", uom: header.uom, qtyAsPerUom: null }
     ]);
   };
 
@@ -260,17 +260,17 @@ export default function DprEntryPage() {
         aliasName: "",
         productCode: "",
         woodType: "",
-        orderQty: 0,
-        okQty: 0,
-        reworkQty: 0,
+        orderQty: "",
+        okQty: "",
+        reworkQty: "",
         uom: header.uom,
         qtyAsPerUom: null,
       }]);
 
       setManpower({
-        totalOperator: 0,
-        totalHelper: 0,
-        totalContractor: 0,
+        totalOperator: "",
+        totalHelper: "",
+        totalContractor: "",
         manpowerDepartmentId: "",
       });
 
@@ -280,7 +280,7 @@ export default function DprEntryPage() {
         shiftId: "",
         supervisorId: "",
         hodId: "",
-        totalTarget: 0,
+        totalTarget: "",
         totalAchievement: 0,
         totalRework: 0,
       }));
@@ -493,7 +493,7 @@ export default function DprEntryPage() {
                     type="number"
                     className="dpr-input"
                     value={header.totalTarget}
-                    onChange={(e) => setHeader({ ...header, totalTarget: Number(e.target.value) || 0 })}
+                    onChange={(e) => setHeader({ ...header, totalTarget: e.target.value === "" ? "" : (Number(e.target.value) || 0) })}
                   />
                 </div>
 
@@ -623,7 +623,7 @@ export default function DprEntryPage() {
                           type="number"
                           className="dpr-input"
                           value={item.orderQty}
-                          onChange={(e) => updateItemRow(index, "orderQty", Number(e.target.value) || 0)}
+                          onChange={(e) => updateItemRow(index, "orderQty", e.target.value === "" ? "" : (Number(e.target.value) || 0))}
                         />
                       </div>
                       <div>
@@ -632,7 +632,7 @@ export default function DprEntryPage() {
                           type="number"
                           className="dpr-input"
                           value={item.okQty}
-                          onChange={(e) => updateItemRow(index, "okQty", Number(e.target.value) || 0)}
+                          onChange={(e) => updateItemRow(index, "okQty", e.target.value === "" ? "" : (Number(e.target.value) || 0))}
                         />
                       </div>
                       <div>
@@ -663,7 +663,7 @@ export default function DprEntryPage() {
                           type="number"
                           className="dpr-input"
                           value={item.reworkQty}
-                          onChange={(e) => updateItemRow(index, "reworkQty", Number(e.target.value) || 0)}
+                          onChange={(e) => updateItemRow(index, "reworkQty", e.target.value === "" ? "" : (Number(e.target.value) || 0))}
                         />
                       </div>
                     </div>
@@ -697,7 +697,7 @@ export default function DprEntryPage() {
                     type="number"
                     className="dpr-input"
                     value={manpower.totalOperator}
-                    onChange={(e) => setManpower({ ...manpower, totalOperator: Number(e.target.value) || 0 })}
+                    onChange={(e) => setManpower({ ...manpower, totalOperator: e.target.value === "" ? "" : (Number(e.target.value) || 0) })}
                   />
                 </div>
                 <div>
@@ -706,7 +706,7 @@ export default function DprEntryPage() {
                     type="number"
                     className="dpr-input"
                     value={manpower.totalHelper}
-                    onChange={(e) => setManpower({ ...manpower, totalHelper: Number(e.target.value) || 0 })}
+                    onChange={(e) => setManpower({ ...manpower, totalHelper: e.target.value === "" ? "" : (Number(e.target.value) || 0) })}
                   />
                 </div>
                 <div>
@@ -715,7 +715,7 @@ export default function DprEntryPage() {
                     type="number"
                     className="dpr-input"
                     value={manpower.totalContractor}
-                    onChange={(e) => setManpower({ ...manpower, totalContractor: Number(e.target.value) || 0 })}
+                    onChange={(e) => setManpower({ ...manpower, totalContractor: e.target.value === "" ? "" : (Number(e.target.value) || 0) })}
                   />
                 </div>
                 <div>
@@ -764,6 +764,16 @@ const containerStyle: React.CSSProperties = {
 };
 
 const PAGE_STYLES = `
+  /* Hide spinner arrows for number inputs */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+
   .dpr-header {
     display: flex;
     justify-content: space-between;

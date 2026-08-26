@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { FinishingRecipePage } from "../../modules/finishing/pages/FinishingRecipePage";
+import FinishingRecipeListPage from "../../modules/finishing/pages/FinishingRecipeListPage";
 import AttendanceCalculatorPage from "../../modules/hr/pages/AttendanceCalculatorPage";
 import AnnualTrainingPlannerPage from "../../modules/hr/pages/AnnualTrainingPlannerPage";
 import DelegationHubPage from "../../modules/officeperf/delegation/pages/DelegationHubPage";
@@ -156,6 +157,7 @@ import DriverRoutePlanningPage from "../../modules/hr/pages/DriverRoutePlanningP
 import RecruitmentInductionPage from "../../modules/hr/pages/RecruitmentInductionPage";
 import JobRequisitionListPage from "../../modules/hr/pages/JobRequisitionListPage";
 import CandidateAssessmentPage from "../../modules/hr/pages/CandidateAssessmentPage";
+import AssessmentResultListPage from "../../modules/hr/pages/AssessmentResultListPage";
 import EmployeeInductionCompletionPage from "../../modules/hr/pages/EmployeeInductionCompletionPage";
 import EmployeeInductionCompletionListPage from "../../modules/hr/pages/EmployeeInductionCompletionListPage";
 import EmployeeAssetManagementPage from "../../modules/hr/pages/EmployeeAssetManagementPage";
@@ -198,6 +200,7 @@ export default function AppRouter() {
           <Route path="formats-library" element={<FormatsLibraryPage />} />
           <Route path="modules/:moduleKey" element={<ModuleLandingPage />} />
           <Route path="finishing-recipe" element={<FinishingRecipePage />} />
+          <Route path="finishing-recipe-list" element={<FinishingRecipeListPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="permissions" element={<PermissionsPage />} />
           <Route path="whatsapp" element={<WhatsAppIntegrationPage />} />
@@ -354,6 +357,7 @@ export default function AppRouter() {
           <Route path="hr/recruitment-induction/job-list" element={<JobRequisitionListPage />} />
           <Route path="hr/recruitment-induction/candidates" element={<RecruitmentInductionPage />} />
           <Route path="hr/recruitment-induction/assessment" element={<CandidateAssessmentPage />} />
+          <Route path="hr/recruitment-induction/assessment-results" element={<AssessmentResultListPage />} />
           <Route path="hr/recruitment-induction/induction-completion" element={<EmployeeInductionCompletionPage />} />
           <Route path="hr/recruitment-induction/induction-completion-list" element={<EmployeeInductionCompletionListPage />} />
           <Route path="hr/recruitment-induction/employee-assets" element={<EmployeeAssetManagementPage />} />

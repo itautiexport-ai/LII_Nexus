@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { misScoreApi, MisScoreReport } from "../api/misScoreApi";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import * as XLSX from "xlsx";
 
 export default function AppraisalIndexPage() {
   const [reports, setReports] = useState<MisScoreReport[]>([]);
@@ -16,6 +17,14 @@ export default function AppraisalIndexPage() {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDept, setSelectedDept] = useState("");
   const [selectedRating, setSelectedRating] = useState("");
+  const [showActions, setShowActions] = useState(false);
+
+  useEffect(() => {
+    if (!showActions) return;
+    const close = () => setShowActions(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [showActions]);
 
   useEffect(() => {
     fetchData();
@@ -58,6 +67,36 @@ export default function AppraisalIndexPage() {
       ...prev,
       [empId]: val
     }));
+  };
+
+  const handleExportExcel = () => {
+    if (filteredReports.length === 0) return;
+    const wsData = filteredReports.map(r => {
+      const emp = employees.find(e => e.userId === r.employeeId || e.fullName === r.employeeName);
+      const currentSalary = salaries[r.employeeId] || 25000;
+      const incrementPercent = r.incrementMultiplier * 8;
+      const incrementAmt = currentSalary * (incrementPercent / 100);
+      const newSalary = currentSalary + incrementAmt;
+      return {
+        "Employee": r.employeeName,
+        "Employee Code": emp?.employeeCode || "—",
+        "Department": emp?.departmentName || "—",
+        "Final Score": r.finalScore,
+        "Rating": r.rating,
+        "Increment (%)": `${incrementPercent.toFixed(1)}%`,
+        "Gross Salary (₹)": currentSalary,
+        "Increment Amt (₹)": incrementAmt,
+        "Proposed Salary (₹)": newSalary
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Appraisal Index");
+    XLSX.writeFile(wb, `Appraisal_Index_${startMonth}_to_${endMonth}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const departments = Array.from(new Set(employees.map(e => e.departmentName).filter((name): name is string => !!name)));
@@ -138,6 +177,21 @@ export default function AppraisalIndexPage() {
           input[type=number] {
             -moz-appearance: textfield;
           }
+          @media print {
+            .no-print {
+              display: none !important;
+            }
+            body {
+              background: #ffffff !important;
+              padding: 0 !important;
+            }
+            input[type=number] {
+              border: none !important;
+              background: transparent !important;
+              padding: 0 !important;
+              pointer-events: none !important;
+            }
+          }
         `}
       </style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -168,6 +222,79 @@ export default function AppraisalIndexPage() {
               style={inputStyle}
             />
           </div>
+          {filteredReports.length > 0 && (
+            <div className="no-print" style={{ position: "relative", display: "inline-block", marginLeft: "8px" }}>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowActions(!showActions);
+                }}
+                style={{ padding: "8px 12px", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "4px" }}
+              >
+                📥 Options <span style={{ fontSize: "10px" }}>▼</span>
+              </button>
+              
+              {showActions && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: "6px",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                  zIndex: 100,
+                  minWidth: "160px",
+                  overflow: "hidden"
+                }}>
+                  <button 
+                    onClick={() => {
+                      handleExportExcel();
+                      setShowActions(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      color: "#1e293b",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f1f5f9"
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    🟢 Export Excel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handlePrint();
+                      setShowActions(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      color: "#1e293b",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: "pointer"
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    🖨️ Print / PDF
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

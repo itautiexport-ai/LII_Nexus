@@ -37,7 +37,7 @@ export default function FormatsLibraryPage() {
 
     if (type === "checklist") {
       filename = "Checklist_Upload_Format.csv";
-      csvContent = "Task Name,Assign By,Assign To,Frequency,Schedule Rule,Priority,Mode,Remind Before Days\nSample Task 1,Admin,Employee 1,Daily,Daily execution,High,Online,0\nSample Task 2,Manager,Employee 2,Weekly,Every Tue Thu Sat,Medium,Online,1";
+      csvContent = "Task Name,Assign By,Assign To,Frequency,Priority,Mode,Remind Before Days\nSample Task 1,Admin,Employee 1,Daily,High,Online,0\nSample Task 2,Manager,Employee 2,Weekly,Medium,Online,1";
     } else if (type === "delegation") {
       filename = "Delegation_Upload_Format.csv";
       csvContent = "Task Name,Delegated By,Delegated To,Planned Date,Priority,Task Category,Notes\nProject Review,Manager,Employee 1,2026-08-20,High,Review,Please complete by EOD\nAudit Task,Admin,Employee 2,2026-08-25,Medium,Audit,Internal review format";

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
 import { misScoreApi, MisScoreReport } from "../api/misScoreApi"; 
+import * as XLSX from "xlsx";
 
 export default function MisScoreReportPage() {
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
@@ -9,6 +10,14 @@ export default function MisScoreReportPage() {
   const [loading, setLoading] = useState(false);
   const [period, setPeriod] = useState("weekly");
   const [standardIncrement, setStandardIncrement] = useState(8);
+  const [showActions, setShowActions] = useState(false);
+
+  useEffect(() => {
+    if (!showActions) return;
+    const close = () => setShowActions(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [showActions]);
 
 
 
@@ -37,15 +46,51 @@ export default function MisScoreReportPage() {
   const totalIncrementMultiplier = report ? report.incrementMultiplier : 0;
   const finalIncrement = standardIncrement * totalIncrementMultiplier;
 
+  const handleExportExcel = () => {
+    if (!report) return;
+    const empName = employees.find(e => e.userId === selectedUser)?.fullName || selectedUser;
+    const wsData = [
+      { "Metric": "Employee Name", "Value": empName },
+      { "Metric": "Period", "Value": period },
+      { "Metric": "System Execution Score (/5)", "Value": report.systemScore },
+      { "Metric": "HOD Evaluation Score (/5)", "Value": report.hodScore !== null ? report.hodScore : "Pending" },
+      { "Metric": "HR Evaluation Score (/5)", "Value": report.hrScore !== null ? report.hrScore : "Pending" },
+      { "Metric": "Attendance Percentage (%)", "Value": report.attendancePercentage !== null ? `${report.attendancePercentage}%` : "Pending" },
+      { "Metric": "Final 10-Point Score (/10)", "Value": report.finalScore },
+      { "Metric": "Rating", "Value": report.rating },
+      { "Metric": "Increment Multiplier", "Value": `${report.incrementMultiplier}x` },
+      { "Metric": "Proposed Merit Increment (%)", "Value": `${finalIncrement.toFixed(1)}%` }
+    ];
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "MIS Score");
+    XLSX.writeFile(wb, `MIS_Score_${empName}_${period}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div style={containerStyle}>
+      <style>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          body {
+            background: #ffffff !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
       <div className="apgs-header">
         <h1>Individual MIS Score (Out of 10)</h1>
         <p style={{ color: "#6b7280" }}>Objective: 5 points for System Execution + 5 points averaged from HOD, HR, & Attendance.</p>
       </div>
 
-      <div style={{ marginBottom: 20, background: "white", padding: 16, borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", display: "flex", gap: 16 }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ marginBottom: 20, background: "white", padding: 16, borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
           <label style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>Select Employee to Evaluate</label>
           <select 
             value={selectedUser} 
@@ -85,6 +130,82 @@ export default function MisScoreReportPage() {
             onChange={(e) => setStandardIncrement(parseFloat(e.target.value) || 0)}
             style={{ width: 100, padding: 8, borderRadius: 4, border: "1px solid #d1d5db" }}
           />
+        </div>
+
+        <div className="no-print" style={{ position: "relative", display: "inline-block" }}>
+          {report && (
+            <>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowActions(!showActions);
+                }}
+                style={{ padding: "8px 16px", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: 13, height: 38, display: "flex", alignItems: "center", gap: "4px" }}
+              >
+                📥 Options <span style={{ fontSize: "10px" }}>▼</span>
+              </button>
+              
+              {showActions && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: "6px",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                  zIndex: 100,
+                  minWidth: "160px",
+                  overflow: "hidden"
+                }}>
+                  <button 
+                    onClick={() => {
+                      handleExportExcel();
+                      setShowActions(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      color: "#1e293b",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      borderBottom: "1px solid #f1f5f9"
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    🟢 Export Excel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handlePrint();
+                      setShowActions(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      color: "#1e293b",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: "pointer"
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                    onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    🖨️ Print / PDF
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

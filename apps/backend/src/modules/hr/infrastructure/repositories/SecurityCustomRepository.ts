@@ -21,6 +21,8 @@ export interface SecurityVisitorEntryRecord {
   company_name: string | null;
   person_to_meet: string | null;
   purpose: string | null;
+  image_url: string | null;
+  photo_captured_at: Date | null;
   in_time: Date;
   out_time: Date | null;
   status: 'Checked-In' | 'Checked-Out';
@@ -81,11 +83,13 @@ export class SecurityCustomRepository {
     companyName?: string;
     personToMeet?: string;
     purpose?: string;
+    imageUrl?: string;
+    photoCapturedAt?: string;
   }): Promise<SecurityVisitorEntryRecord> {
     const id = uuid();
     await pool.query(
-      `INSERT INTO security_visitor_entries (id, visitor_name, phone, company_name, person_to_meet, purpose)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO security_visitor_entries (id, visitor_name, phone, company_name, person_to_meet, purpose, image_url, photo_captured_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.visitorName,
@@ -93,6 +97,8 @@ export class SecurityCustomRepository {
         data.companyName || null,
         data.personToMeet || null,
         data.purpose || null,
+        data.imageUrl || null,
+        data.photoCapturedAt || null,
       ]
     );
     const [rows] = await pool.query("SELECT * FROM security_visitor_entries WHERE id = ?", [id]);

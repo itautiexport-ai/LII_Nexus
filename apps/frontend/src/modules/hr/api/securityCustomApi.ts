@@ -20,6 +20,8 @@ export interface SecurityVisitorEntryRecord {
   company_name: string | null;
   person_to_meet: string | null;
   purpose: string | null;
+  image_url: string | null;
+  photo_captured_at: string | null;
   in_time: string;
   out_time: string | null;
   status: 'Checked-In' | 'Checked-Out';
@@ -60,6 +62,8 @@ export const securityCustomApi = {
     companyName?: string;
     personToMeet?: string;
     purpose?: string;
+    imageUrl?: string;
+    photoCapturedAt?: string;
   }): Promise<SecurityVisitorEntryRecord> => {
     const res = await api.post("/hr/security/visitor-entry", data);
     return res.data.data;

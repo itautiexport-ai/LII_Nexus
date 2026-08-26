@@ -324,7 +324,8 @@ export class MisService {
         base_status,
         due_date: due,
         completed_at: fis.completed_at,
-        title: fis.title || "FMS Step"
+        title: fis.title || "FMS Step",
+        isNotApplicable: fis.base_status === "Skipped"
       };
     });
 
@@ -354,7 +355,10 @@ export class MisService {
         fmsCompleted += priorityPts;
         fmsCompletedTasksCount++;
         const comp = task.completed_at ? new Date(task.completed_at).getTime() : Date.now();
-        if (due === 0 || comp <= due) {
+        if (task.isNotApplicable) {
+          fmsOnTime += priorityPts;
+          statusStr = "Completed On Time";
+        } else if (due === 0 || comp <= due) {
           fmsOnTime += priorityPts;
           statusStr = "Completed On Time";
         } else {
@@ -538,7 +542,19 @@ export class MisService {
       totalWeightedPct += (hrScore * 20) * hrWeightVal;
     }
 
-    const finalScorePct = activeWeightsSum > 0 ? (totalWeightedPct / activeWeightsSum) : 100;
+    let totalLateTasks = 0;
+    fmsTasksList.forEach(t => {
+      if (t.status === "Completed Late") totalLateTasks++;
+    });
+    chkTasksList.forEach(t => {
+      if (t.status === "Completed Late") totalLateTasks++;
+    });
+    delTasksList.forEach(t => {
+      if (t.status === "Completed Late") totalLateTasks++;
+    });
+
+    let finalScorePct = activeWeightsSum > 0 ? (totalWeightedPct / activeWeightsSum) : 100;
+    finalScorePct = Math.max(0, finalScorePct - (totalLateTasks * 20));
     const finalScore = parseFloat((finalScorePct / 10).toFixed(2)); // scale 0-100 to 0-10
 
     const { rating, multiplier } = getRatingAndMultiplier(finalScore);
