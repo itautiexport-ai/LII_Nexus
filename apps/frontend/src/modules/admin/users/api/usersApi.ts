@@ -15,7 +15,7 @@ export interface UserRecord {
 }
 
 export const usersApi = {
-  async list(search = "", page = 1, pageSize = 50): Promise<{ items: UserRecord[]; totalItems: number; page: number; pageSize: number }> {
+  async list(search = "", page = 1, pageSize = 1000): Promise<{ items: UserRecord[]; totalItems: number; page: number; pageSize: number }> {
     const res = await axiosInstance.get("/users", { params: { search, page, pageSize } });
     return {
       items: res.data.data,
