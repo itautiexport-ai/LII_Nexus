@@ -61,7 +61,7 @@ export function MyFmsPage() {
     let completed = 0;
 
     tasks.forEach(t => {
-      if (t.status === "Under Process") actionNeeded++;
+      if (t.status === "In Progress") actionNeeded++;
       else if (t.status === "Pending") pending++;
       else if (t.status === "Completed") completed++;
     });
@@ -95,7 +95,7 @@ export function MyFmsPage() {
 
   const renderStatusPill = (status: string) => {
     switch (status) {
-      case "Under Process":
+      case "In Progress":
         return <span className="status-pill under-process">⚡ Action Needed</span>;
       case "Pending":
         return <span className="status-pill pending">⏳ Pending</span>;
@@ -281,7 +281,7 @@ export function MyFmsPage() {
                   </td>
                   <td>{renderStatusPill(t.status)}</td>
                   <td style={{ textAlign: "right" }}>
-                    {t.status === "Under Process" ? (
+                    {t.status === "In Progress" ? (
                       <button
                         className="my-fms-btn-action"
                         onClick={() => handleExecuteClick(t)}
@@ -310,7 +310,7 @@ export function MyFmsPage() {
           <div className="my-fms-modal">
             <div className="my-fms-modal-header">
               <h3 className="my-fms-modal-title">
-                {selectedTask.status === "Under Process" ? "Execute Task Step" : "Task Step Details"}
+                {selectedTask.status === "In Progress" ? "Execute Task Step" : "Task Step Details"}
               </h3>
               <button 
                 className="my-fms-modal-close" 
@@ -341,7 +341,7 @@ export function MyFmsPage() {
                 </div>
 
                 {/* Form fields if actionable */}
-                {selectedTask.status === "Under Process" ? (
+                {selectedTask.status === "In Progress" ? (
                   <>
                     <div className="my-fms-form-group">
                       <label className="my-fms-label">Was this step completed or is it Not Applicable? *</label>
@@ -407,7 +407,7 @@ export function MyFmsPage() {
                 >
                   Close
                 </button>
-                {selectedTask.status === "Under Process" && (
+                {selectedTask.status === "In Progress" && (
                   <button 
                     type="submit" 
                     className="my-fms-btn-action"
