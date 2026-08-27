@@ -37,7 +37,7 @@ export default function EmployeesPage() {
     setEmployees(emp);
     setDepartments(deps);
     setDesignations(desigs);
-    setUsers(userList);
+    setUsers(userList.items);
     setHods(hodList);
   }
 

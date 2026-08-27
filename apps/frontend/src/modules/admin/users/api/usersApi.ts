@@ -15,9 +15,14 @@ export interface UserRecord {
 }
 
 export const usersApi = {
-  async list(search = ""): Promise<UserRecord[]> {
-    const res = await axiosInstance.get("/users", { params: { search, page: 1, pageSize: 50 } });
-    return res.data.data;
+  async list(search = "", page = 1, pageSize = 50): Promise<{ items: UserRecord[]; totalItems: number; page: number; pageSize: number }> {
+    const res = await axiosInstance.get("/users", { params: { search, page, pageSize } });
+    return {
+      items: res.data.data,
+      totalItems: res.data.meta?.totalItems ?? res.data.data.length,
+      page: res.data.meta?.page ?? page,
+      pageSize: res.data.meta?.pageSize ?? pageSize,
+    };
   },
   async create(payload: {
     email: string;

@@ -50,7 +50,7 @@ export class TaskCenterService {
         JOIN fms_instances fi ON fis.instance_id = fi.id
         JOIN fms_steps fs ON fis.fms_step_id = fs.id
         WHERE fi.status = 'In Progress' 
-          AND fis.status IN ('Pending', 'Under Process')
+          AND fis.status IN ('Pending', 'In Progress')
       `;
       const [fmsPendingData] = await pool.query<any[]>(fmsPendingQuery);
       let fmsPending = 0;

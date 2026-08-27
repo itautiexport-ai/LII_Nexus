@@ -31,7 +31,7 @@ export default function VehicleRequirementFormPage() {
       // Fetch employees & users to get complete master list
       const [empList, userList] = await Promise.all([
         employeesApi.list("").catch(() => []),
-        usersApi.list("").catch(() => []),
+        usersApi.list("").catch(() => ({ items: [], totalItems: 0, page: 1, pageSize: 50 })),
       ]);
 
       const nameMap = new Map<string, { id: string; name: string; department?: string }>();
@@ -46,7 +46,7 @@ export default function VehicleRequirementFormPage() {
         }
       });
 
-      userList.forEach((u: UserRecord) => {
+      userList.items.forEach((u: UserRecord) => {
         const isExcludedRole = u.roles?.some(r => {
           const lower = r.toLowerCase();
           return lower.includes("director") || lower.includes("admin");

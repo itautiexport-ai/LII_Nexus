@@ -281,7 +281,7 @@ export class OfficeEmService {
        JOIN fms_steps fs ON fis.fms_step_id = fs.id
        WHERE (
          (fis.completed_by = ? AND fis.completed_at >= ? AND fis.completed_at <= ?)
-         OR (fis.status IN ('Pending', 'Under Process'))
+         OR (fis.status IN ('Pending', 'In Progress'))
        )`,
       [empId, startStr, endStr]
     );
@@ -304,7 +304,7 @@ export class OfficeEmService {
       let base_status = "pending";
       if (fis.base_status === "Completed" || fis.base_status === "Skipped") {
         base_status = "completed";
-      } else if (fis.base_status === "Under Process") {
+      } else if (fis.base_status === "In Progress") {
         base_status = "running";
       }
       

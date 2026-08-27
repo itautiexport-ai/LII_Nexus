@@ -403,7 +403,7 @@ export function FmsGridViewPage() {
                             } else if (stepData.status === 'Pending') {
                               statusColor = "#1e40af";
                               dotColor = "#3b82f6";
-                            } else if (stepData.status === 'Under Process') {
+                            } else if (stepData.status === 'In Progress') {
                               statusColor = "#c2410c";
                               dotColor = "#f97316";
                               bgColor = "#fff7ed";
@@ -436,7 +436,7 @@ export function FmsGridViewPage() {
                           let isBlocked = false;
                           if (step.isSequential) {
                             const previousSteps = instance.steps.filter((s: any) => s.sequenceOrder < step.sequenceOrder);
-                            isBlocked = previousSteps.some((s: any) => s.status === 'Pending' || s.status === 'Under Process');
+                            isBlocked = previousSteps.some((s: any) => s.status === 'Pending' || s.status === 'In Progress');
                           }
 
                           if (isBlocked) {
@@ -463,7 +463,7 @@ export function FmsGridViewPage() {
                                       display: "inline-flex", 
                                       alignItems: "center", 
                                       gap: "6px",
-                                      background: statusText === 'Completed' ? '#dcfce7' : statusText === 'Under Process' ? '#ffedd5' : statusText === 'Pending' ? '#dbeafe' : '#f1f5f9',
+                                      background: statusText === 'Completed' ? '#dcfce7' : statusText === 'In Progress' ? '#ffedd5' : statusText === 'Pending' ? '#dbeafe' : '#f1f5f9',
                                       padding: "3px 6px",
                                       borderRadius: "4px",
                                       width: "fit-content",
@@ -492,7 +492,7 @@ export function FmsGridViewPage() {
                                         }}
                                       >
                                         <option value="Pending" disabled>Pending</option>
-                                        <option value="Under Process">Under Process</option>
+                                        <option value="In Progress">In Progress</option>
                                         <option value="Completed">Yes</option>
                                         <option value="Skipped">Not Applicable</option>
                                       </select>
