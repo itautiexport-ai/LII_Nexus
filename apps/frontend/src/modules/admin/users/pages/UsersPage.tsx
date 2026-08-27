@@ -98,6 +98,9 @@ function UserRoleDropdown({ u, roles, canAssignRoles, handleToggleRole }: any) {
 export default function UsersPage() {
   const canAssignRoles = useHasPermission("rbac.userrole.assign");
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [usersPageSize] = useState(50);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [departmentsList, setDepartmentsList] = useState<any[]>([]);
   const [designationsList, setDesignationsList] = useState<any[]>([]);
@@ -213,16 +216,18 @@ export default function UsersPage() {
     }
   }
 
-  async function load() {
+  async function load(page = currentPage) {
     try {
-      const [uList, rList, deps, desigs, shs] = await Promise.all([
-        usersApi.list(),
+      const [uResult, rList, deps, desigs, shs] = await Promise.all([
+        usersApi.list("", page, usersPageSize),
         rolesApi.list(),
         departmentsApi.list(),
         designationsApi.list(),
         shiftsApi.list(),
       ]);
-      setUsers(uList);
+      setUsers(uResult.items);
+      setTotalUsers(uResult.totalItems);
+      setCurrentPage(uResult.page);
       setRoles(rList);
       setDepartmentsList(deps);
       setDesignationsList(desigs);
@@ -559,6 +564,28 @@ export default function UsersPage() {
           })}
           </tbody>
         </table>
+
+        {totalUsers > usersPageSize && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "1rem", padding: "1rem" }}>
+            <button
+              onClick={() => load(currentPage - 1)}
+              disabled={currentPage <= 1}
+              style={{ padding: "0.5rem 1rem", cursor: currentPage <= 1 ? "not-allowed" : "pointer", opacity: currentPage <= 1 ? 0.5 : 1 }}
+            >
+              Previous
+            </button>
+            <span>
+              Page {currentPage} of {Math.max(1, Math.ceil(totalUsers / usersPageSize))} ({totalUsers} total users)
+            </span>
+            <button
+              onClick={() => load(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalUsers / usersPageSize)}
+              style={{ padding: "0.5rem 1rem", cursor: currentPage >= Math.ceil(totalUsers / usersPageSize) ? "not-allowed" : "pointer", opacity: currentPage >= Math.ceil(totalUsers / usersPageSize) ? 0.5 : 1 }}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {editingUser && (

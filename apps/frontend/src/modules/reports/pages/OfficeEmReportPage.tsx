@@ -33,7 +33,7 @@ export default function OfficeEmReportPage() {
   const [modalTab, setModalTab] = useState<"summary" | "pending" | "completed">("summary");
 
   useEffect(() => {
-    usersApi.list().then(setUsers);
+    usersApi.list().then((res) => setUsers(res.items));
   }, []);
 
   useEffect(() => {
