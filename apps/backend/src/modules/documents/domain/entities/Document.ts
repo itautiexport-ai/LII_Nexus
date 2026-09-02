@@ -11,6 +11,9 @@ export interface Machine {
   id: string;
   name: string;
   code: string | null;
+  building: string | null;
+  floor: string | null;
+  location: string | null;
   factoryDepartmentId: string | null;
   status: MasterStatus;
 }

@@ -17,7 +17,7 @@ export function MasterDataHubPage() {
     { label: "Merchants", to: "/admin/merchants", desc: "Manage merchant accounts" },
     { label: "Module Weights", to: "/admin/module-weights", desc: "Manage scoring weights" },
     { label: "Machine Targets", to: "/admin/machine-targets", desc: "Manage production targets" },
-    { label: "Machine Names", to: "/admin/machines-products", desc: "Manage machine and product configurations" },
+    { label: "Machine Names", to: "/admin/machines-products", desc: "Manage machine configurations" },
     { label: "Employees", to: "/admin/employees", desc: "Manage employee records" },
     { label: "Buyers", to: "/admin/buyers", desc: "Manage buyers" },
     { label: "Finish Codes", to: "/admin/finish-codes", desc: "Manage finish codes" },

@@ -5,6 +5,7 @@ import { useAuthStore } from "../../modules/auth/hooks/useAuthStore";
 import NotificationBell from "../../modules/notifications/components/NotificationBell";
 import { env } from "../../config/env";
 import { AiHelperWidget } from "./AiHelperWidget";
+import { getAssetUrl } from "../utils/urlHelper";
 
 export interface NavItem {
   label: string;
@@ -456,8 +457,8 @@ export default function AdminLayout() {
 
   const sidebarContent = (
     <>
-      <div className="sidebar-header" style={{ cursor: "pointer", padding: "16px", display: "flex", justifyContent: "center" }} onClick={() => navigate("/admin")}>
-        <img src="/logo.jpg" alt="Laxmi Ideal Interiors" style={{ width: "100%", maxHeight: "80px", objectFit: "contain", borderRadius: "8px" }} />
+      <div className="sidebar-header" style={{ cursor: "pointer" }} onClick={() => navigate("/admin")}>
+        <h2>LII Performance Nexus</h2>
       </div>
 
       <nav className="sidebar-nav">
@@ -579,7 +580,7 @@ export default function AdminLayout() {
             {/* Avatar circle */}
             {user?.avatarUrl ? (
               <img
-                src={user.avatarUrl.startsWith('/') ? new URL(env.apiBaseUrl).origin + user.avatarUrl : user.avatarUrl}
+                src={getAssetUrl(user.avatarUrl)}
                 alt={user?.fullName}
                 style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", border: "2px solid #c7d2fe", flexShrink: 0 }}
               />

@@ -158,9 +158,6 @@ export default function HomePage() {
     <div className="home-page-container">
       {todayEvent && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} numberOfPieces={500} gravity={0.15} style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999 }} />}
       <div className="home-hero">
-        <div className="home-logo-wrapper">
-          <img src="/logo.jpg" alt="Laxmi Ideal Interiors" className="home-logo" />
-        </div>
         <h1 className="home-title">{getGreeting()}</h1>
         <p className="home-subtitle">Welcome back, {user?.fullName || "User"}</p>
         <p className="home-subtitle" style={{ marginTop: 8, fontSize: '0.95rem', color: '#6b7280', fontWeight: 500 }}>

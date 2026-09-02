@@ -18,7 +18,7 @@ export class MaterialInwardService {
       inwardDate: data.inwardDate || new Date(),
       supplierName: data.supplierName,
       poNumber: data.poNumber,
-      invoiceChallanNo: data.invoiceChallanNo,
+      invoiceChallanNo: data.invoiceChallanNo || null,
       invoiceChallanDate: data.invoiceChallanDate,
       vehicleNumber: data.vehicleNumber,
       driverName: data.driverName,

@@ -211,7 +211,7 @@ export function FmsGridViewPage() {
                   {visibleSteps.map((step) => {
                     const originalIndex = steps.findIndex(s => s.id === step.id);
                     return (
-                    <th key={step.id} colSpan={4} data-no-filter="true" style={{
+                    <th key={step.id} colSpan={5} data-no-filter="true" style={{
                       ...headerStyle,
                       textAlign: "center",
                       borderBottom: "1px solid #e2e8f0"
@@ -252,6 +252,7 @@ export function FmsGridViewPage() {
                     <React.Fragment key={`sub-${step.id}`}>
                       <th style={subHeaderStyle} data-no-filter="true">Doer</th>
                       <th style={subHeaderStyle} data-no-filter="true">Plan Date</th>
+                      <th style={subHeaderStyle} data-no-filter="true">Actual Date</th>
                       <th style={subHeaderStyle} data-no-filter="true">Delay</th>
                       <th style={subHeaderStyle} data-no-filter="true">Status</th>
                     </React.Fragment>
@@ -261,34 +262,99 @@ export function FmsGridViewPage() {
               <tbody>
                 {instances.length === 0 ? (
                   <tr>
-                    <td colSpan={5 + steps.length * 4 + (isSystemAdmin ? 2 : 0)} style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>
+                    <td colSpan={5 + steps.length * 5 + (isSystemAdmin ? 2 : 0)} style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>
                       No forms submitted yet.
                     </td>
                   </tr>
                 ) : (
                   instances.map((instance) => {
-                    // Calculate Plan Dates
+                    // Calculate Plan Dates dynamically:
+                    // If a predecessor step is completed, its Actual Date (completedAt) is used as the base
+                    // for subsequent steps, ensuring that succeeding steps get their full allotted timeline.
                     const planDates: Record<string, Date> = {};
-                    let baseDate = new Date(instance.createdAt);
-                    
-                    for (const step of steps) {
-                      const newDate = new Date(baseDate.getTime());
-                      const timeline = step.timelineHours || 0;
-                      if (step.timelineUnit === "days") {
-                        newDate.setDate(newDate.getDate() + timeline);
-                      } else {
-                        newDate.setHours(newDate.getHours() + timeline);
-                      }
-                      planDates[step.id] = newDate;
+                    const instanceCreatedDate = new Date(instance.createdAt);
 
-                      if (step.isSequential) {
-                        const stepData = instance.steps.find((s: any) => s.stepName === step.stepName);
-                        if (stepData && stepData.status === 'Completed' && stepData.completedAt) {
-                          baseDate = new Date(stepData.completedAt);
-                        } else {
-                          baseDate = planDates[step.id];
+                    // Map step instance data for fast lookup by fmsStepId, stepName, or instance step id
+                    const stepInstanceDataMap = new Map<string, any>();
+                    if (instance.steps) {
+                      for (const s of instance.steps) {
+                        if (s.fmsStepId) stepInstanceDataMap.set(s.fmsStepId, s);
+                        if (s.stepName) stepInstanceDataMap.set(s.stepName, s);
+                        if (s.id) stepInstanceDataMap.set(s.id, s);
+                      }
+                    }
+
+                    // Helper to get effective completion date of a prerequisite step:
+                    // If completed/skipped with a completedAt date, use that Actual Date.
+                    // Otherwise, use the step's calculated planDate.
+                    const getPrerequisiteEffectiveDate = (prereqStepId: string): Date | null => {
+                      const sData = stepInstanceDataMap.get(prereqStepId);
+                      if (sData && (sData.status === 'Completed' || sData.status === 'Skipped') && sData.completedAt) {
+                        return new Date(sData.completedAt);
+                      }
+                      if (planDates[prereqStepId]) {
+                        return planDates[prereqStepId];
+                      }
+                      return null;
+                    };
+
+                    for (let stepIdx = 0; stepIdx < steps.length; stepIdx++) {
+                      const step = steps[stepIdx];
+                      let startDate: Date;
+
+                      // Parse explicit dependencies (dependsOnStepIds)
+                      let explicitDeps: string[] = [];
+                      if (Array.isArray(step.dependsOnStepIds)) {
+                        explicitDeps = step.dependsOnStepIds.filter(Boolean);
+                      } else if (typeof step.dependsOnStepIds === 'string') {
+                        try {
+                          explicitDeps = JSON.parse(step.dependsOnStepIds).filter(Boolean);
+                        } catch (e) {
+                          explicitDeps = [];
                         }
                       }
+
+                      if (explicitDeps.length > 0) {
+                        // Calculate start date as the latest effective date among all prerequisites
+                        let maxPrereqTime = 0;
+                        let hasFoundPrereq = false;
+                        for (const depId of explicitDeps) {
+                          const prereqDate = getPrerequisiteEffectiveDate(depId);
+                          if (prereqDate) {
+                            hasFoundPrereq = true;
+                            if (prereqDate.getTime() > maxPrereqTime) {
+                              maxPrereqTime = prereqDate.getTime();
+                            }
+                          }
+                        }
+                        startDate = (hasFoundPrereq && maxPrereqTime > 0)
+                          ? new Date(maxPrereqTime)
+                          : new Date(instanceCreatedDate.getTime());
+                      } else if (step.isSequential) {
+                        // Sequential step without explicit dependsOnStepIds depends on the previous step
+                        if (stepIdx > 0) {
+                          const prevStep = steps[stepIdx - 1];
+                          const prevEffectiveDate = getPrerequisiteEffectiveDate(prevStep.id);
+                          startDate = prevEffectiveDate
+                            ? new Date(prevEffectiveDate.getTime())
+                            : new Date(instanceCreatedDate.getTime());
+                        } else {
+                          startDate = new Date(instanceCreatedDate.getTime());
+                        }
+                      } else {
+                        // Parallel / Initial step starts at instance creation
+                        startDate = new Date(instanceCreatedDate.getTime());
+                      }
+
+                      // Plan Date = startDate + timeline
+                      const calculatedPlanDate = new Date(startDate.getTime());
+                      const timeline = step.timelineHours || 0;
+                      if (step.timelineUnit === "days") {
+                        calculatedPlanDate.setDate(calculatedPlanDate.getDate() + timeline);
+                      } else {
+                        calculatedPlanDate.setHours(calculatedPlanDate.getHours() + timeline);
+                      }
+                      planDates[step.id] = calculatedPlanDate;
                     }
 
                     return (
@@ -365,7 +431,7 @@ export function FmsGridViewPage() {
                           </td>
                         )}
                         {visibleSteps.map((step) => {
-                          const stepData = instance.steps.find((s: any) => s.stepName === step.stepName);
+                          const stepData = instance.steps?.find((s: any) => (s.fmsStepId && s.fmsStepId === step.id) || s.stepName === step.stepName);
                           const isConfigured = !!stepData;
                           
                           // Resolve Doer Names
@@ -386,6 +452,13 @@ export function FmsGridViewPage() {
                           const formattedPlanDate = planDate.toLocaleString(undefined, {
                             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                           });
+
+                          // Actual Date
+                          const formattedActualDate = (stepData && (stepData.status === 'Completed' || stepData.status === 'Skipped') && stepData.completedAt)
+                            ? new Date(stepData.completedAt).toLocaleString(undefined, {
+                                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                              })
+                            : "—";
 
                           // Status styling
                           let bgColor = "transparent";
@@ -434,8 +507,25 @@ export function FmsGridViewPage() {
                           let isDoer = step.doerEmployeeIds?.includes(myEmployeeId || "") || (isCreatorStepAgain && instance.creatorId === myEmployeeId);
                           
                           let isBlocked = false;
-                          if (step.isSequential) {
-                            const previousSteps = instance.steps.filter((s: any) => s.sequenceOrder < step.sequenceOrder);
+                          const instSteps = instance.steps || [];
+                          let stepExplicitDeps: string[] = [];
+                          if (Array.isArray(step.dependsOnStepIds)) {
+                            stepExplicitDeps = step.dependsOnStepIds.filter(Boolean);
+                          } else if (typeof step.dependsOnStepIds === 'string') {
+                            try {
+                              stepExplicitDeps = JSON.parse(step.dependsOnStepIds).filter(Boolean);
+                            } catch (e) {
+                              stepExplicitDeps = [];
+                            }
+                          }
+
+                          if (stepExplicitDeps.length > 0) {
+                            isBlocked = stepExplicitDeps.some(depId => {
+                              const depData = instSteps.find((s: any) => (s.fmsStepId && s.fmsStepId === depId) || s.id === depId);
+                              return !depData || (depData.status !== 'Completed' && depData.status !== 'Skipped');
+                            });
+                          } else if (step.isSequential) {
+                            const previousSteps = instSteps.filter((s: any) => s.sequenceOrder < step.sequenceOrder);
                             isBlocked = previousSteps.some((s: any) => s.status === 'Pending' || s.status === 'Under Process');
                           }
 
@@ -452,6 +542,9 @@ export function FmsGridViewPage() {
                               </td>
                               <td style={{ ...cellStyle, background: bgColor, fontSize: "0.75rem", color: "#334155", minWidth: "110px" }}>
                                 {formattedPlanDate}
+                              </td>
+                              <td style={{ ...cellStyle, background: bgColor, fontSize: "0.75rem", color: (stepData?.completedAt) ? "#166534" : "#64748b", minWidth: "110px", fontWeight: stepData?.completedAt ? 500 : 400 }}>
+                                {formattedActualDate}
                               </td>
                               <td style={{ ...cellStyle, background: bgColor, fontSize: "0.75rem", fontWeight: isDelayed ? 600 : 500, color: isDelayed ? "#dc2626" : "#16a34a", minWidth: "90px" }}>
                                 {delayText}
