@@ -42,7 +42,15 @@ export interface DocumentDetail extends DocumentRecord {
 }
 
 export interface FolderRecord { id: string; name: string; parentFolderId: string | null; }
-export interface MachineRecord { id: string; name: string; code: string | null; status: string; }
+export interface MachineRecord {
+  id: string;
+  name: string;
+  code: string | null;
+  building: string | null;
+  floor: string | null;
+  location: string | null;
+  status: string;
+}
 export interface ProductRecord { id: string; name: string; sku: string | null; status: string; }
 
 export function inferPreviewKind(fileName: string): "pdf" | "image" | "video" | "none" {
@@ -90,8 +98,12 @@ export const documentApi = {
   async createFolder(name: string, parentFolderId?: string) { return (await axiosInstance.post("/documents/folders", { name, parentFolderId })).data.data as FolderRecord; },
 
   async listMachines(): Promise<MachineRecord[]> { return (await axiosInstance.get("/machines")).data.data; },
-  async createMachine(name: string, code?: string) { return (await axiosInstance.post("/machines", { name, code })).data.data as MachineRecord; },
-  async updateMachine(id: string, name: string, code?: string) { return (await axiosInstance.patch(`/machines/${id}`, { name, code })).data.data as MachineRecord; },
+  async createMachine(name: string, code?: string, building?: string, floor?: string, location?: string) {
+    return (await axiosInstance.post("/machines", { name, code, building, floor, location })).data.data as MachineRecord;
+  },
+  async updateMachine(id: string, name: string, code?: string, building?: string, floor?: string, location?: string) {
+    return (await axiosInstance.patch(`/machines/${id}`, { name, code, building, floor, location })).data.data as MachineRecord;
+  },
   async listProducts(): Promise<ProductRecord[]> { return (await axiosInstance.get("/products")).data.data; },
   async createProduct(name: string, sku?: string) { return (await axiosInstance.post("/products", { name, sku })).data.data as ProductRecord; },
   async updateProduct(id: string, name: string, sku?: string) { return (await axiosInstance.patch(`/products/${id}`, { name, sku })).data.data as ProductRecord; },

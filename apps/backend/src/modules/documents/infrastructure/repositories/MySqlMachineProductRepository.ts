@@ -6,36 +6,83 @@ import { ConflictError } from "../../../../core/domain/errors/DomainError";
 export class MySqlMachineProductRepository {
   async listMachines(): Promise<Machine[]> {
     const [rows] = await pool.query<any[]>("SELECT * FROM machines WHERE deleted_at IS NULL ORDER BY name ASC");
-    return rows.map((r) => ({ id: r.id, name: r.name, code: r.code, factoryDepartmentId: r.factory_department_id, status: r.status }));
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      code: r.code,
+      building: r.building ?? null,
+      floor: r.floor ?? null,
+      location: r.location ?? null,
+      factoryDepartmentId: r.factory_department_id,
+      status: r.status,
+    }));
   }
 
-  async createMachine(name: string, code: string | null, factoryDepartmentId: string | null): Promise<Machine> {
+  async createMachine(
+    name: string,
+    code: string | null,
+    factoryDepartmentId: string | null,
+    building: string | null = null,
+    floor: string | null = null,
+    location: string | null = null
+  ): Promise<Machine> {
     const id = uuid();
     try {
-      await pool.query("INSERT INTO machines (id, name, code, factory_department_id) VALUES (?, ?, ?, ?)", [id, name, code, factoryDepartmentId]);
+      await pool.query(
+        "INSERT INTO machines (id, name, code, factory_department_id, building, floor, location) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [id, name, code, factoryDepartmentId, building, floor, location]
+      );
     } catch (err: any) {
       if (err.code === "ER_DUP_ENTRY") throw new ConflictError("A machine with this name or code already exists.");
       throw err;
     }
     const [rows] = await pool.query<any[]>("SELECT * FROM machines WHERE id = ?", [id]);
     const r = rows[0];
-    return { id: r.id, name: r.name, code: r.code, factoryDepartmentId: r.factory_department_id, status: r.status };
+    return {
+      id: r.id,
+      name: r.name,
+      code: r.code,
+      building: r.building ?? null,
+      floor: r.floor ?? null,
+      location: r.location ?? null,
+      factoryDepartmentId: r.factory_department_id,
+      status: r.status,
+    };
   }
 
   async updateMachineStatus(id: string, status: MasterStatus): Promise<void> {
     await pool.query("UPDATE machines SET status = ? WHERE id = ?", [status, id]);
   }
 
-  async updateMachine(id: string, name: string, code: string | null): Promise<Machine> {
+  async updateMachine(
+    id: string,
+    name: string,
+    code: string | null,
+    building: string | null = null,
+    floor: string | null = null,
+    location: string | null = null
+  ): Promise<Machine> {
     try {
-      await pool.query("UPDATE machines SET name = ?, code = ? WHERE id = ?", [name, code, id]);
+      await pool.query(
+        "UPDATE machines SET name = ?, code = ?, building = ?, floor = ?, location = ? WHERE id = ?",
+        [name, code, building, floor, location, id]
+      );
     } catch (err: any) {
       if (err.code === "ER_DUP_ENTRY") throw new ConflictError("A machine with this name or code already exists.");
       throw err;
     }
     const [rows] = await pool.query<any[]>("SELECT * FROM machines WHERE id = ?", [id]);
     const r = rows[0];
-    return { id: r.id, name: r.name, code: r.code, factoryDepartmentId: r.factory_department_id, status: r.status };
+    return {
+      id: r.id,
+      name: r.name,
+      code: r.code,
+      building: r.building ?? null,
+      floor: r.floor ?? null,
+      location: r.location ?? null,
+      factoryDepartmentId: r.factory_department_id,
+      status: r.status,
+    };
   }
 
   async listProducts(): Promise<Product[]> {

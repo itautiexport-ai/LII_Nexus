@@ -6,18 +6,34 @@ export class MachineProductService {
   constructor(private readonly repo: MySqlMachineProductRepository) {}
 
   listMachines() { return this.repo.listMachines(); }
-  async createMachine(name: string, code: string | null, factoryDepartmentId: string | null, actorId: string) {
-    const machine = await this.repo.createMachine(name, code, factoryDepartmentId);
-    await AuditService.record({ actorUserId: actorId, action: "MACHINE_CREATED", entityType: "machine", entityId: machine.id, afterState: { name } });
+  async createMachine(
+    name: string,
+    code: string | null,
+    factoryDepartmentId: string | null,
+    building: string | null = null,
+    floor: string | null = null,
+    location: string | null = null,
+    actorId: string
+  ) {
+    const machine = await this.repo.createMachine(name, code, factoryDepartmentId, building, floor, location);
+    await AuditService.record({ actorUserId: actorId, action: "MACHINE_CREATED", entityType: "machine", entityId: machine.id, afterState: { name, code, building, floor, location } });
     return machine;
   }
   async updateMachineStatus(id: string, status: MasterStatus, actorId: string) {
     await this.repo.updateMachineStatus(id, status);
     await AuditService.record({ actorUserId: actorId, action: "MACHINE_STATUS_UPDATED", entityType: "machine", entityId: id, afterState: { status } });
   }
-  async updateMachine(id: string, name: string, code: string | null, actorId: string) {
-    const machine = await this.repo.updateMachine(id, name, code);
-    await AuditService.record({ actorUserId: actorId, action: "MACHINE_UPDATED", entityType: "machine", entityId: machine.id, afterState: { name, code } });
+  async updateMachine(
+    id: string,
+    name: string,
+    code: string | null,
+    building: string | null = null,
+    floor: string | null = null,
+    location: string | null = null,
+    actorId: string
+  ) {
+    const machine = await this.repo.updateMachine(id, name, code, building, floor, location);
+    await AuditService.record({ actorUserId: actorId, action: "MACHINE_UPDATED", entityType: "machine", entityId: machine.id, afterState: { name, code, building, floor, location } });
     return machine;
   }
 

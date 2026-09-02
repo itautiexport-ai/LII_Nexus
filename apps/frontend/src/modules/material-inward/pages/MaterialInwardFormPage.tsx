@@ -83,8 +83,8 @@ export default function MaterialInwardFormPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.materialName.trim() || !form.quantityReceived || !form.supplierName.trim() || !form.invoiceChallanNo.trim()) {
-      setError("Please fill in all required fields (Material Name, Quantity, Supplier, and Challan Number).");
+    if (!form.materialName.trim() || !form.quantityReceived || !form.supplierName.trim()) {
+      setError("Please fill in all required fields (Material Name, Quantity, and Supplier).");
       return;
     }
 
@@ -95,6 +95,7 @@ export default function MaterialInwardFormPage() {
     try {
       const payload = {
         ...form,
+        invoiceChallanNo: form.invoiceChallanNo.trim() || null,
         quantityReceived: parseFloat(form.quantityReceived),
         vehicleNumber: form.vehicleNumber.trim() || null,
         driverName: form.driverName.trim() || null,
@@ -228,14 +229,13 @@ export default function MaterialInwardFormPage() {
             {/* Field: Challan Number */}
             <div>
               <label style={{ display: "block", fontSize: 14, fontWeight: 500, color: "#334155", marginBottom: 6 }}>
-                Challan Number <span style={{ color: "#ef4444" }}>*</span>
+                Challan Number
               </label>
               <input
                 type="text"
                 name="invoiceChallanNo"
                 value={form.invoiceChallanNo}
                 onChange={handleInputChange}
-                required
                 placeholder="Challan Number"
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: 8, fontSize: 14 }}
               />

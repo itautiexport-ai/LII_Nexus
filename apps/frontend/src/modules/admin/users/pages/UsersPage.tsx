@@ -7,6 +7,7 @@ import { shiftsApi } from "../../factory/shifts/api/shiftsApi";
 import PermissionGate from "../../../../shared/guards/PermissionGate";
 import { useHasPermission } from "../../../auth/hooks/usePermissions";
 import { env } from "../../../../config/env";
+import { getAssetUrl } from "../../../../shared/utils/urlHelper";
 
 function UserRoleDropdown({ u, roles, canAssignRoles, handleToggleRole }: any) {
   const [isOpen, setIsOpen] = useState(false);
@@ -522,7 +523,7 @@ export default function UsersPage() {
                   <td style={{ fontWeight: 600, color: "#111827" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                       {u.avatarUrl ? (
-                        <img src={u.avatarUrl.startsWith('/') ? (env.apiBaseUrl.startsWith('http') ? new URL(env.apiBaseUrl).origin : window.location.origin) + u.avatarUrl : u.avatarUrl} alt={u.fullName} style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "2px solid #e5e7eb", flexShrink: 0 }} />
+                        <img src={getAssetUrl(u.avatarUrl)} alt={u.fullName} style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "2px solid #e5e7eb", flexShrink: 0 }} />
                       ) : (
                         <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#4338ca", flexShrink: 0 }}>
                           {u.fullName.charAt(0).toUpperCase()}
@@ -601,7 +602,7 @@ export default function UsersPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "20px", padding: "16px", background: "#f9fafb", borderRadius: "10px", marginBottom: "20px", border: "1px solid #e5e7eb" }}>
               <div style={{ flexShrink: 0 }}>
                 {editingUser.avatarUrl ? (
-                  <img src={editingUser.avatarUrl.startsWith('/') ? (env.apiBaseUrl.startsWith('http') ? new URL(env.apiBaseUrl).origin : window.location.origin) + editingUser.avatarUrl : editingUser.avatarUrl} alt={editingUser.fullName} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "3px solid #4338ca" }} />
+                  <img src={getAssetUrl(editingUser.avatarUrl)} alt={editingUser.fullName} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "3px solid #4338ca" }} />
                 ) : (
                   <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 28, color: "#4338ca", border: "3px solid #c7d2fe" }}>
                     {editingUser.fullName.charAt(0).toUpperCase()}

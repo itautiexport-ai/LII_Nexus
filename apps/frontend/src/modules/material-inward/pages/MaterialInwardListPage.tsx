@@ -321,7 +321,7 @@ export default function MaterialInwardListPage() {
                   <div>
                     <span style={{ fontSize: 13, color: "#64748b", display: "block" }}>Challan Number</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: "#0f172a" }}>
-                      {selectedRecord.invoiceChallanNo}
+                      {selectedRecord.invoiceChallanNo || "—"}
                     </span>
                   </div>
                   <div>
