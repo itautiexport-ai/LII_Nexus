@@ -289,6 +289,7 @@ export class FmsExecutionService {
         fi.form_data as formData,
         e.full_name as creatorName,
         fis.id as stepId,
+        fis.fms_step_id as fmsStepId,
         fs.step_name as stepName,
         fs.sequence_order as sequenceOrder,
         fis.status as stepStatus,
@@ -321,6 +322,7 @@ export class FmsExecutionService {
       if (row.stepId) {
         instancesMap.get(row.instanceId).steps.push({
           id: row.stepId,
+          fmsStepId: row.fmsStepId,
           stepName: row.stepName,
           sequenceOrder: row.sequenceOrder,
           status: row.stepStatus,

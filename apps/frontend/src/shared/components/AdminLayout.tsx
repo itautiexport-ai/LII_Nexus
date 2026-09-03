@@ -5,6 +5,7 @@ import { useAuthStore } from "../../modules/auth/hooks/useAuthStore";
 import NotificationBell from "../../modules/notifications/components/NotificationBell";
 import { env } from "../../config/env";
 import { AiHelperWidget } from "./AiHelperWidget";
+import { getAssetUrl } from "../utils/urlHelper";
 
 export interface NavItem {
   label: string;
@@ -579,7 +580,7 @@ export default function AdminLayout() {
             {/* Avatar circle */}
             {user?.avatarUrl ? (
               <img
-                src={user.avatarUrl.startsWith('/') ? (env.apiBaseUrl.startsWith('http') ? new URL(env.apiBaseUrl).origin : window.location.origin) + user.avatarUrl : user.avatarUrl}
+                src={getAssetUrl(user.avatarUrl)}
                 alt={user?.fullName}
                 style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", border: "2px solid #c7d2fe", flexShrink: 0 }}
               />

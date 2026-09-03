@@ -4,7 +4,7 @@ export interface MaterialInwardRecord {
   inwardDate: Date;
   supplierName: string;
   poNumber: string | null;
-  invoiceChallanNo: string;
+  invoiceChallanNo: string | null;
   invoiceChallanDate: Date | null;
   vehicleNumber: string | null;
   driverName: string | null;
