@@ -91,10 +91,32 @@ export const DocumentController = {
 
   async listMachines(_req: AuthenticatedRequest, res: Response) { return ok(res, await machineProductService.listMachines()); },
   async createMachine(req: AuthenticatedRequest, res: Response) {
-    return created(res, await machineProductService.createMachine(req.body.name, req.body.code ?? null, req.body.factoryDepartmentId ?? null, req.user!.sub));
+    return created(
+      res,
+      await machineProductService.createMachine(
+        req.body.name,
+        req.body.code ?? null,
+        req.body.factoryDepartmentId ?? null,
+        req.body.building ?? null,
+        req.body.floor ?? null,
+        req.body.location ?? null,
+        req.user!.sub
+      )
+    );
   },
   async updateMachine(req: AuthenticatedRequest, res: Response) {
-    return ok(res, await machineProductService.updateMachine(req.params.id, req.body.name, req.body.code ?? null, req.user!.sub));
+    return ok(
+      res,
+      await machineProductService.updateMachine(
+        req.params.id,
+        req.body.name,
+        req.body.code ?? null,
+        req.body.building ?? null,
+        req.body.floor ?? null,
+        req.body.location ?? null,
+        req.user!.sub
+      )
+    );
   },
   async listProducts(_req: AuthenticatedRequest, res: Response) { return ok(res, await machineProductService.listProducts()); },
   async createProduct(req: AuthenticatedRequest, res: Response) {

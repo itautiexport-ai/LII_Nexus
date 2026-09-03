@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS material_inwards (
   inward_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   supplier_name VARCHAR(150) NOT NULL,
   po_number VARCHAR(100) DEFAULT NULL,
-  invoice_challan_no VARCHAR(100) NOT NULL,
+  invoice_challan_no VARCHAR(100) DEFAULT NULL,
   invoice_challan_date DATE DEFAULT NULL,
   vehicle_number VARCHAR(50) DEFAULT NULL,
   driver_name VARCHAR(100) DEFAULT NULL,

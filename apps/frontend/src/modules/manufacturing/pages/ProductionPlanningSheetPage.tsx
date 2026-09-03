@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import { manufacturingApi, ProductionPlanningData, ProductionPlanningRecord } from "../api/manufacturingApi";
 import { env } from "../../../config/env";
+import { getAssetUrl } from "../../../shared/utils/urlHelper";
 
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
@@ -453,7 +454,7 @@ export default function ProductionPlanningSheetPage() {
                   <td style={{ ...tdStyle, fontWeight: 500, color: "#111827" }}>
                     {plan.attachmentUrl ? (
                       <a 
-                        href={`${env.apiBaseUrl.replace('/api/v1', '')}${plan.attachmentUrl}`} 
+                        href={getAssetUrl(plan.attachmentUrl)} 
                         target="_blank" 
                         rel="noreferrer"
                         style={{ color: "#2563eb", textDecoration: "underline", textUnderlineOffset: "4px" }}

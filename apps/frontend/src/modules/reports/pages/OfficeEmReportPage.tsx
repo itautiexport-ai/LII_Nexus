@@ -67,8 +67,6 @@ export default function OfficeEmReportPage() {
           } else {
             acc.completedLate++;
           }
-        } else if (t.baseStatus === "running") {
-          acc.running++;
         } else {
           acc.pending++;
         }
@@ -132,6 +130,7 @@ export default function OfficeEmReportPage() {
               <div className="task-count total"><span>Total:</span> {taskCounts.total}</div>
               <div className="task-count completed"><span>Completed:</span> {taskCounts.completed}</div>
               <div className="task-count on-time" style={{ borderLeft: "3px solid #10b981", color: "#047857" }}><span>On-Time:</span> {taskCounts.completedOnTime}</div>
+              <div className="task-count late" style={{ borderLeft: "3px solid #ef4444", color: "#b91c1c" }}><span>Not On-Time:</span> {taskCounts.completedLate}</div>
               <div className="task-count pending"><span>Pending:</span> {taskCounts.pending}</div>
             </div>
           </div>
@@ -218,7 +217,10 @@ export default function OfficeEmReportPage() {
 
   const getBriefSummaryText = (data: OfficeEmModuleScore) => {
     const counts = calculateTaskCounts(data.tasks);
-    return `${counts.total} due, ${counts.completed} done (${counts.completedOnTime} on-time, ${counts.completedLate} late)`;
+    if (counts.pending > 0) {
+      return `${counts.total} total, ${counts.completed} done (${counts.completedOnTime} on-time, ${counts.completedLate} late), ${counts.pending} pending`;
+    }
+    return `${counts.total} total, ${counts.completed} done (${counts.completedOnTime} on-time, ${counts.completedLate} late)`;
   };
 
   const handleExportExcel = () => {
@@ -539,8 +541,14 @@ export default function OfficeEmReportPage() {
                             </div>
                             <div className="modal-stat-item">
                               <span className="stat-lbl">Not On-Time:</span>
-                              <span className="stat-num red">{counts.total - counts.completedOnTime}</span>
+                              <span className="stat-num red">{counts.completedLate}</span>
                             </div>
+                            {counts.pending > 0 && (
+                              <div className="modal-stat-item" style={{ gridColumn: "span 2", background: "#fffbeb", border: "1px solid #fef3c7" }}>
+                                <span className="stat-lbl" style={{ color: "#92400e" }}>Pending Tasks:</span>
+                                <span className="stat-num" style={{ color: "#b45309" }}>{counts.pending}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -714,14 +722,16 @@ export default function OfficeEmReportPage() {
                           .map(t => {
                             const compTime = new Date(t.completedAt || t.dueDate).getTime();
                             const dueTime = new Date(t.dueDate).getTime();
-                            const isOnTime = compTime <= dueTime;
+                            const isOnTime = t.isNotApplicable ? true : (compTime <= dueTime);
                             return (
                               <div key={t.id} className="pending-item">
                                 <div className="pending-item-details">
                                   <span className="pending-item-name">{t.name}</span>
                                   <span className="pending-item-meta">
                                     Completed: {t.completedAt ? new Date(t.completedAt).toLocaleDateString() : new Date(t.dueDate).toLocaleDateString()}
-                                    {isOnTime ? (
+                                    {t.isNotApplicable ? (
+                                      <span style={{ color: "#475569", fontWeight: "bold" }}> [NOT APPLICABLE]</span>
+                                    ) : isOnTime ? (
                                       <span style={{ color: "#16a34a", fontWeight: "bold" }}> [ON TIME]</span>
                                     ) : (
                                       <span style={{ color: "#ea580c", fontWeight: "bold" }}> [LATE]</span>
@@ -729,7 +739,7 @@ export default function OfficeEmReportPage() {
                                   </span>
                                 </div>
                                 <span className={`pending-status-badge ${t.baseStatus}`}>
-                                  {t.baseStatus}
+                                  {t.isNotApplicable ? "Not Applicable" : t.baseStatus}
                                 </span>
                               </div>
                             );
@@ -750,14 +760,16 @@ export default function OfficeEmReportPage() {
                           .map(t => {
                             const compTime = new Date(t.completedAt || t.dueDate).getTime();
                             const dueTime = new Date(t.dueDate).getTime();
-                            const isOnTime = compTime <= dueTime;
+                            const isOnTime = t.isNotApplicable ? true : (compTime <= dueTime);
                             return (
                               <div key={t.id} className="pending-item">
                                 <div className="pending-item-details">
                                   <span className="pending-item-name">{t.name}</span>
                                   <span className="pending-item-meta">
                                     Completed: {t.completedAt ? new Date(t.completedAt).toLocaleDateString() : new Date(t.dueDate).toLocaleDateString()}
-                                    {isOnTime ? (
+                                    {t.isNotApplicable ? (
+                                      <span style={{ color: "#475569", fontWeight: "bold" }}> [NOT APPLICABLE]</span>
+                                    ) : isOnTime ? (
                                       <span style={{ color: "#16a34a", fontWeight: "bold" }}> [ON TIME]</span>
                                     ) : (
                                       <span style={{ color: "#ea580c", fontWeight: "bold" }}> [LATE]</span>
@@ -765,7 +777,7 @@ export default function OfficeEmReportPage() {
                                   </span>
                                 </div>
                                 <span className={`pending-status-badge ${t.baseStatus}`}>
-                                  {t.baseStatus}
+                                  {t.isNotApplicable ? "Not Applicable" : t.baseStatus}
                                 </span>
                               </div>
                             );
