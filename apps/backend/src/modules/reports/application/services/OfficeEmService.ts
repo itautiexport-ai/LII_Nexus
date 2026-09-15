@@ -487,26 +487,7 @@ export class OfficeEmService {
                       (hodGapScore * (hodRedistributedWeight / 100)) +
                       (hrGapScore * (hrRedistributedWeight / 100));
 
-      // Calculate total late tasks across active modules
-      const countLateTasks = (moduleScore: OfficeEmModuleScore): number => {
-        let count = 0;
-        moduleScore.tasks.forEach(t => {
-          if (t.baseStatus === "completed" || t.baseStatus === "verified") {
-            if (t.isNotApplicable) return;
-            const compTime = new Date(t.completedAt || t.dueDate).getTime();
-            const dueTime = new Date(t.dueDate).getTime();
-            if (compTime > dueTime) {
-              count++;
-            }
-          }
-        });
-        return count;
-      };
-
-      const totalLateTasks = countLateTasks(fmsScore) + countLateTasks(checklistScore) + countLateTasks(delegationScore);
-      
-      // Deduct 20 points per late completed task, clamping at -100
-      finalGapScore = Math.max(-100, finalGapScore - (totalLateTasks * 20));
+      finalGapScore = Math.max(-100, finalGapScore);
       
       finalGapScore = parseFloat(finalGapScore.toFixed(1));
     }

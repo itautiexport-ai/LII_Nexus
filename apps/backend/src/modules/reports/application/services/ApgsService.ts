@@ -557,19 +557,8 @@ export class MisService {
       totalWeightedPct += (hrScore * 20) * hrWeightVal;
     }
 
-    let totalLateTasks = 0;
-    fmsTasksList.forEach(t => {
-      if (t.status === "Completed Late") totalLateTasks++;
-    });
-    chkTasksList.forEach(t => {
-      if (t.status === "Completed Late") totalLateTasks++;
-    });
-    delTasksList.forEach(t => {
-      if (t.status === "Completed Late") totalLateTasks++;
-    });
-
     let finalScorePct = activeWeightsSum > 0 ? (totalWeightedPct / activeWeightsSum) : 100;
-    finalScorePct = Math.max(0, finalScorePct - (totalLateTasks * 20));
+    finalScorePct = Math.max(0, finalScorePct);
     const finalScore = parseFloat((finalScorePct / 10).toFixed(2)); // scale 0-100 to 0-10
 
     const { rating, multiplier } = getRatingAndMultiplier(finalScore);
