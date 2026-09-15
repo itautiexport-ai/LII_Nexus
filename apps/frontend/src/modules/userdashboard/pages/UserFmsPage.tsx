@@ -29,7 +29,8 @@ export function UserFmsPage() {
 
   const handleCompleteClick = (task: any) => {
     setSelectedTask(task);
-    setInputData({});
+    const existingOrderType = task.formData?.orderType || task.inputData?.orderType || "";
+    setInputData({ status: "Completed", orderType: existingOrderType, comments: "" });
     setIsModalOpen(true);
   };
 
@@ -99,11 +100,14 @@ export function UserFmsPage() {
           <div style={{ background: "white", padding: "2rem", borderRadius: "8px", width: "400px", maxWidth: "90%" }}>
             <h2 style={{ marginTop: 0 }}>Complete Task</h2>
             <p><strong>Order:</strong> {selectedTask.referenceTitle}</p>
+            {selectedTask.formData?.orderType && (
+              <p><strong>Order Type:</strong> <span style={{ color: "#059669", fontWeight: "bold" }}>{selectedTask.formData.orderType}</span></p>
+            )}
             <p><strong>Step:</strong> {selectedTask.stepName}</p>
 
             <form onSubmit={submitComplete}>
               <div style={{ marginBottom: "1rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem" }}>Was this step completed or is it Not Applicable? *</label>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>Was this step completed or is it Not Applicable? *</label>
                 <select 
                   required 
                   value={inputData.status || ""}
@@ -115,9 +119,29 @@ export function UserFmsPage() {
                   <option value="Skipped">Not Applicable</option>
                 </select>
               </div>
+
+              {(inputData.status === "Completed" || inputData.status === "Yes") && 
+               !selectedTask.formData?.orderType && 
+               (selectedTask.stepName?.toLowerCase().includes("identify") || 
+                selectedTask.stepName?.toLowerCase().includes("repeat order") || 
+                selectedTask.stepName?.toLowerCase().includes("order type")) && (
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>Specify Order Type *</label>
+                  <select 
+                    required 
+                    value={inputData.orderType || ""}
+                    onChange={(e) => setInputData({...inputData, orderType: e.target.value})}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+                  >
+                    <option value="" disabled>-- Select Order Type --</option>
+                    <option value="New Order">New Order</option>
+                    <option value="Repeat Order">Repeat Order</option>
+                  </select>
+                </div>
+              )}
               
               <div style={{ marginBottom: "1rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem" }}>Comments (Optional)</label>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>Comments (Optional)</label>
                 <textarea 
                   value={inputData.comments || ""}
                   onChange={(e) => setInputData({...inputData, comments: e.target.value})}

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import * as XLSX from "xlsx";
 import { MasterDataService } from "../../application/services/MasterDataService";
 
 export class MasterDataController {
@@ -74,8 +75,6 @@ export class MasterDataController {
       return;
     }
     
-    // Lazy load XLSX to process the file
-    const XLSX = require("xlsx");
     const workbook = XLSX.read(file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);

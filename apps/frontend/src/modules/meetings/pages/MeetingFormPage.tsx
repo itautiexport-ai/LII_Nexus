@@ -39,7 +39,7 @@ export default function MeetingFormPage() {
           <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={{ display: "block", width: "100%", padding: 6, marginTop: 4 }} />
         </label>
         <label style={{ fontSize: 13, display: "block", marginBottom: 8 }}>Date
-          <input type="date" required value={form.meetingDate} onChange={(e) => setForm({ ...form, meetingDate: e.target.value })} style={{ display: "block", width: "100%", padding: 6, marginTop: 4 }} />
+          <input type="date" required value={form.meetingDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setForm({ ...form, meetingDate: e.target.value })} style={{ display: "block", width: "100%", padding: 6, marginTop: 4 }} />
         </label>
         <label style={{ fontSize: 13, display: "block", marginBottom: 8 }}>Attendees
           <select multiple value={form.attendeeIds} onChange={(e) => setForm({ ...form, attendeeIds: Array.from(e.target.selectedOptions, (o) => o.value) })} style={{ display: "block", width: "100%", height: 100, marginTop: 4 }}>

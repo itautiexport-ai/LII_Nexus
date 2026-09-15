@@ -147,6 +147,7 @@ export default function AddDelegationPage() {
               <input
                 type="date"
                 value={dueDate}
+                min={new Date().toISOString().split("T")[0]}
                 onChange={e => setDueDate(e.target.value)}
                 required
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #D1D5DB", borderRadius: 4, boxSizing: "border-box" }}

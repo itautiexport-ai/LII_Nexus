@@ -3,6 +3,18 @@ import { checklistApi, ChecklistInstanceRecord } from "../api/checklistApi";
 import { standaloneChecklistApi, StandaloneChecklist } from "../../../checklist/api/checklistApi";
 import { useAuthStore } from "../../../auth/hooks/useAuthStore";
 import { employeesApi, EmployeeRecord } from "../../../admin/organization/employees/api/employeesApi";
+import { useTableFreeze } from "../../../../shared/hooks/useTableFreeze";
+import { TableFreezeButton } from "../../../../shared/components/TableFreezeButton";
+import { TableFreezeModal } from "../../../../shared/components/TableFreezeModal";
+
+const STANDALONE_COLUMNS = [
+  { key: "taskName", label: "Task Name", width: 220 },
+  { key: "assignedBy", label: "Assigned By", width: 140 },
+  { key: "plannedDate", label: "Planned Date", width: 160 },
+  { key: "priority", label: "Priority", width: 100 },
+  { key: "frequency", label: "Frequency", width: 120 },
+  { key: "action", label: "Action", width: 110 },
+];
 
 export default function MyChecklistPage() {
   const [instances, setInstances] = useState<ChecklistInstanceRecord[]>([]);
@@ -19,6 +31,28 @@ export default function MyChecklistPage() {
   const [modalError, setModalError] = useState("");
 
   const user = useAuthStore((state: any) => state.user);
+
+  const {
+    settings: freezeSettings,
+    isModalOpen: isFreezeModalOpen,
+    effectiveFreezeCount,
+    openModal: openFreezeModal,
+    closeModal: closeFreezeModal,
+    saveSettings: saveFreezeSettings,
+    resetSettings: resetFreezeSettings,
+    isSaving: isFreezeSaving,
+    getContainerStyle,
+    getStickyHeaderStyle,
+    getStickyCellStyle,
+  } = useTableFreeze({
+    tableKey: "my_checklist_standalone",
+    availableColumns: STANDALONE_COLUMNS,
+    defaultSettings: {
+      freezeColumns: 0,
+      freezeHeader: true,
+      tableMaxHeight: "60vh",
+    },
+  });
 
   const handleOpenCompleteModal = (task: StandaloneChecklist) => {
     setSelectedTask(task);
@@ -51,7 +85,12 @@ export default function MyChecklistPage() {
         attachmentUrl = await standaloneChecklistApi.uploadAttachment(file);
       }
 
-      await standaloneChecklistApi.complete(selectedTask.id, notes, attachmentUrl);
+      await standaloneChecklistApi.complete(
+        selectedTask.id, 
+        notes, 
+        attachmentUrl, 
+        selectedTask.occurrenceDate
+      );
       
       // Reset & Reload
       setShowModal(false);
@@ -214,61 +253,77 @@ export default function MyChecklistPage() {
               {/* Standalone Active Tasks List Table */}
               {activeStandalone.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#475569", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Standalone Tasks
-                  </h3>
-                  <table className="user-dashboard-table" style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden", width: "100%" }}>
-                    <thead>
-                      <tr style={{ background: "#f8fafc" }}>
-                        <th style={{ color: "#475569", fontWeight: "600" }}>Task Name</th>
-                        <th style={{ color: "#475569", fontWeight: "600" }}>Assigned By</th>
-                        <th style={{ color: "#475569", fontWeight: "600" }}>Planned Date</th>
-                        <th style={{ color: "#475569", fontWeight: "600" }}>Priority</th>
-                        <th style={{ color: "#475569", fontWeight: "600" }}>Frequency</th>
-                        <th style={{ color: "#475569", fontWeight: "600" }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeStandalone.map((item) => {
-                        const isAssignee = employee && item.assignTo === employee.id;
-                        return (
-                          <tr key={item.id}>
-                            <td style={{ fontWeight: "600", color: "#1e293b" }}>{item.taskName}</td>
-                            <td style={{ fontSize: "13px", color: "#475569" }}>{item.assigner_name || "Manager"}</td>
-                            <td style={{ fontSize: "13px", color: "#475569" }}>{new Date(item.plannedDate).toLocaleString()}</td>
-                            <td>
-                              <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", padding: "2px 6px" }}>
-                                {item.priority}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: "13px", color: "#64748b" }}>{item.frequency}</td>
-                            <td>
-                              {isAssignee ? (
-                                <button
-                                  onClick={() => handleOpenCompleteModal(item)}
-                                  style={{
-                                    background: "#2563eb",
-                                    color: "#fff",
-                                    border: "none",
-                                    padding: "6px 12px",
-                                    borderRadius: "6px",
-                                    fontWeight: "600",
-                                    fontSize: "12px",
-                                    cursor: "pointer",
-                                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-                                  }}
-                                >
-                                  Complete
-                                </button>
-                              ) : (
-                                <span style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>View Only</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "#475569", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Standalone Tasks
+                    </h3>
+                    <TableFreezeButton
+                      onClick={openFreezeModal}
+                      effectiveFreezeCount={effectiveFreezeCount}
+                      isHeaderFrozen={freezeSettings.freezeHeader}
+                    />
+                  </div>
+                  <div style={getContainerStyle({ borderRadius: "8px", border: "1px solid #e2e8f0" })}>
+                    <table className="user-dashboard-table" style={{ background: "#fff", borderCollapse: "separate", borderSpacing: 0, width: "100%", minWidth: "850px" }}>
+                      <thead>
+                        <tr>
+                          <th style={getStickyHeaderStyle(0, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Task Name</th>
+                          <th style={getStickyHeaderStyle(1, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Assigned By</th>
+                          <th style={getStickyHeaderStyle(2, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Planned Date</th>
+                          <th style={getStickyHeaderStyle(3, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Priority</th>
+                          <th style={getStickyHeaderStyle(4, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Frequency</th>
+                          <th style={getStickyHeaderStyle(5, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeStandalone.map((item) => {
+                          const isAssignee = employee && item.assignTo === employee.id;
+                          return (
+                            <tr key={`${item.id}_${item.occurrenceDate || item.plannedDate}`}>
+                              <td style={getStickyCellStyle(0, { customStyle: { fontWeight: "600", color: "#1e293b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.taskName}</td>
+                              <td style={getStickyCellStyle(1, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.assigner_name || "Manager"}</td>
+                              <td style={getStickyCellStyle(2, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
+                                <div>{new Date(item.plannedDate).toLocaleString()}</div>
+                                {item.isOverdue && (
+                                  <span style={{ fontSize: "10px", fontWeight: 700, backgroundColor: "#fee2e2", color: "#dc2626", padding: "1px 5px", borderRadius: "3px", marginTop: "2px", display: "inline-block" }}>
+                                    OVERDUE
+                                  </span>
+                                )}
+                              </td>
+                              <td style={getStickyCellStyle(3, { customStyle: { backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
+                                <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", padding: "2px 6px" }}>
+                                  {item.priority}
+                                </span>
+                              </td>
+                              <td style={getStickyCellStyle(4, { customStyle: { fontSize: "13px", color: "#64748b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.frequency}</td>
+                              <td style={getStickyCellStyle(5, { customStyle: { backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
+                                {isAssignee ? (
+                                  <button
+                                    onClick={() => handleOpenCompleteModal(item)}
+                                    style={{
+                                      background: "#2563eb",
+                                      color: "#fff",
+                                      border: "none",
+                                      padding: "6px 12px",
+                                      borderRadius: "6px",
+                                      fontWeight: "600",
+                                      fontSize: "12px",
+                                      cursor: "pointer",
+                                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                                    }}
+                                  >
+                                    Complete
+                                  </button>
+                                ) : (
+                                  <span style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>View Only</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -456,6 +511,16 @@ export default function MyChecklistPage() {
           </div>
         </div>
       )}
+      {/* Freeze Panes Modal */}
+      <TableFreezeModal
+        isOpen={isFreezeModalOpen}
+        onClose={closeFreezeModal}
+        settings={freezeSettings}
+        availableColumns={STANDALONE_COLUMNS}
+        onSave={saveFreezeSettings}
+        onReset={resetFreezeSettings}
+        isSaving={isFreezeSaving}
+      />
     </div>
   );
 }

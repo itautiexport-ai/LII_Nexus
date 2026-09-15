@@ -6,7 +6,7 @@ export default defineConfig({
   server: { 
     port: 5173,
     proxy: {
-      "/uploads": "http://localhost:3000"
+      "/uploads": "http://localhost:4000"
     }
   },
 });

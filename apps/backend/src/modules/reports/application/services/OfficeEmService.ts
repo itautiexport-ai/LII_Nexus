@@ -85,13 +85,28 @@ function getWeeksInYear(year: number): number {
   return weekNo;
 }
 
+async function ensureDeletedPeriodsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS deleted_office_em_periods (
+      id VARCHAR(36) PRIMARY KEY,
+      employee_id VARCHAR(36) NOT NULL,
+      period VARCHAR(50) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_emp_period (employee_id, period)
+    )
+  `);
+}
+
 export class OfficeEmService {
   async generateGapScoreReport(userId: string, period: string = "monthly"): Promise<OfficeEmReport> {
+
     const [[user]] = await pool.query<any[]>("SELECT * FROM users WHERE id = ?", [userId]);
     if (!user) throw new Error("User not found");
 
-    const [[emp]] = await pool.query<any[]>("SELECT id FROM employees WHERE user_id = ?", [userId]);
+    const [[emp]] = await pool.query<any[]>("SELECT id, user_id FROM employees WHERE (user_id = ? OR id = ?)", [userId, userId]);
     const empId = emp ? emp.id : userId;
+    const linkedUserId = emp ? emp.user_id : userId;
+    const myIds = Array.from(new Set([userId, empId, linkedUserId].filter(Boolean)));
     const employeeName = user.full_name;
 
     const now = new Date();
@@ -132,28 +147,47 @@ export class OfficeEmService {
       let completedPoints = 0;
       let onTimePoints = 0;
 
+      const deduplicatedTasks = new Map<string, any>();
       tasks.forEach(t => {
-        const points = getPriorityPoints(t.priority);
-        const isCompleted = t.base_status === "completed" || t.base_status === "verified";
-        
-        let dueTime = new Date(t.due_date).getTime();
-        
-        if (isCompleted || dueTime <= endDate.getTime()) {
-           totalDuePoints += points;
+        if (!t || !t.id) return;
+        if (!deduplicatedTasks.has(t.id)) {
+          deduplicatedTasks.set(t.id, t);
         }
+      });
+      const uniqueTasks = Array.from(deduplicatedTasks.values());
+
+      uniqueTasks.forEach(t => {
+        const points = getPriorityPoints(t.priority);
+        const isCompleted = Boolean(
+          t.base_status === "completed" || 
+          t.base_status === "verified" || 
+          t.base_status === "Skipped" ||
+          t.completed_at !== null
+        );
 
         if (isCompleted) {
+          t.base_status = "completed";
           completedPoints += points;
-          let compTime = new Date(t.completed_at || t.due_date).getTime(); // fallback
+          totalDuePoints += points;
+
+          const dueTime = new Date(t.due_date).getTime();
+          const compTime = t.completed_at ? new Date(t.completed_at).getTime() : dueTime;
+
           if (t.isNotApplicable) {
             onTimePoints += points;
           } else if (compTime <= dueTime) {
             onTimePoints += points;
           }
+        } else {
+          t.base_status = (t.base_status === "running" || t.base_status === "Under Process") ? "running" : "pending";
+          const dueTime = new Date(t.due_date).getTime();
+          if (dueTime <= endDate.getTime()) {
+            totalDuePoints += points;
+          }
         }
       });
 
-      const isActive = totalDuePoints > 0 || tasks.some(t => ["running", "pending"].includes(t.base_status));
+      const isActive = totalDuePoints > 0 || uniqueTasks.length > 0;
 
       const completionPercent = totalDuePoints > 0 ? (completedPoints / totalDuePoints) * 100 : 0;
       const onTimePercent = completedPoints > 0 ? (onTimePoints / completedPoints) * 100 : 0;
@@ -163,14 +197,14 @@ export class OfficeEmService {
 
       const gapScore = -1 * ((completionGap * 0.6) + (timelinessGap * 0.4));
 
-      const mappedTasks: OfficeEmTaskDetail[] = tasks.map(t => ({
+      const mappedTasks: OfficeEmTaskDetail[] = uniqueTasks.map(t => ({
         id: t.id,
         name: t.name || t.title || "Unnamed Task",
         priority: t.priority,
         baseStatus: t.base_status,
         dueDate: t.due_date,
         completedAt: t.completed_at || null,
-        isNotApplicable: t.isNotApplicable
+        isNotApplicable: !!t.isNotApplicable
       }));
 
       return {
@@ -208,13 +242,13 @@ export class OfficeEmService {
     const [delTasks] = await pool.query<any[]>(
       `SELECT id, title as name, priority, due_date, base_status, completed_at
        FROM delegated_tasks
-       WHERE assigned_to = ? AND deleted_at IS NULL
+       WHERE assigned_to IN (?) AND deleted_at IS NULL
          AND (
            (due_date >= ? AND due_date <= ?)
-           OR base_status IN ('pending', 'running')
            OR (completed_at >= ? AND completed_at <= ?)
+           OR (base_status IN ('pending', 'running') AND due_date <= ?)
          )`,
-      [empId, startStr, endStr, startStr, endStr]
+      [myIds, startStr, endStr, startStr, endStr, endStr]
     );
     const delegationScore = evaluateModule(delTasks, delegationWeightVal);
 
@@ -226,13 +260,14 @@ export class OfficeEmService {
        FROM checklist_instances ci
        JOIN standalone_checklists sc ON ci.template_id = sc.id
        JOIN checklist_instance_items cii ON ci.id = cii.instance_id
-       WHERE ci.employee_id = ?
+       WHERE ci.employee_id IN (?)
+         AND sc.deleted_at IS NULL
          AND (
            (ci.period_end >= ? AND ci.period_end <= ?)
-           OR (cii.is_checked = 0 AND ci.period_end <= ?)
+           OR (cii.is_checked = 0)
            OR (cii.checked_at >= ? AND cii.checked_at <= ?)
          )`,
-      [empId, startStr, endStr, endStr, startStr, endStr]
+      [myIds, startStr, endStr, startStr, endStr]
     );
 
     const [standaloneCompletions] = await pool.query<any[]>(
@@ -240,16 +275,23 @@ export class OfficeEmService {
               'completed' as base_status, c.completed_at as completed_at
        FROM standalone_checklist_completions c
        JOIN standalone_checklists sc ON c.checklist_id = sc.id
-       WHERE c.completed_by = ? AND c.completed_at >= ? AND c.completed_at <= ?`,
-      [empId, startStr, endStr]
+       WHERE (c.completed_by IN (?) OR sc.assign_to IN (?))
+         AND sc.deleted_at IS NULL
+         AND c.completed_at >= ? AND c.completed_at <= ?`,
+      [myIds, myIds, startStr, endStr]
     );
 
     const [standalonePending] = await pool.query<any[]>(
       `SELECT sc.id, sc.task_name as name, sc.priority, sc.planned_date as due_date,
               'pending' as base_status, NULL as completed_at
        FROM standalone_checklists sc
-       WHERE sc.assign_to = ? AND sc.deleted_at IS NULL AND sc.planned_date >= ? AND sc.planned_date <= ?`,
-      [empId, startStr, endStr]
+       WHERE sc.assign_to IN (?) 
+         AND sc.deleted_at IS NULL 
+         AND sc.planned_date >= ? AND sc.planned_date <= ?
+         AND sc.id NOT IN (
+           SELECT checklist_id FROM standalone_checklist_completions WHERE completed_by IN (?)
+         )`,
+      [myIds, startStr, endStr, myIds]
     );
 
     const allChecklistTasks = [
@@ -264,52 +306,58 @@ export class OfficeEmService {
       `SELECT ft.id, ws.name, 'medium' as priority, ft.due_date, ft.base_status, ft.completed_at
        FROM flowchart_tasks ft
        JOIN workflow_stages ws ON ft.stage_id = ws.id
-       WHERE ft.assigned_to = ?
+       WHERE ft.assigned_to IN (?)
          AND (
            (ft.due_date >= ? AND ft.due_date <= ?)
            OR ft.base_status IN ('pending', 'running')
            OR (ft.completed_at >= ? AND ft.completed_at <= ?)
          )`,
-      [empId, startStr, endStr, startStr, endStr]
+      [myIds, startStr, endStr, startStr, endStr]
     );
 
     const [fmsInstanceSteps] = await pool.query<any[]>(
       `SELECT fis.id, fs.step_name as name, fis.status as base_status, 
-              fis.completed_at, fis.created_at, fs.doer_employee_ids, fi.creator_id, fis.completed_by
+              fis.completed_at, fis.created_at, fs.doer_employee_ids, fi.creator_id, fis.completed_by,
+              fs.timeline_hours, fs.timeline_unit
        FROM fms_instance_steps fis
        JOIN fms_instances fi ON fis.instance_id = fi.id
        JOIN fms_steps fs ON fis.fms_step_id = fs.id
        WHERE (
-         (fis.completed_by = ? AND fis.completed_at >= ? AND fis.completed_at <= ?)
-         OR (fis.status IN ('Pending', 'Under Process'))
+         ((fis.completed_by IN (?) OR fis.status IN ('Completed', 'Skipped')) AND fis.completed_at >= ? AND fis.completed_at <= ?)
+         OR (fi.status = 'In Progress' AND fis.status = 'Under Process')
        )`,
-      [empId, startStr, endStr]
+      [myIds, startStr, endStr]
     );
 
     const mappedFmsInstanceSteps = fmsInstanceSteps.filter(fis => {
       let doers: any[] = [];
       try {
         doers = typeof fis.doer_employee_ids === 'string' ? JSON.parse(fis.doer_employee_ids) : fis.doer_employee_ids;
-      } catch (e) {}
+      } catch (_e) {
+        /* ignore JSON parse error */
+      }
       if (!Array.isArray(doers)) doers = [];
 
-      const isDoer = doers.includes(empId);
-      const isCreator = fis.creator_id === empId;
-      const isCompletedBy = fis.completed_by === empId;
+      const isDoer = myIds.some(id => doers.includes(id));
+      const isCreator = myIds.includes(fis.creator_id);
+      const isCompletedBy = myIds.includes(fis.completed_by);
 
       if (isCompletedBy) return true;
       if (doers.length === 0 && isCreator) return true;
       return isDoer;
     }).map(fis => {
       let base_status = "pending";
-      if (fis.base_status === "Completed" || fis.base_status === "Skipped") {
+      if (fis.base_status === "Completed" || fis.base_status === "Skipped" || fis.completed_at !== null) {
         base_status = "completed";
       } else if (fis.base_status === "Under Process") {
         base_status = "running";
       }
       
       const created = new Date(fis.created_at);
-      const due = new Date(created.getTime() + 24 * 60 * 60 * 1000);
+      const timelineHours = parseFloat(fis.timeline_hours || 24);
+      const due = fis.timeline_unit === "days"
+        ? new Date(created.getTime() + timelineHours * 24 * 60 * 60 * 1000)
+        : new Date(created.getTime() + timelineHours * 60 * 60 * 1000);
       
       return {
         id: fis.id,
@@ -485,6 +533,18 @@ export class OfficeEmService {
   }
 
   async generateGapScoreHistory(userId: string, targetPeriod: string): Promise<any[]> {
+    await ensureDeletedPeriodsTable();
+    const [[emp]] = await pool.query<any[]>("SELECT id, user_id FROM employees WHERE (user_id = ? OR id = ?)", [userId, userId]);
+    const empId = emp ? emp.id : userId;
+    const linkedUserId = emp ? emp.user_id : userId;
+    const targetIds = Array.from(new Set([userId, empId, linkedUserId].filter(Boolean)));
+
+    const [deletedRows] = await pool.query<any[]>(
+      "SELECT period FROM deleted_office_em_periods WHERE employee_id IN (?)",
+      [targetIds]
+    );
+    const deletedPeriods = new Set(deletedRows.map(r => r.period));
+
     let weekString = targetPeriod;
     if (!/^\d{4}-W\d{2}$/.test(weekString)) {
       // Calculate current week string
@@ -500,6 +560,9 @@ export class OfficeEmService {
     const historyList: any[] = [];
 
     for (const w of weeks) {
+      if (deletedPeriods.has(w)) {
+        continue; // Exclude deleted period completely from history list
+      }
       try {
         const report = await this.generateGapScoreReport(userId, w);
         historyList.push(report);
@@ -529,6 +592,27 @@ export class OfficeEmService {
     reports.sort((a, b) => (b.finalGapScore ?? -100) - (a.finalGapScore ?? -100));
     return reports;
   }
+
+  async deleteGapScoreEvaluation(employeeId: string, period: string): Promise<void> {
+    await ensureDeletedPeriodsTable();
+    const [[emp]] = await pool.query<any[]>("SELECT id, user_id FROM employees WHERE (user_id = ? OR id = ?)", [employeeId, employeeId]);
+    const empId = emp ? emp.id : employeeId;
+    const linkedUserId = emp ? emp.user_id : employeeId;
+    const targetIds = Array.from(new Set([employeeId, empId, linkedUserId].filter(Boolean)));
+
+    // Delete HOD and HR evaluations for this employee and period
+    await pool.query("DELETE FROM hod_evaluations WHERE employee_id IN (?) AND (evaluation_period = ? OR evaluation_period LIKE ?)", [targetIds, period, `%${period}%`]);
+    await pool.query("DELETE FROM hr_evaluations WHERE employee_id IN (?) AND (evaluation_period = ? OR evaluation_period LIKE ?)", [targetIds, period, `%${period}%`]);
+
+    // Record period as deleted for all targetIds so it is completely removed from the history list
+    for (const tId of targetIds) {
+      await pool.query(
+        "INSERT INTO deleted_office_em_periods (id, employee_id, period) VALUES (UUID(), ?, ?) ON DUPLICATE KEY UPDATE created_at = NOW()",
+        [tId, period]
+      );
+    }
+  }
 }
 
 export const officeEmService = new OfficeEmService();
+

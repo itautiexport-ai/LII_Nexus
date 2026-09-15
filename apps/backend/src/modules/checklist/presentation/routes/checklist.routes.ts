@@ -17,10 +17,12 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
+import { requireAdmin } from "../../../../shared/middlewares/rbac.middleware";
+
 router.post("/standalone-checklists", authMiddleware, controller.createChecklist);
 router.get("/standalone-checklists/my-dashboard", authMiddleware, controller.getMyDashboard);
 router.get("/standalone-checklists", authMiddleware, controller.getAllChecklists);
-router.delete("/standalone-checklists/:id", authMiddleware, controller.deleteChecklist);
+router.delete("/standalone-checklists/:id", authMiddleware, requireAdmin(), controller.deleteChecklist);
 router.post("/standalone-checklists/:id/complete", authMiddleware, controller.completeChecklist);
 
 router.post("/standalone-checklists/upload-attachment", authMiddleware, upload.single("file"), (req, res) => {

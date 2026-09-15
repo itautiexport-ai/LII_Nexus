@@ -29,7 +29,7 @@ export default function PermissionsPage() {
   }, [selectedUserId, selectedUser]); // It's fine if this resets when selectedUser updates after save
 
   const getOrCreateRole = async (roleName: string) => {
-    let existingRole = roles.find(r => r.name === roleName);
+    const existingRole = roles.find(r => r.name === roleName);
     if (existingRole) return existingRole;
     
     // Create it dynamically if it doesn't exist
@@ -60,7 +60,7 @@ export default function PermissionsPage() {
       }
       
       for (const roleName of rolesToRemove) {
-        let role = roles.find(r => r.name === roleName);
+        const role = roles.find(r => r.name === roleName);
         if (role) {
           await rolesApi.removeFromUser(selectedUserId, role.id);
         }

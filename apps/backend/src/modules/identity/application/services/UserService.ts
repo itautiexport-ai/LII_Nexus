@@ -7,6 +7,7 @@ import { toPublicUser } from "../../domain/entities/User";
 import { CreateUserInput, UpdateUserInput } from "../dto/user.dto";
 import { AuditService } from "../../../../shared/services/AuditService";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
+import { MySqlEmployeeRepository } from "../../../organization/infrastructure/repositories/MySqlEmployeeRepository";
 
 export class UserService {
   constructor(
@@ -169,7 +170,6 @@ export class UserService {
 
     // Delete the linked employees safely
     if (employees && employees.length > 0) {
-      const { MySqlEmployeeRepository } = require("../../../organization/infrastructure/repositories/MySqlEmployeeRepository");
       const empRepo = new MySqlEmployeeRepository();
       for (const emp of employees) {
         await empRepo.softDelete(emp.id);

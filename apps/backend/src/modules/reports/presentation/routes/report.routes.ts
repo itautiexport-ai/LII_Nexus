@@ -16,6 +16,7 @@ router.use(authMiddleware);
 // Core report running/export - literal paths, always before any :param route.
 router.get("/reports/office-em-list", requirePermission("report.view"), asyncHandler(OfficeEmController.getGapScoreList));
 router.get("/reports/office-em/:employeeId", requirePermission("report.view"), asyncHandler(OfficeEmController.getGapScore));
+router.delete("/reports/office-em/:employeeId", requirePermission("report.view"), asyncHandler(OfficeEmController.deleteGapScoreEvaluation));
 router.get("/reports/production-em", requirePermission("report.view"), asyncHandler(ProductionEmController.getReport));
 router.get("/reports/cumulative-scores", requirePermission("report.view"), asyncHandler(ApgsController.getCumulativeScores));
 router.get("/reports/apgs/:employeeId", requirePermission("report.view"), asyncHandler(ApgsController.getScore));

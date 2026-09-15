@@ -52,5 +52,10 @@ export const officeEmApi = {
 
   getGapScoreList(period: string): Promise<{ data: OfficeEmReport[] }> {
     return axiosInstance.get(`/reports/office-em-list?period=${period}`).then((r: any) => r.data);
+  },
+
+  deleteScoreEvaluation(employeeId: string, period: string): Promise<{ data: any }> {
+    return axiosInstance.delete(`/reports/office-em/${employeeId}?period=${period}`).then((r: any) => r.data);
   }
 };
+

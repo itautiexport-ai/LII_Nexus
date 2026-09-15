@@ -15,5 +15,16 @@ export const OfficeEmController = {
     const { period = "monthly" } = req.query;
     const reportList = await officeEmService.generateGapScoreList(period as string);
     return ok(res, reportList);
+  },
+
+  async deleteGapScoreEvaluation(req: Request, res: Response) {
+    const { employeeId } = req.params;
+    const { period } = req.query;
+    if (!period) {
+      return res.status(400).json({ error: "Period query parameter is required" });
+    }
+    await officeEmService.deleteGapScoreEvaluation(employeeId, period as string);
+    return ok(res, { message: `Evaluations for ${period} deleted successfully.` });
   }
 };
+

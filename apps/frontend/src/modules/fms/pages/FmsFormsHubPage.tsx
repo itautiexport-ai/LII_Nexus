@@ -95,15 +95,20 @@ export function FmsFormsHubPage() {
   const isSystemAdmin = user?.roles?.includes("System Admin");
 
   const fetchFmsList = async () => {
-    const managers = await fmsApi.getAll();
-    setFmsList(managers);
-    return managers;
+    try {
+      setLoading(true);
+      const managers = await fmsApi.getAll();
+      setFmsList(Array.isArray(managers) ? managers : []);
+    } catch (err) {
+      console.error("Failed to load FMS forms:", err);
+      setFmsList([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchFmsList().then(managers => {
-      setLoading(false);
-    });
+    fetchFmsList();
   }, []);
 
   const handleSaveForm = async (data: CreateFmsManagerDto) => {

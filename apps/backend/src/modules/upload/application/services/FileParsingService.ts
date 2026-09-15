@@ -23,6 +23,7 @@ export class FileParsingService {
   private async parsePdf(filePath: string): Promise<ParsedRow[]> {
     try {
       // Use pdfjs-dist v3 legacy CJS build for positional text extraction
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
       
       const data = new Uint8Array(fs.readFileSync(filePath));

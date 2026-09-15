@@ -1,7 +1,11 @@
-import { FormEvent, useEffect, useState, useRef } from "react";
+import { FormEvent, useEffect, useState, useRef, useMemo } from "react";
 import { delegationApi, DelegatedTaskRecord, DelegationPriority } from "../api/delegationApi";
 import { factoryApi, DirectReport } from "../../../factory/api/factoryApi";
 import { useAuthStore } from "../../../auth/hooks/useAuthStore";
+import { useTableFreeze } from "../../../../shared/hooks/useTableFreeze";
+import { TableFreezeButton } from "../../../../shared/components/TableFreezeButton";
+import { TableFreezeModal } from "../../../../shared/components/TableFreezeModal";
+import { axiosInstance } from "../../../../services/api/axiosInstance";
 
 type DisplayTask = DelegatedTaskRecord & { displayStatus: string };
 
@@ -11,7 +15,8 @@ const statusColors: Record<string, string> = { pending: "#999", running: "#4a90d
 export default function DelegationPage() {
   const user = useAuthStore(state => state.user);
   const isAdmin = user?.roles.includes("System Admin");
-  const [tab, setTab] = useState<"received" | "delegated">("received");
+  const [tab, setTab] = useState<"received" | "delegated">("delegated");
+  const [currentEmployee, setCurrentEmployee] = useState<any | null>(null);
   const [received, setReceived] = useState<DisplayTask[]>([]);
   const [delegated, setDelegated] = useState<DisplayTask[]>([]);
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
@@ -30,24 +35,95 @@ export default function DelegationPage() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedTaskForReview, setSelectedTaskForReview] = useState<DisplayTask | null>(null);
 
+  const [showRequestExtensionModal, setShowRequestExtensionModal] = useState(false);
+  const [extensionTaskId, setExtensionTaskId] = useState<string | null>(null);
+  const [extensionReason, setExtensionReason] = useState("");
+  const [extensionRequestedDate, setExtensionRequestedDate] = useState("");
+  const [isSubmittingExtension, setIsSubmittingExtension] = useState(false);
+
+  const availableColumns = useMemo(() => [
+    { key: "select", label: "Select Checkbox", width: 44 },
+    { key: "title", label: "Task Title", width: 220 },
+    { key: "from", label: "From", width: 140 },
+    { key: "assignedDate", label: "Assigned Date", width: 120 },
+    { key: "assignedTo", label: "Assigned To", width: 140 },
+    { key: "plannedDate", label: "Planned Date", width: 120 },
+    { key: "priority", label: "Priority", width: 100 },
+    { key: "status", label: "Status", width: 120 },
+    { key: "extension", label: "Extension", width: 230 },
+    { key: "files", label: "Files", width: 120 },
+    { key: "actions", label: "Actions", width: 160 },
+  ], []);
+
+  const {
+    settings: freezeSettings,
+    isModalOpen: isFreezeModalOpen,
+    effectiveFreezeCount,
+    openModal: openFreezeModal,
+    closeModal: closeFreezeModal,
+    saveSettings: saveFreezeSettings,
+    resetSettings: resetFreezeSettings,
+    isSaving: isFreezeSaving,
+    getContainerStyle,
+    getStickyHeaderStyle,
+    getStickyCellStyle,
+  } = useTableFreeze({
+    tableKey: "delegation_list",
+    availableColumns,
+    defaultSettings: {
+      freezeColumns: 0,
+      freezeHeader: true,
+      tableMaxHeight: "72vh",
+    },
+  });
+
   async function load() {
-    const [receivedRes, delegatedRes, reports] = await Promise.all([
-      delegationApi.list({}),
-      delegationApi.listIDelegated(),
-      factoryApi.myDirectReports(),
-    ]);
-    
-    let rItems = receivedRes.items as DisplayTask[];
-    let dItems = delegatedRes as DisplayTask[];
-    
-    if (user && !user.roles.includes("System Admin")) {
-      rItems = rItems.filter(t => t.assignedToName === user.fullName || t.assignedByName === user.fullName);
-      dItems = dItems.filter(t => t.assignedByName === user.fullName || t.assignedToName === user.fullName);
+    try {
+      const [empRes, allTasksRes, reports] = await Promise.all([
+        axiosInstance.get("/employees/me").catch(() => null),
+        delegationApi.list({ scope: isAdmin ? "all" : undefined }),
+        factoryApi.myDirectReports(),
+      ]);
+
+      const me = empRes?.data?.data;
+      setCurrentEmployee(me || null);
+
+      const myEmpId = me?.id;
+      const myUserId = user?.id;
+      const myName = (me?.fullName || user?.fullName || "").trim().toLowerCase();
+
+      const items = (allTasksRes.items as DisplayTask[]) || [];
+
+      // 1. Assigned to Me: strictly tasks where assigned_to matches current user/employee
+      const assignedToMeList = items.filter(t => {
+        const toId = (t as any).assignedTo;
+        const toName = (t.assignedToName || "").trim().toLowerCase();
+        return (myEmpId && toId === myEmpId) || (myUserId && toId === myUserId) || (myName && toName === myName);
+      });
+
+      // 2. Tasks Assigned by Me:
+      // For Admin: all tasks assigned by admin / management (not assigned to admin)
+      // For non-admin: tasks where assigned_by matches current user/employee
+      const assignedByMeList = items.filter(t => {
+        const byId = (t as any).assignedBy;
+        const byName = (t.assignedByName || "").trim().toLowerCase();
+        const isSelfAssignedToMe = (myEmpId && (t as any).assignedTo === myEmpId) || 
+                                   (myUserId && (t as any).assignedTo === myUserId) || 
+                                   (myName && (t.assignedToName || "").trim().toLowerCase() === myName);
+
+        if (isAdmin) {
+          return !isSelfAssignedToMe || (myEmpId && byId === myEmpId) || (myUserId && byId === myUserId) || (myName && byName === myName);
+        }
+
+        return (myEmpId && byId === myEmpId) || (myUserId && byId === myUserId) || (myName && byName === myName);
+      });
+
+      setReceived(assignedToMeList);
+      setDelegated(assignedByMeList);
+      setDirectReports(reports);
+    } catch (err) {
+      console.error("Failed to load delegations:", err);
     }
-    
-    setReceived(rItems);
-    setDelegated(dItems);
-    setDirectReports(reports);
   }
   useEffect(() => { 
     load(); 
@@ -134,6 +210,30 @@ export default function DelegationPage() {
     }
   }
 
+  function openRequestExtension(taskId: string) {
+    setExtensionTaskId(taskId);
+    setExtensionReason("");
+    setExtensionRequestedDate("");
+    setShowRequestExtensionModal(true);
+  }
+
+  async function handleRequestExtensionSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!extensionTaskId || !extensionReason || !extensionRequestedDate) return;
+    try {
+      setIsSubmittingExtension(true);
+      await delegationApi.requestExtension(extensionTaskId, extensionReason, extensionRequestedDate);
+      setShowRequestExtensionModal(false);
+      alert("Extension requested successfully. Sent for review to the assigner.");
+      await load();
+    } catch (err: any) {
+      console.error("Failed to request extension", err);
+      alert(err?.response?.data?.error?.message || err?.response?.data?.message || "Failed to request extension");
+    } finally {
+      setIsSubmittingExtension(false);
+    }
+  }
+
   function openExtensionReview(task: DisplayTask, status: "approved" | "rejected") {
     setSelectedTaskForReview(task);
     setReviewTaskId(task.id);
@@ -145,13 +245,18 @@ export default function DelegationPage() {
   async function handleExtensionReviewSubmit(e: FormEvent) {
     e.preventDefault();
     if (!reviewTaskId) return;
+    if (reviewStatus === "rejected" && !rejectionReason.trim()) {
+      alert("Please provide a reason for rejecting the extension.");
+      return;
+    }
     try {
-      await delegationApi.respondToExtension(reviewTaskId, reviewStatus, reviewStatus === "rejected" ? rejectionReason : undefined);
+      await delegationApi.respondToExtension(reviewTaskId, reviewStatus, reviewStatus === "rejected" ? rejectionReason.trim() : undefined);
       setShowExtensionReview(false);
+      alert(`Extension ${reviewStatus === "approved" ? "approved" : "rejected"} successfully.`);
       await load();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to respond to extension", err);
-      alert("Failed to respond to extension");
+      alert(err?.response?.data?.error?.message || err?.response?.data?.message || "Failed to respond to extension");
     }
   }
 
@@ -186,7 +291,7 @@ export default function DelegationPage() {
             {directReports.map((r) => <option key={r.id} value={r.id}>{r.fullName}</option>)}
           </select>
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <input required type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} style={{ padding: 6, flex: 1 }} />
+            <input required type="date" value={form.dueDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} style={{ padding: 6, flex: 1 }} />
             <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as DelegationPriority })} style={{ padding: 6, flex: 1 }}>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -200,15 +305,57 @@ export default function DelegationPage() {
         </form>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid #ddd" }}>
-        <button onClick={() => { setTab("received"); setSelectedIds([]); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "received" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "received" ? 600 : 400 }}>Assigned to Me</button>
-        <button onClick={() => { setTab("delegated"); setSelectedIds([]); }} style={{ padding: "8px 16px", border: "none", background: "none", borderBottom: tab === "delegated" ? "2px solid #4a90d9" : "2px solid transparent", fontWeight: tab === "delegated" ? 600 : 400 }}>Tasks I Delegated</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #ddd" }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button 
+            onClick={() => { setTab("received"); setSelectedIds([]); }} 
+            style={{ 
+              padding: "8px 16px", 
+              border: "none", 
+              background: "none", 
+              borderBottom: tab === "received" ? "2px solid #4a90d9" : "2px solid transparent", 
+              fontWeight: tab === "received" ? 600 : 400,
+              cursor: "pointer"
+            }}
+          >
+            Assigned to Me ({received.length})
+          </button>
+          <button 
+            onClick={() => { setTab("delegated"); setSelectedIds([]); }} 
+            style={{ 
+              padding: "8px 16px", 
+              border: "none", 
+              background: "none", 
+              borderBottom: tab === "delegated" ? "2px solid #4a90d9" : "2px solid transparent", 
+              fontWeight: tab === "delegated" ? 600 : 400,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6
+            }}
+          >
+            Tasks Assigned by Me ({delegated.length})
+            {delegated.some(t => t.extensionStatus === "pending") && (
+              <span style={{ background: "#fef3c7", color: "#b45309", padding: "2px 6px", borderRadius: 10, fontSize: 11, fontWeight: 700 }}>
+                Pending Review
+              </span>
+            )}
+          </button>
+        </div>
+        <div style={{ paddingBottom: 6 }}>
+          <TableFreezeButton
+            onClick={openFreezeModal}
+            effectiveFreezeCount={effectiveFreezeCount}
+            isHeaderFrozen={freezeSettings.freezeHeader}
+          />
+        </div>
       </div>
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-              <th style={{ padding: 8, width: 30 }}>
+      <div style={getContainerStyle()}>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: "1350px" }}>
+          <thead>
+            <tr style={{ textAlign: "left" }}>
+              <th style={getStickyHeaderStyle(0, { customStyle: { padding: 8, width: 44, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>
                 {isAdmin && (
                   <input 
                     type="checkbox" 
@@ -223,21 +370,22 @@ export default function DelegationPage() {
                   />
                 )}
               </th>
-            <th style={{ padding: 8 }}>Task Title</th>
-            <th style={{ padding: 8 }}>From</th>
-            <th style={{ padding: 8 }}>Assigned Date</th>
-            <th style={{ padding: 8 }}>Assigned To</th>
-            <th style={{ padding: 8 }}>Planned Date</th>
-            <th style={{ padding: 8 }}>Priority</th>
-            <th style={{ padding: 8 }}>Status</th>
-            <th style={{ padding: 8 }}>Files</th>
-            <th style={{ padding: 8 }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((t) => (
-            <tr key={t.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td style={{ padding: 8 }}>
+              <th style={getStickyHeaderStyle(1, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Task Title</th>
+              <th style={getStickyHeaderStyle(2, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>From</th>
+              <th style={getStickyHeaderStyle(3, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Assigned Date</th>
+              <th style={getStickyHeaderStyle(4, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Assigned To</th>
+              <th style={getStickyHeaderStyle(5, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Planned Date</th>
+              <th style={getStickyHeaderStyle(6, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Priority</th>
+              <th style={getStickyHeaderStyle(7, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Status</th>
+              <th style={getStickyHeaderStyle(8, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Extension</th>
+              <th style={getStickyHeaderStyle(9, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Files</th>
+              <th style={getStickyHeaderStyle(10, { customStyle: { padding: 8, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((t) => (
+              <tr key={t.id}>
+                <td style={getStickyCellStyle(0, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>
                   {isAdmin && (
                     <input 
                       type="checkbox" 
@@ -252,141 +400,324 @@ export default function DelegationPage() {
                     />
                   )}
                 </td>
-              <td style={{ padding: 8, fontWeight: 600 }}>{t.title}</td>
-              <td style={{ padding: 8 }}>{t.assignedByName}</td>
-              <td style={{ padding: 8 }}>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}</td>
-              <td style={{ padding: 8, color: "#2563eb", fontWeight: 500 }}>{t.assignedToName}</td>
-              <td style={{ padding: 8 }}>{t.dueDate}</td>
-              <td style={{ padding: 8 }}><span style={{ color: priorityColors[t.priority], fontWeight: 600, textTransform: "capitalize" }}>{t.priority}</span></td>
-              <td style={{ padding: 8 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ color: statusColors[t.displayStatus], fontWeight: 600 }}>{t.displayStatus}</span>
-                  {t.extensionStatus === "pending" && <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: "bold" }}>Extension Pending</span>}
-                  {t.extensionStatus === "rejected" && <span style={{ fontSize: 11, color: "#ef4444" }}>Extension Rejected</span>}
-                </div>
-              </td>
-              <td style={{ padding: 8, fontSize: 12 }}>
-                {t.files.length > 0 
-                  ? t.files.map((f, i) => (
-                      <span key={f.id}>
-                        <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>{f.fileName}</a>
-                        {i < t.files.length - 1 ? ", " : ""}
-                      </span>
-                    ))
-                  : "—"}
-              </td>
-              <td style={{ padding: 8 }}>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  {tab === "received" && t.displayStatus !== "completed" && (
-                    <select 
-                      value=""
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "start") handleStatusChange(t.id, "running");
-                        if (val === "proof") handleAddProof(t.id);
-                        if (val === "complete") handleStatusChange(t.id, "completed");
-                      }}
-                      style={{ padding: 4 }}
-                    >
-                      <option value="">Select Action...</option>
-                      {t.displayStatus === "pending" && <option value="start">Start</option>}
-                      <option value="proof">Add Proof</option>
-                      <option value="complete">Complete</option>
-                    </select>
-                  )}
-                  {tab === "delegated" && t.displayStatus === "delayed" && (
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <select value={escalateDrafts[t.id] ?? ""} onChange={(e) => setEscalateDrafts({ ...escalateDrafts, [t.id]: e.target.value })} style={{ padding: 4 }}>
-                        <option value="">Escalate to...</option>
-                        {directReports.map((r) => <option key={r.id} value={r.id}>{r.fullName}</option>)}
-                      </select>
-                      <button onClick={() => handleEscalate(t.id)}>Escalate</button>
-                    </div>
-                  )}
-                  {tab === "delegated" && t.displayStatus !== "completed" && (
-                    <button
-                      onClick={() => handleWhatsAppReminder(t.id)}
-                      title="Send WhatsApp Reminder"
-                      style={{ padding: "3px 10px", background: "#d1fae5", color: "#065f46", border: "1px solid #a7f3d0", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                    >
-                      📱 WhatsApp
-                    </button>
-                  )}
-                  {tab === "delegated" && t.extensionStatus === "pending" && (
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button 
-                        onClick={() => openExtensionReview(t, "approved")}
-                        style={{ padding: "3px 10px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                      >
-                        Accept Ext.
-                      </button>
-                      <button 
-                        onClick={() => openExtensionReview(t, "rejected")}
-                        style={{ padding: "3px 10px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                      >
-                        Reject Ext.
-                      </button>
-                    </div>
-                  )}
-                  {t.escalatedToName && <div style={{ fontSize: 11, color: "#c0392b" }}>Escalated to {t.escalatedToName}</div>}
-                  {isAdmin && (
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      title="Delete task"
-                      style={{ padding: "3px 10px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                    >
-                      🗑 Delete
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-          {list.length === 0 && <tr><td colSpan={8} style={{ padding: 16, textAlign: "center", color: "#777" }}>Nothing here.</td></tr>}
-        </tbody>
-      </table>
+                <td style={getStickyCellStyle(1, { customStyle: { padding: 8, fontWeight: 600, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>{t.title}</td>
+                <td style={getStickyCellStyle(2, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>{t.assignedByName}</td>
+                <td style={getStickyCellStyle(3, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}</td>
+                <td style={getStickyCellStyle(4, { customStyle: { padding: 8, color: "#2563eb", fontWeight: 500, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>{t.assignedToName}</td>
+                <td style={getStickyCellStyle(5, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>{t.dueDate}</td>
+                <td style={getStickyCellStyle(6, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}><span style={{ color: priorityColors[t.priority], fontWeight: 600, textTransform: "capitalize" }}>{t.priority}</span></td>
+                <td style={getStickyCellStyle(7, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>
+                  <span style={{ color: statusColors[t.displayStatus], fontWeight: 600, textTransform: "capitalize" }}>{t.displayStatus}</span>
+                </td>
+                {/* Dedicated Extension Column */}
+                <td style={getStickyCellStyle(8, { customStyle: { padding: "8px 10px", borderBottom: "1px solid #eee", backgroundColor: "#ffffff", verticalAlign: "middle" } })}>
+                  {(() => {
+                    const myEmpId = currentEmployee?.id;
+                    const myUserId = user?.id;
+                    const myFullName = (currentEmployee?.fullName || user?.fullName || "").trim().toLowerCase();
+                    const taskAssignedBy = (t as any).assignedBy;
+                    const taskAssignedByName = (t.assignedByName || "").trim().toLowerCase();
+                    const isAssigner = (myEmpId && taskAssignedBy === myEmpId) || 
+                                       (myUserId && taskAssignedBy === myUserId) || 
+                                       (myFullName && taskAssignedByName === myFullName);
+                    const canReview = isAssigner || isAdmin;
 
-      {showExtensionReview && selectedTaskForReview && (
+                    if (t.extensionStatus === "pending") {
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "#fffbeb", border: "1px solid #fde68a", padding: "6px 8px", borderRadius: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", display: "flex", alignItems: "center", gap: 4 }}>
+                              ⏳ Pending Review
+                            </span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#78350f" }}>
+                              New: {t.extensionRequestedDate ? new Date(t.extensionRequestedDate).toLocaleDateString() : "—"}
+                            </span>
+                          </div>
+                          {t.extensionReason && (
+                            <div style={{ fontSize: 11, color: "#451a03", background: "#fef3c7", padding: "4px 6px", borderRadius: 4, wordBreak: "break-word" }}>
+                              <strong>Reason:</strong> {t.extensionReason}
+                            </div>
+                          )}
+                          {canReview ? (
+                            <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                              <button
+                                onClick={() => openExtensionReview(t, "approved")}
+                                title="Accept Extension"
+                                style={{
+                                  flex: 1,
+                                  padding: "5px 8px",
+                                  background: "#10b981",
+                                  color: "#ffffff",
+                                  border: "none",
+                                  borderRadius: 4,
+                                  cursor: "pointer",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 4
+                                }}
+                              >
+                                ✓ Accept
+                              </button>
+                              <button
+                                onClick={() => openExtensionReview(t, "rejected")}
+                                title="Reject Extension (Reason Required)"
+                                style={{
+                                  flex: 1,
+                                  padding: "5px 8px",
+                                  background: "#ef4444",
+                                  color: "#ffffff",
+                                  border: "none",
+                                  borderRadius: 4,
+                                  cursor: "pointer",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 4
+                                }}
+                              >
+                                ✕ Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 10, color: "#92400e", fontStyle: "italic", textAlign: "center" }}>
+                              Awaiting Delegator Review
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (t.extensionStatus === "approved") {
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "4px 8px", borderRadius: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#065f46", display: "flex", alignItems: "center", gap: 4 }}>
+                            ✓ Extension Approved
+                          </span>
+                          {t.extensionRequestedDate && (
+                            <span style={{ fontSize: 10, color: "#047857" }}>
+                              Extended: {new Date(t.extensionRequestedDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (t.extensionStatus === "rejected") {
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#fef2f2", border: "1px solid #fecaca", padding: "4px 8px", borderRadius: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", display: "flex", alignItems: "center", gap: 4 }}>
+                            ✕ Extension Rejected
+                          </span>
+                          {t.extensionRejectionReason && (
+                            <span style={{ fontSize: 10, color: "#991b1b", wordBreak: "break-word" }}>
+                              <strong>Reason:</strong> {t.extensionRejectionReason}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    const isAssignee = (myEmpId && (t as any).assignedTo === myEmpId) || 
+                                       (myUserId && (t as any).assignedTo === myUserId) || 
+                                       (myFullName && (t.assignedToName || "").trim().toLowerCase() === myFullName);
+
+                    return (
+                      <div>
+                        {isAssignee && t.displayStatus !== "completed" ? (
+                          <button
+                            onClick={() => openRequestExtension(t.id)}
+                            title="Request Extension"
+                            style={{
+                              padding: "3px 8px",
+                              background: "#fef3c7",
+                              color: "#92400e",
+                              border: "1px solid #fde68a",
+                              borderRadius: 4,
+                              cursor: "pointer",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4
+                            }}
+                          >
+                            ⏱ Request Ext.
+                          </button>
+                        ) : (
+                          <span style={{ color: "#94a3b8" }}>—</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </td>
+                <td style={getStickyCellStyle(9, { customStyle: { padding: 8, fontSize: 12, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>
+                  {t.files.length > 0 
+                    ? t.files.map((f, i) => (
+                        <span key={f.id}>
+                          <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>{f.fileName}</a>
+                          {i < t.files.length - 1 ? ", " : ""}
+                        </span>
+                      ))
+                    : "—"}
+                </td>
+                <td style={getStickyCellStyle(10, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    {tab === "received" && t.displayStatus !== "completed" && (
+                      <select 
+                        value=""
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "start") handleStatusChange(t.id, "running");
+                          if (val === "proof") handleAddProof(t.id);
+                          if (val === "complete") handleStatusChange(t.id, "completed");
+                          if (val === "extension") openRequestExtension(t.id);
+                        }}
+                        style={{ padding: 4 }}
+                      >
+                        <option value="">Select Action...</option>
+                        {t.displayStatus === "pending" && <option value="start">Start</option>}
+                        <option value="proof">Add Proof</option>
+                        <option value="complete">Complete</option>
+                        {t.extensionStatus !== "pending" && <option value="extension">Request Extension</option>}
+                      </select>
+                    )}
+                    {tab === "delegated" && t.displayStatus === "delayed" && (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <select value={escalateDrafts[t.id] ?? ""} onChange={(e) => setEscalateDrafts({ ...escalateDrafts, [t.id]: e.target.value })} style={{ padding: 4 }}>
+                          <option value="">Escalate to...</option>
+                          {directReports.map((r) => <option key={r.id} value={r.id}>{r.fullName}</option>)}
+                        </select>
+                        <button onClick={() => handleEscalate(t.id)}>Escalate</button>
+                      </div>
+                    )}
+                    {tab === "delegated" && t.displayStatus !== "completed" && (
+                      <button
+                        onClick={() => handleWhatsAppReminder(t.id)}
+                        title="Send WhatsApp Reminder"
+                        style={{ padding: "3px 10px", background: "#d1fae5", color: "#065f46", border: "1px solid #a7f3d0", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                      >
+                        📱 WhatsApp
+                      </button>
+                    )}
+                    {t.escalatedToName && <div style={{ fontSize: 11, color: "#c0392b" }}>Escalated to {t.escalatedToName}</div>}
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        title="Delete task"
+                        style={{ padding: "3px 10px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                      >
+                        🗑 Delete
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && <tr><td colSpan={11} style={{ padding: 16, textAlign: "center", color: "#777" }}>Nothing here.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Request Extension Modal */}
+      {showRequestExtensionModal && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", padding: "2rem", borderRadius: "8px", width: "400px", maxWidth: "90%" }}>
-            <h2 style={{ marginTop: 0, marginBottom: "1rem" }}>
-              {reviewStatus === "approved" ? "Approve Extension" : "Reject Extension"}
-            </h2>
-            <div style={{ marginBottom: "1.5rem", fontSize: "0.9rem", color: "#444" }}>
-              <p><strong>Task:</strong> {selectedTaskForReview.title}</p>
-              <p><strong>Reason:</strong> {selectedTaskForReview.extensionReason}</p>
-              <p><strong>Proposed Date:</strong> {selectedTaskForReview.extensionRequestedDate}</p>
-            </div>
-            <form onSubmit={handleExtensionReviewSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {reviewStatus === "rejected" && (
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>Rejection Reason</label>
-                  <textarea 
-                    required
-                    rows={4}
-                    value={rejectionReason}
-                    onChange={e => setRejectionReason(e.target.value)}
-                    style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px" }}
-                    placeholder="Provide a reason for rejection..."
-                  />
-                </div>
-              )}
-              {reviewStatus === "approved" && (
-                <p style={{ fontSize: "0.9rem", color: "#065f46", background: "#d1fae5", padding: "0.5rem", borderRadius: "4px" }}>
-                  Approving this will update the task's due date to {selectedTaskForReview.extensionRequestedDate}.
-                </p>
-              )}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "1rem" }}>
+          <div style={{ background: "#fff", padding: "2rem", borderRadius: "8px", width: "420px", maxWidth: "90%", boxShadow: "0 10px 25px rgba(0,0,0,0.1)" }}>
+            <h2 style={{ marginTop: 0, marginBottom: "1rem" }}>Request Extension</h2>
+            <form onSubmit={handleRequestExtensionSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold", fontSize: "14px" }}>Reason for Extension <span style={{ color: "#ef4444" }}>*</span></label>
+                <textarea 
+                  required
+                  rows={4}
+                  value={extensionReason}
+                  onChange={e => setExtensionReason(e.target.value)}
+                  style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px", boxSizing: "border-box" }}
+                  placeholder="Explain why you need an extension..."
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold", fontSize: "14px" }}>Proposed New Due Date <span style={{ color: "#ef4444" }}>*</span></label>
+                <input 
+                  type="date"
+                  required
+                  value={extensionRequestedDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={e => setExtensionRequestedDate(e.target.value)}
+                  style={{ width: "100%", padding: "0.5rem", border: "1px solid #ccc", borderRadius: "4px", boxSizing: "border-box" }}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "0.5rem" }}>
                 <button 
                   type="button" 
-                  onClick={() => setShowExtensionReview(false)}
+                  onClick={() => setShowRequestExtensionModal(false)}
+                  disabled={isSubmittingExtension}
                   style={{ padding: "0.5rem 1rem", background: "#f3f4f6", border: "none", borderRadius: "4px", cursor: "pointer" }}
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  style={{ padding: "0.5rem 1rem", background: reviewStatus === "approved" ? "#10b981" : "#ef4444", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
+                  disabled={isSubmittingExtension}
+                  style={{ padding: "0.5rem 1rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}
+                >
+                  {isSubmittingExtension ? "Submitting..." : "Submit Request"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Review Extension Modal */}
+      {showExtensionReview && selectedTaskForReview && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", padding: "2rem", borderRadius: "8px", width: "430px", maxWidth: "90%", boxShadow: "0 10px 25px rgba(0,0,0,0.15)" }}>
+            <h2 style={{ marginTop: 0, marginBottom: "1rem", color: reviewStatus === "approved" ? "#065f46" : "#b91c1c" }}>
+              {reviewStatus === "approved" ? "Approve Extension Request" : "Reject Extension Request"}
+            </h2>
+            <div style={{ marginBottom: "1.25rem", fontSize: "0.9rem", color: "#334155", background: "#f8fafc", padding: "12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+              <p style={{ margin: "0 0 6px 0" }}><strong>Task:</strong> {selectedTaskForReview.title}</p>
+              <p style={{ margin: "0 0 6px 0" }}><strong>Requested By:</strong> {selectedTaskForReview.assignedToName}</p>
+              <p style={{ margin: "0 0 6px 0" }}><strong>Proposed New Date:</strong> {selectedTaskForReview.extensionRequestedDate ? new Date(selectedTaskForReview.extensionRequestedDate).toLocaleDateString() : "—"}</p>
+              <p style={{ margin: 0 }}><strong>Reason for Extension:</strong> {selectedTaskForReview.extensionReason || "—"}</p>
+            </div>
+            <form onSubmit={handleExtensionReviewSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {reviewStatus === "rejected" && (
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold", fontSize: "14px", color: "#1e293b" }}>
+                    Reason for Rejection <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <textarea 
+                    required
+                    rows={4}
+                    value={rejectionReason}
+                    onChange={e => setRejectionReason(e.target.value)}
+                    style={{ width: "100%", padding: "0.6rem", border: "1px solid #cbd5e1", borderRadius: "6px", boxSizing: "border-box", fontSize: "14px" }}
+                    placeholder="Provide a reason for rejecting the extension request..."
+                  />
+                </div>
+              )}
+              {reviewStatus === "approved" && (
+                <div style={{ fontSize: "0.9rem", color: "#065f46", background: "#d1fae5", padding: "10px", borderRadius: "6px", border: "1px solid #a7f3d0" }}>
+                  Approving this extension will automatically update the planned due date to <strong>{selectedTaskForReview.extensionRequestedDate ? new Date(selectedTaskForReview.extensionRequestedDate).toLocaleDateString() : ""}</strong>.
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "0.5rem" }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowExtensionReview(false)}
+                  style={{ padding: "0.5rem 1rem", background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1", borderRadius: "6px", cursor: "pointer", fontWeight: 500 }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  style={{ padding: "0.5rem 1.25rem", background: reviewStatus === "approved" ? "#10b981" : "#ef4444", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 700 }}
                 >
                   Confirm {reviewStatus === "approved" ? "Approval" : "Rejection"}
                 </button>
@@ -395,6 +726,17 @@ export default function DelegationPage() {
           </div>
         </div>
       )}
+
+      {/* Freeze Panes Modal */}
+      <TableFreezeModal
+        isOpen={isFreezeModalOpen}
+        onClose={closeFreezeModal}
+        settings={freezeSettings}
+        availableColumns={availableColumns}
+        onSave={saveFreezeSettings}
+        onReset={resetFreezeSettings}
+        isSaving={isFreezeSaving}
+      />
     </div>
   );
 }

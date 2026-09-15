@@ -62,7 +62,7 @@ export default function ProductionProgressPage() {
         // Parse the sheet into array of arrays to find the header row reliably
         const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
         
-        let extractedData: Partial<ProductionPlanningData> = {};
+        const extractedData: Partial<ProductionPlanningData> = {};
 
         for (const row of rows) {
           if (!row || row.length === 0) continue;

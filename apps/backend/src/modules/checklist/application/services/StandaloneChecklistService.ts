@@ -15,12 +15,17 @@ export class StandaloneChecklistService {
     const id = uuidv4();
     const now = new Date();
 
+    let plannedDate = new Date(dto.plannedDate);
+    if (dto.frequency && dto.frequency.toLowerCase() === "daily") {
+      plannedDate.setHours(9, 0, 0, 0);
+    }
+
     const checklist: StandaloneChecklist = {
       id,
       assignedBy,
       taskName: dto.taskName,
       assignTo: dto.assignTo,
-      plannedDate: new Date(dto.plannedDate),
+      plannedDate,
       priority: dto.priority,
       makeAttachmentMandatory: dto.makeAttachmentMandatory,
       makeNoteMandatory: dto.makeNoteMandatory,
@@ -120,13 +125,24 @@ export class StandaloneChecklistService {
       "UPDATE standalone_checklists SET deleted_at = NOW() WHERE id = ?",
       [id]
     );
+
+    // Dismiss any notifications associated with this checklist
+    try {
+      await pool.query(
+        `UPDATE notifications SET status = 'dismissed' WHERE reference_id = ? OR (module = 'office' AND description LIKE ?)`,
+        [id, `%${id}%`]
+      );
+    } catch (e) {
+      console.error("Failed to dismiss notifications for deleted checklist:", e);
+    }
   }
 
   async completeChecklist(
     id: string,
     userId: string,
     notes?: string,
-    attachmentUrl?: string
+    attachmentUrl?: string,
+    occurrenceDate?: string
   ): Promise<void> {
     // 1. Fetch employee ID from user ID
     const [empRows] = await pool.query<any[]>(
@@ -148,22 +164,15 @@ export class StandaloneChecklistService {
       throw new Error("Checklist not found.");
     }
 
-    // 3. Log the completion
+    const targetOccDate = occurrenceDate || parseLocalDateStr(new Date(checklist.planned_date));
+
+    // 3. Log the completion with occurrence_date
     const completionId = uuidv4();
     await pool.query(
       `INSERT INTO standalone_checklist_completions (
-        id, checklist_id, completed_at, completed_by, notes, attachment_url
-      ) VALUES (?, ?, NOW(), ?, ?, ?)`,
-      [completionId, id, employeeId, notes || null, attachmentUrl || null]
-    );
-
-    // 4. Calculate next occurrence
-    const nextPlanned = calculateNextOccurrence(new Date(checklist.planned_date), checklist.frequency);
-    
-    // 5. Update next planned date
-    await pool.query(
-      "UPDATE standalone_checklists SET planned_date = ?, updated_at = NOW() WHERE id = ?",
-      [nextPlanned, id]
+        id, checklist_id, occurrence_date, completed_at, completed_by, notes, attachment_url
+      ) VALUES (?, ?, ?, NOW(), ?, ?, ?)`,
+      [completionId, id, targetOccDate, employeeId, notes || null, attachmentUrl || null]
     );
   }
 
@@ -183,7 +192,7 @@ export class StandaloneChecklistService {
       };
     }
 
-    // Fetch all checklists for this employee
+    // Fetch all active checklists assigned to this employee
     const [rows] = await pool.query<any[]>(
       `SELECT c.*, 
         e1.full_name as assigner_name
@@ -194,57 +203,121 @@ export class StandaloneChecklistService {
       [employeeId]
     );
 
+    // Fetch completions to map completed occurrences
+    const [compRows] = await pool.query<any[]>(
+      `SELECT c.checklist_id, c.occurrence_date, c.completed_at
+       FROM standalone_checklist_completions c
+       JOIN standalone_checklists sc ON sc.id = c.checklist_id
+       WHERE c.completed_by = ? AND sc.deleted_at IS NULL`,
+      [employeeId]
+    );
+
+    const completionsSet = new Set<string>();
+    for (const comp of compRows) {
+      const occStr = comp.occurrence_date 
+        ? parseLocalDateStr(new Date(comp.occurrence_date))
+        : parseLocalDateStr(new Date(comp.completed_at));
+      completionsSet.add(`${comp.checklist_id}_${occStr}`);
+    }
+
     const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
-    const checklists = rows.map((row: any) => ({
-      id: row.id,
-      assignedBy: row.assigned_by,
-      assignBy: row.assigned_by,
-      assignTo: row.assign_to,
-      taskName: row.task_name,
-      plannedDate: row.planned_date,
-      priority: row.priority,
-      makeAttachmentMandatory: !!row.make_attachment_mandatory,
-      makeNoteMandatory: !!row.make_note_mandatory,
-      mode: row.mode,
-      frequency: row.frequency,
-      remindBeforeDays: row.remind_before_days,
-      skipOnHolidays: !!row.skip_on_holidays,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      assigner_name: row.assigner_name,
-    }));
+    const activeList: any[] = [];
+    const pipelineList: any[] = [];
 
-    // Classify checklists
-    const active = checklists.filter(c => {
-      const planned = new Date(c.plannedDate);
-      return now >= planned;
-    });
+    for (const row of rows) {
+      const freq = (row.frequency || "one-time").toLowerCase().trim();
+      const isOneTime = freq === "one-time" || freq === "once" || freq === "single";
 
-    const pipeline = checklists.filter(c => {
-      const freq = c.frequency.toLowerCase();
-      if (freq === "daily") return false; // Daily never goes to pipeline
+      const initDate = new Date(row.planned_date);
+      if (initDate.getHours() === 0 && initDate.getMinutes() === 0) {
+        initDate.setHours(9, 0, 0, 0);
+      }
 
-      const planned = new Date(c.plannedDate);
-      const diffTime = planned.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return planned > now && diffDays <= 7;
-    });
+      const occurrences: Date[] = [];
+      let curr = new Date(initDate);
+
+      if (isOneTime) {
+        occurrences.push(new Date(curr));
+      } else {
+        let count = 0;
+        while (count < 365) {
+          count++;
+          const curr9am = new Date(curr);
+          curr9am.setHours(9, 0, 0, 0);
+
+          occurrences.push(new Date(curr9am));
+
+          if (curr9am > now) {
+            break;
+          }
+
+          curr = getNextOccurrenceDate(curr, freq);
+        }
+      }
+
+      for (const occDate of occurrences) {
+        const dateStr = parseLocalDateStr(occDate);
+        const occ9am = new Date(occDate);
+        occ9am.setHours(9, 0, 0, 0);
+
+        const compKey = `${row.id}_${dateStr}`;
+        const isCompleted = completionsSet.has(compKey);
+
+        if (!isCompleted) {
+          const item = {
+            id: row.id,
+            occurrenceDate: dateStr,
+            assignedBy: row.assigned_by,
+            assignBy: row.assigned_by,
+            assignTo: row.assign_to,
+            taskName: row.task_name,
+            plannedDate: occ9am.toISOString(),
+            priority: row.priority,
+            makeAttachmentMandatory: !!row.make_attachment_mandatory,
+            makeNoteMandatory: !!row.make_note_mandatory,
+            mode: row.mode,
+            frequency: row.frequency,
+            remindBeforeDays: row.remind_before_days,
+            skipOnHolidays: !!row.skip_on_holidays,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+            assigner_name: row.assigner_name,
+            isOverdue: occ9am < startOfToday,
+          };
+
+          if (now >= occ9am) {
+            activeList.push(item);
+          } else {
+            const diffTime = occ9am.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays <= 7) {
+              pipelineList.push(item);
+            }
+          }
+        }
+      }
+    }
 
     // Counts
     const [todayRows] = await pool.query<any[]>(
       `SELECT COUNT(*) as count 
-       FROM standalone_checklist_completions 
-       WHERE completed_by = ? 
-         AND completed_at >= DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00')`,
+       FROM standalone_checklist_completions c
+       JOIN standalone_checklists sc ON sc.id = c.checklist_id
+       WHERE c.completed_by = ? 
+         AND sc.deleted_at IS NULL
+         AND c.completed_at >= DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00')`,
       [employeeId]
     );
     const completedToday = todayRows[0]?.count || 0;
 
     const [totalRows] = await pool.query<any[]>(
       `SELECT COUNT(*) as count 
-       FROM standalone_checklist_completions 
-       WHERE completed_by = ?`,
+       FROM standalone_checklist_completions c
+       JOIN standalone_checklists sc ON sc.id = c.checklist_id
+       WHERE c.completed_by = ?
+         AND sc.deleted_at IS NULL`,
       [employeeId]
     );
     const totalCompleted = totalRows[0]?.count || 0;
@@ -255,6 +328,7 @@ export class StandaloneChecklistService {
        FROM standalone_checklist_completions comp
        JOIN standalone_checklists chk ON chk.id = comp.checklist_id
        WHERE comp.completed_by = ?
+         AND chk.deleted_at IS NULL
        ORDER BY comp.completed_at DESC
        LIMIT 10`,
       [employeeId]
@@ -263,6 +337,7 @@ export class StandaloneChecklistService {
     const history = historyRows.map((row: any) => ({
       id: row.id,
       checklistId: row.checklist_id,
+      occurrenceDate: row.occurrence_date ? parseLocalDateStr(new Date(row.occurrence_date)) : null,
       completedAt: row.completed_at,
       notes: row.notes,
       attachmentUrl: row.attachment_url,
@@ -273,44 +348,43 @@ export class StandaloneChecklistService {
 
     return {
       metrics: {
-        pendingCount: active.length,
+        pendingCount: activeList.length,
         completedToday,
         totalCompleted,
       },
-      active,
-      pipeline,
+      active: activeList,
+      pipeline: pipelineList,
       history,
     };
   }
 }
 
-function calculateNextOccurrence(current: Date, frequency: string): Date {
+function parseLocalDateStr(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getNextOccurrenceDate(current: Date, frequency: string): Date {
   const next = new Date(current);
-  const now = new Date();
-  const freq = frequency.toLowerCase();
+  const freq = (frequency || "").toLowerCase().trim();
 
   if (freq === "daily") {
-    const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() + 1);
-    baseDate.setHours(9, 0, 0, 0); // tomorrow morning at 9:00 AM
-    return baseDate;
+    next.setDate(next.getDate() + 1);
+  } else if (freq === "weekly") {
+    next.setDate(next.getDate() + 7);
+  } else if (freq === "monthly") {
+    next.setMonth(next.getMonth() + 1);
+  } else if (freq === "quarterly") {
+    next.setMonth(next.getMonth() + 3);
+  } else if (freq === "half-yearly" || freq === "half_yearly" || freq === "half yearly" || freq === "bi-annually") {
+    next.setMonth(next.getMonth() + 6);
+  } else if (freq === "yearly" || freq === "annually") {
+    next.setFullYear(next.getFullYear() + 1);
+  } else {
+    next.setDate(next.getDate() + 1);
   }
-
-  // Increment until next scheduled date is in the future
-  while (next <= now) {
-    if (freq === "weekly") {
-      next.setDate(next.getDate() + 7);
-    } else if (freq === "monthly") {
-      next.setMonth(next.getMonth() + 1);
-    } else if (freq === "quarterly") {
-      next.setMonth(next.getMonth() + 3);
-    } else if (freq === "yearly") {
-      next.setFullYear(next.getFullYear() + 1);
-    } else {
-      next.setDate(next.getDate() + 1);
-    }
-  }
-
   return next;
 }
 

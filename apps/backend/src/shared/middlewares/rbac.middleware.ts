@@ -21,3 +21,29 @@ export function requirePermission(permissionKey: string) {
     next();
   };
 }
+
+import { pool } from "../../infrastructure/database/mysql/connection";
+
+export function requireAdmin() {
+  return async (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      throw new UnauthorizedError();
+    }
+    const [rows] = await pool.query<any[]>(`
+      SELECT r.name as role_name 
+      FROM users u
+      LEFT JOIN user_roles ur ON u.id = ur.user_id
+      LEFT JOIN roles r ON ur.role_id = r.id
+      WHERE u.id = ?
+    `, [req.user.sub]);
+
+    const isAdmin = rows.some((r: any) => 
+      r.role_name === 'System Admin' || r.role_name === 'Super Admin' || r.role_name === 'Admin'
+    );
+    if (!isAdmin) {
+      throw new ForbiddenError("Only Admin accounts are permitted to perform deletion.");
+    }
+    next();
+  };
+}
+

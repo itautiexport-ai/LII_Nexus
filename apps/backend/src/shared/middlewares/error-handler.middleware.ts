@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import fs from "fs";
 import { DomainError } from "../../core/domain/errors/DomainError";
 import { logger } from "../../infrastructure/logging/logger";
 
@@ -24,7 +25,7 @@ export function errorHandlerMiddleware(err: unknown, req: Request, res: Response
     message: (err as Error)?.message,
     stack: (err as Error)?.stack,
   });
-  require("fs").appendFileSync("error_debug.log", JSON.stringify({ message: (err as Error)?.message, stack: (err as Error)?.stack }) + "\\n");
+  fs.appendFileSync("error_debug.log", JSON.stringify({ message: (err as Error)?.message, stack: (err as Error)?.stack }) + "\n");
 
   return res.status(500).json({
     success: false,

@@ -14,6 +14,8 @@ export interface DelegatedTaskRecord {
   id: string;
   title: string;
   description: string | null;
+  assignedBy?: string;
+  assignedTo?: string;
   assignedByName: string;
   assignedToName: string;
   dueDate: string;
@@ -36,7 +38,7 @@ function computeDisplayStatus(t: Pick<DelegatedTaskRecord, "baseStatus" | "dueDa
 }
 
 export const delegationApi = {
-  async list(params: { page?: number; pageSize?: number; status?: string } = {}) {
+  async list(params: { page?: number; pageSize?: number; status?: string; scope?: "assigned_to_me" | "assigned_by_me" | "all" } = {}) {
     const res = await axiosInstance.get("/delegation/tasks", { params: { page: 1, pageSize: 50, ...params } });
     const items = (res.data.data as DelegatedTaskRecord[]).map((t) => ({ ...t, displayStatus: computeDisplayStatus(t) }));
     return { items, totalItems: res.data.meta.totalItems as number };

@@ -15,7 +15,9 @@ router.post("/delegation/tasks", validate(createDelegatedTaskSchema), asyncHandl
 router.patch("/delegation/tasks/:id", validate(updateDelegatedTaskSchema), asyncHandler(DelegationController.update));
 router.patch("/delegation/tasks/:id/status", validate(updateStatusSchema), asyncHandler(DelegationController.updateStatus));
 router.patch("/delegation/tasks/:id/escalate", validate(escalateSchema), asyncHandler(DelegationController.escalate));
-router.delete("/delegation/tasks/:id", asyncHandler(DelegationController.remove));
+import { requireAdmin } from "../../../../shared/middlewares/rbac.middleware";
+
+router.delete("/delegation/tasks/:id", requireAdmin(), asyncHandler(DelegationController.remove));
 router.post("/delegation/tasks/:id/files", validate(addFileSchema), asyncHandler(DelegationController.addFile));
 router.post("/delegation/tasks/:id/whatsapp", asyncHandler(DelegationController.sendWhatsAppReminder));
 router.post("/delegation/tasks/:id/extension", validate(requestExtensionSchema), asyncHandler(DelegationController.requestExtension));

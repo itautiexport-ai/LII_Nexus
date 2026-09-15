@@ -52,9 +52,9 @@ export class StandaloneChecklistController {
 
   completeChecklist = async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const { notes, attachmentUrl } = req.body;
+    const { notes, attachmentUrl, occurrenceDate } = req.body;
     const userId = req.user!.sub;
-    await this.service.completeChecklist(id, userId, notes, attachmentUrl);
+    await this.service.completeChecklist(id, userId, notes, attachmentUrl, occurrenceDate);
     res.json({ success: true, message: "Checklist completed successfully" });
   };
 }

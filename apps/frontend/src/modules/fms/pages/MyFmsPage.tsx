@@ -71,7 +71,8 @@ export function MyFmsPage() {
 
   const handleExecuteClick = (task: any) => {
     setSelectedTask(task);
-    setInputData({});
+    const existingOrderType = task.formData?.orderType || task.inputData?.orderType || "";
+    setInputData({ status: "Completed", orderType: existingOrderType, comments: "" });
     setIsModalOpen(true);
   };
 
@@ -332,6 +333,14 @@ export function MyFmsPage() {
                     <span className="my-fms-detail-label">Reference Title / Order</span>
                     <span className="my-fms-detail-val">{selectedTask.referenceTitle}</span>
                   </div>
+                  {selectedTask.formData?.orderType && (
+                    <div className="my-fms-detail-item">
+                      <span className="my-fms-detail-label">Order Type</span>
+                      <span className="my-fms-detail-val" style={{ color: "#059669", fontWeight: 600 }}>
+                        {selectedTask.formData.orderType}
+                      </span>
+                    </div>
+                  )}
                   <div className="my-fms-detail-item" style={{ gridColumn: "span 2" }}>
                     <span className="my-fms-detail-label">Current Step</span>
                     <span className="my-fms-detail-val" style={{ color: "#2563eb" }}>
@@ -358,7 +367,28 @@ export function MyFmsPage() {
                       </select>
                     </div>
 
-                    <div className="my-fms-form-group">
+                    {(inputData.status === "Completed" || inputData.status === "Yes") && 
+                     !selectedTask.formData?.orderType && 
+                     (selectedTask.stepName?.toLowerCase().includes("identify") || 
+                      selectedTask.stepName?.toLowerCase().includes("repeat order") || 
+                      selectedTask.stepName?.toLowerCase().includes("order type")) && (
+                      <div className="my-fms-form-group" style={{ marginTop: "16px" }}>
+                        <label className="my-fms-label">Specify Order Type *</label>
+                        <select
+                          required
+                          className="my-fms-select"
+                          style={{ width: "100%" }}
+                          value={inputData.orderType || ""}
+                          onChange={(e) => setInputData({ ...inputData, orderType: e.target.value })}
+                        >
+                          <option value="" disabled>-- Select Order Type --</option>
+                          <option value="New Order">New Order</option>
+                          <option value="Repeat Order">Repeat Order</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div className="my-fms-form-group" style={{ marginTop: "16px" }}>
                       <label className="my-fms-label">Execution Remarks / Comments</label>
                       <textarea 
                         className="my-fms-input"

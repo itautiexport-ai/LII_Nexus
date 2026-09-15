@@ -136,7 +136,7 @@ export default function LeadDetailPage() {
           <h3 style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Log a Follow-up</h3>
           <form onSubmit={handleLogFollowup}>
             <label style={{ fontSize: 12, display: "block", marginBottom: 8 }}>Next Follow-up Due
-              <input type="date" required value={followupForm.dueDate} onChange={(e) => setFollowupForm({ ...followupForm, dueDate: e.target.value })} style={{ ...inputStyle, display: "block", width: "100%", marginTop: 4 }} />
+              <input type="date" required value={followupForm.dueDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setFollowupForm({ ...followupForm, dueDate: e.target.value })} style={{ ...inputStyle, display: "block", width: "100%", marginTop: 4 }} />
             </label>
             <textarea placeholder="Remarks" value={followupForm.remarks} onChange={(e) => setFollowupForm({ ...followupForm, remarks: e.target.value })} rows={2} style={{ ...inputStyle, width: "100%", marginBottom: 8, boxSizing: "border-box" }} />
             <input placeholder="Next action" value={followupForm.nextAction} onChange={(e) => setFollowupForm({ ...followupForm, nextAction: e.target.value })} style={{ ...inputStyle, width: "100%", marginBottom: 8, boxSizing: "border-box" }} />

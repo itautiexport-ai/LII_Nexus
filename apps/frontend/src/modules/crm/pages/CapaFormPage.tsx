@@ -231,6 +231,7 @@ export default function CapaFormPage() {
                     <input
                       type="date"
                       style={inputStyle}
+                      min={new Date().toISOString().split("T")[0]}
                       value={formData.targetCompletionDate}
                       onChange={(e) => setFormData({ ...formData, targetCompletionDate: e.target.value })}
                     />
