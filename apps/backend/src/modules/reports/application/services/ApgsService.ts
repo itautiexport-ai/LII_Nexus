@@ -74,6 +74,13 @@ export class MisService {
     const [[emp]] = await pool.query<any[]>("SELECT id FROM employees WHERE user_id = ?", [userId]);
     const empId = emp ? emp.id : userId; // Use mapped employee ID or fallback
 
+    const myIds = Array.from(new Set([
+      userId,
+      emp?.id,
+      user?.employee_id,
+      user?.linked_user_id
+    ].filter(Boolean)));
+
     const employeeName = user.full_name;
 
     const now = new Date();
@@ -133,13 +140,13 @@ export class MisService {
     const [delTasks] = await pool.query<any[]>(
       `SELECT id, title, due_date, base_status, priority, completed_at 
        FROM delegated_tasks 
-       WHERE assigned_to = ? AND deleted_at IS NULL
+       WHERE assigned_to IN (?) AND deleted_at IS NULL
          AND (
            (due_date >= ? AND due_date <= ?)
-           OR (base_status IN ('pending', 'running'))
+           OR (base_status IN ('pending', 'running') AND due_date <= ?)
            OR (completed_at >= ? AND completed_at <= ?)
          )`,
-      [empId, startStr, endStr, startStr, endStr]
+      [myIds, startStr, endStr, endStr, startStr, endStr]
     );
 
     let delTotalDue = 0;
@@ -152,13 +159,13 @@ export class MisService {
     const delTasksList: any[] = [];
 
     for (const t of delTasks) {
+      const due = t.due_date ? new Date(t.due_date).getTime() : 0;
+      if (due > endDate.getTime() && t.base_status !== "completed") continue;
       const pts = getPriorityPoints(t.priority);
       delTotalDue += pts;
       delTotalTasksCount++;
       
       let statusStr = "Pending";
-      const due = t.due_date ? new Date(t.due_date).getTime() : 0;
-      
       if (t.base_status === "completed") {
         delCompleted += pts;
         delCompletedTasksCount++;
@@ -194,28 +201,34 @@ export class MisService {
        FROM checklist_instances ci
        JOIN standalone_checklists sc ON ci.template_id = sc.id
        JOIN checklist_instance_items cii ON ci.id = cii.instance_id
-       WHERE ci.employee_id = ?
+       WHERE ci.employee_id IN (?)
+         AND sc.deleted_at IS NULL
          AND (
            (ci.period_end >= ? AND ci.period_end <= ?)
            OR (cii.is_checked = 0 AND ci.period_end <= ?)
            OR (cii.checked_at >= ? AND cii.checked_at <= ?)
          )`,
-      [empId, startStr, endStr, endStr, startStr, endStr]
+      [myIds, startStr, endStr, endStr, startStr, endStr]
     );
 
     const [standaloneCompletions] = await pool.query<any[]>(
       `SELECT c.id, sc.task_name as title, sc.priority, 1 as is_checked, c.completed_at as checked_at, c.completed_at as period_end
        FROM standalone_checklist_completions c
        JOIN standalone_checklists sc ON c.checklist_id = sc.id
-       WHERE c.completed_by = ? AND c.completed_at >= ? AND c.completed_at <= ?`,
-      [empId, startStr, endStr]
+       WHERE (c.completed_by IN (?) OR sc.assign_to IN (?))
+         AND sc.deleted_at IS NULL
+         AND c.completed_at >= ? AND c.completed_at <= ?`,
+      [myIds, myIds, startStr, endStr]
     );
 
     const [standalonePending] = await pool.query<any[]>(
       `SELECT sc.id, sc.task_name as title, sc.priority, 0 as is_checked, NULL as checked_at, sc.planned_date as period_end
        FROM standalone_checklists sc
-       WHERE sc.assign_to = ? AND sc.deleted_at IS NULL AND sc.planned_date >= ? AND sc.planned_date <= ?`,
-      [empId, startStr, endStr]
+       WHERE sc.assign_to IN (?) AND sc.deleted_at IS NULL AND sc.planned_date >= ? AND sc.planned_date <= ?
+         AND sc.id NOT IN (
+           SELECT checklist_id FROM standalone_checklist_completions WHERE completed_by IN (?)
+         )`,
+      [myIds, startStr, endStr, myIds]
     );
 
     const allChecklistInstances = [
@@ -230,7 +243,7 @@ export class MisService {
     let chkTotalTasksCount = 0;
     let chkCompletedTasksCount = 0;
     let chkPendingTasksCount = 0;
-    let chkRunningTasksCount = 0;
+    const chkRunningTasksCount = 0;
     const chkTasksList: any[] = [];
 
     for (const ci of allChecklistInstances) {
@@ -272,13 +285,13 @@ export class MisService {
        FROM flowchart_tasks ft
        LEFT JOIN workflow_runs wr ON ft.workflow_run_id = wr.id
        LEFT JOIN workflows w ON wr.workflow_id = w.id
-       WHERE ft.assigned_to = ?
+       WHERE ft.assigned_to IN (?)
          AND (
            (ft.due_date >= ? AND ft.due_date <= ?)
            OR (ft.base_status IN ('pending', 'running'))
            OR (ft.completed_at >= ? AND ft.completed_at <= ?)
          )`,
-      [empId, startStr, endStr, startStr, endStr]
+      [myIds, startStr, endStr, startStr, endStr]
     );
 
     const [fmsInstanceSteps] = await pool.query<any[]>(
@@ -288,29 +301,31 @@ export class MisService {
        JOIN fms_instances fi ON fis.instance_id = fi.id
        JOIN fms_steps fs ON fis.fms_step_id = fs.id
        WHERE (
-         (fis.completed_by = ? AND fis.completed_at >= ? AND fis.completed_at <= ?)
-         OR (fis.status IN ('Pending', 'In Progress'))
+         ((fis.completed_by IN (?) OR fis.status IN ('Completed', 'Skipped')) AND fis.completed_at >= ? AND fis.completed_at <= ?)
+         OR (fi.status = 'In Progress' AND fis.status = 'In Progress')
        )`,
-      [empId, startStr, endStr]
+      [myIds, startStr, endStr]
     );
 
     const mappedFmsInstanceSteps = fmsInstanceSteps.filter(fis => {
       let doers: any[] = [];
       try {
         doers = typeof fis.doer_employee_ids === 'string' ? JSON.parse(fis.doer_employee_ids) : fis.doer_employee_ids;
-      } catch (e) {}
+      } catch (_e) {
+        /* ignore JSON parse error */
+      }
       if (!Array.isArray(doers)) doers = [];
 
-      const isDoer = doers.includes(empId);
-      const isCreator = fis.creator_id === empId;
-      const isCompletedBy = fis.completed_by === empId;
+      const isDoer = myIds.some(id => doers.includes(id));
+      const isCreator = myIds.includes(fis.creator_id);
+      const isCompletedBy = myIds.includes(fis.completed_by);
 
       if (isCompletedBy) return true;
       if (doers.length === 0 && isCreator) return true;
       return isDoer;
     }).map(fis => {
       let base_status = "pending";
-      if (fis.base_status === "Completed" || fis.base_status === "Skipped") {
+      if (fis.base_status === "Completed" || fis.base_status === "Skipped" || fis.completed_at !== null) {
         base_status = "completed";
       } else if (fis.base_status === "In Progress") {
         base_status = "running";
@@ -542,19 +557,8 @@ export class MisService {
       totalWeightedPct += (hrScore * 20) * hrWeightVal;
     }
 
-    let totalLateTasks = 0;
-    fmsTasksList.forEach(t => {
-      if (t.status === "Completed Late") totalLateTasks++;
-    });
-    chkTasksList.forEach(t => {
-      if (t.status === "Completed Late") totalLateTasks++;
-    });
-    delTasksList.forEach(t => {
-      if (t.status === "Completed Late") totalLateTasks++;
-    });
-
     let finalScorePct = activeWeightsSum > 0 ? (totalWeightedPct / activeWeightsSum) : 100;
-    finalScorePct = Math.max(0, finalScorePct - (totalLateTasks * 20));
+    finalScorePct = Math.max(0, finalScorePct);
     const finalScore = parseFloat((finalScorePct / 10).toFixed(2)); // scale 0-100 to 0-10
 
     const { rating, multiplier } = getRatingAndMultiplier(finalScore);

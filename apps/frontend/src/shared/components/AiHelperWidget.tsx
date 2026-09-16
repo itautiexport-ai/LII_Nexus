@@ -165,7 +165,7 @@ export const AiHelperWidget: React.FC = () => {
         const cells = trimmed.split("|").filter((_, idx, arr) => idx > 0 && idx < arr.length - 1).map(c => c.trim());
         
         // Skip table separator line (e.g., | :--- | :--- |)
-        if (cells.every(c => /^[:\-]+$/.test(c))) {
+        if (cells.every(c => /^[:-]+$/.test(c))) {
           return;
         }
 

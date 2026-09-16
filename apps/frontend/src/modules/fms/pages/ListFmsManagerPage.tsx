@@ -164,13 +164,15 @@ export function ListFmsManagerPage() {
                           >
                             Start FMS
                           </button>
-                          <button
-                            type="button"
-                            style={{ background: "#dc3545", color: "white", border: "none", padding: "4px 12px", fontSize: "0.85rem", borderRadius: "4px", cursor: "pointer", width: "auto" }}
-                            onClick={() => handleDelete(fms.id)}
-                          >
-                            Delete
-                          </button>
+                          {user && (user.roles?.includes("System Admin") || user.roles?.includes("Admin")) && (
+                            <button
+                              type="button"
+                              style={{ background: "#dc3545", color: "white", border: "none", padding: "4px 12px", fontSize: "0.85rem", borderRadius: "4px", cursor: "pointer", width: "auto" }}
+                              onClick={() => handleDelete(fms.id)}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

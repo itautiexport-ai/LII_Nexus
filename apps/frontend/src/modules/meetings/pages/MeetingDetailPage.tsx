@@ -131,7 +131,7 @@ export default function MeetingDetailPage() {
                 <option value="">— Assignee —</option>
                 {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
               </select>
-              <input type="date" required value={actionForm.targetDate} onChange={(e) => setActionForm({ ...actionForm, targetDate: e.target.value })} style={{ padding: 6 }} />
+              <input type="date" required value={actionForm.targetDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setActionForm({ ...actionForm, targetDate: e.target.value })} style={{ padding: 6 }} />
               <select value={actionForm.priority} onChange={(e) => setActionForm({ ...actionForm, priority: e.target.value })} style={{ padding: 6 }}>
                 <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
               </select>

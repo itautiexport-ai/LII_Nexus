@@ -43,11 +43,11 @@ export function MyFmsPage() {
   // Filter tasks locally by search & process selection
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
-      const matchesSearch = 
+      const matchesSearch =
         (t.referenceTitle && t.referenceTitle.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (t.stepName && t.stepName.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (t.managerName && t.managerName.toLowerCase().includes(searchTerm.toLowerCase()));
-      
+
       const matchesProcess = selectedProcess === "all" || t.managerName === selectedProcess;
 
       return matchesSearch && matchesProcess;
@@ -71,7 +71,8 @@ export function MyFmsPage() {
 
   const handleExecuteClick = (task: any) => {
     setSelectedTask(task);
-    setInputData({});
+    const existingOrderType = task.formData?.orderType || task.inputData?.orderType || "";
+    setInputData({ status: "Completed", orderType: existingOrderType, comments: "" });
     setIsModalOpen(true);
   };
 
@@ -121,7 +122,7 @@ export function MyFmsPage() {
             View, track, and execute all FMS workflow tasks assigned to you across processes.
           </p>
         </div>
-        <button 
+        <button
           className="my-fms-btn-secondary"
           onClick={() => fetchTasks(activeTab)}
         >
@@ -228,8 +229,8 @@ export function MyFmsPage() {
             <div style={{ fontSize: "40px", marginBottom: "12px" }}>📋</div>
             <h3 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No tasks found</h3>
             <p style={{ color: "#64748b", margin: 0, fontSize: "14px" }}>
-              {activeTab === "under_process" 
-                ? "You have no active FMS tasks requiring immediate action right now." 
+              {activeTab === "under_process"
+                ? "You have no active FMS tasks requiring immediate action right now."
                 : "No tasks match your selected filter criteria."}
             </p>
           </div>
@@ -312,8 +313,8 @@ export function MyFmsPage() {
               <h3 className="my-fms-modal-title">
                 {selectedTask.status === "In Progress" ? "Execute Task Step" : "Task Step Details"}
               </h3>
-              <button 
-                className="my-fms-modal-close" 
+              <button
+                className="my-fms-modal-close"
                 onClick={() => setIsModalOpen(false)}
               >
                 ✖
@@ -332,6 +333,14 @@ export function MyFmsPage() {
                     <span className="my-fms-detail-label">Reference Title / Order</span>
                     <span className="my-fms-detail-val">{selectedTask.referenceTitle}</span>
                   </div>
+                  {selectedTask.formData?.orderType && (
+                    <div className="my-fms-detail-item">
+                      <span className="my-fms-detail-label">Order Type</span>
+                      <span className="my-fms-detail-val" style={{ color: "#059669", fontWeight: 600 }}>
+                        {selectedTask.formData.orderType}
+                      </span>
+                    </div>
+                  )}
                   <div className="my-fms-detail-item" style={{ gridColumn: "span 2" }}>
                     <span className="my-fms-detail-label">Current Step</span>
                     <span className="my-fms-detail-val" style={{ color: "#2563eb" }}>
@@ -345,8 +354,8 @@ export function MyFmsPage() {
                   <>
                     <div className="my-fms-form-group">
                       <label className="my-fms-label">Was this step completed or is it Not Applicable? *</label>
-                      <select 
-                        required 
+                      <select
+                        required
                         className="my-fms-select"
                         style={{ width: "100%" }}
                         value={inputData.status || ""}
@@ -358,9 +367,30 @@ export function MyFmsPage() {
                       </select>
                     </div>
 
-                    <div className="my-fms-form-group">
+                    {(inputData.status === "Completed" || inputData.status === "Yes") &&
+                     !selectedTask.formData?.orderType &&
+                     (selectedTask.stepName?.toLowerCase().includes("identify") ||
+                      selectedTask.stepName?.toLowerCase().includes("repeat order") ||
+                      selectedTask.stepName?.toLowerCase().includes("order type")) && (
+                      <div className="my-fms-form-group" style={{ marginTop: "16px" }}>
+                        <label className="my-fms-label">Specify Order Type *</label>
+                        <select
+                          required
+                          className="my-fms-select"
+                          style={{ width: "100%" }}
+                          value={inputData.orderType || ""}
+                          onChange={(e) => setInputData({ ...inputData, orderType: e.target.value })}
+                        >
+                          <option value="" disabled>-- Select Order Type --</option>
+                          <option value="New Order">New Order</option>
+                          <option value="Repeat Order">Repeat Order</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div className="my-fms-form-group" style={{ marginTop: "16px" }}>
                       <label className="my-fms-label">Execution Remarks / Comments</label>
-                      <textarea 
+                      <textarea
                         className="my-fms-input"
                         rows={3}
                         placeholder="Enter step completion notes or updates..."
@@ -400,16 +430,16 @@ export function MyFmsPage() {
               </div>
 
               <div style={{ padding: "16px 24px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="my-fms-btn-secondary"
                   onClick={() => setIsModalOpen(false)}
                 >
                   Close
                 </button>
                 {selectedTask.status === "In Progress" && (
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="my-fms-btn-action"
                     disabled={submitting}
                   >

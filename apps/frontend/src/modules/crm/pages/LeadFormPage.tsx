@@ -153,10 +153,10 @@ export default function LeadFormPage() {
             <input type="number" min={0} max={100} value={form.winProbability} onChange={(e) => setForm({ ...form, winProbability: e.target.value })} style={inputStyle} />
           </label>
           <label style={labelStyle}>Expected Close Date
-            <input type="date" value={form.expectedCloseDate} onChange={(e) => setForm({ ...form, expectedCloseDate: e.target.value })} style={inputStyle} />
+            <input type="date" value={form.expectedCloseDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setForm({ ...form, expectedCloseDate: e.target.value })} style={inputStyle} />
           </label>
           <label style={labelStyle}>Next Follow-up Date
-            <input type="date" value={form.nextFollowUpDate} onChange={(e) => setForm({ ...form, nextFollowUpDate: e.target.value })} style={inputStyle} />
+            <input type="date" value={form.nextFollowUpDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setForm({ ...form, nextFollowUpDate: e.target.value })} style={inputStyle} />
           </label>
         </div>
         <label style={labelStyle}>Notes (Inquiry Details)

@@ -757,7 +757,7 @@ export function ManageFmsStepsPage() {
                 ) : (
                   steps.map((step, index) => {
                     const emps = employees.filter(e => step.doerEmployeeIds?.includes(e.id));
-                    let empNames = emps.length > 0 ? emps.map(e => e.fullName).join(", ") : "Form Creator (Dynamic)";
+                    const empNames = emps.length > 0 ? emps.map(e => e.fullName).join(", ") : "Form Creator (Dynamic)";
                     return (
                       <tr key={step.id} className="fms-tr">
                         <td className="fms-td" style={{ fontWeight: "bold" }}>{index + 1}</td>

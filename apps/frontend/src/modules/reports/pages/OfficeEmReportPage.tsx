@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { usersApi, UserRecord } from "../../admin/users/api/usersApi";
 import { officeEmApi, OfficeEmReport, OfficeEmTaskDetail, OfficeEmModuleScore } from "../api/officeEmApi";
+import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import * as XLSX from "xlsx";
 
 function getCurrentWeekString() {
@@ -19,6 +20,9 @@ export default function OfficeEmReportPage() {
   const [reports, setReports] = useState<OfficeEmReport[]>([]);
   const [loading, setLoading] = useState(false);
   const [showActions, setShowActions] = useState(false);
+
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.roles?.includes("System Admin") || false;
 
   useEffect(() => {
     if (!showActions) return;
@@ -243,6 +247,27 @@ export default function OfficeEmReportPage() {
     window.print();
   };
 
+  const handleDeleteScore = async (periodToDelete: string) => {
+    if (!selectedUser) return;
+    const weekName = formatWeekName(periodToDelete);
+    if (!window.confirm(`Are you sure you want to delete/reset the EM score evaluation for ${weekName}? This action is strictly restricted to System Admins.`)) {
+      return;
+    }
+    try {
+      setLoading(true);
+      await officeEmApi.deleteScoreEvaluation(selectedUser, periodToDelete);
+      const res = await officeEmApi.getGapScore(selectedUser, period);
+      setReports(res.data || []);
+      setExpandedWeek(null);
+      alert(`Score evaluation for ${weekName} deleted successfully.`);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.message || err?.message || "Failed to delete score evaluation.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ padding: "24px 32px", fontFamily: "'Inter', sans-serif", backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       <style>{`
@@ -431,25 +456,45 @@ export default function OfficeEmReportPage() {
                         <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.checklist)}</td>
                         <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.delegation)}</td>
                         <td>
-                          <button
-                            onClick={() => {
-                              setModalTab("summary");
-                              setExpandedWeek(weekRep.periodType);
-                            }}
-                            style={{
-                              background: "#2563eb",
-                              color: "#fff",
-                              border: "none",
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              fontSize: "12px",
-                              fontWeight: "600",
-                              cursor: "pointer",
-                              outline: "none"
-                            }}
-                          >
-                            View Result
-                          </button>
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                            <button
+                              onClick={() => {
+                                setModalTab("summary");
+                                setExpandedWeek(weekRep.periodType);
+                              }}
+                              style={{
+                                background: "#2563eb",
+                                color: "#fff",
+                                border: "none",
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                outline: "none"
+                              }}
+                            >
+                              View Result
+                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteScore(weekRep.periodType)}
+                                style={{
+                                  background: "#dc2626",
+                                  color: "#fff",
+                                  border: "none",
+                                  padding: "6px 12px",
+                                  borderRadius: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  outline: "none"
+                                }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -528,11 +573,11 @@ export default function OfficeEmReportPage() {
                           <h3>{title}</h3>
                           <div className="modal-stats-grid">
                             <div className="modal-stat-item">
-                              <span className="stat-lbl">Total Tasks:</span>
+                              <span className="stat-lbl">Total Allotted:</span>
                               <span className="stat-num">{counts.total}</span>
                             </div>
                             <div className="modal-stat-item">
-                              <span className="stat-lbl">Completed:</span>
+                              <span className="stat-lbl">Total Completed:</span>
                               <span className="stat-num">{counts.completed}</span>
                             </div>
                             <div className="modal-stat-item">
@@ -540,15 +585,13 @@ export default function OfficeEmReportPage() {
                               <span className="stat-num green">{counts.completedOnTime}</span>
                             </div>
                             <div className="modal-stat-item">
-                              <span className="stat-lbl">Not On-Time:</span>
+                              <span className="stat-lbl">Completed Delayed (Not On-Time):</span>
                               <span className="stat-num red">{counts.completedLate}</span>
                             </div>
-                            {counts.pending > 0 && (
-                              <div className="modal-stat-item" style={{ gridColumn: "span 2", background: "#fffbeb", border: "1px solid #fef3c7" }}>
-                                <span className="stat-lbl" style={{ color: "#92400e" }}>Pending Tasks:</span>
-                                <span className="stat-num" style={{ color: "#b45309" }}>{counts.pending}</span>
-                              </div>
-                            )}
+                            <div className="modal-stat-item" style={{ background: counts.pending > 0 ? "#fffbeb" : "#f0fdf4", border: counts.pending > 0 ? "1px solid #fef3c7" : "1px solid #bbf7d0" }}>
+                              <span className="stat-lbl" style={{ color: counts.pending > 0 ? "#92400e" : "#166534" }}>Pending Tasks:</span>
+                              <span className="stat-num" style={{ color: counts.pending > 0 ? "#b45309" : "#16a34a" }}>{counts.pending}</span>
+                            </div>
                           </div>
                         </div>
                       );

@@ -86,7 +86,7 @@ export class ReportingService {
          (SELECT COUNT(*) FROM flowchart_tasks WHERE due_date BETWEEN ? AND ? AND base_status = 'completed') as flowchartDone,
          (SELECT COUNT(*) FROM delegated_tasks WHERE deleted_at IS NULL AND due_date BETWEEN ? AND ?) as delegationTotal,
          (SELECT COUNT(*) FROM delegated_tasks WHERE deleted_at IS NULL AND due_date BETWEEN ? AND ? AND base_status = 'completed') as delegationDone,
-         (SELECT COUNT(*) FROM checklist_instances WHERE period_start >= ? AND period_end <= ?) as checklistTotal`,
+         (SELECT COUNT(*) FROM checklist_instances ci JOIN checklist_templates ct ON ct.id = ci.template_id WHERE ct.deleted_at IS NULL AND ci.period_start >= ? AND ci.period_end <= ?) as checklistTotal`,
       [from, to, from, to, from, to, from, to, from, to]
     );
     const r = rows[0];
@@ -152,7 +152,7 @@ export class ReportingService {
          SUM(CASE WHEN cii.is_checked THEN 1 ELSE 0 END) as checkedItems, COUNT(cii.id) as totalItems
        FROM checklist_instances ci JOIN checklist_templates ct ON ct.id = ci.template_id
        LEFT JOIN checklist_instance_items cii ON cii.instance_id = ci.id
-       WHERE ci.period_start >= ? AND ci.period_end <= ? GROUP BY ct.title`,
+       WHERE ct.deleted_at IS NULL AND ci.period_start >= ? AND ci.period_end <= ? GROUP BY ct.title`,
       [from, to]
     );
     const rowsOut = rows.map((r) => {

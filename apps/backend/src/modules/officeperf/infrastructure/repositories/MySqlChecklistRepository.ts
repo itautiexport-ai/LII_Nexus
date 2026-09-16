@@ -258,7 +258,10 @@ export class MySqlChecklistRepository implements IChecklistRepository {
 
   async listInstancesForEmployee(employeeId: string, periodStart: string, periodEnd: string): Promise<ChecklistInstanceWithItems[]> {
     const [rows] = await pool.query<any[]>(
-      `SELECT id FROM checklist_instances WHERE employee_id = ? AND period_start >= ? AND period_end <= ?`,
+      `SELECT ci.id
+       FROM checklist_instances ci
+       JOIN checklist_templates t ON t.id = ci.template_id
+       WHERE ci.employee_id = ? AND t.deleted_at IS NULL AND ci.period_start >= ? AND ci.period_end <= ?`,
       [employeeId, periodStart, periodEnd]
     );
     const results: ChecklistInstanceWithItems[] = [];

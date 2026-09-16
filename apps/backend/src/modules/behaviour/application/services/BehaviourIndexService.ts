@@ -81,8 +81,10 @@ export class BehaviourIndexService {
     const [rows] = await pool.query<any[]>(
       `SELECT COUNT(DISTINCT ci.id) as total,
          SUM(CASE WHEN cii.is_checked THEN 1 ELSE 0 END) as checkedItems, COUNT(cii.id) as totalItems
-       FROM checklist_instances ci LEFT JOIN checklist_instance_items cii ON cii.instance_id = ci.id
-       WHERE ci.employee_id = ? AND ci.period_start >= ? AND ci.period_end <= ?`,
+       FROM checklist_instances ci
+       JOIN checklist_templates ct ON ct.id = ci.template_id
+       LEFT JOIN checklist_instance_items cii ON cii.instance_id = ci.id
+       WHERE ci.employee_id = ? AND ct.deleted_at IS NULL AND ci.period_start >= ? AND ci.period_end <= ?`,
       [employeeId, from, to]
     );
     const r = rows[0];

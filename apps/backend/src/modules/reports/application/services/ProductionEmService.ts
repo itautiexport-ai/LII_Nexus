@@ -79,7 +79,7 @@ export class ProductionEmService {
     }
 
     return rows.map((row, index) => {
-      let deptName = row.department_name;
+      const deptName = row.department_name;
       let salary = Number(row.salary);
       
       // Override for Primary Machine Shop (or PRIMARY MS)

@@ -42,7 +42,7 @@ export interface CreateFmsStepDto {
 export const fmsApi = {
   async getAll(): Promise<FmsManager[]> {
     const res = await axiosInstance.get("/fms");
-    return res.data.data;
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
 
   async create(payload: CreateFmsManagerDto): Promise<FmsManager> {

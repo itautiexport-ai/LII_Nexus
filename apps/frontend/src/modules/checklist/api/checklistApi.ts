@@ -19,6 +19,8 @@ export interface StandaloneChecklist extends CreateStandaloneChecklistDto {
   assignedBy: string;
   assigner_name?: string;
   assignee_name?: string;
+  occurrenceDate?: string;
+  isOverdue?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,10 +46,11 @@ export const standaloneChecklistApi = {
     return res.data.data;
   },
 
-  complete: async (id: string, notes?: string, attachmentUrl?: string) => {
+  complete: async (id: string, notes?: string, attachmentUrl?: string, occurrenceDate?: string) => {
     const res = await axiosInstance.post<{ success: boolean; message: string }>(`/standalone-checklists/${id}/complete`, {
       notes,
       attachmentUrl,
+      occurrenceDate,
     });
     return res.data;
   },

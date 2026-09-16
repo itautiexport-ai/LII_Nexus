@@ -329,8 +329,8 @@ export class MaintenanceRepository {
     const frequency = data.maintenance_frequency || 'Monthly';
     const intervalDays = this.getIntervalDays(frequency, data.maintenance_interval_days);
     
-    let isCompleted = data.status === 'Completed';
-    let completedDate: Date | null = isCompleted ? (data.completed_date ? new Date(data.completed_date) : new Date()) : null;
+    const isCompleted = data.status === 'Completed';
+    const completedDate: Date | null = isCompleted ? (data.completed_date ? new Date(data.completed_date) : new Date()) : null;
     let nextMaintenanceDue: Date | null = null;
 
     if (isCompleted && completedDate) {
@@ -389,7 +389,7 @@ export class MaintenanceRepository {
     const frequency = data.maintenance_frequency || currentWO.maintenance_frequency || 'Monthly';
     const intervalDays = this.getIntervalDays(frequency, data.maintenance_interval_days || currentWO.maintenance_interval_days);
 
-    let isCompleted = newStatus === 'Completed';
+    const isCompleted = newStatus === 'Completed';
     let completedDate = currentWO.completed_date;
     if (isCompleted && !completedDate) {
       completedDate = data.completed_date ? new Date(data.completed_date) : new Date();

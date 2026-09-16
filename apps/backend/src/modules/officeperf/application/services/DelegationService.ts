@@ -2,30 +2,57 @@ import { v4 as uuid } from "uuid";
 import { IDelegationRepository } from "../../domain/repositories/IDelegationRepository";
 import { EmployeeScopeService } from "../../../performance/application/services/EmployeeScopeService";
 import { DelegationBaseStatus, DelegationFileKind, DelegationPriority } from "../../domain/entities/Delegation";
-import { ConflictError, ForbiddenError, NotFoundError } from "../../../../core/domain/errors/DomainError";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../../../core/domain/errors/DomainError";
 import { AuditService } from "../../../../shared/services/AuditService";
 import { NotificationService } from "../../../notifications/application/services/NotificationService";
 import { MySqlNotificationRepository } from "../../../notifications/infrastructure/repositories/MySqlNotificationRepository";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
 import { whatsappBot } from "../../../whatsapp/application/services/WhatsAppBotService";
+import { logger } from "../../../../infrastructure/logging/logger";
 
 const notificationService = new NotificationService(new MySqlNotificationRepository());
 
 export class DelegationService {
   constructor(private readonly repo: IDelegationRepository, private readonly scope: EmployeeScopeService) {}
 
-  async list(page: number, pageSize: number, actorUserId: string, hasViewOverride: boolean, status?: DelegationBaseStatus) {
+  async list(
+    page: number,
+    pageSize: number,
+    actorUserId: string,
+    hasViewOverride: boolean,
+    status?: DelegationBaseStatus,
+    scope?: "assigned_to_me" | "assigned_by_me" | "all"
+  ) {
+    const actor = await this.scope.getEmployeeForUser(actorUserId);
+    const myIds = [actorUserId];
+    if (actor) myIds.push(actor.id);
+
+    if (scope === "assigned_to_me") {
+      return this.repo.list({ page, pageSize, assignedTo: myIds, status });
+    }
+
+    if (scope === "assigned_by_me") {
+      return this.repo.list({ page, pageSize, assignedBy: myIds, status });
+    }
+
+    if (scope === "all") {
+      if (hasViewOverride) {
+        return this.repo.list({ page, pageSize, status });
+      }
+      return this.repo.list({ page, pageSize, assignedTo: myIds, status });
+    }
+
     if (hasViewOverride) {
       return this.repo.list({ page, pageSize, status });
     }
-    const actor = await this.scope.requireEmployeeForUser(actorUserId);
-    return this.repo.list({ page, pageSize, assignedTo: actor.id, status });
+    return this.repo.list({ page, pageSize, assignedTo: myIds, status });
   }
 
   async listIDelegated(actorUserId: string) {
     const actor = await this.scope.getEmployeeForUser(actorUserId);
-    if (!actor) return [];
-    const { items } = await this.repo.list({ page: 1, pageSize: 100, assignedBy: actor.id });
+    const myIds = [actorUserId];
+    if (actor) myIds.push(actor.id);
+    const { items } = await this.repo.list({ page: 1, pageSize: 200, assignedBy: myIds });
     return items;
   }
 
@@ -46,6 +73,15 @@ export class DelegationService {
     actorUserId: string,
     hasCreateOverride: boolean
   ) {
+    if (input.dueDate) {
+      const targetDate = new Date(input.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (targetDate.getTime() < today.getTime()) {
+        throw new ValidationError("Due date cannot be set in the past.");
+      }
+    }
+
     let assignedByEmployeeId = input.assignedBy;
     if (!assignedByEmployeeId) {
       const actor = await this.scope.requireEmployeeForUser(actorUserId);
@@ -200,29 +236,52 @@ export class DelegationService {
     await AuditService.record({ actorUserId, action: "DELEGATED_TASK_FILE_ADDED", entityType: "delegated_task", entityId: id, afterState: { kind, fileName } });
     return this.repo.getWithContext(id);
   }
-  async requestExtension(id: string, reason: string, requestedDate: string, actorUserId: string) {
+  async requestExtension(id: string, reason: string, requestedDate: string, actorUserId: string, hasUpdateOverride: boolean = false) {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("Delegated task not found.");
-    
-    const actor = await this.scope.requireEmployeeForUser(actorUserId);
-    if (actor.id !== existing.assignedTo) {
-      throw new ForbiddenError("Only the assignee can request an extension.");
+
+    if (requestedDate) {
+      const targetDate = new Date(requestedDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (targetDate.getTime() < today.getTime()) {
+        throw new ValidationError("Proposed extension date cannot be set in the past.");
+      }
     }
-    
+
+    if (!hasUpdateOverride) {
+      const actor = await this.scope.getEmployeeForUser(actorUserId);
+      const isAssignee = (actor && actor.id === existing.assignedTo) || actorUserId === existing.assignedTo;
+      if (!isAssignee) {
+        throw new ForbiddenError("Only the assignee can request an extension.");
+      }
+    }
+
     const updated = await this.repo.setExtensionRequest(id, reason, requestedDate);
     await AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_REQUESTED", entityType: "delegated_task", entityId: id, afterState: { reason, requestedDate } });
 
     // Notify assigner
-    const assignerUser = await pool.query<any[]>("SELECT id FROM users WHERE employee_id = ?", [existing.assignedBy]);
-    if (assignerUser[0] && assignerUser[0][0]) {
-      await notificationService.notify({
-        type: "delegation_extension_requested",
-        module: "office",
-        referenceType: "delegated_task",
-        referenceId: id,
-        assignedUserId: assignerUser[0][0].id,
-        createdBy: actorUserId,
-      });
+    try {
+      const [empRows] = await pool.query<any[]>("SELECT user_id, full_name FROM employees WHERE id = ?", [existing.assignedBy]);
+      const targetUserId = empRows[0]?.user_id;
+      if (targetUserId) {
+        const [actorRows] = await pool.query<any[]>("SELECT full_name FROM users WHERE id = ?", [actorUserId]);
+        const actorName = actorRows[0]?.full_name || "An employee";
+        await notificationService.notify({
+          type: "delegation_extension_requested",
+          module: "office",
+          referenceType: "delegated_task",
+          referenceId: id,
+          assignedUserId: targetUserId,
+          createdBy: actorUserId,
+          title: `Extension Requested: ${existing.title}`,
+          description: `${actorName} requested an extension to ${requestedDate}. Reason: ${reason}`,
+          actionLabel: "Review Extension",
+          actionUrl: "/admin/delegation/list",
+        });
+      }
+    } catch (notifErr: any) {
+      logger.warn("Failed to notify assigner about delegation extension request", { error: notifErr?.message });
     }
 
     return updated;
@@ -233,8 +292,9 @@ export class DelegationService {
     if (!existing) throw new NotFoundError("Delegated task not found.");
 
     if (!hasUpdateOverride) {
-      const actor = await this.scope.requireEmployeeForUser(actorUserId);
-      if (actor.id !== existing.assignedBy) {
+      const actor = await this.scope.getEmployeeForUser(actorUserId);
+      const isAssigner = (actor && actor.id === existing.assignedBy) || actorUserId === existing.assignedBy;
+      if (!isAssigner) {
         throw new ForbiddenError("Only the assigner can respond to an extension request.");
       }
     }
@@ -243,16 +303,27 @@ export class DelegationService {
     await AuditService.record({ actorUserId, action: "DELEGATED_TASK_EXTENSION_RESPONDED", entityType: "delegated_task", entityId: id, afterState: { status, rejectionReason } });
 
     // Notify assignee
-    const assigneeUser = await pool.query<any[]>("SELECT id FROM users WHERE employee_id = ?", [existing.assignedTo]);
-    if (assigneeUser[0] && assigneeUser[0][0]) {
-      await notificationService.notify({
-        type: status === "approved" ? "delegation_extension_approved" : "delegation_extension_rejected",
-        module: "office",
-        referenceType: "delegated_task",
-        referenceId: id,
-        assignedUserId: assigneeUser[0][0].id,
-        createdBy: actorUserId,
-      });
+    try {
+      const [empRows] = await pool.query<any[]>("SELECT user_id FROM employees WHERE id = ?", [existing.assignedTo]);
+      const assigneeUserId = empRows[0]?.user_id;
+      if (assigneeUserId) {
+        await notificationService.notify({
+          type: status === "approved" ? "delegation_extension_approved" : "delegation_extension_rejected",
+          module: "office",
+          referenceType: "delegated_task",
+          referenceId: id,
+          assignedUserId: assigneeUserId,
+          createdBy: actorUserId,
+          title: status === "approved" ? `Extension Approved: ${existing.title}` : `Extension Rejected: ${existing.title}`,
+          description: status === "approved"
+            ? `Your extension request for "${existing.title}" was approved. New due date is ${existing.extensionRequestedDate}.`
+            : `Your extension request for "${existing.title}" was rejected.${rejectionReason ? ` Reason: ${rejectionReason}` : ""}`,
+          actionLabel: "View Task",
+          actionUrl: "/admin/delegation/user",
+        });
+      }
+    } catch (notifErr: any) {
+      logger.warn("Failed to notify assignee about delegation extension response", { error: notifErr?.message });
     }
 
     return updated;

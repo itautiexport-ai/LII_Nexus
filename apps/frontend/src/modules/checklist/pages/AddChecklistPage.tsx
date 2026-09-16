@@ -43,25 +43,50 @@ export function AddChecklistPage() {
   ];
 
   useEffect(() => {
-    // Check System Admin bypass
-    const isSystemAdmin = user?.roles.includes("System Admin");
+    const isSystemAdmin = user?.roles?.includes("System Admin");
     if (isSystemAdmin) {
       setIsAllowed(true);
-    } else {
-      // Check designation permission
-      employeesApi.getMe()
-        .then((me) => {
-          if (!me) {
-            setIsAllowed(false);
-            return;
-          }
-          const title = me.designationTitle?.trim().toLowerCase() || "";
-          setIsAllowed(title === "admin" || title === "admin executive" || title === "director" || title === "executive director");
-        })
-        .catch(() => setIsAllowed(false));
     }
 
-    employeesApi.list().then(setEmployees).catch(console.error);
+    employeesApi
+      .getMe()
+      .then((me) => {
+        if (me) {
+          setFormData((prev) => ({
+            ...prev,
+            assignBy: prev.assignBy || me.id,
+          }));
+          if (!isSystemAdmin) {
+            const title = me.designationTitle?.trim().toLowerCase() || "";
+            setIsAllowed(
+              title.includes("admin") ||
+                title.includes("director") ||
+                title.includes("executive") ||
+                title.includes("manager") ||
+                title.includes("head") ||
+                title.includes("lead")
+            );
+          }
+        } else if (!isSystemAdmin) {
+          setIsAllowed(false);
+        }
+      })
+      .catch(() => {
+        if (!isSystemAdmin) setIsAllowed(false);
+      });
+
+    employeesApi
+      .list()
+      .then((list) => {
+        setEmployees(list);
+        if (list.length > 0) {
+          setFormData((prev) => {
+            if (prev.assignBy) return prev;
+            return { ...prev, assignBy: list[0].id };
+          });
+        }
+      })
+      .catch(console.error);
   }, [user]);
 
   // Calculate next planned date whenever frequency or days rules change
@@ -97,7 +122,7 @@ export function AddChecklistPage() {
       }
     } else if (freq === "Weekly" || freq === "Alternate") {
       if (daysWeek.length > 0) {
-        let currentDay = now.getDay();
+        const currentDay = now.getDay();
         let daysToAdd = 0;
         for (let i = 0; i < 7; i++) {
           const testDay = (currentDay + i) % 7;
@@ -116,7 +141,7 @@ export function AddChecklistPage() {
     } else if (freq === "Quarterly") {
       const currentMonth = now.getMonth();
       const currentQuarterStart = Math.floor(currentMonth / 3) * 3;
-      let targetMonth = currentQuarterStart + (qMonth - 1);
+      const targetMonth = currentQuarterStart + (qMonth - 1);
       target = new Date(now.getFullYear(), targetMonth, dayMonth, 9, 0, 0);
       if (target < now) {
         target = new Date(now.getFullYear(), targetMonth + 3, dayMonth, 9, 0, 0);
@@ -211,13 +236,11 @@ export function AddChecklistPage() {
                 <label className="chk-label">Assign By <span className="chk-required">*</span></label>
                 <select name="assignBy" required value={formData.assignBy} onChange={handleChange} className="chk-select">
                   <option value="">Select Employee</option>
-                  {employees
-                    .filter(e => {
-                      const title = e.designationTitle?.trim().toLowerCase() || "";
-                      return title === "admin" || title === "director" || title === "executive director";
-                    })
-                    .map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)
-                  }
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.fullName} {e.designationTitle ? `(${e.designationTitle})` : ""}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -356,7 +379,7 @@ export function AddChecklistPage() {
 
               <div className="chk-form-group">
                 <label className="chk-label">Planned Date <span className="chk-required">*</span> (Auto-calculated)</label>
-                <input type="datetime-local" name="plannedDate" required value={formData.plannedDate} onChange={handleChange} className="chk-input" />
+                <input type="datetime-local" name="plannedDate" required value={formData.plannedDate} min={new Date().toISOString().slice(0, 16)} onChange={handleChange} className="chk-input" />
               </div>
 
               <div className="chk-form-group">

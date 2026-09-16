@@ -83,8 +83,8 @@ export class FmsExecutionController {
       const result = await this.service.completeStep(employeeId, instanceStepId, { inputData });
       res.json({ success: true, data: result });
     } catch (err: any) {
-      console.error(err);
-      res.status(500).json({ success: false, message: "Internal server error" });
+      console.error("completeTask error:", err);
+      res.status(400).json({ success: false, message: err.message || "Failed to complete step" });
     }
   };
 

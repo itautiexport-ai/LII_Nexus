@@ -21,7 +21,7 @@ export class FmsExecutionService {
 
   async startFmsInstance(fmsManagerId: string, dto: StartFmsInstanceDto) {
     const instanceId = uuidv4();
-    
+
     // Create instance
     await this.dbPool.query(
       "INSERT INTO fms_instances (id, fms_manager_id, reference_title, status, form_data, creator_id) VALUES (?, ?, ?, ?, ?, ?)",
@@ -47,7 +47,7 @@ export class FmsExecutionService {
     if (actionableStepIds.length > 0) {
       const placeholders = actionableStepIds.map(() => '?').join(',');
       await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'In Progress' WHERE id IN (${placeholders})`, actionableStepIds);
-      
+
       const [initialSteps] = await this.dbPool.query(`
         SELECT fis.id as instanceStepId, fs.step_name as stepName, fs.doer_employee_ids as doerEmployeeIds, fi.creator_id as creatorId, fm.name as managerName
         FROM fms_instance_steps fis
@@ -56,7 +56,7 @@ export class FmsExecutionService {
         JOIN fms_managers fm ON fi.fms_manager_id = fm.id
         WHERE fis.id IN (${placeholders})
       `, actionableStepIds);
-      
+
       for (const step of initialSteps) {
         await this.notifyDoers(step);
       }
@@ -67,7 +67,7 @@ export class FmsExecutionService {
 
   private async _computeActionableSteps(instanceId: string): Promise<string[]> {
     const query = `
-      SELECT 
+      SELECT
         fis.id as instanceStepId,
         fs.id as stepId,
         fs.is_sequential as isSequential,
@@ -80,12 +80,12 @@ export class FmsExecutionService {
       ORDER BY fs.sequence_order ASC
     `;
     const [rows] = await this.dbPool.query(query, [instanceId]);
-    
+
     let currentBlock: string[] = [];
     let previousBlock: string[] = [];
-    const computedDeps = new Map<string, string[]>(); 
+    const computedDeps = new Map<string, string[]>();
     const stepIdToInstanceStepId = new Map<string, string>();
-    
+
     for (const row of rows) {
       stepIdToInstanceStepId.set(row.stepId, row.instanceStepId);
     }
@@ -172,7 +172,9 @@ export class FmsExecutionService {
     let doers: string[] = [];
     try {
       doers = typeof step.doerEmployeeIds === 'string' ? JSON.parse(step.doerEmployeeIds) : step.doerEmployeeIds;
-    } catch (e) {}
+    } catch (_e) {
+      /* ignore JSON parse error */
+    }
 
     if (!Array.isArray(doers) || doers.length === 0) {
       if (step.creatorId) doers = [step.creatorId];
@@ -181,12 +183,29 @@ export class FmsExecutionService {
     for (const doerId of doers) {
       if (!doerId) continue;
       try {
+        let assignedUserId = doerId;
+        const [empRows] = await this.dbPool.query(
+          "SELECT user_id FROM employees WHERE id = ? AND user_id IS NOT NULL",
+          [doerId]
+        );
+        if (empRows && empRows.length > 0 && empRows[0].user_id) {
+          assignedUserId = empRows[0].user_id;
+        } else {
+          const [userRows] = await this.dbPool.query(
+            "SELECT id FROM users WHERE id = ?",
+            [doerId]
+          );
+          if (!userRows || userRows.length === 0) {
+            continue;
+          }
+        }
+
         await this.notificationService.notify({
           type: "new_task_assigned",
           module: "workflow",
           referenceType: "fms_step",
           referenceId: step.instanceStepId,
-          assignedUserId: doerId,
+          assignedUserId,
           title: `FMS Task Actionable: ${step.stepName}`,
           description: `A task in the FMS workflow "${step.managerName}" is now ready for your action.`,
           priority: "medium",
@@ -212,7 +231,7 @@ export class FmsExecutionService {
     }
 
     const query = `
-      SELECT 
+      SELECT
         fis.id as instanceStepId,
         fi.id as instanceId,
         fi.reference_title as referenceTitle,
@@ -246,8 +265,10 @@ export class FmsExecutionService {
       let doers = [];
       try {
         doers = typeof row.doerEmployeeIds === 'string' ? JSON.parse(row.doerEmployeeIds) : row.doerEmployeeIds;
-      } catch (e) {}
-      
+      } catch (_e) {
+        /* ignore JSON parse error */
+      }
+
       if (!Array.isArray(doers)) doers = [];
 
       const isDoer = doers.includes(employeeId);
@@ -281,7 +302,7 @@ export class FmsExecutionService {
 
   async getInstancesByManagerId(fmsManagerId: string) {
     const query = `
-      SELECT 
+      SELECT
         fi.id as instanceId,
         fi.reference_title as referenceTitle,
         fi.status as instanceStatus,
@@ -293,6 +314,7 @@ export class FmsExecutionService {
         fs.step_name as stepName,
         fs.sequence_order as sequenceOrder,
         fis.status as stepStatus,
+        fis.input_data as inputData,
         fis.completed_at as completedAt,
         ce.full_name as completedByName
       FROM fms_instances fi
@@ -320,12 +342,20 @@ export class FmsExecutionService {
         });
       }
       if (row.stepId) {
+        let parsedInputData = {};
+        try {
+          parsedInputData = typeof row.inputData === 'string' && row.inputData ? JSON.parse(row.inputData) : (row.inputData || {});
+        } catch (e) {
+          parsedInputData = {};
+        }
+
         instancesMap.get(row.instanceId).steps.push({
           id: row.stepId,
           fmsStepId: row.fmsStepId,
           stepName: row.stepName,
           sequenceOrder: row.sequenceOrder,
           status: row.stepStatus,
+          inputData: parsedInputData,
           completedAt: row.completedAt,
           completedByName: row.completedByName
         });
@@ -338,7 +368,7 @@ export class FmsExecutionService {
   async completeStep(employeeId: string, instanceStepId: string, dto: CompleteFmsStepDto) {
     // Check step details
     const [rows] = await this.dbPool.query(`
-      SELECT fis.*, fs.step_name, fs.sequence_order, fs.doer_employee_ids, fi.fms_manager_id, fi.creator_id, fi.reference_title, fi.form_data 
+      SELECT fis.*, fs.step_name, fs.sequence_order, fs.doer_employee_ids, fi.fms_manager_id, fi.creator_id, fi.reference_title, fi.form_data
       FROM fms_instance_steps fis
       JOIN fms_steps fs ON fis.fms_step_id = fs.id
       JOIN fms_instances fi ON fis.instance_id = fi.id
@@ -350,30 +380,84 @@ export class FmsExecutionService {
 
     // Authorization check
     let isAuthorized = false;
-    let doers = [];
+    let doers: string[] = [];
     try {
       doers = typeof step.doer_employee_ids === 'string' ? JSON.parse(step.doer_employee_ids) : step.doer_employee_ids;
-    } catch (e) {}
-    
-    const isCreatorStep = !doers || doers.length === 0;
-    
-    if (isCreatorStep && step.creator_id === employeeId) {
+    } catch (_e) {
+      /* ignore JSON parse error */
+    }
+
+    if (!Array.isArray(doers)) doers = [];
+    const isCreatorStep = doers.length === 0;
+
+    const [empUserRows] = await this.dbPool.query(
+      "SELECT user_id FROM employees WHERE id = ?",
+      [employeeId]
+    );
+    const linkedUserId = empUserRows[0]?.user_id;
+
+    if (isCreatorStep && (step.creator_id === employeeId || (linkedUserId && step.creator_id === linkedUserId))) {
       isAuthorized = true;
-    } else if (Array.isArray(doers) && doers.includes(employeeId)) {
+    } else if (
+      doers.includes(employeeId) ||
+      (linkedUserId && doers.includes(linkedUserId))
+    ) {
       isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      const [userRows] = await this.dbPool.query(`
+        SELECT u.id, r.name as role_name
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id
+        LEFT JOIN roles r ON ur.role_id = r.id
+        LEFT JOIN employees e ON e.user_id = u.id
+        WHERE e.id = ? OR u.id = ?
+      `, [employeeId, employeeId]);
+
+      const hasAdminRole = userRows.some((r: any) =>
+        r.role_name === 'System Admin' || r.role_name === 'Super Admin' || r.role_name === 'Admin' || r.role_name === 'CEO' || r.role_name === 'Director' || r.role_name === 'HOD'
+      );
+      if (hasAdminRole) {
+        isAuthorized = true;
+      }
     }
 
     if (!isAuthorized) {
       throw new Error("You are not authorized to complete this step");
     }
 
-    const newStatus = dto.inputData?.status || 'Completed';
+    let newStatus = dto.inputData?.status || 'Completed';
+    if (
+      newStatus === 'Not Applicable' ||
+      newStatus === 'not_applicable' ||
+      newStatus === 'N/A' ||
+      newStatus === 'na' ||
+      newStatus === 'Skipped'
+    ) {
+      newStatus = 'Skipped';
+    }
 
     // Mark updated
     await this.dbPool.query(
       "UPDATE fms_instance_steps SET status = ?, completed_by = ?, input_data = ?, completed_at = NOW() WHERE id = ?",
       [newStatus, employeeId, JSON.stringify(dto.inputData || {}), instanceStepId]
     );
+
+    // If orderType is provided in inputData, persist it to fms_instances.form_data so the entire process remembers it
+    if (dto.inputData?.orderType) {
+      let existingFormData: any = {};
+      try {
+        existingFormData = typeof step.form_data === 'string' && step.form_data ? JSON.parse(step.form_data) : (step.form_data || {});
+      } catch (_e) {
+        existingFormData = {};
+      }
+      const updatedFormData = { ...existingFormData, orderType: dto.inputData.orderType };
+      await this.dbPool.query(
+        "UPDATE fms_instances SET form_data = ? WHERE id = ?",
+        [JSON.stringify(updatedFormData), step.instance_id]
+      );
+    }
 
     // Hardcoded automatic step skipping logic has been removed as per user requirement.
     // Every step will go to the concerned user, and they can select "Yes" or "Not Applicable" manually.
@@ -384,7 +468,7 @@ export class FmsExecutionService {
     if (actionableStepIds.length > 0) {
       const placeholders = actionableStepIds.map(() => '?').join(',');
       await this.dbPool.query(`UPDATE fms_instance_steps SET status = 'In Progress' WHERE id IN (${placeholders})`, actionableStepIds);
-      
+
       const [actionableSteps] = await this.dbPool.query(`
         SELECT fis.id as instanceStepId, fs.step_name as stepName, fs.doer_employee_ids as doerEmployeeIds, fi.creator_id as creatorId, fm.name as managerName
         FROM fms_instance_steps fis
@@ -393,7 +477,7 @@ export class FmsExecutionService {
         JOIN fms_managers fm ON fi.fms_manager_id = fm.id
         WHERE fis.id IN (${placeholders})
       `, actionableStepIds);
-      
+
       for (const aStep of actionableSteps) {
         await this.notifyDoers(aStep);
       }
@@ -442,11 +526,11 @@ export class FmsExecutionService {
     await this.dbPool.query("DELETE FROM fms_instance_steps WHERE instance_id = ?", [instanceId]);
     // Delete instance
     const [result] = await this.dbPool.query("DELETE FROM fms_instances WHERE id = ?", [instanceId]);
-    
+
     if (result.affectedRows === 0) {
       throw new Error("Instance not found");
     }
-    
+
     return { message: "Instance deleted successfully" };
   }
 }

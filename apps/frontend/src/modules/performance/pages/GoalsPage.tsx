@@ -92,7 +92,7 @@ export default function GoalsPage() {
           </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <input placeholder="Weight % (of total)" type="number" min={0} max={100} value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} style={{ padding: 6, flex: 1 }} />
-            <input type="date" value={form.targetDate} onChange={(e) => setForm({ ...form, targetDate: e.target.value })} style={{ padding: 6, flex: 1 }} />
+            <input type="date" value={form.targetDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setForm({ ...form, targetDate: e.target.value })} style={{ padding: 6, flex: 1 }} />
           </div>
           {error && <p style={{ color: "crimson", fontSize: 13 }}>{error}</p>}
           <button type="submit">Create Goal</button>

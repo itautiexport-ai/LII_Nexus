@@ -60,12 +60,34 @@ export class MySqlDelegationRepository implements IDelegationRepository {
     return tasks.map((t) => ({ ...t, files: filesByTask.get(t.id) ?? [] }));
   }
 
-  async list(params: { page: number; pageSize: number; assignedTo?: string; assignedBy?: string; status?: DelegationBaseStatus }) {
+  async list(params: { page: number; pageSize: number; assignedTo?: string | string[]; assignedBy?: string | string[]; status?: DelegationBaseStatus }) {
     const offset = (params.page - 1) * params.pageSize;
     const conditions = ["dt.deleted_at IS NULL"];
     const values: unknown[] = [];
-    if (params.assignedTo) { conditions.push("dt.assigned_to = ?"); values.push(params.assignedTo); }
-    if (params.assignedBy) { conditions.push("dt.assigned_by = ?"); values.push(params.assignedBy); }
+    if (params.assignedTo) {
+      if (Array.isArray(params.assignedTo)) {
+        if (params.assignedTo.length > 0) {
+          const ph = params.assignedTo.map(() => "?").join(",");
+          conditions.push(`dt.assigned_to IN (${ph})`);
+          values.push(...params.assignedTo);
+        }
+      } else {
+        conditions.push("dt.assigned_to = ?");
+        values.push(params.assignedTo);
+      }
+    }
+    if (params.assignedBy) {
+      if (Array.isArray(params.assignedBy)) {
+        if (params.assignedBy.length > 0) {
+          const ph = params.assignedBy.map(() => "?").join(",");
+          conditions.push(`dt.assigned_by IN (${ph})`);
+          values.push(...params.assignedBy);
+        }
+      } else {
+        conditions.push("dt.assigned_by = ?");
+        values.push(params.assignedBy);
+      }
+    }
     if (params.status) { conditions.push("dt.base_status = ?"); values.push(params.status); }
     const whereClause = `WHERE ${conditions.join(" AND ")}`;
 

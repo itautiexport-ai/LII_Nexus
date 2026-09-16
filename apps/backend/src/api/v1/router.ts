@@ -101,5 +101,7 @@ router.use("/ai-helper", aiHelperRoutes);
 router.use("/", materialInwardRoutes);
 router.use("/task-center", taskCenterRoutes);
 router.use("/", finishingRecipeRoutes);
+import tableFreezeRoutes from "../../modules/table-freeze/presentation/routes/tableFreeze.routes";
+router.use("/table-freeze-settings", tableFreezeRoutes);
 
 export default router;

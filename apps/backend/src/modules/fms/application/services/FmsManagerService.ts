@@ -90,6 +90,18 @@ export class FmsManagerService {
   }
 
   private mapToEntity(row: any): FmsManagerEntity {
+    let formFields: any[] = [];
+    if (row.form_fields) {
+      if (typeof row.form_fields === "string") {
+        try {
+          formFields = JSON.parse(row.form_fields);
+        } catch (_e) {
+          formFields = [];
+        }
+      } else if (Array.isArray(row.form_fields)) {
+        formFields = row.form_fields;
+      }
+    }
     return {
       id: row.id,
       name: row.name,
@@ -97,7 +109,7 @@ export class FmsManagerService {
       description: row.description,
       globalPc: row.global_pc,
       tField: row.t_field,
-      formFields: typeof row.form_fields === "string" ? JSON.parse(row.form_fields) : row.form_fields,
+      formFields,
       createdAt: row.created_at,
     };
   }

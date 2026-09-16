@@ -9,13 +9,19 @@ export function FmsFillListPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fmsApi.getAll().then((managers) => {
-      setFmsList(managers);
-      setLoading(false);
-    }).catch(err => {
-      console.error(err);
-      setLoading(false);
-    });
+    setLoading(true);
+    fmsApi
+      .getAll()
+      .then((managers) => {
+        setFmsList(Array.isArray(managers) ? managers : []);
+      })
+      .catch((err) => {
+        console.error(err);
+        setFmsList([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   if (loading) return <div style={{ padding: "2rem", textAlign: "center" }}>Loading forms...</div>;

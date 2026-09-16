@@ -19,10 +19,11 @@ async function hasPermission(userId: string, key: string): Promise<boolean> {
 export const DelegationController = {
   async list(req: AuthenticatedRequest, res: Response) {
     const page = parseInt((req.query.page as string) ?? "1", 10);
-    const pageSize = parseInt((req.query.pageSize as string) ?? "20", 10);
+    const pageSize = parseInt((req.query.pageSize as string) ?? "50", 10);
     const status = req.query.status as DelegationBaseStatus | undefined;
+    const scope = req.query.scope as "assigned_to_me" | "assigned_by_me" | "all" | undefined;
     const override = await hasPermission(req.user!.sub, "delegation.task.view");
-    const { items, total } = await service.list(page, pageSize, req.user!.sub, override, status);
+    const { items, total } = await service.list(page, pageSize, req.user!.sub, override, status, scope);
     return ok(res, items, { page, pageSize, totalItems: total });
   },
 
@@ -88,7 +89,8 @@ export const DelegationController = {
   },
 
   async requestExtension(req: AuthenticatedRequest, res: Response) {
-    return ok(res, await service.requestExtension(req.params.id, req.body.reason, req.body.requestedDate, req.user!.sub));
+    const override = await hasPermission(req.user!.sub, "delegation.task.update");
+    return ok(res, await service.requestExtension(req.params.id, req.body.reason, req.body.requestedDate, req.user!.sub, override));
   },
 
   async respondToExtension(req: AuthenticatedRequest, res: Response) {

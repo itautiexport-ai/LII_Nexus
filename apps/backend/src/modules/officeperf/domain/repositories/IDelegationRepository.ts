@@ -25,7 +25,7 @@ export interface UpdateDelegatedTaskData {
 }
 
 export interface IDelegationRepository {
-  list(params: { page: number; pageSize: number; assignedTo?: string; assignedBy?: string; status?: DelegationBaseStatus }): Promise<{ items: DelegatedTaskWithContext[]; total: number }>;
+  list(params: { page: number; pageSize: number; assignedTo?: string | string[]; assignedBy?: string | string[]; status?: DelegationBaseStatus }): Promise<{ items: DelegatedTaskWithContext[]; total: number }>;
   findById(id: string): Promise<DelegatedTask | null>;
   getWithContext(id: string): Promise<DelegatedTaskWithContext | null>;
   create(data: CreateDelegatedTaskData): Promise<DelegatedTask>;
