@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { usersApi, UserRecord } from "../../admin/users/api/usersApi";
 import { officeEmApi, OfficeEmReport, OfficeEmTaskDetail, OfficeEmModuleScore } from "../api/officeEmApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
@@ -20,6 +20,7 @@ export default function OfficeEmReportPage() {
   const [reports, setReports] = useState<OfficeEmReport[]>([]);
   const [loading, setLoading] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState("");
 
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.roles?.includes("System Admin") || false;
@@ -37,8 +38,38 @@ export default function OfficeEmReportPage() {
   const [modalTab, setModalTab] = useState<"summary" | "pending" | "completed">("summary");
 
   useEffect(() => {
-    usersApi.list().then((res) => setUsers(res.items));
+    usersApi.list("", 1, 1000).then((res) => setUsers(res.items));
   }, []);
+
+  const eligibleEmployees = useMemo(() => {
+    const excludedExactRoles = new Set(["system admin", "director", "super admin"]);
+    return users
+      .filter((u) => {
+        if (u.status && u.status !== "active") return false;
+        const nameLower = (u.fullName || "").trim().toLowerCase();
+        if (nameLower === "system administrator" || u.email?.toLowerCase() === "admin@gmail.com") {
+          return false;
+        }
+        // Only exclude if every role the user has is an excluded leadership role (e.g. pure System Admin)
+        if (u.roles && u.roles.length > 0 && u.roles.every((r) => excludedExactRoles.has(r.toLowerCase().trim()))) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || ""));
+  }, [users]);
+
+  const filteredDropdownEmployees = useMemo(() => {
+    if (!employeeSearch.trim()) return eligibleEmployees;
+    const q = employeeSearch.trim().toLowerCase();
+    return eligibleEmployees.filter(
+      (u) =>
+        (u.fullName && u.fullName.toLowerCase().includes(q)) ||
+        (u.employeeCode && u.employeeCode.toLowerCase().includes(q)) ||
+        (u.department && u.department.toLowerCase().includes(q)) ||
+        u.id === selectedUser
+    );
+  }, [eligibleEmployees, employeeSearch, selectedUser]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -344,16 +375,30 @@ export default function OfficeEmReportPage() {
       `}</style>
       <h1 style={{ fontSize: "24px", marginBottom: "24px", color: "#0f172a", fontWeight: 600 }}>LII Performance Gap Score (Office EM)</h1>
 
-      <div className="no-print" style={{ display: "flex", gap: "12px", marginBottom: "32px", alignItems: "center" }}>
-        <select className="professional-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
-          <option value="">-- Select Employee --</option>
-          {users.filter(u => !u.roles?.some(r => {
-            const lower = r.toLowerCase();
-            return lower.includes("director") || lower.includes("admin");
-          })).map(u => (
-            <option key={u.id} value={u.id}>{u.fullName}</option>
-          ))}
-        </select>
+      <div className="no-print" style={{ display: "flex", gap: "12px", marginBottom: "32px", alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="🔍 Search employee..."
+            value={employeeSearch}
+            onChange={e => setEmployeeSearch(e.target.value)}
+            className="professional-select"
+            style={{ width: "170px", padding: "8px 12px", fontSize: "13px" }}
+          />
+          <select
+            className="professional-select"
+            value={selectedUser}
+            onChange={e => setSelectedUser(e.target.value)}
+            style={{ minWidth: "260px" }}
+          >
+            <option value="">-- Select Employee ({eligibleEmployees.length}) --</option>
+            {filteredDropdownEmployees.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.fullName}{u.department ? ` (${u.department})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <input 
           type="week" 

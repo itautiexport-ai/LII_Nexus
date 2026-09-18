@@ -77,11 +77,26 @@ export default function DelegationPage() {
     },
   });
 
-  async function load() {
+  // Pagination & Filtering States
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
+
+  const [filterAssignedTo, setFilterAssignedTo] = useState("");
+  const [filterAssignedDate, setFilterAssignedDate] = useState("");
+  const [filterPlannedDate, setFilterPlannedDate] = useState("");
+  const [filterPriority, setFilterPriority] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  async function load(targetPage = page, targetPageSize = pageSize) {
     try {
       const [empRes, allTasksRes, reports] = await Promise.all([
         axiosInstance.get("/employees/me").catch(() => null),
-        delegationApi.list({ scope: isAdmin ? "all" : undefined }),
+        delegationApi.list({
+          page: targetPage,
+          pageSize: targetPageSize,
+          scope: isAdmin ? "all" : undefined,
+        }),
         factoryApi.myDirectReports(),
       ]);
 
@@ -93,6 +108,7 @@ export default function DelegationPage() {
       const myName = (me?.fullName || user?.fullName || "").trim().toLowerCase();
 
       const items = (allTasksRes.items as DisplayTask[]) || [];
+      setTotalItems(allTasksRes.totalItems ?? items.length);
 
       // 1. Assigned to Me: strictly tasks where assigned_to matches current user/employee
       const assignedToMeList = items.filter(t => {
@@ -125,11 +141,25 @@ export default function DelegationPage() {
       console.error("Failed to load delegations:", err);
     }
   }
+
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 10000);
+    load(page, pageSize);
+    const interval = setInterval(() => load(page, pageSize), 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [page, pageSize, isAdmin]);
+
+  const handlePageChange = (newPage: number) => {
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const validPage = Math.max(1, Math.min(newPage, totalPages));
+    setPage(validPage);
+    load(validPage, pageSize);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(1);
+    load(1, newSize);
+  };
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -262,6 +292,41 @@ export default function DelegationPage() {
 
   const list = tab === "received" ? received : delegated;
 
+  const filteredList = useMemo(() => {
+    return list.filter((t) => {
+      if (filterAssignedTo && !t.assignedToName?.toLowerCase().includes(filterAssignedTo.toLowerCase().trim())) {
+        return false;
+      }
+      if (filterPriority && t.priority !== filterPriority) {
+        return false;
+      }
+      if (filterStatus && t.displayStatus !== filterStatus) {
+        return false;
+      }
+      if (filterAssignedDate) {
+        const tDate = t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "";
+        if (tDate !== filterAssignedDate) return false;
+      }
+      if (filterPlannedDate) {
+        const dDate = t.dueDate ? new Date(t.dueDate).toISOString().split("T")[0] : "";
+        if (dDate !== filterPlannedDate) return false;
+      }
+      return true;
+    });
+  }, [list, filterAssignedTo, filterPriority, filterStatus, filterAssignedDate, filterPlannedDate]);
+
+  const hasActiveFilters = Boolean(filterAssignedTo || filterPriority || filterStatus || filterAssignedDate || filterPlannedDate);
+
+  const clearFilters = () => {
+    setFilterAssignedTo("");
+    setFilterPriority("");
+    setFilterStatus("");
+    setFilterAssignedDate("");
+    setFilterPlannedDate("");
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
   return (
     <div>
       <input
@@ -279,6 +344,32 @@ export default function DelegationPage() {
               Delete Selected ({selectedIds.length})
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Metrics Summary Strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Delegated</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginTop: 4 }}>{totalItems || list.length}</div>
+        </div>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pending / Due Tasks</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b", marginTop: 4 }}>
+            {list.filter(t => t.displayStatus === "pending" || t.displayStatus === "running").length}
+          </div>
+        </div>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Completed Tasks</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#10b981", marginTop: 4 }}>
+            {list.filter(t => t.displayStatus === "completed").length}
+          </div>
+        </div>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Historical Delayed</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#ef4444", marginTop: 4 }}>
+            {list.filter(t => t.displayStatus === "delayed").length}
+          </div>
         </div>
       </div>
 
@@ -351,6 +442,74 @@ export default function DelegationPage() {
         </div>
       </div>
 
+      {/* Filter Bar */}
+      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 150, flex: "1 1 150px" }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Assigned To</label>
+          <input
+            type="text"
+            placeholder="Search assignee..."
+            value={filterAssignedTo}
+            onChange={(e) => setFilterAssignedTo(e.target.value)}
+            style={{ padding: "6px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 6, outline: "none" }}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 130 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Status</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={{ padding: "6px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 6, outline: "none", background: "#fff" }}
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="running">Running</option>
+            <option value="completed">Completed</option>
+            <option value="delayed">Delayed</option>
+          </select>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 120 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Priority</label>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            style={{ padding: "6px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 6, outline: "none", background: "#fff" }}
+          >
+            <option value="">All Priorities</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 130 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Assigned Date</label>
+          <input
+            type="date"
+            value={filterAssignedDate}
+            onChange={(e) => setFilterAssignedDate(e.target.value)}
+            style={{ padding: "5px 8px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 6, outline: "none" }}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 130 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Planned Date</label>
+          <input
+            type="date"
+            value={filterPlannedDate}
+            onChange={(e) => setFilterPlannedDate(e.target.value)}
+            style={{ padding: "5px 8px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 6, outline: "none" }}
+          />
+        </div>
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            style={{ alignSelf: "flex-end", padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 12, fontWeight: 600, color: "#475569", cursor: "pointer" }}
+          >
+            ✕ Clear Filters
+          </button>
+        )}
+      </div>
+
       <div style={getContainerStyle()}>
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: "1350px" }}>
           <thead>
@@ -359,10 +518,10 @@ export default function DelegationPage() {
                 {isAdmin && (
                   <input
                     type="checkbox"
-                    checked={list.length > 0 && selectedIds.length === list.length}
+                    checked={filteredList.length > 0 && selectedIds.length === filteredList.length}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedIds(list.map(t => t.id));
+                        setSelectedIds(filteredList.map(t => t.id));
                       } else {
                         setSelectedIds([]);
                       }
@@ -383,7 +542,7 @@ export default function DelegationPage() {
             </tr>
           </thead>
           <tbody>
-            {list.map((t) => (
+            {filteredList.map((t) => (
               <tr key={t.id}>
                 <td style={getStickyCellStyle(0, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>
                   {isAdmin && (
@@ -618,9 +777,108 @@ export default function DelegationPage() {
                 </td>
               </tr>
             ))}
-            {list.length === 0 && <tr><td colSpan={11} style={{ padding: 16, textAlign: "center", color: "#777" }}>Nothing here.</td></tr>}
+            {filteredList.length === 0 && (
+              <tr>
+                <td colSpan={11} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>
+                  {hasActiveFilters ? "No delegated tasks found matching the filter criteria." : "Nothing here."}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 4px", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#64748b", fontSize: 13 }}>
+          <span>
+            Showing {totalItems > 0 ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, totalItems)} of {totalItems} total historical tasks
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span>Per page:</span>
+            <select
+              value={pageSize}
+              onChange={e => handlePageSizeChange(Number(e.target.value))}
+              style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #cbd5e1", fontSize: 13, background: "#fff" }}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={page <= 1}
+            style={{
+              padding: "5px 10px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 4,
+              background: page <= 1 ? "#f1f5f9" : "#fff",
+              color: page <= 1 ? "#94a3b8" : "#1e293b",
+              cursor: page <= 1 ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            « First
+          </button>
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1}
+            style={{
+              padding: "5px 10px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 4,
+              background: page <= 1 ? "#f1f5f9" : "#fff",
+              color: page <= 1 ? "#94a3b8" : "#1e293b",
+              cursor: page <= 1 ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            ‹ Prev
+          </button>
+          <span style={{ fontSize: 13, color: "#334155", padding: "0 6px" }}>
+            Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+          </span>
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page >= totalPages}
+            style={{
+              padding: "5px 10px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 4,
+              background: page >= totalPages ? "#f1f5f9" : "#fff",
+              color: page >= totalPages ? "#94a3b8" : "#1e293b",
+              cursor: page >= totalPages ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            Next ›
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={page >= totalPages}
+            style={{
+              padding: "5px 10px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 4,
+              background: page >= totalPages ? "#f1f5f9" : "#fff",
+              color: page >= totalPages ? "#94a3b8" : "#1e293b",
+              cursor: page >= totalPages ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            Last »
+          </button>
+        </div>
       </div>
 
       {/* Request Extension Modal */}

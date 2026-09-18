@@ -1,9 +1,71 @@
 import { pool } from "../../../../infrastructure/database/mysql/connection";
 
 export class TaskCenterService {
-  async getDashboardStats(userId: string, _isSystemAdmin: boolean) {
+  async getDashboardStats(userId: string, isSystemAdmin: boolean = false) {
     try {
-      // Resolve both employee UUID and user UUID to handle cross-referencing
+      if (isSystemAdmin) {
+        // 1. System-wide Checklist Stats
+        const [chkActiveRows] = await pool.query<any[]>(
+          `SELECT COUNT(*) as total
+           FROM standalone_checklists sc
+           WHERE sc.deleted_at IS NULL
+             AND sc.planned_date <= NOW()
+             AND sc.id NOT IN (
+               SELECT DISTINCT checklist_id
+               FROM standalone_checklist_completions
+             )`
+        );
+        const checklistPending = Number(chkActiveRows[0]?.total || 0);
+
+        const [chkCompRows] = await pool.query<any[]>(
+          `SELECT COUNT(*) as total
+           FROM standalone_checklist_completions c
+           JOIN standalone_checklists sc ON sc.id = c.checklist_id
+           WHERE sc.deleted_at IS NULL`
+        );
+        const checklistCompleted = Number(chkCompRows[0]?.total || 0);
+
+        // 2. System-wide Delegation Stats
+        const [delPendingRows] = await pool.query<any[]>(
+          `SELECT COUNT(*) as total
+           FROM delegated_tasks
+           WHERE base_status IN ('pending', 'running')
+             AND deleted_at IS NULL`
+        );
+        const [delCompletedRows] = await pool.query<any[]>(
+          `SELECT COUNT(*) as total
+           FROM delegated_tasks
+           WHERE base_status = 'completed'
+             AND deleted_at IS NULL`
+        );
+        const delegationPending = Number(delPendingRows[0]?.total || 0);
+        const delegationCompleted = Number(delCompletedRows[0]?.total || 0);
+
+        // 3. System-wide FMS Stats
+        const [fmsPendingRows] = await pool.query<any[]>(
+          `SELECT COUNT(*) as total
+           FROM fms_instance_steps fis
+           JOIN fms_instances fi ON fis.instance_id = fi.id
+           WHERE fi.status = 'In Progress'
+             AND fis.status IN ('Pending', 'In Progress')`
+        );
+        const [fmsCompletedRows] = await pool.query<any[]>(
+          `SELECT COUNT(*) as total
+           FROM fms_instance_steps fis
+           JOIN fms_instances fi ON fis.instance_id = fi.id
+           WHERE fis.status IN ('Completed', 'Skipped')`
+        );
+        const fmsPending = Number(fmsPendingRows[0]?.total || 0);
+        const fmsCompleted = Number(fmsCompletedRows[0]?.total || 0);
+
+        return {
+          checklist: { pending: checklistPending, completed: checklistCompleted },
+          delegation: { pending: delegationPending, completed: delegationCompleted },
+          fms: { pending: fmsPending, completed: fmsCompleted },
+        };
+      }
+
+      // Resolve both employee UUID and user UUID to handle cross-referencing for non-admin users
       const [empRows] = await pool.query<any[]>(
         "SELECT id, user_id FROM employees WHERE (user_id = ? OR id = ?) AND deleted_at IS NULL",
         [userId, userId]

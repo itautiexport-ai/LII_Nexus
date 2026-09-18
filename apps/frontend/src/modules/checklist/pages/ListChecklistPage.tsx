@@ -7,8 +7,8 @@ import { TableFreezeModal } from "../../../shared/components/TableFreezeModal";
 import "./Checklist.css";
 
 const CHECKLIST_COLUMNS = [
-  { key: "taskName", label: "Task Name", width: 220 },
-  { key: "assignee", label: "Assigned To", width: 140 },
+  { key: "taskName", label: "Task Name", width: 280 },
+  { key: "assignee", label: "Assigned To", width: 160 },
   { key: "plannedDate", label: "Planned Date", width: 160 },
   { key: "priority", label: "Priority", width: 100 },
   { key: "mode", label: "Mode", width: 100 },
@@ -113,7 +113,20 @@ export function ListChecklistPage() {
                 <tbody>
                   {checklists.map(c => (
                     <tr key={c.id} className="chk-tr">
-                      <td style={getStickyCellStyle(0, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td chk-td-strong">{(c as any).task_name || c.taskName}</td>
+                      <td
+                        style={getStickyCellStyle(0, {
+                          customStyle: {
+                            backgroundColor: "#ffffff",
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            overflowWrap: "break-word",
+                            lineHeight: "1.45",
+                          },
+                        })}
+                        className="chk-td chk-td-strong"
+                      >
+                        {(c as any).task_name || c.taskName}
+                      </td>
                       <td style={getStickyCellStyle(1, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">
                         {(c as any).assignee_name || "Unknown"}
                       </td>

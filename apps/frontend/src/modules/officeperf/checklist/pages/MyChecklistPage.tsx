@@ -8,7 +8,7 @@ import { TableFreezeButton } from "../../../../shared/components/TableFreezeButt
 import { TableFreezeModal } from "../../../../shared/components/TableFreezeModal";
 
 const STANDALONE_COLUMNS = [
-  { key: "taskName", label: "Task Name", width: 220 },
+  { key: "taskName", label: "Task Name", width: 280 },
   { key: "assignedBy", label: "Assigned By", width: 140 },
   { key: "plannedDate", label: "Planned Date", width: 160 },
   { key: "priority", label: "Priority", width: 100 },
@@ -280,7 +280,7 @@ export default function MyChecklistPage() {
                           const isAssignee = employee && item.assignTo === employee.id;
                           return (
                             <tr key={`${item.id}_${item.occurrenceDate || item.plannedDate}`}>
-                              <td style={getStickyCellStyle(0, { customStyle: { fontWeight: "600", color: "#1e293b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.taskName}</td>
+                              <td style={getStickyCellStyle(0, { customStyle: { fontWeight: "600", color: "#1e293b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "break-word", lineHeight: "1.45" } })}>{item.taskName}</td>
                               <td style={getStickyCellStyle(1, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.assigner_name || "Manager"}</td>
                               <td style={getStickyCellStyle(2, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
                                 <div>{new Date(item.plannedDate).toLocaleString()}</div>
