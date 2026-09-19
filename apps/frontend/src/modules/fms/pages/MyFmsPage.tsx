@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { fmsApi } from "../api/fmsApi";
 import "./MyFmsPage.css";
 
@@ -8,6 +8,19 @@ export function MyFmsPage() {
   const [activeTab, setActiveTab] = useState<"under_process" | "pending" | "completed" | "all">("under_process");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProcess, setSelectedProcess] = useState("all");
+  const [processNames, setProcessNames] = useState<string[]>([]);
+
+  // Server-side Pagination & Summary Stats
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [counts, setCounts] = useState({
+    actionNeeded: 0,
+    pending: 0,
+    completed: 0,
+    total: 0,
+  });
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,59 +28,76 @@ export function MyFmsPage() {
   const [inputData, setInputData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchTasks = async (status: string) => {
-    try {
-      setLoading(true);
-      const data = await fmsApi.getMyTasks(status);
-      setTasks(data || []);
-    } catch (err) {
-      console.error("Failed to load FMS tasks:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchTasks = useCallback(
+    async (
+      targetTab = activeTab,
+      targetPage = page,
+      targetPageSize = pageSize,
+      targetSearch = searchTerm,
+      targetProcess = selectedProcess
+    ) => {
+      try {
+        setLoading(true);
+        const result = await fmsApi.getMyTasks({
+          status: targetTab,
+          page: targetPage,
+          pageSize: targetPageSize,
+          search: targetSearch || undefined,
+          process: targetProcess !== "all" ? targetProcess : undefined,
+        });
+
+        setTasks(result.items);
+        setTotalItems(result.totalItems);
+        setPage(result.page);
+        setPageSize(result.pageSize);
+        setTotalPages(result.totalPages);
+        setCounts(result.counts);
+        if (result.processNames && result.processNames.length > 0) {
+          setProcessNames(result.processNames);
+        }
+      } catch (err) {
+        console.error("Failed to load FMS tasks:", err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activeTab, page, pageSize, searchTerm, selectedProcess]
+  );
 
   useEffect(() => {
-    fetchTasks(activeTab);
-  }, [activeTab]);
+    fetchTasks(activeTab, page, pageSize, searchTerm, selectedProcess);
+  }, [activeTab, page, pageSize, selectedProcess]);
 
-  // Extract list of process names for filter dropdown
-  const processNames = useMemo(() => {
-    const names = new Set<string>();
-    tasks.forEach(t => {
-      if (t.managerName) names.add(t.managerName);
-    });
-    return Array.from(names);
-  }, [tasks]);
+  // Debounced search
+  const searchTimeoutRef = useRef<any>(null);
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      setPage(1);
+      fetchTasks(activeTab, 1, pageSize, value, selectedProcess);
+    }, 300);
+  };
 
-  // Filter tasks locally by search & process selection
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(t => {
-      const matchesSearch =
-        (t.referenceTitle && t.referenceTitle.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (t.stepName && t.stepName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (t.managerName && t.managerName.toLowerCase().includes(searchTerm.toLowerCase()));
+  const handleTabChange = (newTab: "under_process" | "pending" | "completed" | "all") => {
+    setActiveTab(newTab);
+    setPage(1);
+  };
 
-      const matchesProcess = selectedProcess === "all" || t.managerName === selectedProcess;
+  const handleProcessChange = (newProcess: string) => {
+    setSelectedProcess(newProcess);
+    setPage(1);
+  };
 
-      return matchesSearch && matchesProcess;
-    });
-  }, [tasks, searchTerm, selectedProcess]);
+  const handlePageChange = (newPage: number) => {
+    const validPage = Math.max(1, Math.min(newPage, totalPages));
+    setPage(validPage);
+  };
 
-  // Compute summary stats
-  const stats = useMemo(() => {
-    let actionNeeded = 0;
-    let pending = 0;
-    let completed = 0;
-
-    tasks.forEach(t => {
-      if (t.status === "In Progress") actionNeeded++;
-      else if (t.status === "Pending") pending++;
-      else if (t.status === "Completed") completed++;
-    });
-
-    return { actionNeeded, pending, completed, total: tasks.length };
-  }, [tasks]);
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(1);
+  };
 
   const handleExecuteClick = (task: any) => {
     setSelectedTask(task);
@@ -85,7 +115,7 @@ export function MyFmsPage() {
       await fmsApi.completeTask(selectedTask.instanceStepId, inputData);
       setIsModalOpen(false);
       setSelectedTask(null);
-      fetchTasks(activeTab);
+      fetchTasks(activeTab, page, pageSize, searchTerm, selectedProcess);
     } catch (err: any) {
       console.error(err);
       alert(err.response?.data?.message || "Failed to execute task step.");
@@ -124,7 +154,7 @@ export function MyFmsPage() {
         </div>
         <button
           className="my-fms-btn-secondary"
-          onClick={() => fetchTasks(activeTab)}
+          onClick={() => fetchTasks(activeTab, page, pageSize, searchTerm, selectedProcess)}
         >
           🔄 Refresh List
         </button>
@@ -135,7 +165,7 @@ export function MyFmsPage() {
         <div className="my-fms-stat-card" style={{ borderLeft: "4px solid #f59e0b" }}>
           <div>
             <div className="my-fms-stat-title">Action Needed</div>
-            <div className="my-fms-stat-value" style={{ color: "#d97706" }}>{stats.actionNeeded}</div>
+            <div className="my-fms-stat-value" style={{ color: "#d97706" }}>{counts.actionNeeded}</div>
           </div>
           <div className="my-fms-stat-icon" style={{ background: "#fef3c7", color: "#d97706" }}>⚡</div>
         </div>
@@ -143,7 +173,7 @@ export function MyFmsPage() {
         <div className="my-fms-stat-card" style={{ borderLeft: "4px solid #3b82f6" }}>
           <div>
             <div className="my-fms-stat-title">Pending / Waiting</div>
-            <div className="my-fms-stat-value" style={{ color: "#2563eb" }}>{stats.pending}</div>
+            <div className="my-fms-stat-value" style={{ color: "#2563eb" }}>{counts.pending}</div>
           </div>
           <div className="my-fms-stat-icon" style={{ background: "#e0f2fe", color: "#2563eb" }}>⏳</div>
         </div>
@@ -151,7 +181,7 @@ export function MyFmsPage() {
         <div className="my-fms-stat-card" style={{ borderLeft: "4px solid #10b981" }}>
           <div>
             <div className="my-fms-stat-title">Completed</div>
-            <div className="my-fms-stat-value" style={{ color: "#059669" }}>{stats.completed}</div>
+            <div className="my-fms-stat-value" style={{ color: "#059669" }}>{counts.completed}</div>
           </div>
           <div className="my-fms-stat-icon" style={{ background: "#dcfce7", color: "#059669" }}>✅</div>
         </div>
@@ -159,7 +189,7 @@ export function MyFmsPage() {
         <div className="my-fms-stat-card" style={{ borderLeft: "4px solid #6366f1" }}>
           <div>
             <div className="my-fms-stat-title">Total Filtered</div>
-            <div className="my-fms-stat-value" style={{ color: "#4f46e5" }}>{filteredTasks.length}</div>
+            <div className="my-fms-stat-value" style={{ color: "#4f46e5" }}>{totalItems}</div>
           </div>
           <div className="my-fms-stat-icon" style={{ background: "#e0e7ff", color: "#4f46e5" }}>📊</div>
         </div>
@@ -170,25 +200,25 @@ export function MyFmsPage() {
         <div className="my-fms-tabs">
           <button
             className={`my-fms-tab-btn ${activeTab === "under_process" ? "active" : ""}`}
-            onClick={() => setActiveTab("under_process")}
+            onClick={() => handleTabChange("under_process")}
           >
             ⚡ Action Needed
           </button>
           <button
             className={`my-fms-tab-btn ${activeTab === "pending" ? "active" : ""}`}
-            onClick={() => setActiveTab("pending")}
+            onClick={() => handleTabChange("pending")}
           >
             ⏳ Upcoming
           </button>
           <button
             className={`my-fms-tab-btn ${activeTab === "completed" ? "active" : ""}`}
-            onClick={() => setActiveTab("completed")}
+            onClick={() => handleTabChange("completed")}
           >
             ✅ Completed
           </button>
           <button
             className={`my-fms-tab-btn ${activeTab === "all" ? "active" : ""}`}
-            onClick={() => setActiveTab("all")}
+            onClick={() => handleTabChange("all")}
           >
             📁 All Tasks
           </button>
@@ -200,16 +230,16 @@ export function MyFmsPage() {
             className="my-fms-input"
             placeholder="Search by reference title, step name, process..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
 
           {processNames.length > 0 && (
             <select
               className="my-fms-select"
               value={selectedProcess}
-              onChange={(e) => setSelectedProcess(e.target.value)}
+              onChange={(e) => handleProcessChange(e.target.value)}
             >
-              <option value="all">All FMS Processes</option>
+              <option value="all">All FMS Processes ({processNames.length})</option>
               {processNames.map(p => (
                 <option key={p} value={p}>{p}</option>
               ))}
@@ -224,7 +254,7 @@ export function MyFmsPage() {
           <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
             Loading your FMS tasks...
           </div>
-        ) : filteredTasks.length === 0 ? (
+        ) : tasks.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
             <div style={{ fontSize: "40px", marginBottom: "12px" }}>📋</div>
             <h3 style={{ margin: "0 0 6px 0", color: "#1e293b" }}>No tasks found</h3>
@@ -235,20 +265,20 @@ export function MyFmsPage() {
             </p>
           </div>
         ) : (
-          <table className="my-fms-table">
+          <table className="my-fms-table" data-no-enhance="true">
             <thead>
               <tr>
-                <th>Process / FMS Name</th>
-                <th>Reference / Order Title</th>
-                <th>Step Name</th>
-                <th>Timeline / Due</th>
-                <th>Assigned Date</th>
-                <th>Status</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
+                <th data-no-filter="true">Process / FMS Name</th>
+                <th data-no-filter="true">Reference / Order Title</th>
+                <th data-no-filter="true">Step Name</th>
+                <th data-no-filter="true">Timeline / Due</th>
+                <th data-no-filter="true">Assigned Date</th>
+                <th data-no-filter="true">Status</th>
+                <th data-no-filter="true" style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTasks.map((t) => (
+              {tasks.map((t) => (
                 <tr key={t.instanceStepId}>
                   <td>
                     <div style={{ fontWeight: 700, color: "#0f172a" }}>{t.managerName}</div>
@@ -303,6 +333,98 @@ export function MyFmsPage() {
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* Pagination Controls */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "12px 16px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 12, flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#64748b", fontSize: 13 }}>
+          <span>
+            Showing {totalItems > 0 ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, totalItems)} of {totalItems} tasks
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span>Per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 13, background: "#fff", color: "#334155" }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={page <= 1}
+            style={{
+              padding: "6px 12px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              background: page <= 1 ? "#f1f5f9" : "#fff",
+              color: page <= 1 ? "#94a3b8" : "#1e293b",
+              cursor: page <= 1 ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            « First
+          </button>
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1}
+            style={{
+              padding: "6px 12px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              background: page <= 1 ? "#f1f5f9" : "#fff",
+              color: page <= 1 ? "#94a3b8" : "#1e293b",
+              cursor: page <= 1 ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            ‹ Prev
+          </button>
+          <span style={{ fontSize: 13, color: "#334155", padding: "0 8px" }}>
+            Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+          </span>
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page >= totalPages}
+            style={{
+              padding: "6px 12px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              background: page >= totalPages ? "#f1f5f9" : "#fff",
+              color: page >= totalPages ? "#94a3b8" : "#1e293b",
+              cursor: page >= totalPages ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            Next ›
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={page >= totalPages}
+            style={{
+              padding: "6px 12px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              background: page >= totalPages ? "#f1f5f9" : "#fff",
+              color: page >= totalPages ? "#94a3b8" : "#1e293b",
+              cursor: page >= totalPages ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 500
+            }}
+          >
+            Last »
+          </button>
+        </div>
       </div>
 
       {/* Task Action Modal */}

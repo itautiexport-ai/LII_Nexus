@@ -12,6 +12,29 @@ export interface CompleteFmsStepDto {
   inputData: any;
 }
 
+export interface MyTasksOptions {
+  statusFilter?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  process?: string;
+}
+
+export interface MyTasksResult {
+  items: any[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  counts: {
+    actionNeeded: number;
+    pending: number;
+    completed: number;
+    total: number;
+  };
+  processNames: string[];
+}
+
 export class FmsExecutionService {
   private notificationService: NotificationService;
 
@@ -218,17 +241,20 @@ export class FmsExecutionService {
     }
   }
 
-  async getMyPendingTasks(employeeId: string, statusFilter?: string) {
-    let statusClause = "AND fis.status = 'In Progress'";
-    if (statusFilter === "all") {
-      statusClause = "";
-    } else if (statusFilter === "completed") {
-      statusClause = "AND fis.status IN ('Completed', 'Skipped')";
-    } else if (statusFilter === "pending") {
-      statusClause = "AND fis.status = 'Pending'";
-    } else if (statusFilter === "under_process") {
-      statusClause = "AND fis.status = 'In Progress'";
-    }
+  async getMyPendingTasks(
+    employeeId: string,
+    optionsOrStatus?: string | MyTasksOptions
+  ): Promise<MyTasksResult> {
+    const options: MyTasksOptions =
+      typeof optionsOrStatus === "string"
+        ? { statusFilter: optionsOrStatus }
+        : optionsOrStatus || {};
+
+    const statusFilter = options.statusFilter || "under_process";
+    const page = Math.max(1, options.page || 1);
+    const pageSize = options.pageSize && options.pageSize > 0 ? options.pageSize : 100;
+    const search = (options.search || "").toLowerCase().trim();
+    const processFilter = options.process && options.process !== "all" ? options.process : undefined;
 
     const query = `
       SELECT
@@ -255,13 +281,12 @@ export class FmsExecutionService {
       JOIN fms_steps fs ON fis.fms_step_id = fs.id
       JOIN fms_managers fm ON fi.fms_manager_id = fm.id
       LEFT JOIN employees ce ON fis.completed_by = ce.id
-      WHERE 1=1 ${statusClause}
       ORDER BY fis.created_at DESC
     `;
     const [rows] = await this.dbPool.query(query);
 
-    // Filter where employee is a doer or creator or completedBy
-    return rows.filter((row: any) => {
+    // 1. Filter where employee is a doer, creator (if unassigned), or completedBy
+    const allMyTasks = (rows as any[]).filter((row: any) => {
       let doers = [];
       try {
         doers = typeof row.doerEmployeeIds === 'string' ? JSON.parse(row.doerEmployeeIds) : row.doerEmployeeIds;
@@ -298,6 +323,65 @@ export class FmsExecutionService {
       completedByName: row.completedByName,
       inputData: typeof row.inputData === 'string' && row.inputData ? JSON.parse(row.inputData) : (row.inputData || {})
     }));
+
+    // 2. Extract unique process names for this employee across all their eligible tasks
+    const processNamesSet = new Set<string>();
+    let actionNeeded = 0;
+    let pending = 0;
+    let completed = 0;
+
+    allMyTasks.forEach((t) => {
+      if (t.managerName) processNamesSet.add(t.managerName);
+      if (t.status === "In Progress") actionNeeded++;
+      else if (t.status === "Pending") pending++;
+      else if (t.status === "Completed" || t.status === "Skipped") completed++;
+    });
+
+    // 3. Filter by workflow status tab
+    let filtered = allMyTasks;
+    if (statusFilter === "under_process") {
+      filtered = filtered.filter((t) => t.status === "In Progress");
+    } else if (statusFilter === "pending") {
+      filtered = filtered.filter((t) => t.status === "Pending");
+    } else if (statusFilter === "completed") {
+      filtered = filtered.filter((t) => t.status === "Completed" || t.status === "Skipped");
+    } // "all" retains all tasks
+
+    // 4. Filter by process dropdown if selected
+    if (processFilter) {
+      filtered = filtered.filter((t) => t.managerName === processFilter);
+    }
+
+    // 5. Filter by search query if provided
+    if (search) {
+      filtered = filtered.filter((t) =>
+        (t.referenceTitle && t.referenceTitle.toLowerCase().includes(search)) ||
+        (t.stepName && t.stepName.toLowerCase().includes(search)) ||
+        (t.managerName && t.managerName.toLowerCase().includes(search))
+      );
+    }
+
+    // 6. Paginate results
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const startIndex = (safePage - 1) * pageSize;
+    const paginatedItems = filtered.slice(startIndex, startIndex + pageSize);
+
+    return {
+      items: paginatedItems,
+      totalItems,
+      page: safePage,
+      pageSize,
+      totalPages,
+      counts: {
+        actionNeeded,
+        pending,
+        completed,
+        total: allMyTasks.length,
+      },
+      processNames: Array.from(processNamesSet).sort(),
+    };
   }
 
   async getInstancesByManagerId(fmsManagerId: string) {

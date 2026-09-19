@@ -56,8 +56,31 @@ export class FmsExecutionController {
       if (!employeeId) return res.status(403).json({ success: false, message: "User not linked to employee" });
 
       const statusFilter = req.query.status as string | undefined;
-      const tasks = await this.service.getMyPendingTasks(employeeId, statusFilter);
-      res.json({ success: true, data: tasks });
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 100;
+      const search = req.query.search as string | undefined;
+      const process = req.query.process as string | undefined;
+
+      const result = await this.service.getMyPendingTasks(employeeId, {
+        statusFilter,
+        page,
+        pageSize,
+        search,
+        process,
+      });
+
+      res.json({
+        success: true,
+        data: result.items,
+        meta: {
+          totalItems: result.totalItems,
+          page: result.page,
+          pageSize: result.pageSize,
+          totalPages: result.totalPages,
+          counts: result.counts,
+          processNames: result.processNames,
+        },
+      });
     } catch (err: any) {
       console.error(err);
       res.status(500).json({ success: false, message: "Internal server error" });

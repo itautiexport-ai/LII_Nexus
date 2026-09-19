@@ -15,7 +15,7 @@ export function UserFmsPage() {
     try {
       setLoading(true);
       const tasks = await fmsApi.getMyTasks();
-      setFmsTasks(tasks);
+      setFmsTasks(Array.isArray(tasks) ? tasks : (tasks as any).items || []);
     } catch (err) {
       console.error("Failed to load tasks:", err);
     } finally {

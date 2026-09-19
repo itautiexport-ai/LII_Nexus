@@ -102,9 +102,25 @@ export const fmsApi = {
     return res.data;
   },
 
-  async getMyTasks(status?: string) {
-    const res = await axiosInstance.get(`/fms-tasks/me`, { params: status ? { status } : {} });
-    return res.data.data;
+  async getMyTasks(params?: string | { status?: string; page?: number; pageSize?: number; search?: string; process?: string }) {
+    const queryParams = typeof params === "string" ? { status: params } : (params || {});
+    const res = await axiosInstance.get(`/fms-tasks/me`, { params: queryParams });
+    const items = Array.isArray(res.data?.data) ? res.data.data : [];
+    const meta = res.data?.meta || {};
+    return {
+      items,
+      totalItems: meta.totalItems ?? items.length,
+      page: meta.page ?? 1,
+      pageSize: meta.pageSize ?? 100,
+      totalPages: meta.totalPages ?? 1,
+      counts: meta.counts ?? {
+        actionNeeded: 0,
+        pending: 0,
+        completed: 0,
+        total: 0,
+      },
+      processNames: (meta.processNames as string[]) || [],
+    };
   },
 
   async completeTask(instanceStepId: string, inputData: any = {}) {
