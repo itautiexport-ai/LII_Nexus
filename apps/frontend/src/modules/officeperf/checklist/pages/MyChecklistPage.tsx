@@ -18,7 +18,8 @@ const STANDALONE_COLUMNS = [
 
 export default function MyChecklistPage() {
   const [instances, setInstances] = useState<ChecklistInstanceRecord[]>([]);
-  const [standaloneList, setStandaloneList] = useState<StandaloneChecklist[]>([]);
+  const [activeStandalone, setActiveStandalone] = useState<StandaloneChecklist[]>([]);
+  const [pipelineStandalone, setPipelineStandalone] = useState<StandaloneChecklist[]>([]);
   const [employee, setEmployee] = useState<EmployeeRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "pipeline">("active");
@@ -108,27 +109,16 @@ export default function MyChecklistPage() {
 
   async function load() {
     try {
-      const [officeChecklists, allStandalone, me] = await Promise.all([
+      const [officeChecklists, dashboardData, me] = await Promise.all([
         checklistApi.getMyChecklists().catch(() => []),
-        standaloneChecklistApi.getAll().catch(() => []),
+        standaloneChecklistApi.getMyDashboard().catch(() => ({ active: [], pipeline: [] })),
         employeesApi.getMe().catch(() => null)
       ]);
 
       setInstances(officeChecklists || []);
       setEmployee(me);
-
-      // Filter standalone checklists assigned to current employee ID or assignee name
-      if (me) {
-        const filtered = (allStandalone || []).filter((c: any) =>
-          c.assignTo === me.id ||
-          c.assignee_name === me.fullName ||
-          c.assignBy === me.id ||
-          c.assignedBy === me.id
-        );
-        setStandaloneList(filtered);
-      } else {
-        setStandaloneList(allStandalone || []);
-      }
+      setActiveStandalone(dashboardData?.active || []);
+      setPipelineStandalone(dashboardData?.pipeline || []);
     } catch (err) {
       console.error("Failed to load checklists:", err);
     } finally {
@@ -144,26 +134,6 @@ export default function MyChecklistPage() {
   }
 
   const now = new Date();
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(now.getDate() + 7);
-
-  // Categorize Standalone Checklists
-  const activeStandalone = standaloneList.filter(c => {
-    const pDate = new Date(c.plannedDate);
-    return pDate <= now || isSameDay(pDate, now);
-  });
-
-  const pipelineStandalone = standaloneList.filter(c => {
-    const pDate = new Date(c.plannedDate);
-    // Strict pipeline rule: Only show if planned date is in the future AND within 7 days
-    return pDate > now && !isSameDay(pDate, now) && pDate <= sevenDaysFromNow;
-  });
-
-  function isSameDay(d1: Date, d2: Date) {
-    return d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate();
-  }
 
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Loading checklists...</div>;
 
@@ -277,7 +247,7 @@ export default function MyChecklistPage() {
                       </thead>
                       <tbody>
                         {activeStandalone.map((item) => {
-                          const isAssignee = employee && item.assignTo === employee.id;
+                          const isAssignee = (employee && item.assignTo === employee.id) || (user && item.assignTo === user.id) || !item.assignTo;
                           return (
                             <tr key={`${item.id}_${item.occurrenceDate || item.plannedDate}`}>
                               <td style={getStickyCellStyle(0, { customStyle: { fontWeight: "600", color: "#1e293b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "break-word", lineHeight: "1.45" } })}>{item.taskName}</td>

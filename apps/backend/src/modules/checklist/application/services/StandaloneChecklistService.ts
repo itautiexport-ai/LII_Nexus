@@ -144,17 +144,14 @@ export class StandaloneChecklistService {
     attachmentUrl?: string,
     occurrenceDate?: string
   ): Promise<void> {
-    // 1. Fetch employee ID from user ID
+    // 1. Fetch employee ID from user ID (handling both employee UUID and user UUID)
     const [empRows] = await pool.query<any[]>(
-      "SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL",
-      [userId]
+      "SELECT id, user_id FROM employees WHERE (user_id = ? OR id = ?) AND deleted_at IS NULL",
+      [userId, userId]
     );
-    const employeeId = empRows[0]?.id;
-    if (!employeeId) {
-      throw new Error("Employee record not found for logged in user.");
-    }
+    const employeeId = empRows[0]?.id || userId;
 
-    // 2. Verify checklist exists and is assigned to the employee
+    // 2. Verify checklist exists
     const [chkRows] = await pool.query<any[]>(
       "SELECT * FROM standalone_checklists WHERE id = ? AND deleted_at IS NULL",
       [id]
@@ -164,7 +161,9 @@ export class StandaloneChecklistService {
       throw new Error("Checklist not found.");
     }
 
-    const targetOccDate = occurrenceDate || parseLocalDateStr(new Date(checklist.planned_date));
+    const freq = (checklist.frequency || "one-time").toLowerCase().trim();
+    const isRecurring = freq !== "one-time" && freq !== "once" && freq !== "single";
+    const targetOccDate = occurrenceDate || (isRecurring ? parseLocalDateStr(new Date()) : parseLocalDateStr(new Date(checklist.planned_date)));
 
     // 3. Log the completion with occurrence_date
     const completionId = uuidv4();
@@ -177,13 +176,16 @@ export class StandaloneChecklistService {
   }
 
   async getDashboardData(userId: string): Promise<any> {
-    // Fetch employee
+    // Fetch employee (cross-referencing user UUID and employee UUID, matching TaskCenterService)
     const [empRows] = await pool.query<any[]>(
-      "SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL",
-      [userId]
+      "SELECT id, user_id FROM employees WHERE (user_id = ? OR id = ?) AND deleted_at IS NULL",
+      [userId, userId]
     );
-    const employeeId = empRows[0]?.id;
-    if (!employeeId) {
+    const employeeId = empRows[0]?.id || userId;
+    const linkedUserId = empRows[0]?.user_id || userId;
+    const myIds = Array.from(new Set([userId, employeeId, linkedUserId].filter(Boolean)));
+
+    if (!empRows.length && !userId) {
       return {
         metrics: { pendingCount: 0, completedToday: 0, totalCompleted: 0 },
         active: [],
@@ -192,15 +194,15 @@ export class StandaloneChecklistService {
       };
     }
 
-    // Fetch all active checklists assigned to this employee
+    // Fetch all active checklists assigned to this employee / user
     const [rows] = await pool.query<any[]>(
       `SELECT c.*,
         e1.full_name as assigner_name
        FROM standalone_checklists c
        LEFT JOIN employees e1 ON e1.id = c.assigned_by
-       WHERE c.assign_to = ? AND c.deleted_at IS NULL
+       WHERE c.assign_to IN (?) AND c.deleted_at IS NULL
        ORDER BY c.created_at DESC`,
-      [employeeId]
+      [myIds]
     );
 
     // Fetch completions to map completed occurrences
@@ -208,14 +210,18 @@ export class StandaloneChecklistService {
       `SELECT c.checklist_id, c.occurrence_date, c.completed_at
        FROM standalone_checklist_completions c
        JOIN standalone_checklists sc ON sc.id = c.checklist_id
-       WHERE c.completed_by = ? AND sc.deleted_at IS NULL`,
-      [employeeId]
+       WHERE c.completed_by IN (?) AND sc.deleted_at IS NULL`,
+      [myIds]
     );
 
     const completionsSet = new Set<string>();
+    const completedChecklistIds = new Set<string>();
     for (const comp of compRows) {
+      completedChecklistIds.add(comp.checklist_id);
       const occStr = comp.occurrence_date
-        ? parseLocalDateStr(new Date(comp.occurrence_date))
+        ? (typeof comp.occurrence_date === "string"
+            ? comp.occurrence_date.slice(0, 10)
+            : parseLocalDateStr(new Date(comp.occurrence_date)))
         : parseLocalDateStr(new Date(comp.completed_at));
       completionsSet.add(`${comp.checklist_id}_${occStr}`);
     }
@@ -263,7 +269,9 @@ export class StandaloneChecklistService {
         occ9am.setHours(9, 0, 0, 0);
 
         const compKey = `${row.id}_${dateStr}`;
-        const isCompleted = completionsSet.has(compKey);
+        const isCompleted = isOneTime
+          ? completedChecklistIds.has(row.id)
+          : completionsSet.has(compKey);
 
         if (!isCompleted) {
           const item = {
@@ -305,10 +313,10 @@ export class StandaloneChecklistService {
       `SELECT COUNT(*) as count
        FROM standalone_checklist_completions c
        JOIN standalone_checklists sc ON sc.id = c.checklist_id
-       WHERE c.completed_by = ?
+       WHERE c.completed_by IN (?)
          AND sc.deleted_at IS NULL
          AND c.completed_at >= DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00')`,
-      [employeeId]
+      [myIds]
     );
     const completedToday = todayRows[0]?.count || 0;
 
@@ -316,9 +324,9 @@ export class StandaloneChecklistService {
       `SELECT COUNT(*) as count
        FROM standalone_checklist_completions c
        JOIN standalone_checklists sc ON sc.id = c.checklist_id
-       WHERE c.completed_by = ?
+       WHERE c.completed_by IN (?)
          AND sc.deleted_at IS NULL`,
-      [employeeId]
+      [myIds]
     );
     const totalCompleted = totalRows[0]?.count || 0;
 
@@ -327,11 +335,11 @@ export class StandaloneChecklistService {
       `SELECT comp.*, chk.task_name, chk.priority, chk.frequency
        FROM standalone_checklist_completions comp
        JOIN standalone_checklists chk ON chk.id = comp.checklist_id
-       WHERE comp.completed_by = ?
+       WHERE comp.completed_by IN (?)
          AND chk.deleted_at IS NULL
        ORDER BY comp.completed_at DESC
        LIMIT 10`,
-      [employeeId]
+      [myIds]
     );
 
     const history = historyRows.map((row: any) => ({

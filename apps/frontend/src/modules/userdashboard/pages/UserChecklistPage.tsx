@@ -98,7 +98,7 @@ export function UserChecklistPage() {
         attachmentUrl = await standaloneChecklistApi.uploadAttachment(file);
       }
 
-      await standaloneChecklistApi.complete(selectedTask.id, notes, attachmentUrl);
+      await standaloneChecklistApi.complete(selectedTask.id, notes, attachmentUrl, selectedTask.occurrenceDate);
       
       // Reset & Reload
       setShowModal(false);
