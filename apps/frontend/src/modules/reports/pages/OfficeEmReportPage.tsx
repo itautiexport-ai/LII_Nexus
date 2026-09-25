@@ -497,9 +497,33 @@ export default function OfficeEmReportPage() {
                             </span>
                           )}
                         </td>
-                        <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.fms)}</td>
-                        <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.checklist)}</td>
-                        <td style={{ fontSize: "13px", color: "#475569" }}>{getBriefSummaryText(weekRep.modules.delegation)}</td>
+                        <td style={{ fontSize: "13px", color: "#475569" }}>
+                          <span 
+                            onClick={() => { setModalTab("summary"); setExpandedWeek(weekRep.periodType); }}
+                            style={{ cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", color: "#2563eb" }}
+                            title="Click to view underlying FMS tasks"
+                          >
+                            {getBriefSummaryText(weekRep.modules.fms)}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "13px", color: "#475569" }}>
+                          <span 
+                            onClick={() => { setModalTab("summary"); setExpandedWeek(weekRep.periodType); }}
+                            style={{ cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", color: "#2563eb" }}
+                            title="Click to view underlying Checklist tasks"
+                          >
+                            {getBriefSummaryText(weekRep.modules.checklist)}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "13px", color: "#475569" }}>
+                          <span 
+                            onClick={() => { setModalTab(calculateTaskCounts(weekRep.modules.delegation.tasks).pending > 0 ? "pending" : "summary"); setExpandedWeek(weekRep.periodType); }}
+                            style={{ cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", color: "#2563eb", fontWeight: 600 }}
+                            title="Click to view underlying Delegation tasks"
+                          >
+                            {getBriefSummaryText(weekRep.modules.delegation)}
+                          </span>
+                        </td>
                         <td>
                           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <button

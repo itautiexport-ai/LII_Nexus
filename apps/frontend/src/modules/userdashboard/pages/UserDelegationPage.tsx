@@ -13,7 +13,7 @@ export function UserDelegationPage() {
   const isAdmin = user?.roles.includes("System Admin");
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [currentEmployee, setCurrentEmployee] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<"received" | "delegated">("delegated");
+  const [activeTab, setActiveTab] = useState<"received" | "delegated">("received");
 
   const [receivedDelegations, setReceivedDelegations] = useState<DisplayDelegation[]>([]);
   const [delegatedByMe, setDelegatedByMe] = useState<DisplayDelegation[]>([]);
@@ -40,43 +40,20 @@ export function UserDelegationPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const [empRes, allRes] = await Promise.all([
+      const [empRes, receivedRes, delegatedRes] = await Promise.all([
         axiosInstance.get("/employees/me").catch(() => null),
-        delegationApi.list({ scope: isAdmin ? "all" : undefined }).catch(() => ({ items: [] })),
+        delegationApi.list({ scope: "assigned_to_me", pageSize: 500 }).catch(() => ({ items: [] })),
+        delegationApi.list({ scope: "assigned_by_me", pageSize: 500 }).catch(() => ({ items: [] })),
       ]);
 
       const me = empRes?.data?.data;
       const myEmployeeId = me?.id;
       const myUserId = user?.id;
-      const myFullName = (me?.fullName || user?.fullName || "").trim().toLowerCase();
       setCurrentEmployee(me || null);
       if (myEmployeeId) setEmployeeId(myEmployeeId);
 
-      const items = (allRes.items as DisplayDelegation[]) || [];
-
-      // 1. Assigned to Me: strictly tasks assigned to this user/employee
-      const myReceived = items.filter(d => {
-        const toId = (d as any).assignedTo;
-        const toName = (d.assignedToName || "").trim().toLowerCase();
-        return (myEmployeeId && toId === myEmployeeId) || (myUserId && toId === myUserId) || (myFullName && toName === myFullName);
-      });
-
-      // 2. Tasks Assigned by Me: for admin, all tasks assigned by admin / management; for non-admin, tasks assigned by user
-      const myDelegated = items.filter(d => {
-        const byId = (d as any).assignedBy;
-        const byName = (d.assignedByName || "").trim().toLowerCase();
-        const isSelfAssignedToMe = (myEmployeeId && (d as any).assignedTo === myEmployeeId) ||
-                                   (myUserId && (d as any).assignedTo === myUserId) ||
-                                   (myFullName && (d.assignedToName || "").trim().toLowerCase() === myFullName);
-
-        if (isAdmin) {
-          return !isSelfAssignedToMe || (myEmployeeId && byId === myEmployeeId) || (myUserId && byId === myUserId) || (myFullName && byName === myFullName);
-        }
-        return (myEmployeeId && byId === myEmployeeId) || (myUserId && byId === myUserId) || (myFullName && byName === myFullName);
-      });
-
-      setReceivedDelegations(myReceived);
-      setDelegatedByMe(myDelegated);
+      setReceivedDelegations((receivedRes.items as DisplayDelegation[]) || []);
+      setDelegatedByMe((delegatedRes.items as DisplayDelegation[]) || []);
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
     } finally {

@@ -15,7 +15,7 @@ const statusColors: Record<string, string> = { pending: "#999", running: "#4a90d
 export default function DelegationPage() {
   const user = useAuthStore(state => state.user);
   const isAdmin = user?.roles.includes("System Admin");
-  const [tab, setTab] = useState<"received" | "delegated">("delegated");
+  const [tab, setTab] = useState<"received" | "delegated">("received");
   const [currentEmployee, setCurrentEmployee] = useState<any | null>(null);
   const [received, setReceived] = useState<DisplayTask[]>([]);
   const [delegated, setDelegated] = useState<DisplayTask[]>([]);
@@ -88,77 +88,53 @@ export default function DelegationPage() {
   const [filterPriority, setFilterPriority] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
-  async function load(targetPage = page, targetPageSize = pageSize) {
+  async function load() {
     try {
-      const [empRes, allTasksRes, reports] = await Promise.all([
+      const [empRes, receivedRes, delegatedRes, reports] = await Promise.all([
         axiosInstance.get("/employees/me").catch(() => null),
         delegationApi.list({
-          page: targetPage,
-          pageSize: targetPageSize,
-          scope: isAdmin ? "all" : undefined,
-        }),
-        factoryApi.myDirectReports(),
+          page: 1,
+          pageSize: 500,
+          scope: "assigned_to_me",
+        }).catch(() => ({ items: [], totalItems: 0 })),
+        delegationApi.list({
+          page: 1,
+          pageSize: 500,
+          scope: isAdmin ? "all" : "assigned_by_me",
+        }).catch(() => ({ items: [], totalItems: 0 })),
+        factoryApi.myDirectReports().catch(() => []),
       ]);
 
       const me = empRes?.data?.data;
       setCurrentEmployee(me || null);
 
-      const myEmpId = me?.id;
-      const myUserId = user?.id;
-      const myName = (me?.fullName || user?.fullName || "").trim().toLowerCase();
+      const receivedItems = (receivedRes.items as DisplayTask[]) || [];
+      const delegatedItems = (delegatedRes.items as DisplayTask[]) || [];
 
-      const items = (allTasksRes.items as DisplayTask[]) || [];
-      setTotalItems(allTasksRes.totalItems ?? items.length);
-
-      // 1. Assigned to Me: strictly tasks where assigned_to matches current user/employee
-      const assignedToMeList = items.filter(t => {
-        const toId = (t as any).assignedTo;
-        const toName = (t.assignedToName || "").trim().toLowerCase();
-        return (myEmpId && toId === myEmpId) || (myUserId && toId === myUserId) || (myName && toName === myName);
-      });
-
-      // 2. Tasks Assigned by Me:
-      // For Admin: all tasks assigned by admin / management (not assigned to admin)
-      // For non-admin: tasks where assigned_by matches current user/employee
-      const assignedByMeList = items.filter(t => {
-        const byId = (t as any).assignedBy;
-        const byName = (t.assignedByName || "").trim().toLowerCase();
-        const isSelfAssignedToMe = (myEmpId && (t as any).assignedTo === myEmpId) ||
-                                   (myUserId && (t as any).assignedTo === myUserId) ||
-                                   (myName && (t.assignedToName || "").trim().toLowerCase() === myName);
-
-        if (isAdmin) {
-          return !isSelfAssignedToMe || (myEmpId && byId === myEmpId) || (myUserId && byId === myUserId) || (myName && byName === myName);
-        }
-
-        return (myEmpId && byId === myEmpId) || (myUserId && byId === myUserId) || (myName && byName === myName);
-      });
-
-      setReceived(assignedToMeList);
-      setDelegated(assignedByMeList);
-      setDirectReports(reports);
+      setReceived(receivedItems);
+      setDelegated(delegatedItems);
+      setTotalItems(tab === "received" ? receivedItems.length : delegatedItems.length);
+      setDirectReports(reports || []);
     } catch (err) {
       console.error("Failed to load delegations:", err);
     }
   }
 
   useEffect(() => {
-    load(page, pageSize);
-    const interval = setInterval(() => load(page, pageSize), 15000);
+    load();
+    const interval = setInterval(() => load(), 15000);
     return () => clearInterval(interval);
-  }, [page, pageSize, isAdmin]);
+  }, [isAdmin]);
 
   const handlePageChange = (newPage: number) => {
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const totalPages = Math.max(1, Math.ceil(totalDisplayItems / pageSize));
     const validPage = Math.max(1, Math.min(newPage, totalPages));
     setPage(validPage);
-    load(validPage, pageSize);
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
     setPage(1);
-    load(1, newSize);
   };
 
   async function handleCreate(e: FormEvent) {
@@ -315,6 +291,14 @@ export default function DelegationPage() {
     });
   }, [list, filterAssignedTo, filterPriority, filterStatus, filterAssignedDate, filterPlannedDate]);
 
+  const totalDisplayItems = filteredList.length;
+  const totalPages = Math.max(1, Math.ceil(totalDisplayItems / pageSize));
+
+  const paginatedList = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    return filteredList.slice(startIndex, startIndex + pageSize);
+  }, [filteredList, page, pageSize]);
+
   const hasActiveFilters = Boolean(filterAssignedTo || filterPriority || filterStatus || filterAssignedDate || filterPlannedDate);
 
   const clearFilters = () => {
@@ -323,9 +307,8 @@ export default function DelegationPage() {
     setFilterStatus("");
     setFilterAssignedDate("");
     setFilterPlannedDate("");
+    setPage(1);
   };
-
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   return (
     <div>
@@ -542,7 +525,7 @@ export default function DelegationPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredList.map((t) => (
+            {paginatedList.map((t) => (
               <tr key={t.id}>
                 <td style={getStickyCellStyle(0, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>
                   {isAdmin && (
@@ -792,7 +775,7 @@ export default function DelegationPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 4px", flexWrap: "wrap", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#64748b", fontSize: 13 }}>
           <span>
-            Showing {totalItems > 0 ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, totalItems)} of {totalItems} total historical tasks
+            Showing {totalDisplayItems > 0 ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, totalDisplayItems)} of {totalDisplayItems} total tasks
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span>Per page:</span>

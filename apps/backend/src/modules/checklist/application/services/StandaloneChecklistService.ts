@@ -15,17 +15,16 @@ export class StandaloneChecklistService {
     const id = uuidv4();
     const now = new Date();
 
-    let plannedDate = new Date(dto.plannedDate);
-    if (dto.frequency && dto.frequency.toLowerCase() === "daily") {
-      plannedDate.setHours(9, 0, 0, 0);
-    }
+    const plannedDateStr = getIstDateStr(dto.plannedDate);
+    const plannedDateDb = `${plannedDateStr} 09:00:00`;
+    const plannedDateObj = getIst9AmDate(plannedDateStr);
 
     const checklist: StandaloneChecklist = {
       id,
       assignedBy,
       taskName: dto.taskName,
       assignTo: dto.assignTo,
-      plannedDate,
+      plannedDate: plannedDateObj,
       priority: dto.priority,
       makeAttachmentMandatory: dto.makeAttachmentMandatory,
       makeNoteMandatory: dto.makeNoteMandatory,
@@ -48,7 +47,7 @@ export class StandaloneChecklistService {
         checklist.assignedBy,
         checklist.taskName,
         checklist.assignTo,
-        checklist.plannedDate,
+        plannedDateDb,
         checklist.priority,
         checklist.makeAttachmentMandatory,
         checklist.makeNoteMandatory,
@@ -65,7 +64,7 @@ export class StandaloneChecklistService {
     try {
       const [empRows] = await pool.query<any[]>("SELECT user_id FROM employees WHERE id = ?", [dto.assignTo]);
       const targetUserId = empRows[0]?.user_id || dto.assignTo;
-      const formattedDate = new Date(dto.plannedDate).toLocaleDateString("en-IN", {
+      const formattedDate = new Date(`${plannedDateStr}T09:00:00+05:30`).toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
         year: "numeric"
@@ -163,7 +162,7 @@ export class StandaloneChecklistService {
 
     const freq = (checklist.frequency || "one-time").toLowerCase().trim();
     const isRecurring = freq !== "one-time" && freq !== "once" && freq !== "single";
-    const targetOccDate = occurrenceDate || (isRecurring ? parseLocalDateStr(new Date()) : parseLocalDateStr(new Date(checklist.planned_date)));
+    const targetOccDate = occurrenceDate || (isRecurring ? getIstDateStr(new Date()) : getIstDateStr(checklist.planned_date));
 
     // 3. Log the completion with occurrence_date
     const completionId = uuidv4();
@@ -221,13 +220,14 @@ export class StandaloneChecklistService {
       const occStr = comp.occurrence_date
         ? (typeof comp.occurrence_date === "string"
             ? comp.occurrence_date.slice(0, 10)
-            : parseLocalDateStr(new Date(comp.occurrence_date)))
-        : parseLocalDateStr(new Date(comp.completed_at));
+            : getIstDateStr(comp.occurrence_date))
+        : getIstDateStr(comp.completed_at);
       completionsSet.add(`${comp.checklist_id}_${occStr}`);
     }
 
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayDateStr = getIstDateStr(now);
+    const startOfTodayIst = getStartOfTodayIst(now);
 
     const activeList: any[] = [];
     const pipelineList: any[] = [];
@@ -236,13 +236,10 @@ export class StandaloneChecklistService {
       const freq = (row.frequency || "one-time").toLowerCase().trim();
       const isOneTime = freq === "one-time" || freq === "once" || freq === "single";
 
-      const initDate = new Date(row.planned_date);
-      if (initDate.getHours() === 0 && initDate.getMinutes() === 0) {
-        initDate.setHours(9, 0, 0, 0);
-      }
+      const startDateStr = getIstDateStr(row.planned_date);
+      let curr = getIst9AmDate(startDateStr);
 
       const occurrences: Date[] = [];
-      let curr = new Date(initDate);
 
       if (isOneTime) {
         occurrences.push(new Date(curr));
@@ -250,12 +247,9 @@ export class StandaloneChecklistService {
         let count = 0;
         while (count < 365) {
           count++;
-          const curr9am = new Date(curr);
-          curr9am.setHours(9, 0, 0, 0);
+          occurrences.push(new Date(curr));
 
-          occurrences.push(new Date(curr9am));
-
-          if (curr9am > now) {
+          if (curr > now) {
             break;
           }
 
@@ -264,9 +258,7 @@ export class StandaloneChecklistService {
       }
 
       for (const occDate of occurrences) {
-        const dateStr = parseLocalDateStr(occDate);
-        const occ9am = new Date(occDate);
-        occ9am.setHours(9, 0, 0, 0);
+        const dateStr = getIstDateStr(occDate);
 
         const compKey = `${row.id}_${dateStr}`;
         const isCompleted = isOneTime
@@ -281,7 +273,7 @@ export class StandaloneChecklistService {
             assignBy: row.assigned_by,
             assignTo: row.assign_to,
             taskName: row.task_name,
-            plannedDate: occ9am.toISOString(),
+            plannedDate: occDate.toISOString(),
             priority: row.priority,
             makeAttachmentMandatory: !!row.make_attachment_mandatory,
             makeNoteMandatory: !!row.make_note_mandatory,
@@ -292,13 +284,13 @@ export class StandaloneChecklistService {
             createdAt: row.created_at,
             updatedAt: row.updated_at,
             assigner_name: row.assigner_name,
-            isOverdue: occ9am < startOfToday,
+            isOverdue: occDate < startOfTodayIst,
           };
 
-          if (now >= occ9am) {
+          if (now >= occDate) {
             activeList.push(item);
           } else {
-            const diffTime = occ9am.getTime() - now.getTime();
+            const diffTime = occDate.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             if (diffDays <= 7) {
               pipelineList.push(item);
@@ -315,8 +307,8 @@ export class StandaloneChecklistService {
        JOIN standalone_checklists sc ON sc.id = c.checklist_id
        WHERE c.completed_by IN (?)
          AND sc.deleted_at IS NULL
-         AND c.completed_at >= DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00')`,
-      [myIds]
+         AND (c.occurrence_date = ? OR (c.occurrence_date IS NULL AND c.completed_at >= ?))`,
+      [myIds, todayDateStr, `${todayDateStr} 00:00:00`]
     );
     const completedToday = todayRows[0]?.count || 0;
 
@@ -345,7 +337,7 @@ export class StandaloneChecklistService {
     const history = historyRows.map((row: any) => ({
       id: row.id,
       checklistId: row.checklist_id,
-      occurrenceDate: row.occurrence_date ? parseLocalDateStr(new Date(row.occurrence_date)) : null,
+      occurrenceDate: row.occurrence_date ? getIstDateStr(row.occurrence_date) : null,
       completedAt: row.completed_at,
       notes: row.notes,
       attachmentUrl: row.attachment_url,
@@ -367,32 +359,67 @@ export class StandaloneChecklistService {
   }
 }
 
-function parseLocalDateStr(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function getIstDateStr(d: Date | string): string {
+  if (!d) return "";
+  if (typeof d === "string") {
+    if (d.includes(" ") || d.length === 10) {
+      return d.slice(0, 10);
+    }
+    const parsed = new Date(d);
+    if (!isNaN(parsed.getTime())) {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(parsed);
+    }
+    return d.slice(0, 10);
+  }
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+function getIst9AmDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+  // 09:00:00 Asia/Kolkata (IST = UTC+05:30) corresponds precisely to 03:30:00 UTC
+  return new Date(Date.UTC(y, m - 1, d, 3, 30, 0, 0));
+}
+
+function getStartOfTodayIst(now: Date): Date {
+  const todayStr = getIstDateStr(now);
+  const [y, m, d] = todayStr.split("-").map(Number);
+  // 00:00:00 Asia/Kolkata is 18:30:00 UTC of previous day
+  return new Date(Date.UTC(y, m - 1, d - 1, 18, 30, 0, 0));
 }
 
 function getNextOccurrenceDate(current: Date, frequency: string): Date {
-  const next = new Date(current);
+  const dateStr = getIstDateStr(current);
+  const [y, m, d] = dateStr.split("-").map(Number);
   const freq = (frequency || "").toLowerCase().trim();
 
+  // Anchor in UTC at 03:30:00 (which is 09:00:00 IST)
+  const nextUtc = new Date(Date.UTC(y, m - 1, d, 3, 30, 0, 0));
+
   if (freq === "daily") {
-    next.setDate(next.getDate() + 1);
+    nextUtc.setUTCDate(nextUtc.getUTCDate() + 1);
   } else if (freq === "weekly") {
-    next.setDate(next.getDate() + 7);
+    nextUtc.setUTCDate(nextUtc.getUTCDate() + 7);
   } else if (freq === "monthly") {
-    next.setMonth(next.getMonth() + 1);
+    nextUtc.setUTCMonth(nextUtc.getUTCMonth() + 1);
   } else if (freq === "quarterly") {
-    next.setMonth(next.getMonth() + 3);
+    nextUtc.setUTCMonth(nextUtc.getUTCMonth() + 3);
   } else if (freq === "half-yearly" || freq === "half_yearly" || freq === "half yearly" || freq === "bi-annually") {
-    next.setMonth(next.getMonth() + 6);
+    nextUtc.setUTCMonth(nextUtc.getUTCMonth() + 6);
   } else if (freq === "yearly" || freq === "annually") {
-    next.setFullYear(next.getFullYear() + 1);
+    nextUtc.setUTCFullYear(nextUtc.getUTCFullYear() + 1);
   } else {
-    next.setDate(next.getDate() + 1);
+    nextUtc.setUTCDate(nextUtc.getUTCDate() + 1);
   }
-  return next;
+  return nextUtc;
 }
 

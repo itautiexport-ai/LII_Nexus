@@ -21,11 +21,35 @@ export class DelegationService {
     actorUserId: string,
     hasViewOverride: boolean,
     status?: DelegationBaseStatus,
-    scope?: "assigned_to_me" | "assigned_by_me" | "all"
+    scope?: "assigned_to_me" | "assigned_by_me" | "all",
+    filterEmployeeId?: string
   ) {
-    const actor = await this.scope.getEmployeeForUser(actorUserId);
-    const myIds = [actorUserId];
-    if (actor) myIds.push(actor.id);
+    const [empRows] = await pool.query<any[]>(
+      "SELECT id, user_id FROM employees WHERE user_id = ? OR id = ?",
+      [actorUserId, actorUserId]
+    );
+    const myIds = Array.from(new Set([
+      actorUserId,
+      ...empRows.map(e => e.id),
+      ...empRows.map(e => e.user_id)
+    ].filter(Boolean)));
+
+    if (filterEmployeeId && hasViewOverride) {
+      const [targetEmpRows] = await pool.query<any[]>(
+        "SELECT id, user_id FROM employees WHERE id = ? OR user_id = ?",
+        [filterEmployeeId, filterEmployeeId]
+      );
+      const targetIds = Array.from(new Set([
+        filterEmployeeId,
+        ...targetEmpRows.map(e => e.id),
+        ...targetEmpRows.map(e => e.user_id)
+      ].filter(Boolean)));
+
+      if (scope === "assigned_by_me") {
+        return this.repo.list({ page, pageSize, assignedBy: targetIds, status });
+      }
+      return this.repo.list({ page, pageSize, assignedTo: targetIds, status });
+    }
 
     if (scope === "assigned_to_me") {
       return this.repo.list({ page, pageSize, assignedTo: myIds, status });
