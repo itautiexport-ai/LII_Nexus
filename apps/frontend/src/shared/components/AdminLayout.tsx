@@ -37,6 +37,7 @@ export const SECTIONS: NavSection[] = [
           { label: "Designations", to: "/admin/designations" },
           { label: "Shifts", to: "/admin/shifts" },
           { label: "Wood Types", to: "/admin/wood-types" },
+          { label: "Wood Thickness Prices", to: "/admin/wood-thickness-prices" },
           { label: "Priorities", to: "/admin/priorities" },
           { label: "UOMs", to: "/admin/uoms" },
           { label: "HOD Names", to: "/admin/hods" },
@@ -180,6 +181,14 @@ export const SECTIONS: NavSection[] = [
           { label: "CAPA", to: "/admin/crm/capa" },
         ]
       }
+    ],
+  },
+  {
+    key: "costing-estimation",
+    label: "Costing & Estimation",
+    allowedRoles: ["System Admin", "Merchant", "CEO", "HOD"],
+    items: [
+      { label: "New Costing Sheet", to: "/admin/costing/new" },
     ],
   },
   {

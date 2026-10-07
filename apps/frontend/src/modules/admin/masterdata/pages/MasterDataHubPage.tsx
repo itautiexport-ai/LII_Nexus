@@ -11,6 +11,7 @@ export function MasterDataHubPage() {
     { label: "Designations", to: "/admin/designations", desc: "Manage employee roles and titles" },
     { label: "Shifts", to: "/admin/shifts", desc: "Manage work shifts" },
     { label: "Wood Types", to: "/admin/wood-types", desc: "Manage wood types" },
+    { label: "Wood Thickness Prices", to: "/admin/wood-thickness-prices", desc: "Manage wood thickness pricing rates per CFT" },
     { label: "Priorities", to: "/admin/priorities", desc: "Manage priority levels" },
     { label: "UOMs", to: "/admin/uoms", desc: "Manage units of measurement" },
     { label: "HOD Names", to: "/admin/hods", desc: "Manage heads of departments" },
