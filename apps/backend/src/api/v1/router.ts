@@ -14,6 +14,7 @@ import factoryPerformanceManagementRoutes from "../../modules/factory/presentati
 import scoringRoutes from "../../modules/scoring/presentation/routes/scoring.routes";
 import commandCenterRoutes from "../../modules/commandcenter/presentation/routes/commandcenter.routes";
 import crmRoutes from "../../modules/crm/presentation/routes/crm.routes";
+import costingRoutes from "../../modules/costing/presentation/routes/costing.routes";
 import notificationRoutes from "../../modules/notifications/presentation/routes/notification.routes";
 import reportRoutes from "../../modules/reports/presentation/routes/report.routes";
 import behaviourRoutes from "../../modules/behaviour/presentation/routes/behaviour.routes";
@@ -74,6 +75,7 @@ router.use("/", factoryPerformanceManagementRoutes); // exposes /factory-departm
 router.use("/", scoringRoutes); // exposes /kpi-definitions, /scores/*
 router.use("/", commandCenterRoutes); // exposes /command-center/overview
 router.use("/", crmRoutes); // exposes /crm/leads, /crm/dashboards/*, /crm/merchant-metrics/*
+router.use("/costing", costingRoutes); // exposes /costing/estimations, /costing/summary, /costing/rates
 router.use("/", notificationRoutes); // exposes /notifications, /notification-templates, /escalation-rules
 router.use("/", reportRoutes); // exposes /reports/run, /reports/export/*, /reports/saved, /reports/favourites, /reports/scheduled, /reports/widgets
 router.use("/", behaviourRoutes); // exposes /behaviour/index/*, /behaviour/health/*, /behaviour/analytics/*, /insight-rules

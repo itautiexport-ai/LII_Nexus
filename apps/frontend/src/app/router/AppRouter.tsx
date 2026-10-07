@@ -20,6 +20,7 @@ import ProductionLinesPage from "../../modules/admin/factory/productionLines/pag
 import ShiftsPage from "../../modules/admin/factory/shifts/pages/ShiftsPage";
 import ProductionEntryPage from "../../modules/factory/pages/ProductionEntryPage";
 import WoodTypesPage from "../../modules/admin/masterdata/pages/WoodTypesPage";
+import WoodThicknessPricesPage from "../../modules/admin/masterdata/pages/WoodThicknessPricesPage";
 import PrioritiesPage from "../../modules/admin/masterdata/pages/PrioritiesPage";
 import MachinesProductsPage from "../../modules/documents/pages/MachinesProductsPage";
 import MyProductionPage from "../../modules/factory/pages/MyProductionPage";
@@ -56,6 +57,11 @@ import InvestigationListPage from "../../modules/crm/pages/InvestigationListPage
 import InvestigationFormPage from "../../modules/crm/pages/InvestigationFormPage";
 import CapaListPage from "../../modules/crm/pages/CapaListPage";
 import CapaFormPage from "../../modules/crm/pages/CapaFormPage";
+import CostingHubPage from "../../modules/costing/pages/CostingHubPage";
+import CostEstimationsListPage from "../../modules/costing/pages/CostEstimationsListPage";
+import CostEstimationFormPage from "../../modules/costing/pages/CostEstimationFormPage";
+import CostEstimationDetailPage from "../../modules/costing/pages/CostEstimationDetailPage";
+import CostRatesMasterPage from "../../modules/costing/pages/CostRatesMasterPage";
 import BuyersPage from "../../modules/admin/masterdata/pages/BuyersPage";
 import UomsPage from "../../modules/admin/masterdata/pages/UomsPage";
 import FinishCodesPage from "../../modules/admin/masterdata/pages/FinishCodesPage";
@@ -213,6 +219,7 @@ export default function AppRouter() {
           {/* Master Data */}
           <Route path="master-data" element={<MasterDataHubPage />} />
           <Route path="wood-types" element={<WoodTypesPage />} />
+          <Route path="wood-thickness-prices" element={<WoodThicknessPricesPage />} />
           <Route path="priorities" element={<PrioritiesPage />} />
           <Route path="buyers" element={<BuyersPage />} />
           <Route path="uoms" element={<UomsPage />} />
@@ -324,6 +331,12 @@ export default function AppRouter() {
           <Route path="crm/investigation/new" element={<InvestigationFormPage />} />
           <Route path="crm/capa" element={<CapaListPage />} />
           <Route path="crm/capa/new" element={<CapaFormPage />} />
+          <Route path="costing/hub" element={<CostingHubPage />} />
+          <Route path="costing/list" element={<CostEstimationsListPage />} />
+          <Route path="costing/new" element={<CostEstimationFormPage />} />
+          <Route path="costing/edit/:id" element={<CostEstimationFormPage />} />
+          <Route path="costing/detail/:id" element={<CostEstimationDetailPage />} />
+          <Route path="costing/rates" element={<CostRatesMasterPage />} />
           <Route path="task-center" element={<TaskCenterDashboardPage />} />
           <Route path="buyers" element={<BuyersPage />} />
           <Route path="notifications" element={<NotificationCenterPage />} />

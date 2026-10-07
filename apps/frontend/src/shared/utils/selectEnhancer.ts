@@ -89,6 +89,7 @@ function injectStyles() {
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
+      min-width: 300px;
     }
 
     .custom-select-dropdown.open {
@@ -106,7 +107,7 @@ function injectStyles() {
     .custom-select-search-input {
       width: 100%;
       padding: 8px 10px;
-      font-size: 13px;
+      font-size: 13.5px;
       border: 1px solid #e5e7eb;
       border-radius: 6px;
       outline: none;
@@ -122,21 +123,25 @@ function injectStyles() {
     }
 
     .custom-select-options-list {
-      max-height: 220px;
+      max-height: 280px;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 4px 0;
       scrollbar-width: thin;
       flex-grow: 1;
     }
 
     .custom-select-option {
-      padding: 8px 12px;
+      padding: 10px 14px;
       cursor: pointer;
       user-select: none;
       transition: all 0.15s ease;
-      color: #374151;
-      font-size: 13.5px;
+      color: #111827;
+      font-size: 14px;
       text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .custom-select-option:hover {
@@ -527,8 +532,10 @@ class SelectEnhancer {
     if (!this.isOpen) return;
     
     const rect = this.trigger.getBoundingClientRect();
+    const popupWidth = Math.max(rect.width, 320);
     this.dropdown.style.left = `${rect.left}px`;
-    this.dropdown.style.width = `${rect.width}px`;
+    this.dropdown.style.width = `${popupWidth}px`;
+    this.dropdown.style.minWidth = `320px`;
     
     const dropdownHeight = this.dropdown.offsetHeight || 280;
     const spaceBelow = window.innerHeight - rect.bottom;
