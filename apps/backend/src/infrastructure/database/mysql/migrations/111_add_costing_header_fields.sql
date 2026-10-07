@@ -1,4 +1,4 @@
--- Migration: 110_add_costing_header_fields.sql
+-- Migration: 111_add_costing_header_fields.sql
 -- Add product_code, product_name, overall_size, wood_type to cost_estimations
 
 ALTER TABLE cost_estimations

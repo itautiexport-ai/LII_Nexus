@@ -1,4 +1,4 @@
--- Migration: 109_costing_and_estimation.sql
+-- Migration: 110_costing_and_estimation.sql
 -- Create Costing & Estimation module tables and rate master data
 
 CREATE TABLE IF NOT EXISTS cost_estimations (
