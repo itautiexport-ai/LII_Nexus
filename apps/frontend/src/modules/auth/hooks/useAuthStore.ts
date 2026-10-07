@@ -6,6 +6,10 @@ export interface CurrentUser {
   fullName: string;
   roles: string[];
   avatarUrl?: string | null;
+  department?: string | null;
+  departmentId?: string | null;
+  designation?: string | null;
+  designationId?: string | null;
 }
 
 interface AuthState {

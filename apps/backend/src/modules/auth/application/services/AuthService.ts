@@ -54,7 +54,28 @@ export class AuthService {
 
     await this.userRepository.touchLastLogin(user.id);
 
-    return { accessToken, refreshToken, user: toPublicUser(user, roleNames) };
+    const [empRows] = await pool.query<any[]>(
+      `SELECT d.name as departmentName, e.department_id as departmentId, 
+              desig.title as designationTitle, e.designation_id as designationId 
+       FROM employees e 
+       LEFT JOIN departments d ON e.department_id = d.id 
+       LEFT JOIN designations desig ON e.designation_id = desig.id 
+       WHERE e.user_id = ? 
+       ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
+       LIMIT 1`, 
+      [user.id]
+    );
+
+    return { 
+      accessToken, 
+      refreshToken, 
+      user: toPublicUser(user, roleNames, {
+        department: empRows[0]?.departmentName || null,
+        departmentId: empRows[0]?.departmentId || null,
+        designation: empRows[0]?.designationTitle || null,
+        designationId: empRows[0]?.designationId || null,
+      }) 
+    };
   }
 
   async refresh(refreshToken: string): Promise<{ accessToken: string }> {
@@ -88,7 +109,25 @@ export class AuthService {
     if (!user) throw new UnauthorizedError("User not found.");
     const roles = await this.roleRepository.getRolesForUser(userId);
     const roleNames = roles.map((r) => r.name);
-    return toPublicUser(user, roleNames);
+    
+    const [empRows] = await pool.query<any[]>(
+      `SELECT d.name as departmentName, e.department_id as departmentId, 
+              desig.title as designationTitle, e.designation_id as designationId 
+       FROM employees e 
+       LEFT JOIN departments d ON e.department_id = d.id 
+       LEFT JOIN designations desig ON e.designation_id = desig.id 
+       WHERE e.user_id = ? 
+       ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
+       LIMIT 1`, 
+      [userId]
+    );
+
+    return toPublicUser(user, roleNames, {
+      department: empRows[0]?.departmentName || null,
+      departmentId: empRows[0]?.departmentId || null,
+      designation: empRows[0]?.designationTitle || null,
+      designationId: empRows[0]?.designationId || null,
+    });
   }
 
   async logout(refreshToken: string): Promise<void> {
