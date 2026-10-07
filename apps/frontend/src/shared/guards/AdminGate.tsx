@@ -1,12 +1,8 @@
 import { ReactNode } from "react";
-import { useAuthStore } from "../../modules/auth/hooks/useAuthStore";
+import { useIsAdmin } from "../../modules/auth/hooks/usePermissions";
 
 export default function AdminGate({ children }: { children: ReactNode }) {
-  const user = useAuthStore((s) => s.user);
-  
-  if (!user) return null;
-  
-  const isAdmin = user.roles.includes("System Admin");
+  const isAdmin = useIsAdmin();
   if (!isAdmin) return null;
   
   return <>{children}</>;

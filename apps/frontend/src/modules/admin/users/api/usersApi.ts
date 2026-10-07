@@ -12,6 +12,8 @@ export interface UserRecord {
   roles: string[];
   department?: string | null;
   departmentId?: string | null;
+  designation?: string | null;
+  designationId?: string | null;
 }
 
 export const usersApi = {
@@ -38,7 +40,7 @@ export const usersApi = {
     const res = await axiosInstance.post("/users", payload);
     return res.data.data as UserRecord;
   },
-  async update(id: string, payload: Partial<{ fullName: string; whatsappNumber: string | null; status: string; employeeCode: string | null; departmentId: string | null; email: string; avatarUrl: string | null }>) {
+  async update(id: string, payload: Partial<{ fullName: string; whatsappNumber: string | null; status: string; employeeCode: string | null; departmentId: string | null; designationId: string | null; email: string; avatarUrl: string | null }>) {
     const res = await axiosInstance.patch(`/users/${id}`, payload);
     return res.data.data as UserRecord;
   },

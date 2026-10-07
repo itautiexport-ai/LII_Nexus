@@ -5,7 +5,7 @@ import { departmentsApi } from "../../organization/departments/api/departmentsAp
 import { designationsApi } from "../../organization/designations/api/designationsApi";
 import { shiftsApi } from "../../factory/shifts/api/shiftsApi";
 import PermissionGate from "../../../../shared/guards/PermissionGate";
-import { useHasPermission } from "../../../auth/hooks/usePermissions";
+import { useHasPermission, useCanDelegate } from "../../../auth/hooks/usePermissions";
 import { env } from "../../../../config/env";
 import { getAssetUrl } from "../../../../shared/utils/urlHelper";
 
@@ -97,7 +97,7 @@ function UserRoleDropdown({ u, roles, canAssignRoles, handleToggleRole }: any) {
 }
 
 export default function UsersPage() {
-  const canAssignRoles = useHasPermission("rbac.userrole.assign");
+  const canAssignRoles = useCanDelegate();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -171,6 +171,7 @@ export default function UsersPage() {
     password: "",
     status: "active",
     departmentId: "",
+    designationId: "",
   });
 
   function startEdit(u: UserRecord) {
@@ -183,6 +184,7 @@ export default function UsersPage() {
       password: "", // empty so it won't update unless typed
       status: u.status,
       departmentId: u.departmentId || "",
+      designationId: u.designationId || "",
     });
     setAvatarUploading(false);
   }
@@ -206,6 +208,7 @@ export default function UsersPage() {
         ...(editForm.password ? { password: editForm.password } : {}),
         status: editForm.status,
         departmentId: editForm.departmentId || null,
+        designationId: editForm.designationId || null,
       });
       setSuccess("User updated successfully!");
       setEditingUser(null);
@@ -503,6 +506,9 @@ export default function UsersPage() {
               <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('department')}>
                 Department {sortConfig?.key === 'department' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
               </th>
+              <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('designation')}>
+                Designation {sortConfig?.key === 'designation' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+              </th>
               <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('tempPassword')}>
                 Password {sortConfig?.key === 'tempPassword' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
               </th>
@@ -534,6 +540,7 @@ export default function UsersPage() {
                   </td>
                   <td><code className="login-id-code">{u.email}</code></td>
                   <td>{u.department || "-"}</td>
+                  <td>{u.designation || "-"}</td>
                   <td><code className="login-id-code">{u.tempPassword || "Not Recorded"}</code></td>
                   <td>
                     <span className={`status-badge ${u.status}`}>
@@ -691,6 +698,20 @@ export default function UsersPage() {
                   <option value="">Select Department...</option>
                   {departmentsList.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Designation</label>
+                <select
+                  className="form-select"
+                  value={editForm.designationId}
+                  onChange={(e) => setEditForm({ ...editForm, designationId: e.target.value })}
+                >
+                  <option value="">Select Designation...</option>
+                  {designationsList.map((d) => (
+                    <option key={d.id} value={d.id}>{d.title}</option>
                   ))}
                 </select>
               </div>

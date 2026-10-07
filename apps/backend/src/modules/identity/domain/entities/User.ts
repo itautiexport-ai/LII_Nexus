@@ -29,9 +29,17 @@ export interface UserPublic {
   lastLoginAt: Date | null;
   createdAt: Date;
   roles: string[];
+  department?: string | null;
+  departmentId?: string | null;
+  designation?: string | null;
+  designationId?: string | null;
 }
 
-export function toPublicUser(user: User, roles: string[] = []): UserPublic {
+export function toPublicUser(
+  user: User, 
+  roles: string[] = [], 
+  extra: { department?: string | null; departmentId?: string | null; designation?: string | null; designationId?: string | null } = {}
+): UserPublic {
   return {
     id: user.id,
     employeeCode: user.employeeCode,
@@ -44,5 +52,9 @@ export function toPublicUser(user: User, roles: string[] = []): UserPublic {
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
     roles,
+    department: extra.department ?? null,
+    departmentId: extra.departmentId ?? null,
+    designation: extra.designation ?? null,
+    designationId: extra.designationId ?? null,
   };
 }

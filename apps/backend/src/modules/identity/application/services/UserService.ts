@@ -21,9 +21,11 @@ export class UserService {
       items.map(async (u) => {
         const roles = await this.roleRepository.getRolesForUser(u.id);
         const [empRows] = await pool.query<any[]>(
-          `SELECT d.name as departmentName, e.department_id as departmentId 
+          `SELECT d.name as departmentName, e.department_id as departmentId, 
+                  desig.title as designationTitle, e.designation_id as designationId 
            FROM employees e 
            LEFT JOIN departments d ON e.department_id = d.id 
+           LEFT JOIN designations desig ON e.designation_id = desig.id 
            WHERE e.user_id = ? 
            ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
            LIMIT 1`, 
@@ -31,7 +33,15 @@ export class UserService {
         );
         const department = empRows[0]?.departmentName || null;
         const departmentId = empRows[0]?.departmentId || null;
-        return { ...toPublicUser(u, roles.map((r) => r.name)), department, departmentId };
+        const designation = empRows[0]?.designationTitle || null;
+        const designationId = empRows[0]?.designationId || null;
+        return { 
+          ...toPublicUser(u, roles.map((r) => r.name), { department, departmentId, designation, designationId }), 
+          department, 
+          departmentId,
+          designation,
+          designationId
+        };
       })
     );
     return { items: withRoles, total, page, pageSize };
@@ -41,7 +51,22 @@ export class UserService {
     const user = await this.userRepository.findById(id);
     if (!user) throw new NotFoundError("User not found.");
     const roles = await this.roleRepository.getRolesForUser(id);
-    return toPublicUser(user, roles.map((r) => r.name));
+    const [empRows] = await pool.query<any[]>(
+      `SELECT d.name as departmentName, e.department_id as departmentId, 
+              desig.title as designationTitle, e.designation_id as designationId 
+       FROM employees e 
+       LEFT JOIN departments d ON e.department_id = d.id 
+       LEFT JOIN designations desig ON e.designation_id = desig.id 
+       WHERE e.user_id = ? 
+       ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
+       LIMIT 1`, 
+      [id]
+    );
+    const department = empRows[0]?.departmentName || null;
+    const departmentId = empRows[0]?.departmentId || null;
+    const designation = empRows[0]?.designationTitle || null;
+    const designationId = empRows[0]?.designationId || null;
+    return toPublicUser(user, roles.map((r) => r.name), { department, departmentId, designation, designationId });
   }
 
   async create(input: any, actorId: string) {
@@ -145,7 +170,27 @@ export class UserService {
       await pool.query("UPDATE employees SET department_id = ? WHERE user_id = ?", [changes.departmentId || null, id]);
     }
 
+    // Sync designation to employee record if changed
+    if (changes.designationId !== undefined) {
+      await pool.query("UPDATE employees SET designation_id = ? WHERE user_id = ?", [changes.designationId || null, id]);
+    }
+
     const roles = await this.roleRepository.getRolesForUser(id);
+    const [empRows] = await pool.query<any[]>(
+      `SELECT d.name as departmentName, e.department_id as departmentId, 
+              desig.title as designationTitle, e.designation_id as designationId 
+       FROM employees e 
+       LEFT JOIN departments d ON e.department_id = d.id 
+       LEFT JOIN designations desig ON e.designation_id = desig.id 
+       WHERE e.user_id = ? 
+       ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
+       LIMIT 1`, 
+      [id]
+    );
+    const department = empRows[0]?.departmentName || null;
+    const departmentId = empRows[0]?.departmentId || null;
+    const designation = empRows[0]?.designationTitle || null;
+    const designationId = empRows[0]?.designationId || null;
 
     await AuditService.record({
       actorUserId: actorId,
@@ -156,7 +201,7 @@ export class UserService {
       afterState: { fullName: updated.fullName, status: updated.status },
     });
 
-    return toPublicUser(updated, roles.map((r) => r.name));
+    return toPublicUser(updated, roles.map((r) => r.name), { department, departmentId, designation, designationId });
   }
 
   async deactivate(id: string, actorId: string) {

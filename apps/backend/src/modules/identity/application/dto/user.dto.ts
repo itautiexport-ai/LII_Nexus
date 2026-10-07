@@ -20,6 +20,7 @@ export const updateUserSchema = z.object({
   employeeCode: z.string().optional().nullable(),
   status: z.enum(["active", "suspended", "inactive"]).optional(),
   departmentId: z.string().optional().nullable(),
+  designationId: z.string().optional().nullable(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
