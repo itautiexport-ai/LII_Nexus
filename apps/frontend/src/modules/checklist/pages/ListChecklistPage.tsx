@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { standaloneChecklistApi, StandaloneChecklist } from "../api/checklistApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
+import { useCanDelete } from "../../auth/hooks/usePermissions";
 import { useTableFreeze } from "../../../shared/hooks/useTableFreeze";
 import { TableFreezeButton } from "../../../shared/components/TableFreezeButton";
 import { TableFreezeModal } from "../../../shared/components/TableFreezeModal";
@@ -20,6 +21,7 @@ export function ListChecklistPage() {
   const [checklists, setChecklists] = useState<StandaloneChecklist[]>([]);
   const [loading, setLoading] = useState(true);
   const user = useAuthStore(state => state.user);
+  const canDelete = useCanDelete();
 
   const {
     settings: freezeSettings,
@@ -143,17 +145,7 @@ export function ListChecklistPage() {
                       <td style={getStickyCellStyle(4, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">{c.mode}</td>
                       <td style={getStickyCellStyle(5, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">{c.frequency}</td>
                       <td style={getStickyCellStyle(6, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">
-                        {user && (
-                          user.roles?.includes("System Admin") ||
-                          user.roles?.includes("Super Admin") ||
-                          user.roles?.includes("Admin") ||
-                          ((user as any).designationTitle && (
-                            (user as any).designationTitle.toLowerCase() === "admin" ||
-                            (user as any).designationTitle.toLowerCase() === "admin executive" ||
-                            (user as any).designationTitle.toLowerCase() === "director" ||
-                            (user as any).designationTitle.toLowerCase() === "executive director"
-                          ))
-                        ) ? (
+                        {canDelete ? (
                           <button
                             onClick={() => handleDelete(c.id)}
                             style={{ background: "#ef4444", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
