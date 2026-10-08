@@ -8,7 +8,7 @@ const roleRepository = new MySqlRoleRepository();
 
 export async function isSystemAdminUser(userId: string): Promise<boolean> {
   const [rows] = await pool.query<any[]>(`
-    SELECT r.name as role_name, r.code as role_code, u.email
+    SELECT r.name as role_name, u.email
     FROM users u
     LEFT JOIN user_roles ur ON u.id = ur.user_id
     LEFT JOIN roles r ON ur.role_id = r.id
@@ -19,8 +19,6 @@ export async function isSystemAdminUser(userId: string): Promise<boolean> {
     r.role_name === 'System Admin' ||
     r.role_name === 'Super Admin' ||
     r.role_name === 'System Administrator' ||
-    r.role_code === 'system_admin' ||
-    r.role_code === 'super_admin' ||
     r.email === 'admin' ||
     r.email === 'admin@liinexus.com'
   );
@@ -28,7 +26,7 @@ export async function isSystemAdminUser(userId: string): Promise<boolean> {
 
 export async function isAdminUser(userId: string): Promise<boolean> {
   const [rows] = await pool.query<any[]>(`
-    SELECT r.name as role_name, r.code as role_code, desig.title as designation_title, u.email
+    SELECT r.name as role_name, desig.title as designation_title, u.email
     FROM users u
     LEFT JOIN user_roles ur ON u.id = ur.user_id
     LEFT JOIN roles r ON ur.role_id = r.id
@@ -39,7 +37,6 @@ export async function isAdminUser(userId: string): Promise<boolean> {
 
   return rows.some((r: any) =>
     r.role_name === 'System Admin' || r.role_name === 'Super Admin' || r.role_name === 'Admin' ||
-    r.role_code === 'system_admin' || r.role_code === 'super_admin' || r.role_code === 'admin' ||
     (r.designation_title && r.designation_title.toLowerCase().includes('admin')) ||
     r.email === 'admin' || r.email === 'admin@liinexus.com'
   );
