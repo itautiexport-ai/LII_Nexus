@@ -4,6 +4,7 @@ import { noticeTemplates, NoticeTemplate } from "../data/noticeTemplates";
 import { noticesApi, IssuedNotice } from "../api/noticesApi";
 import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
+import { useCanDelete } from "../../auth/hooks/usePermissions";
 import "./NoticesPage.css";
 
 export default function NoticesPage() {
@@ -47,7 +48,7 @@ export default function NoticesPage() {
   };
 
   const user = useAuthStore(s => s.user);
-  const isAdmin = user?.roles.includes("System Admin");
+  const canDelete = useCanDelete();
 
   const handleDeleteNotice = async (id: string) => {
     if (!confirm("Are you sure you want to delete this notice? This action cannot be undone.")) return;
@@ -404,7 +405,7 @@ export default function NoticesPage() {
                       >
                         👁️
                       </button>
-                      {isAdmin && (
+                      {canDelete && (
                         <button 
                           onClick={() => handleDeleteNotice(notice.id!)}
                           style={{ color: '#dc3545', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '18px' }}

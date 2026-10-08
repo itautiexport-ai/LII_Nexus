@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { complaintApi, Complaint, ComplaintStatus, ComplaintPriority } from "../api/complaintApi";
 import { masterDataApi } from "../../admin/masterdata/api/masterDataApi";
+import { useCanDelete } from "../../auth/hooks/usePermissions";
 
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
@@ -137,6 +138,7 @@ const priorityColors: Record<ComplaintPriority, { bg: string, text: string }> = 
 
 export default function ComplaintsListPage() {
   const navigate = useNavigate();
+  const canDelete = useCanDelete();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -311,12 +313,14 @@ export default function ComplaintsListPage() {
                       <Link to={`/admin/crm/complaints/new?edit=${complaint.id}`} style={{ textDecoration: "none", color: "#0ea5e9", fontSize: "14px", fontWeight: 600 }}>
                         Edit
                       </Link>
-                      <button 
-                        onClick={() => handleDelete(complaint.id)} 
-                        style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", fontWeight: 600, padding: 0 }}
-                      >
-                        Delete
-                      </button>
+                      {canDelete && (
+                        <button 
+                          onClick={() => handleDelete(complaint.id)} 
+                          style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", fontWeight: 600, padding: 0 }}
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

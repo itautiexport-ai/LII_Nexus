@@ -6,6 +6,7 @@ import { usersApi, UserRecord } from "../../../users/api/usersApi";
 import { masterDataApi, Hod } from "../../../masterdata/api/masterDataApi";
 import PermissionGate from "../../../../../shared/guards/PermissionGate";
 import { useAuthStore } from "../../../../auth/hooks/useAuthStore";
+import { useIsAdmin, useCanDelete } from "../../../../auth/hooks/usePermissions";
 
 const emptyForm = {
   employeeCode: "", fullName: "", email: "", phone: "",
@@ -25,7 +26,8 @@ export default function EmployeesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const user = useAuthStore(state => state.user);
-  const isAdmin = user?.roles?.some(r => r === 'System Admin' || r === 'HR Admin') || false;
+  const isAdmin = useIsAdmin();
+  const canDelete = useCanDelete();
   async function load(currentSearch = search) {
     const [emp, deps, desigs, userList, hodList] = await Promise.all([
       employeesApi.list(currentSearch),
@@ -226,7 +228,7 @@ export default function EmployeesPage() {
                   </select>
               </td>
               <td style={{ padding: 8 }}>
-                  {isAdmin && <button onClick={() => {
+                  {canDelete && <button onClick={() => {
                     if (confirm("Are you sure you want to delete this employee?")) {
                       employeesApi.remove(emp.id).then(() => load()).catch(err => alert("Failed to delete."));
                     }
