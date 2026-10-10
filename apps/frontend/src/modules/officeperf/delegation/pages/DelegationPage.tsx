@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState, useRef, useMemo } from "react";
 import { delegationApi, DelegatedTaskRecord, DelegationPriority } from "../api/delegationApi";
 import { factoryApi, DirectReport } from "../../../factory/api/factoryApi";
 import { useAuthStore } from "../../../auth/hooks/useAuthStore";
+import { useCanDelete, useIsAdminOrManagement } from "../../../auth/hooks/usePermissions";
 import { useTableFreeze } from "../../../../shared/hooks/useTableFreeze";
 import { TableFreezeButton } from "../../../../shared/components/TableFreezeButton";
 import { TableFreezeModal } from "../../../../shared/components/TableFreezeModal";
@@ -14,7 +15,9 @@ const statusColors: Record<string, string> = { pending: "#999", running: "#4a90d
 
 export default function DelegationPage() {
   const user = useAuthStore(state => state.user);
-  const isAdmin = user?.roles.includes("System Admin");
+  const canViewAll = useIsAdminOrManagement();
+  const canDelete = useCanDelete();
+  const isAdmin = canViewAll;
   const [tab, setTab] = useState<"received" | "delegated">("delegated");
   const [currentEmployee, setCurrentEmployee] = useState<any | null>(null);
   const [received, setReceived] = useState<DisplayTask[]>([]);
@@ -262,6 +265,37 @@ export default function DelegationPage() {
 
   const list = tab === "received" ? received : delegated;
 
+  // Edit Delegation Task State
+  const [editingTask, setEditingTask] = useState<DisplayTask | null>(null);
+  const [editTaskForm, setEditTaskForm] = useState({ title: "", description: "", dueDate: "", priority: "medium" as DelegationPriority, remarks: "" });
+  const [isSavingTaskEdit, setIsSavingTaskEdit] = useState(false);
+
+  function handleOpenEdit(t: DisplayTask) {
+    setEditingTask(t);
+    setEditTaskForm({
+      title: t.title || "",
+      description: t.description || "",
+      dueDate: t.dueDate || "",
+      priority: t.priority || "medium",
+      remarks: t.remarks || "",
+    });
+  }
+
+  async function handleSaveTaskEdit(e: FormEvent) {
+    e.preventDefault();
+    if (!editingTask) return;
+    try {
+      setIsSavingTaskEdit(true);
+      await delegationApi.update(editingTask.id, editTaskForm);
+      setEditingTask(null);
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.error?.message || "Failed to update delegation task.");
+    } finally {
+      setIsSavingTaskEdit(false);
+    }
+  }
+
   return (
     <div>
       <input 
@@ -274,7 +308,7 @@ export default function DelegationPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h1 style={{ fontSize: 20 }}>Delegation</h1>
         <div style={{ display: "flex", gap: 8 }}>
-          {isAdmin && selectedIds.length > 0 && (
+          {canDelete && selectedIds.length > 0 && (
             <button onClick={handleBulkDelete} style={{ color: "#c0392b", border: "1px solid #c0392b", background: "transparent", padding: "4px 12px", borderRadius: 4, cursor: "pointer" }}>
               Delete Selected ({selectedIds.length})
             </button>
@@ -605,7 +639,16 @@ export default function DelegationPage() {
                       </button>
                     )}
                     {t.escalatedToName && <div style={{ fontSize: 11, color: "#c0392b" }}>Escalated to {t.escalatedToName}</div>}
-                    {isAdmin && (
+                    {canViewAll && (
+                      <button
+                        onClick={() => handleOpenEdit(t)}
+                        title="Edit task"
+                        style={{ padding: "3px 10px", background: "#e0f2fe", color: "#0369a1", border: "1px solid #7dd3fc", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                      >
+                        ✏️ Edit
+                      </button>
+                    )}
+                    {canDelete && (
                       <button
                         onClick={() => handleDelete(t.id)}
                         title="Delete task"
@@ -720,6 +763,92 @@ export default function DelegationPage() {
                   style={{ padding: "0.5rem 1.25rem", background: reviewStatus === "approved" ? "#10b981" : "#ef4444", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 700 }}
                 >
                   Confirm {reviewStatus === "approved" ? "Approval" : "Rejection"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Delegation Modal */}
+      {editingTask && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", padding: "2rem", borderRadius: "8px", width: "450px", maxWidth: "90%", boxShadow: "0 10px 25px rgba(0,0,0,0.15)" }}>
+            <h2 style={{ marginTop: 0, marginBottom: "1rem" }}>Edit Delegation Task</h2>
+            <form onSubmit={handleSaveTaskEdit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Task Title *</label>
+                <input
+                  required
+                  type="text"
+                  value={editTaskForm.title}
+                  onChange={e => setEditTaskForm({ ...editTaskForm, title: e.target.value })}
+                  style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Description</label>
+                <textarea
+                  rows={3}
+                  value={editTaskForm.description}
+                  onChange={e => setEditTaskForm({ ...editTaskForm, description: e.target.value })}
+                  style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Due Date *</label>
+                  <input
+                    required
+                    type="date"
+                    value={editTaskForm.dueDate}
+                    onChange={e => setEditTaskForm({ ...editTaskForm, dueDate: e.target.value })}
+                    style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}
+                  />
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Priority</label>
+                  <select
+                    value={editTaskForm.priority}
+                    onChange={e => setEditTaskForm({ ...editTaskForm, priority: e.target.value as DelegationPriority })}
+                    style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Remarks</label>
+                <textarea
+                  rows={2}
+                  value={editTaskForm.remarks}
+                  onChange={e => setEditTaskForm({ ...editTaskForm, remarks: e.target.value })}
+                  style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingTask(null)}
+                  disabled={isSavingTaskEdit}
+                  style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingTaskEdit}
+                  style={{ padding: "6px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: "bold" }}
+                >
+                  {isSavingTaskEdit ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

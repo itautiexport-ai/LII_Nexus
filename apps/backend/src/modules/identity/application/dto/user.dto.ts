@@ -8,6 +8,8 @@ export const createUserSchema = z.object({
   employeeCode: z.string().optional().nullable(),
   designationId: z.string().uuid().or(z.literal("")).optional().nullable(),
   departmentId: z.string().uuid().or(z.literal("")).optional().nullable(),
+  managerId: z.string().optional().nullable(),
+  hodId: z.string().optional().nullable(),
   shiftId: z.string().uuid().or(z.literal("")).optional().nullable(),
   roles: z.array(z.string()).optional(),
 });
@@ -21,6 +23,8 @@ export const updateUserSchema = z.object({
   status: z.enum(["active", "suspended", "inactive"]).optional(),
   departmentId: z.string().optional().nullable(),
   designationId: z.string().optional().nullable(),
+  managerId: z.string().optional().nullable(),
+  hodId: z.string().optional().nullable(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;

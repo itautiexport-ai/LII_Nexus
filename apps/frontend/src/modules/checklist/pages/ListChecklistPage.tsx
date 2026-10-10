@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { standaloneChecklistApi, StandaloneChecklist } from "../api/checklistApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
-import { useCanDelete } from "../../auth/hooks/usePermissions";
+import { useCanDelete, useIsAdminOrManagement } from "../../auth/hooks/usePermissions";
 import { useTableFreeze } from "../../../shared/hooks/useTableFreeze";
 import { TableFreezeButton } from "../../../shared/components/TableFreezeButton";
 import { TableFreezeModal } from "../../../shared/components/TableFreezeModal";
@@ -14,7 +14,7 @@ const CHECKLIST_COLUMNS = [
   { key: "priority", label: "Priority", width: 100 },
   { key: "mode", label: "Mode", width: 100 },
   { key: "frequency", label: "Frequency", width: 120 },
-  { key: "actions", label: "Actions", width: 100 },
+  { key: "actions", label: "Actions", width: 160 },
 ];
 
 export function ListChecklistPage() {
@@ -22,6 +22,18 @@ export function ListChecklistPage() {
   const [loading, setLoading] = useState(true);
   const user = useAuthStore(state => state.user);
   const canDelete = useCanDelete();
+  const canEditOrViewAll = useIsAdminOrManagement();
+
+  // Edit Modal State
+  const [editingItem, setEditingItem] = useState<StandaloneChecklist | null>(null);
+  const [editForm, setEditForm] = useState({
+    taskName: "",
+    priority: "Medium" as "Low" | "Medium" | "High",
+    mode: "Online",
+    frequency: "Daily",
+    plannedDate: "",
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const {
     settings: freezeSettings,
@@ -47,11 +59,11 @@ export function ListChecklistPage() {
 
   useEffect(() => {
     fetchChecklists();
-  }, []);
+  }, [canEditOrViewAll]);
 
   const fetchChecklists = () => {
     standaloneChecklistApi.getAll().then(data => {
-      if (user && !user.roles.includes("System Admin")) {
+      if (user && !canEditOrViewAll) {
         const filtered = data.filter(c => 
           (c as any).assignTo === user.id || 
           c.assignee_name === user.fullName ||
@@ -74,11 +86,40 @@ export function ListChecklistPage() {
     if (confirm("Are you sure you want to delete this checklist?")) {
       try {
         await standaloneChecklistApi.delete(id);
-        fetchChecklists(); // Refresh
+        fetchChecklists();
       } catch (err) {
         console.error("Failed to delete", err);
         alert("Failed to delete checklist");
       }
+    }
+  };
+
+  const handleOpenEdit = (item: StandaloneChecklist) => {
+    setEditingItem(item);
+    const rawDate = (item as any).planned_date || item.plannedDate;
+    const formattedDate = rawDate ? new Date(rawDate).toISOString().slice(0, 16) : "";
+    setEditForm({
+      taskName: (item as any).task_name || item.taskName,
+      priority: item.priority || "Medium",
+      mode: item.mode || "Online",
+      frequency: item.frequency || "Daily",
+      plannedDate: formattedDate,
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    try {
+      setIsSavingEdit(true);
+      await standaloneChecklistApi.update(editingItem.id, editForm);
+      setEditingItem(null);
+      fetchChecklists();
+    } catch (err) {
+      console.error("Failed to update checklist", err);
+      alert("Failed to update checklist");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -132,16 +173,27 @@ export function ListChecklistPage() {
                       <td style={getStickyCellStyle(4, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">{c.mode}</td>
                       <td style={getStickyCellStyle(5, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">{c.frequency}</td>
                       <td style={getStickyCellStyle(6, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">
-                        {canDelete ? (
-                          <button 
-                            onClick={() => handleDelete(c.id)}
-                            style={{ background: "#ef4444", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
-                          >
-                            Delete
-                          </button>
-                        ) : (
-                          <span style={{ color: "#94a3b8" }}>—</span>
-                        )}
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          {canEditOrViewAll && (
+                            <button
+                              onClick={() => handleOpenEdit(c)}
+                              style={{ background: "#2563eb", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button 
+                              onClick={() => handleDelete(c.id)}
+                              style={{ background: "#ef4444", color: "white", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                            >
+                              Delete
+                            </button>
+                          )}
+                          {!canEditOrViewAll && !canDelete && (
+                            <span style={{ color: "#94a3b8" }}>—</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -151,6 +203,85 @@ export function ListChecklistPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Checklist Modal */}
+      {editingItem && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", padding: "1.5rem", borderRadius: "8px", width: "450px", maxWidth: "90%", boxShadow: "0 10px 25px rgba(0,0,0,0.15)" }}>
+            <h3 style={{ marginTop: 0, marginBottom: "1rem" }}>Edit Checklist Task</h3>
+            <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Task Name</label>
+                <input
+                  required
+                  type="text"
+                  value={editForm.taskName}
+                  onChange={e => setEditForm({ ...editForm, taskName: e.target.value })}
+                  style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Priority</label>
+                  <select
+                    value={editForm.priority}
+                    onChange={e => setEditForm({ ...editForm, priority: e.target.value as any })}
+                    style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4 }}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Frequency</label>
+                  <select
+                    value={editForm.frequency}
+                    onChange={e => setEditForm({ ...editForm, frequency: e.target.value })}
+                    style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4 }}
+                  >
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Yearly">Yearly</option>
+                    <option value="One-Time">One-Time</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontWeight: "bold", fontSize: 13 }}>Planned Date & Time</label>
+                <input
+                  type="datetime-local"
+                  value={editForm.plannedDate}
+                  onChange={e => setEditForm({ ...editForm, plannedDate: e.target.value })}
+                  style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  style={{ padding: "6px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: "bold" }}
+                >
+                  {isSavingEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <TableFreezeModal
         isOpen={isFreezeModalOpen}

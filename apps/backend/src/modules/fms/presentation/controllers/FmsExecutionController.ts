@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { FmsExecutionService } from "../../application/services/FmsExecutionService";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
+import { isAdminUser } from "../../../../shared/middlewares/rbac.middleware";
 
 export class FmsExecutionController {
   constructor(private service: FmsExecutionService) {}
@@ -55,8 +56,9 @@ export class FmsExecutionController {
       const employeeId = (empRows as any)[0]?.id;
       if (!employeeId) return res.status(403).json({ success: false, message: "User not linked to employee" });
 
+      const isAdmin = await isAdminUser(userId);
       const statusFilter = req.query.status as string | undefined;
-      const tasks = await this.service.getMyPendingTasks(employeeId, statusFilter);
+      const tasks = await this.service.getMyPendingTasks(employeeId, statusFilter, isAdmin);
       res.json({ success: true, data: tasks });
     } catch (err: any) {
       console.error(err);

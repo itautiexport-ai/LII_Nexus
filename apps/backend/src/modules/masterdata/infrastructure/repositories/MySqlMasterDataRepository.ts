@@ -120,8 +120,28 @@ export class MySqlMasterDataRepository {
 
   // HODs
   async getHods() {
-    const [rows] = await pool.query("SELECT * FROM master_hods ORDER BY name ASC");
-    return rows;
+    const [rows] = await pool.query<any[]>("SELECT * FROM master_hods ORDER BY name ASC");
+    const [hodUsers] = await pool.query<any[]>(
+      `SELECT DISTINCT e.full_name as name, e.id as id
+       FROM employees e
+       LEFT JOIN designations d ON e.designation_id = d.id
+       LEFT JOIN user_roles ur ON e.user_id = ur.user_id
+       LEFT JOIN roles r ON ur.role_id = r.id
+       WHERE (LOWER(d.title) LIKE '%hod%' OR LOWER(r.name) LIKE '%hod%' OR LOWER(d.title) LIKE '%head%')
+         AND e.deleted_at IS NULL AND e.full_name IS NOT NULL`
+    );
+
+    const masterMap = new Map<string, any>();
+    (rows || []).forEach((r: any) => masterMap.set(r.name.toLowerCase().trim(), r));
+
+    (hodUsers || []).forEach((hu: any) => {
+      const key = hu.name.toLowerCase().trim();
+      if (!masterMap.has(key)) {
+        masterMap.set(key, { id: hu.id, name: hu.name });
+      }
+    });
+
+    return Array.from(masterMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async createHod(name: string) {

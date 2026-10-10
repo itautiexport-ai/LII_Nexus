@@ -16,16 +16,24 @@ export function useIsSystemAdmin(): boolean {
 }
 
 /**
- * Returns true if the user has any Admin designation or Admin role (or is System Admin).
- * Admins can add, edit, view forms/grids, and manage modules, BUT CANNOT DELETE (unless they are System Admin).
+ * Returns true if the user has any Admin / Management designation or role (or is System Admin).
+ * Allows viewing all records, adding, and editing, BUT CANNOT DELETE (unless they are System Admin).
  */
-export function useIsAdmin(): boolean {
+export function useIsAdminOrManagement(): boolean {
   const user = useAuthStore((s) => s.user);
   if (!user) return false;
   const isSysAdmin = useIsSystemAdmin();
-  const isDesignationAdmin = user.designation?.toLowerCase().includes("admin") ?? false;
-  const isRoleAdmin = user.roles?.some((r) => r.toLowerCase().includes("admin")) ?? false;
-  return isSysAdmin || isDesignationAdmin || isRoleAdmin;
+  const desig = (user.designation || "").toLowerCase();
+  const isDesignationMatch = desig.includes("admin") || desig.includes("management") || desig.includes("management executive");
+  const isRoleMatch = user.roles?.some((r) => {
+    const lower = r.toLowerCase();
+    return lower.includes("admin") || lower.includes("management");
+  }) ?? false;
+  return isSysAdmin || isDesignationMatch || isRoleMatch;
+}
+
+export function useIsAdmin(): boolean {
+  return useIsAdminOrManagement();
 }
 
 /**
@@ -37,7 +45,7 @@ export function useCanDelete(): boolean {
 }
 
 export function useCanDelegate(): boolean {
-  return useIsAdmin();
+  return useIsAdminOrManagement();
 }
 
 /**

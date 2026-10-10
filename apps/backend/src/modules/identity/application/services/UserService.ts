@@ -8,6 +8,7 @@ import { CreateUserInput, UpdateUserInput } from "../dto/user.dto";
 import { AuditService } from "../../../../shared/services/AuditService";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
 import { MySqlEmployeeRepository } from "../../../organization/infrastructure/repositories/MySqlEmployeeRepository";
+import { EvaluationDispatchService } from "../../../performance-evaluation/application/services/EvaluationDispatchService";
 
 export class UserService {
   constructor(
@@ -22,10 +23,12 @@ export class UserService {
         const roles = await this.roleRepository.getRolesForUser(u.id);
         const [empRows] = await pool.query<any[]>(
           `SELECT d.name as departmentName, e.department_id as departmentId, 
-                  desig.title as designationTitle, e.designation_id as designationId 
+                  desig.title as designationTitle, e.designation_id as designationId,
+                  e.manager_id as hodId, m.name as hodName 
            FROM employees e 
            LEFT JOIN departments d ON e.department_id = d.id 
            LEFT JOIN designations desig ON e.designation_id = desig.id 
+           LEFT JOIN master_hods m ON e.manager_id = m.id
            WHERE e.user_id = ? 
            ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
            LIMIT 1`, 
@@ -35,12 +38,17 @@ export class UserService {
         const departmentId = empRows[0]?.departmentId || null;
         const designation = empRows[0]?.designationTitle || null;
         const designationId = empRows[0]?.designationId || null;
+        const hodId = empRows[0]?.hodId || null;
+        const hodName = empRows[0]?.hodName || null;
         return { 
-          ...toPublicUser(u, roles.map((r) => r.name), { department, departmentId, designation, designationId }), 
+          ...toPublicUser(u, roles.map((r) => r.name), { department, departmentId, designation, designationId, hodId, hodName, managerId: hodId }), 
           department, 
           departmentId,
           designation,
-          designationId
+          designationId,
+          hodId,
+          hodName,
+          managerId: hodId,
         };
       })
     );
@@ -53,10 +61,12 @@ export class UserService {
     const roles = await this.roleRepository.getRolesForUser(id);
     const [empRows] = await pool.query<any[]>(
       `SELECT d.name as departmentName, e.department_id as departmentId, 
-              desig.title as designationTitle, e.designation_id as designationId 
+              desig.title as designationTitle, e.designation_id as designationId,
+              e.manager_id as hodId, m.name as hodName 
        FROM employees e 
        LEFT JOIN departments d ON e.department_id = d.id 
        LEFT JOIN designations desig ON e.designation_id = desig.id 
+       LEFT JOIN master_hods m ON e.manager_id = m.id
        WHERE e.user_id = ? 
        ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
        LIMIT 1`, 
@@ -66,7 +76,18 @@ export class UserService {
     const departmentId = empRows[0]?.departmentId || null;
     const designation = empRows[0]?.designationTitle || null;
     const designationId = empRows[0]?.designationId || null;
-    return toPublicUser(user, roles.map((r) => r.name), { department, departmentId, designation, designationId });
+    const hodId = empRows[0]?.hodId || null;
+    const hodName = empRows[0]?.hodName || null;
+    return {
+      ...toPublicUser(user, roles.map((r) => r.name), { department, departmentId, designation, designationId, hodId, hodName, managerId: hodId }),
+      department,
+      departmentId,
+      designation,
+      designationId,
+      hodId,
+      hodName,
+      managerId: hodId,
+    };
   }
 
   async create(input: any, actorId: string) {
@@ -109,9 +130,10 @@ export class UserService {
 
     // Create corresponding Employee record
     const employeeId = uuid();
+    const targetHodId = input.hodId !== undefined ? (input.hodId || null) : (input.managerId || null);
     await pool.query(
-      `INSERT INTO employees (id, employee_code, full_name, email, department_id, designation_id, shift_id, user_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      `INSERT INTO employees (id, employee_code, full_name, email, department_id, designation_id, manager_id, shift_id, user_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
       [
         employeeId,
         employeeCode,
@@ -119,10 +141,14 @@ export class UserService {
         input.email, // login id / email
         input.departmentId || null,
         input.designationId || null,
+        targetHodId,
         input.shiftId || null,
         userId
       ]
     );
+
+    // Automatically trigger evaluation dispatch to HOD & HR
+    await EvaluationDispatchService.dispatchEvaluationForNewEmployee(employeeId);
 
     await AuditService.record({
       actorUserId: actorId,
@@ -175,13 +201,21 @@ export class UserService {
       await pool.query("UPDATE employees SET designation_id = ? WHERE user_id = ?", [changes.designationId || null, id]);
     }
 
+    // Sync HOD/manager_id to employee record if changed
+    if (changes.hodId !== undefined || (changes as any).managerId !== undefined) {
+      const targetHodId = changes.hodId !== undefined ? (changes.hodId || null) : ((changes as any).managerId || null);
+      await pool.query("UPDATE employees SET manager_id = ? WHERE user_id = ?", [targetHodId, id]);
+    }
+
     const roles = await this.roleRepository.getRolesForUser(id);
     const [empRows] = await pool.query<any[]>(
       `SELECT d.name as departmentName, e.department_id as departmentId, 
-              desig.title as designationTitle, e.designation_id as designationId 
+              desig.title as designationTitle, e.designation_id as designationId,
+              e.manager_id as hodId, m.name as hodName 
        FROM employees e 
        LEFT JOIN departments d ON e.department_id = d.id 
        LEFT JOIN designations desig ON e.designation_id = desig.id 
+       LEFT JOIN master_hods m ON e.manager_id = m.id
        WHERE e.user_id = ? 
        ORDER BY e.deleted_at IS NULL DESC, e.created_at DESC 
        LIMIT 1`, 

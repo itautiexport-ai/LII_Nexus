@@ -4,6 +4,7 @@ import { rolesApi, RoleRecord } from "../../roles/api/rolesApi";
 import { departmentsApi } from "../../organization/departments/api/departmentsApi";
 import { designationsApi } from "../../organization/designations/api/designationsApi";
 import { shiftsApi } from "../../factory/shifts/api/shiftsApi";
+import { masterDataApi } from "../../masterdata/api/masterDataApi";
 import PermissionGate from "../../../../shared/guards/PermissionGate";
 import { useHasPermission, useCanDelegate } from "../../../auth/hooks/usePermissions";
 import { env } from "../../../../config/env";
@@ -103,6 +104,7 @@ export default function UsersPage() {
   const [departmentsList, setDepartmentsList] = useState<any[]>([]);
   const [designationsList, setDesignationsList] = useState<any[]>([]);
   const [shiftsList, setShiftsList] = useState<any[]>([]);
+  const [hodsList, setHodsList] = useState<any[]>([]);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
@@ -115,6 +117,7 @@ export default function UsersPage() {
     designationId: "",
     departmentId: "",
     shiftId: "",
+    hodId: "",
     roles: [] as string[],
   });
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +172,7 @@ export default function UsersPage() {
     status: "active",
     departmentId: "",
     designationId: "",
+    hodId: "",
   });
 
   function startEdit(u: UserRecord) {
@@ -182,6 +186,7 @@ export default function UsersPage() {
       status: u.status,
       departmentId: u.departmentId || "",
       designationId: u.designationId || "",
+      hodId: u.hodId || u.managerId || "",
     });
     setAvatarUploading(false);
   }
@@ -206,6 +211,8 @@ export default function UsersPage() {
         status: editForm.status,
         departmentId: editForm.departmentId || null,
         designationId: editForm.designationId || null,
+        hodId: editForm.hodId || null,
+        managerId: editForm.hodId || null,
       });
       setSuccess("User updated successfully!");
       setEditingUser(null);
@@ -219,18 +226,20 @@ export default function UsersPage() {
 
   async function load() {
     try {
-      const [uList, rList, deps, desigs, shs] = await Promise.all([
+      const [uList, rList, deps, desigs, shs, hods] = await Promise.all([
         usersApi.list(),
         rolesApi.list(),
         departmentsApi.list(),
         designationsApi.list(),
         shiftsApi.list(),
+        masterDataApi.getHods(),
       ]);
       setUsers(uList);
       setRoles(rList);
       setDepartmentsList(deps);
       setDesignationsList(desigs);
       setShiftsList(shs);
+      setHodsList(hods || []);
       
       const generalShift = shs.find((s) => s.name.toLowerCase() === "general");
       const defaultShiftId = generalShift ? generalShift.id : (shs[0]?.id ?? "");
@@ -260,6 +269,8 @@ export default function UsersPage() {
         designationId: form.designationId || null,
         departmentId: form.departmentId || null,
         shiftId: form.shiftId || null,
+        hodId: form.hodId || null,
+        managerId: form.hodId || null,
         roles: form.roles,
       });
       setSuccess("User & Employee record created successfully!");
@@ -277,8 +288,10 @@ export default function UsersPage() {
         designationId: "",
         departmentId: "",
         shiftId: defaultShiftId,
+        hodId: "",
         roles: [],
       });
+      await load();
       await load();
     } catch (err: any) {
       const apiError = err?.response?.data?.error;
@@ -445,6 +458,20 @@ export default function UsersPage() {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="form-label">HOD (Head of Department)</label>
+              <select
+                className="form-select"
+                value={form.hodId}
+                onChange={(e) => setForm({ ...form, hodId: e.target.value })}
+              >
+                <option value="">N/A</option>
+                {hodsList.filter((h) => h.name && h.name.trim().toUpperCase() !== "N/A").map((h) => (
+                  <option key={h.id} value={h.id}>{h.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
 
@@ -504,6 +531,9 @@ export default function UsersPage() {
               <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('designation')}>
                 Designation {sortConfig?.key === 'designation' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
               </th>
+              <th style={{ cursor: "pointer", userSelect: "none" }}>
+                Assigned HOD
+              </th>
               <th style={{ cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('tempPassword')}>
                 Password {sortConfig?.key === 'tempPassword' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
               </th>
@@ -536,6 +566,7 @@ export default function UsersPage() {
                   <td><code className="login-id-code">{u.email}</code></td>
                   <td>{u.department || "-"}</td>
                   <td>{u.designation || "-"}</td>
+                  <td><span style={{ fontWeight: 500, color: u.hodName ? "#1e40af" : "#9ca3af" }}>{u.hodName || "N/A"}</span></td>
                   <td><code className="login-id-code">{u.tempPassword || "Not Recorded"}</code></td>
                   <td>
                     <span className={`status-badge ${u.status}`}>
@@ -685,6 +716,20 @@ export default function UsersPage() {
                   <option value="">Select Designation...</option>
                   {designationsList.map((d) => (
                     <option key={d.id} value={d.id}>{d.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Assigned HOD</label>
+                <select
+                  className="form-select"
+                  value={editForm.hodId}
+                  onChange={(e) => setEditForm({ ...editForm, hodId: e.target.value })}
+                >
+                  <option value="">N/A</option>
+                  {hodsList.filter((h) => h.name && h.name.trim().toUpperCase() !== "N/A").map((h) => (
+                    <option key={h.id} value={h.id}>{h.name}</option>
                   ))}
                 </select>
               </div>

@@ -289,6 +289,10 @@ class SelectEnhancer {
     const originalStyle = this.select.getAttribute("style");
     if (originalStyle) {
       this.container.setAttribute("style", originalStyle);
+      this.container.style.border = "none";
+      this.container.style.padding = "0";
+      this.container.style.background = "transparent";
+      this.container.style.boxShadow = "none";
     }
     
     const computedStyle = window.getComputedStyle(this.select);
@@ -564,15 +568,18 @@ class SelectEnhancer {
   }
 
   selectOption(value: string) {
-    if (this.select.value !== value) {
+    const nativeValueSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
+    if (nativeValueSetter) {
+      nativeValueSetter.call(this.select, value);
+    } else {
       this.select.value = value;
-      
-      const changeEvent = new Event("change", { bubbles: true });
-      this.select.dispatchEvent(changeEvent);
-      
-      const inputEvent = new Event("input", { bubbles: true });
-      this.select.dispatchEvent(inputEvent);
     }
+    
+    const changeEvent = new Event("change", { bubbles: true });
+    this.select.dispatchEvent(changeEvent);
+    
+    const inputEvent = new Event("input", { bubbles: true });
+    this.select.dispatchEvent(inputEvent);
     
     this.updateSelectedText();
     this.close();

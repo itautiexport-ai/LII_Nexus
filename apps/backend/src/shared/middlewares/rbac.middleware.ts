@@ -37,12 +37,21 @@ export async function isAdminUser(userId: string): Promise<boolean> {
     WHERE u.id = ?
   `, [userId]);
 
-  return rows.some((r: any) => 
-    r.role_name === 'System Admin' || r.role_name === 'Super Admin' || r.role_name === 'Admin' ||
-    r.role_code === 'system_admin' || r.role_code === 'super_admin' || r.role_code === 'admin' ||
-    (r.designation_title && r.designation_title.toLowerCase().includes('admin')) ||
-    r.email === 'admin' || r.email === 'admin@liinexus.com'
-  );
+  return rows.some((r: any) => {
+    const roleName = (r.role_name || '').toLowerCase();
+    const roleCode = (r.role_code || '').toLowerCase();
+    const desigTitle = (r.designation_title || '').toLowerCase();
+    const email = (r.email || '').toLowerCase();
+
+    return (
+      email === 'admin' || email === 'admin@liinexus.com' ||
+      roleName.includes('admin') || roleCode.includes('admin') ||
+      roleName.includes('management') || roleCode.includes('management') ||
+      desigTitle.includes('admin') ||
+      desigTitle.includes('management') ||
+      desigTitle.includes('management executive')
+    );
+  });
 }
 
 export function requireSystemAdmin() {

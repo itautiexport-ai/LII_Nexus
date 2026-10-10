@@ -136,6 +136,7 @@ import WhatsAppIntegrationPage from "../../modules/admin/whatsapp/pages/WhatsApp
 import HodEvaluationPage from "../../modules/performance-evaluation/pages/HodEvaluationPage";
 import HrEvaluationPage from "../../modules/performance-evaluation/pages/HrEvaluationPage";
 import EmployeeScorePage from "../../modules/performance-evaluation/pages/EmployeeScorePage";
+import EvaluationsListPage from "../../modules/performance-evaluation/pages/EvaluationsListPage";
 import HomePage from "../../modules/dashboard/pages/HomePage";
 import DocumentLibraryPage from "../../modules/resourcescenter/pages/DocumentLibraryPage";
 import ImportantUrlsPage from "../../modules/resourcescenter/pages/ImportantUrlsPage";
@@ -284,6 +285,7 @@ export default function AppRouter() {
           <Route path="manufacturing/production-progress" element={<ProductionProgressPage />} />
           <Route path="manufacturing/production-planning-sheet" element={<ProductionPlanningSheetPage />} />
           <Route path="manufacturing/production-insight" element={<NewProductionPlanningSheetPage />} />
+          <Route path="performance-evaluation/list" element={<EvaluationsListPage />} />
           <Route path="performance-evaluation/hod" element={<HodEvaluationPage />} />
           <Route path="performance-evaluation/hr" element={<HrEvaluationPage />} />
           <Route path="performance-evaluation/employee-score" element={<EmployeeScorePage />} />

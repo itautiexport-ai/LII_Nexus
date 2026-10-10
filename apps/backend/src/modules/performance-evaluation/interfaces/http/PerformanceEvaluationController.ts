@@ -41,3 +41,25 @@ export const getHrEvaluations = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+export const dispatchEvaluation = async (req: Request, res: Response) => {
+  try {
+    const employeeId = req.params.employeeId;
+    const result = await performanceEvaluationService.dispatchEvaluation(employeeId);
+    res.json({ success: true, message: "Evaluation dispatch notifications sent to HOD and HR.", data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const getEvaluationList = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    const records = await performanceEvaluationService.getEvaluationList(userId);
+    res.json({ success: true, data: records });
+  } catch (error: any) {
+    console.error("Failed to get evaluation list:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+

@@ -120,6 +120,32 @@ export class StandaloneChecklistService {
     }));
   }
 
+  async updateChecklist(id: string, dto: Partial<CreateStandaloneChecklistDto>): Promise<void> {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (dto.taskName !== undefined) { fields.push("task_name = ?"); values.push(dto.taskName); }
+    if (dto.assignTo !== undefined) { fields.push("assign_to = ?"); values.push(dto.assignTo); }
+    if (dto.plannedDate !== undefined) { fields.push("planned_date = ?"); values.push(dto.plannedDate); }
+    if (dto.priority !== undefined) { fields.push("priority = ?"); values.push(dto.priority); }
+    if (dto.mode !== undefined) { fields.push("mode = ?"); values.push(dto.mode); }
+    if (dto.frequency !== undefined) { fields.push("frequency = ?"); values.push(dto.frequency); }
+    if (dto.makeAttachmentMandatory !== undefined) { fields.push("make_attachment_mandatory = ?"); values.push(dto.makeAttachmentMandatory); }
+    if (dto.makeNoteMandatory !== undefined) { fields.push("make_note_mandatory = ?"); values.push(dto.makeNoteMandatory); }
+    if (dto.remindBeforeDays !== undefined) { fields.push("remind_before_days = ?"); values.push(dto.remindBeforeDays); }
+    if (dto.skipOnHolidays !== undefined) { fields.push("skip_on_holidays = ?"); values.push(dto.skipOnHolidays); }
+
+    if (fields.length === 0) return;
+
+    fields.push("updated_at = NOW()");
+    values.push(id);
+
+    await pool.query(
+      `UPDATE standalone_checklists SET ${fields.join(", ")} WHERE id = ? AND deleted_at IS NULL`,
+      values
+    );
+  }
+
   async deleteChecklist(id: string): Promise<void> {
     await pool.query(
       "UPDATE standalone_checklists SET deleted_at = NOW() WHERE id = ?",

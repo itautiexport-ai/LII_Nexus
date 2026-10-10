@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { fmsApi, FmsStep } from "../api/fmsApi";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
-import { useIsSystemAdmin } from "../../auth/hooks/usePermissions";
+import { useIsSystemAdmin, useIsAdminOrManagement } from "../../auth/hooks/usePermissions";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import { useTableFreeze } from "../../../shared/hooks/useTableFreeze";
 import { TableFreezeButton } from "../../../shared/components/TableFreezeButton";
@@ -23,6 +23,7 @@ export function FmsGridViewPage() {
 
   const user = useAuthStore((s) => s.user);
   const isSystemAdmin = useIsSystemAdmin();
+  const isAdminOrManagement = useIsAdminOrManagement();
 
   const availableColumns = useMemo(() => [
     ...(isSystemAdmin ? [{ key: "checkbox", label: "Selection Checkbox", width: 44 }] : []),
@@ -640,7 +641,7 @@ export function FmsGridViewPage() {
                             isDoer = false;
                           }
 
-                          const canEdit = (isSystemAdmin || isDoer) && !isBlocked;
+                          const canEdit = (isAdminOrManagement || isDoer) && !isBlocked;
 
                           return (
                             <React.Fragment key={step.id}>

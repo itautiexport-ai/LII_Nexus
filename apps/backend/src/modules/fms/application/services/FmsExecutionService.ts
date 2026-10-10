@@ -218,7 +218,7 @@ export class FmsExecutionService {
     }
   }
 
-  async getMyPendingTasks(employeeId: string, statusFilter?: string) {
+  async getMyPendingTasks(employeeId: string, statusFilter?: string, isAdmin?: boolean) {
     let statusClause = "AND fis.status = 'Under Process'";
     if (statusFilter === "all") {
       statusClause = "";
@@ -260,8 +260,10 @@ export class FmsExecutionService {
     `;
     const [rows] = await this.dbPool.query(query);
 
-    // Filter where employee is a doer or creator or completedBy
+    // Filter where employee is a doer or creator or completedBy (unless isAdmin is true)
     return rows.filter((row: any) => {
+      if (isAdmin) return true;
+
       let doers = [];
       try {
         doers = typeof row.doerEmployeeIds === 'string' ? JSON.parse(row.doerEmployeeIds) : row.doerEmployeeIds;
@@ -407,17 +409,24 @@ export class FmsExecutionService {
 
     if (!isAuthorized) {
       const [userRows] = await this.dbPool.query(`
-        SELECT u.id, r.name as role_name 
+        SELECT u.id, r.name as role_name, desig.title as designation_title
         FROM users u
         LEFT JOIN user_roles ur ON u.id = ur.user_id
         LEFT JOIN roles r ON ur.role_id = r.id
-        LEFT JOIN employees e ON e.user_id = u.id
+        LEFT JOIN employees e ON e.user_id = u.id OR e.id = u.id
+        LEFT JOIN designations desig ON e.designation_id = desig.id
         WHERE e.id = ? OR u.id = ?
       `, [employeeId, employeeId]);
       
-      const hasAdminRole = userRows.some((r: any) => 
-        r.role_name === 'System Admin' || r.role_name === 'Super Admin' || r.role_name === 'Admin' || r.role_name === 'CEO' || r.role_name === 'Director' || r.role_name === 'HOD'
-      );
+      const hasAdminRole = userRows.some((r: any) => {
+        const roleName = (r.role_name || '').toLowerCase();
+        const desigTitle = (r.designation_title || '').toLowerCase();
+        return (
+          roleName.includes('admin') || roleName.includes('management') ||
+          roleName === 'ceo' || roleName === 'director' || roleName === 'hod' ||
+          desigTitle.includes('admin') || desigTitle.includes('management') || desigTitle.includes('management executive')
+        );
+      });
       if (hasAdminRole) {
         isAuthorized = true;
       }

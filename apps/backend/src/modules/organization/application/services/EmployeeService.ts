@@ -5,6 +5,7 @@ import { IDesignationRepository } from "../../domain/repositories/IDesignationRe
 import { ConflictError, NotFoundError, ValidationError } from "../../../../core/domain/errors/DomainError";
 import { AuditService } from "../../../../shared/services/AuditService";
 import { CreateEmployeeInput, UpdateEmployeeInput } from "./types";
+import { EvaluationDispatchService } from "../../../performance-evaluation/application/services/EvaluationDispatchService";
 
 export class EmployeeService {
   constructor(
@@ -45,6 +46,10 @@ export class EmployeeService {
     await this.assertReferencesExist(input.departmentId, input.designationId, input.managerId);
 
     const employee = await this.employeeRepo.create({ id: uuid(), ...input });
+
+    // Automatically trigger evaluation dispatch to HOD & HR
+    await EvaluationDispatchService.dispatchEvaluationForNewEmployee(employee.id);
+
     await AuditService.record({
       actorUserId: actorId,
       action: "EMPLOYEE_CREATED",
