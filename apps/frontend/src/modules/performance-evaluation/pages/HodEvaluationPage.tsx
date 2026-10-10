@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { performanceEvaluationApi, EvaluationData } from "../api/performanceEvaluationApi";
 import { employeesApi } from "../../admin/organization/employees/api/employeesApi";
 
 export default function HodEvaluationPage() {
+  const [searchParams] = useSearchParams();
+  const urlEmployeeId = searchParams.get("employeeId");
   const [employees, setEmployees] = useState<any[]>([]);
   const [formData, setFormData] = useState<EvaluationData>({
-    employeeId: "",
+    employeeId: urlEmployeeId || "",
     evaluationPeriod: "",
     score: 0,
     comments: "",
@@ -20,8 +23,13 @@ export default function HodEvaluationPage() {
   const [message, setMessage] = useState<{type: "error" | "success", text: string} | null>(null);
 
   useEffect(() => {
-    employeesApi.listForDropdown().then(data => setEmployees(data)).catch(console.error);
-  }, []);
+    employeesApi.listForDropdown().then(data => {
+      setEmployees(data);
+      if (urlEmployeeId) {
+        setFormData(prev => ({ ...prev, employeeId: urlEmployeeId }));
+      }
+    }).catch(console.error);
+  }, [urlEmployeeId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

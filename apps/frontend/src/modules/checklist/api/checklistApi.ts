@@ -36,6 +36,11 @@ export const standaloneChecklistApi = {
     return res.data.data;
   },
 
+  update: async (id: string, data: Partial<CreateStandaloneChecklistDto>) => {
+    const res = await axiosInstance.put<{ success: boolean; message: string }>(`/standalone-checklists/${id}`, data);
+    return res.data;
+  },
+
   delete: async (id: string) => {
     const res = await axiosInstance.delete<{ success: boolean; message: string }>(`/standalone-checklists/${id}`);
     return res.data;

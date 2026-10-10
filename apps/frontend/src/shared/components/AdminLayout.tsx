@@ -311,8 +311,9 @@ export const SECTIONS: NavSection[] = [
   {
     key: "performance-evaluation",
     label: "Performance Evaluation",
-    allowedRoles: ["System Admin", "HOD", "HR", "CEO"],
+    allowedRoles: ["System Admin", "HOD", "HR", "CEO", "Management", "Management Executive"],
     items: [
+      { label: "List of Evaluations", to: "/admin/performance-evaluation/list" },
       { label: "HOD Evaluation", to: "/admin/performance-evaluation/hod" },
       { label: "HOD's Score List", to: "/admin/performance-evaluation/hod-score-list" },
       { label: "HR Evaluation", to: "/admin/performance-evaluation/hr" },

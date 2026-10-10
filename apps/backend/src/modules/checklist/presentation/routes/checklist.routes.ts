@@ -20,6 +20,7 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 import { requireAdmin } from "../../../../shared/middlewares/rbac.middleware";
 
 router.post("/standalone-checklists", authMiddleware, controller.createChecklist);
+router.put("/standalone-checklists/:id", authMiddleware, controller.updateChecklist);
 router.get("/standalone-checklists/my-dashboard", authMiddleware, controller.getMyDashboard);
 router.get("/standalone-checklists", authMiddleware, controller.getAllChecklists);
 router.delete("/standalone-checklists/:id", authMiddleware, requireAdmin(), controller.deleteChecklist);

@@ -33,12 +33,15 @@ export interface UserPublic {
   departmentId?: string | null;
   designation?: string | null;
   designationId?: string | null;
+  hodId?: string | null;
+  hodName?: string | null;
+  managerId?: string | null;
 }
 
 export function toPublicUser(
   user: User, 
   roles: string[] = [], 
-  extra: { department?: string | null; departmentId?: string | null; designation?: string | null; designationId?: string | null } = {}
+  extra: { department?: string | null; departmentId?: string | null; designation?: string | null; designationId?: string | null; hodId?: string | null; hodName?: string | null; managerId?: string | null } = {}
 ): UserPublic {
   return {
     id: user.id,
@@ -56,5 +59,8 @@ export function toPublicUser(
     departmentId: extra.departmentId ?? null,
     designation: extra.designation ?? null,
     designationId: extra.designationId ?? null,
+    hodId: extra.hodId ?? null,
+    hodName: extra.hodName ?? null,
+    managerId: extra.managerId ?? null,
   };
 }

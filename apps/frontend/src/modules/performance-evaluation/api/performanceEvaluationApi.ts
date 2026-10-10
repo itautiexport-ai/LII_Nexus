@@ -23,7 +23,41 @@ export interface EvaluationData {
   attendancePercentage?: number;
 }
 
+export interface EvaluationListItem {
+  employeeId: string;
+  employeeCode: string;
+  fullName: string;
+  departmentName: string;
+  designationTitle: string;
+  hodId: string | null;
+  hodName: string;
+  hodEvaluation: {
+    id: string;
+    score: number;
+    period: string;
+    comments: string;
+    createdAt: string;
+  } | null;
+  hrEvaluation: {
+    id: string;
+    score: number;
+    period: string;
+    comments: string;
+    createdAt: string;
+  } | null;
+  ermScore: number;
+  ermGapScore: number;
+  rank: number;
+  isPendingHod: boolean;
+  isPendingHr: boolean;
+}
+
 export const performanceEvaluationApi = {
+  getEvaluationList: async (): Promise<EvaluationListItem[]> => {
+    const response = await axiosInstance.get("/performance-evaluation/list");
+    return response.data.data || [];
+  },
+
   createHodEvaluation: async (data: EvaluationData) => {
     const response = await axiosInstance.post("/performance-evaluation/hod", data);
     return response.data;

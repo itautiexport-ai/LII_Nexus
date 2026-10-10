@@ -165,7 +165,7 @@ function injectStyles() {
       color: #9ca3af;
       font-size: 13px;
     }
-    
+
     .enhanced-select-hidden {
       position: absolute !important;
       width: 1px !important;
@@ -198,58 +198,58 @@ class SelectEnhancer {
   constructor(select: HTMLSelectElement) {
     this.select = select as EnhancedHTMLSelectElement;
     this.select.__enhancer = this;
-    
+
     this.container = document.createElement("div");
     this.container.className = "custom-select-container";
-    
+
     this.copyStyles();
-    
+
     this.trigger = document.createElement("div");
     this.trigger.className = "custom-select-trigger";
     this.trigger.tabIndex = this.select.disabled ? -1 : 0;
     if (this.select.disabled) this.trigger.classList.add("disabled");
-    
+
     this.triggerText = document.createElement("span");
     this.triggerText.className = "custom-select-text";
-    
+
     const arrow = document.createElement("span");
     arrow.className = "custom-select-arrow";
     arrow.textContent = "▼";
-    
+
     this.trigger.appendChild(this.triggerText);
     this.trigger.appendChild(arrow);
     this.container.appendChild(this.trigger);
-    
+
     this.dropdown = document.createElement("div");
     this.dropdown.className = "custom-select-dropdown";
-    
+
     const searchContainer = document.createElement("div");
     searchContainer.className = "custom-select-search-container";
-    
+
     this.searchInput = document.createElement("input");
     this.searchInput.type = "text";
     this.searchInput.className = "custom-select-search-input";
     this.searchInput.placeholder = "Search...";
-    
+
     searchContainer.appendChild(this.searchInput);
     this.dropdown.appendChild(searchContainer);
-    
+
     this.optionsList = document.createElement("div");
     this.optionsList.className = "custom-select-options-list";
     this.dropdown.appendChild(this.optionsList);
-    
+
     this.select.parentNode?.insertBefore(this.container, this.select);
     this.select.classList.add("enhanced-select-hidden");
-    
+
     this.buildOptions();
     this.updateSelectedText();
-    
+
     this.initEvents();
-    
+
     this.observer = new MutationObserver((mutations) => {
       let optionsChanged = false;
       let stateChanged = false;
-      
+
       for (const mutation of mutations) {
         if (mutation.type === "childList") {
           optionsChanged = true;
@@ -261,7 +261,7 @@ class SelectEnhancer {
           }
         }
       }
-      
+
       if (optionsChanged) {
         this.buildOptions();
         this.updateSelectedText();
@@ -270,7 +270,7 @@ class SelectEnhancer {
         this.updateState();
       }
     });
-    
+
     this.observer.observe(this.select, {
       childList: true,
       subtree: true,
@@ -289,15 +289,19 @@ class SelectEnhancer {
     const originalStyle = this.select.getAttribute("style");
     if (originalStyle) {
       this.container.setAttribute("style", originalStyle);
+      this.container.style.border = "none";
+      this.container.style.padding = "0";
+      this.container.style.background = "transparent";
+      this.container.style.boxShadow = "none";
     }
-    
+
     const computedStyle = window.getComputedStyle(this.select);
     if (computedStyle.display === "block") {
       this.container.style.display = "block";
     } else {
       this.container.style.display = "inline-block";
     }
-    
+
     if (computedStyle.width && computedStyle.width !== "auto") {
       this.container.style.width = computedStyle.width;
     } else if (this.select.style.width) {
@@ -321,7 +325,7 @@ class SelectEnhancer {
   buildOptions() {
     this.optionsList.innerHTML = "";
     this.filteredOptions = [];
-    
+
     const options = Array.from(this.select.options);
     if (options.length === 0) {
       const noResults = document.createElement("div");
@@ -330,23 +334,23 @@ class SelectEnhancer {
       this.optionsList.appendChild(noResults);
       return;
     }
-    
+
     options.forEach((opt, index) => {
       const optDiv = document.createElement("div");
       optDiv.className = "custom-select-option";
       optDiv.textContent = opt.text;
       optDiv.dataset.value = opt.value;
       optDiv.dataset.index = index.toString();
-      
+
       if (opt.selected) {
         optDiv.classList.add("selected");
       }
-      
+
       optDiv.addEventListener("click", (e) => {
         e.stopPropagation();
         this.selectOption(opt.value);
       });
-      
+
       this.optionsList.appendChild(optDiv);
       this.filteredOptions.push({
         element: optDiv,
@@ -363,7 +367,7 @@ class SelectEnhancer {
     } else {
       this.triggerText.textContent = "";
     }
-    
+
     const options = this.optionsList.querySelectorAll(".custom-select-option");
     options.forEach((opt) => {
       const div = opt as HTMLDivElement;
@@ -395,7 +399,7 @@ class SelectEnhancer {
     window.addEventListener("scroll", () => {
       if (this.isOpen) this.reposition();
     }, { passive: true });
-    
+
     window.addEventListener("resize", () => {
       if (this.isOpen) this.reposition();
     }, { passive: true });
@@ -410,7 +414,7 @@ class SelectEnhancer {
 
     this.trigger.addEventListener("keydown", (e) => {
       if (this.select.disabled) return;
-      
+
       switch (e.key) {
         case "Enter":
         case "Space":
@@ -424,20 +428,20 @@ class SelectEnhancer {
 
     this.dropdown.addEventListener("keydown", (e) => {
       const visibleOpts = this.getVisibleOptions();
-      
+
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
           this.highlightedIndex = (this.highlightedIndex + 1) % visibleOpts.length;
           this.highlightOption(visibleOpts);
           break;
-          
+
         case "ArrowUp":
           e.preventDefault();
           this.highlightedIndex = (this.highlightedIndex - 1 + visibleOpts.length) % visibleOpts.length;
           this.highlightOption(visibleOpts);
           break;
-          
+
         case "Enter":
           e.preventDefault();
           if (this.highlightedIndex >= 0 && this.highlightedIndex < visibleOpts.length) {
@@ -445,13 +449,13 @@ class SelectEnhancer {
             this.selectOption(optVal);
           }
           break;
-          
+
         case "Escape":
           e.preventDefault();
           this.close();
           this.trigger.focus();
           break;
-          
+
         case "Tab":
           this.close();
           break;
@@ -467,7 +471,7 @@ class SelectEnhancer {
     this.optionsList.querySelectorAll(".custom-select-option").forEach((opt) => {
       opt.classList.remove("highlighted");
     });
-    
+
     const highlighted = visibleOpts[this.highlightedIndex];
     if (highlighted) {
       highlighted.element.classList.add("highlighted");
@@ -478,7 +482,7 @@ class SelectEnhancer {
   filterOptions() {
     const query = this.searchInput.value.toLowerCase().trim();
     let hasMatch = false;
-    
+
     this.filteredOptions.forEach((opt) => {
       if (opt.text.includes(query)) {
         opt.element.style.display = "";
@@ -487,17 +491,17 @@ class SelectEnhancer {
         opt.element.style.display = "none";
       }
     });
-    
+
     const existingNoRes = this.optionsList.querySelector(".custom-select-no-results");
     if (existingNoRes) existingNoRes.remove();
-    
+
     if (!hasMatch) {
       const noResults = document.createElement("div");
       noResults.className = "custom-select-no-results";
       noResults.textContent = "No matches found";
       this.optionsList.appendChild(noResults);
     }
-    
+
     this.highlightedIndex = 0;
     this.highlightOption(this.getVisibleOptions());
   }
@@ -514,15 +518,15 @@ class SelectEnhancer {
     if (this.isOpen) return;
     this.isOpen = true;
     this.container.classList.add("open");
-    
+
     document.body.appendChild(this.dropdown);
     this.dropdown.classList.add("open");
-    
+
     this.reposition();
-    
+
     this.searchInput.value = "";
     this.filterOptions();
-    
+
     setTimeout(() => {
       this.searchInput.focus();
     }, 50);
@@ -530,17 +534,17 @@ class SelectEnhancer {
 
   reposition() {
     if (!this.isOpen) return;
-    
+
     const rect = this.trigger.getBoundingClientRect();
     const popupWidth = Math.max(rect.width, 320);
     this.dropdown.style.left = `${rect.left}px`;
     this.dropdown.style.width = `${popupWidth}px`;
     this.dropdown.style.minWidth = `320px`;
-    
+
     const dropdownHeight = this.dropdown.offsetHeight || 280;
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    
+
     if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
       this.dropdown.style.top = `${rect.top - dropdownHeight - 4}px`;
     } else {
@@ -553,27 +557,30 @@ class SelectEnhancer {
     this.isOpen = false;
     this.container.classList.remove("open");
     this.dropdown.classList.remove("open");
-    
+
     setTimeout(() => {
       if (!this.isOpen && this.dropdown.parentNode) {
         this.dropdown.parentNode.removeChild(this.dropdown);
       }
     }, 180);
-    
+
     this.trigger.classList.remove("focused");
   }
 
   selectOption(value: string) {
-    if (this.select.value !== value) {
+    const nativeValueSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
+    if (nativeValueSetter) {
+      nativeValueSetter.call(this.select, value);
+    } else {
       this.select.value = value;
-      
-      const changeEvent = new Event("change", { bubbles: true });
-      this.select.dispatchEvent(changeEvent);
-      
-      const inputEvent = new Event("input", { bubbles: true });
-      this.select.dispatchEvent(inputEvent);
     }
-    
+
+    const changeEvent = new Event("change", { bubbles: true });
+    this.select.dispatchEvent(changeEvent);
+
+    const inputEvent = new Event("input", { bubbles: true });
+    this.select.dispatchEvent(inputEvent);
+
     this.updateSelectedText();
     this.close();
     this.trigger.focus();
