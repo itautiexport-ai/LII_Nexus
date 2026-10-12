@@ -60,10 +60,22 @@ export class MySqlDelegationRepository implements IDelegationRepository {
     return tasks.map((t) => ({ ...t, files: filesByTask.get(t.id) ?? [] }));
   }
 
-  async list(params: { page: number; pageSize: number; assignedTo?: string | string[]; assignedBy?: string | string[]; status?: DelegationBaseStatus }) {
+  async list(params: { page: number; pageSize: number; assignedTo?: string | string[]; assignedBy?: string | string[]; involvingUser?: string | string[]; status?: DelegationBaseStatus }) {
     const offset = (params.page - 1) * params.pageSize;
     const conditions = ["dt.deleted_at IS NULL"];
     const values: unknown[] = [];
+    if (params.involvingUser) {
+      if (Array.isArray(params.involvingUser)) {
+        if (params.involvingUser.length > 0) {
+          const ph = params.involvingUser.map(() => "?").join(",");
+          conditions.push(`(dt.assigned_to IN (${ph}) OR dt.assigned_by IN (${ph}))`);
+          values.push(...params.involvingUser, ...params.involvingUser);
+        }
+      } else {
+        conditions.push(`(dt.assigned_to = ? OR dt.assigned_by = ?)`);
+        values.push(params.involvingUser, params.involvingUser);
+      }
+    }
     if (params.assignedTo) {
       if (Array.isArray(params.assignedTo)) {
         if (params.assignedTo.length > 0) {

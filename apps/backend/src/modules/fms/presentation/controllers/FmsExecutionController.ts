@@ -33,7 +33,20 @@ export class FmsExecutionController {
   getInstances = async (req: Request, res: Response) => {
     try {
       const { fmsManagerId } = req.params;
-      const instances = await this.service.getInstancesByManagerId(fmsManagerId);
+      const userId = (req as any).user?.sub;
+      let employeeId: string | null = null;
+      let isAdmin = false;
+
+      if (userId) {
+        const [empRows] = await pool.query(
+          "SELECT id FROM employees WHERE user_id = ?",
+          [userId]
+        );
+        employeeId = (empRows as any)[0]?.id || null;
+        isAdmin = await isAdminUser(userId);
+      }
+
+      const instances = await this.service.getInstancesByManagerId(fmsManagerId, employeeId, isAdmin);
       res.json({ success: true, data: instances });
     } catch (err: any) {
       console.error(err);

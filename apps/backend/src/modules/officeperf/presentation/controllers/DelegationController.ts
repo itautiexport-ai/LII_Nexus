@@ -24,8 +24,8 @@ export const DelegationController = {
     const status = req.query.status as DelegationBaseStatus | undefined;
     const scope = req.query.scope as "assigned_to_me" | "assigned_by_me" | "all" | undefined;
     const employeeId = req.query.employeeId as string | undefined;
-    const override = await hasPermission(req.user!.sub, "delegation.task.view");
-    const { items, total } = await service.list(page, pageSize, req.user!.sub, override, status, scope, employeeId);
+    const canViewAll = await isAdminUser(req.user!.sub);
+    const { items, total } = await service.list(page, pageSize, req.user!.sub, canViewAll, status, scope, employeeId);
     return ok(res, items, { page, pageSize, totalItems: total });
   },
 
@@ -34,8 +34,8 @@ export const DelegationController = {
   },
 
   async getById(req: AuthenticatedRequest, res: Response) {
-    const override = await hasPermission(req.user!.sub, "delegation.task.view");
-    return ok(res, await service.getById(req.params.id, req.user!.sub, override));
+    const canViewAll = await isAdminUser(req.user!.sub);
+    return ok(res, await service.getById(req.params.id, req.user!.sub, canViewAll));
   },
 
   async create(req: AuthenticatedRequest, res: Response) {

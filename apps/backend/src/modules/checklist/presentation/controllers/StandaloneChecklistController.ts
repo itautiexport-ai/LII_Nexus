@@ -32,7 +32,9 @@ export class StandaloneChecklistController {
   };
 
   getAllChecklists = async (req: AuthenticatedRequest, res: Response) => {
-    const checklists = await this.service.getAllChecklists();
+    const userId = req.user!.sub;
+    const isAllowed = await isAdminUser(userId);
+    const checklists = await this.service.getAllChecklists(userId, isAllowed);
     res.json({ success: true, data: checklists });
   };
 

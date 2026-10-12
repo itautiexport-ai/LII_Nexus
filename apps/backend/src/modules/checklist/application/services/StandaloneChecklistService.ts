@@ -87,7 +87,20 @@ export class StandaloneChecklistService {
     return checklist;
   }
 
-  async getAllChecklists(): Promise<any[]> {
+  async getAllChecklists(userId?: string, isAdmin?: boolean): Promise<any[]> {
+    let whereClause = "WHERE c.deleted_at IS NULL";
+    const queryParams: any[] = [];
+
+    if (!isAdmin && userId) {
+      const [empRows] = await pool.query<any[]>(
+        "SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL",
+        [userId]
+      );
+      const employeeId = empRows[0]?.id;
+      whereClause += " AND (c.assign_to = ? OR c.assigned_by = ? OR c.assign_to = ? OR c.assigned_by = ?)";
+      queryParams.push(employeeId || userId, employeeId || userId, userId, userId);
+    }
+
     const [rows] = await pool.query<any[]>(
       `SELECT c.*,
         e1.full_name as assigner_name,
@@ -95,8 +108,9 @@ export class StandaloneChecklistService {
        FROM standalone_checklists c
        LEFT JOIN employees e1 ON e1.id = c.assigned_by
        LEFT JOIN employees e2 ON e2.id = c.assign_to
-       WHERE c.deleted_at IS NULL
-       ORDER BY c.created_at DESC`
+       ${whereClause}
+       ORDER BY c.created_at DESC`,
+      queryParams
     );
     return rows.map((row: any) => ({
       id: row.id,

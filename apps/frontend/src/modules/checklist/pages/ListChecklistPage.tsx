@@ -8,8 +8,8 @@ import { TableFreezeModal } from "../../../shared/components/TableFreezeModal";
 import "./Checklist.css";
 
 const CHECKLIST_COLUMNS = [
-  { key: "taskName", label: "Task Name", width: 280 },
-  { key: "assignee", label: "Assigned To", width: 160 },
+  { key: "taskName", label: "Task Name", width: 220 },
+  { key: "assignee", label: "Assigned To", width: 140 },
   { key: "plannedDate", label: "Planned Date", width: 160 },
   { key: "priority", label: "Priority", width: 100 },
   { key: "mode", label: "Mode", width: 100 },
@@ -64,10 +64,12 @@ export function ListChecklistPage() {
   const fetchChecklists = () => {
     standaloneChecklistApi.getAll().then(data => {
       if (user && !canEditOrViewAll) {
+        const myName = (user.fullName || "").trim().toLowerCase();
         const filtered = data.filter(c =>
           (c as any).assignTo === user.id ||
-          c.assignee_name === user.fullName ||
-          c.assigner_name === user.fullName ||
+          (c as any).assign_to === user.id ||
+          (c.assignee_name || "").trim().toLowerCase() === myName ||
+          (c.assigner_name || "").trim().toLowerCase() === myName ||
           (c as any).assignBy === user.id ||
           c.assignedBy === user.id
         );
@@ -156,20 +158,7 @@ export function ListChecklistPage() {
                 <tbody>
                   {checklists.map(c => (
                     <tr key={c.id} className="chk-tr">
-                      <td
-                        style={getStickyCellStyle(0, {
-                          customStyle: {
-                            backgroundColor: "#ffffff",
-                            whiteSpace: "normal",
-                            wordBreak: "break-word",
-                            overflowWrap: "break-word",
-                            lineHeight: "1.45",
-                          },
-                        })}
-                        className="chk-td chk-td-strong"
-                      >
-                        {(c as any).task_name || c.taskName}
-                      </td>
+                      <td style={getStickyCellStyle(0, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td chk-td-strong">{(c as any).task_name || c.taskName}</td>
                       <td style={getStickyCellStyle(1, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">
                         {(c as any).assignee_name || "Unknown"}
                       </td>

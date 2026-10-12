@@ -15,13 +15,18 @@ export async function isSystemAdminUser(userId: string): Promise<boolean> {
     WHERE u.id = ?
   `, [userId]);
 
-  return rows.some((r: any) =>
-    r.role_name === 'System Admin' ||
-    r.role_name === 'Super Admin' ||
-    r.role_name === 'System Administrator' ||
-    r.email === 'admin' ||
-    r.email === 'admin@liinexus.com'
-  );
+  return rows.some((r: any) => {
+    const roleName = (r.role_name || '').toLowerCase().trim();
+    const email = (r.email || '').toLowerCase().trim();
+    return (
+      roleName === 'system admin' ||
+      roleName === 'super admin' ||
+      roleName === 'system administrator' ||
+      roleName.includes('system admin') ||
+      email === 'admin' ||
+      email === 'admin@liinexus.com'
+    );
+  });
 }
 
 export async function isAdminUser(userId: string): Promise<boolean> {
@@ -35,11 +40,21 @@ export async function isAdminUser(userId: string): Promise<boolean> {
     WHERE u.id = ?
   `, [userId]);
 
-  return rows.some((r: any) =>
-    r.role_name === 'System Admin' || r.role_name === 'Super Admin' || r.role_name === 'Admin' ||
-    (r.designation_title && r.designation_title.toLowerCase().includes('admin')) ||
-    r.email === 'admin' || r.email === 'admin@liinexus.com'
-  );
+  return rows.some((r: any) => {
+    const roleName = (r.role_name || '').toLowerCase().trim();
+    const desigTitle = (r.designation_title || '').toLowerCase().trim();
+    const email = (r.email || '').toLowerCase().trim();
+
+    return (
+      email === 'admin' || email === 'admin@liinexus.com' ||
+      roleName === 'system admin' || roleName === 'super admin' ||
+      roleName.includes('admin') ||
+      roleName.includes('management') ||
+      desigTitle === 'admin' || desigTitle.includes('admin') ||
+      desigTitle === 'management' || desigTitle.includes('management') ||
+      desigTitle === 'management executive' || desigTitle.includes('management executive')
+    );
+  });
 }
 
 export function requireSystemAdmin() {
