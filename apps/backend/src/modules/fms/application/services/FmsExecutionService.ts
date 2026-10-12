@@ -302,10 +302,11 @@ export class FmsExecutionService {
     }));
   }
 
-  async getInstancesByManagerId(fmsManagerId: string) {
+  async getInstancesByManagerId(fmsManagerId: string, employeeId?: string | null, isAdmin?: boolean) {
     const query = `
       SELECT 
         fi.id as instanceId,
+        fi.creator_id as creatorId,
         fi.reference_title as referenceTitle,
         fi.status as instanceStatus,
         fi.created_at as createdAt,
@@ -315,9 +316,11 @@ export class FmsExecutionService {
         fis.fms_step_id as fmsStepId,
         fs.step_name as stepName,
         fs.sequence_order as sequenceOrder,
+        fs.doer_employee_ids as doerEmployeeIds,
         fis.status as stepStatus,
         fis.input_data as inputData,
         fis.completed_at as completedAt,
+        fis.completed_by as completedBy,
         ce.full_name as completedByName
       FROM fms_instances fi
       LEFT JOIN employees e ON fi.creator_id = e.id
@@ -331,10 +334,13 @@ export class FmsExecutionService {
 
     // Group by instance
     const instancesMap = new Map<string, any>();
+    const allocatedInstances = new Set<string>();
+
     for (const row of rows) {
       if (!instancesMap.has(row.instanceId)) {
         instancesMap.set(row.instanceId, {
           id: row.instanceId,
+          creatorId: row.creatorId,
           referenceTitle: row.referenceTitle,
           status: row.instanceStatus,
           createdAt: row.createdAt,
@@ -343,7 +349,24 @@ export class FmsExecutionService {
           steps: []
         });
       }
+
+      if (row.creatorId && employeeId && row.creatorId === employeeId) {
+        allocatedInstances.add(row.instanceId);
+      }
+
       if (row.stepId) {
+        let doers: any[] = [];
+        try {
+          doers = typeof row.doerEmployeeIds === 'string' ? JSON.parse(row.doerEmployeeIds) : (row.doerEmployeeIds || []);
+        } catch (_e) {
+          doers = [];
+        }
+        if (!Array.isArray(doers)) doers = [];
+
+        if (employeeId && (doers.includes(employeeId) || row.completedBy === employeeId)) {
+          allocatedInstances.add(row.instanceId);
+        }
+
         let parsedInputData = {};
         try {
           parsedInputData = typeof row.inputData === 'string' && row.inputData ? JSON.parse(row.inputData) : (row.inputData || {});
@@ -364,7 +387,11 @@ export class FmsExecutionService {
       }
     }
 
-    return Array.from(instancesMap.values());
+    if (isAdmin) {
+      return Array.from(instancesMap.values());
+    }
+
+    return Array.from(instancesMap.values()).filter(inst => allocatedInstances.has(inst.id));
   }
 
   async completeStep(employeeId: string, instanceStepId: string, dto: CompleteFmsStepDto) {

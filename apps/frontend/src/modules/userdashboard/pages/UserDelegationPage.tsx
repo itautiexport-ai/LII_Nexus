@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import { delegationApi, DelegatedTaskRecord } from "../../officeperf/delegation/api/delegationApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
+import { useIsAdminOrManagement } from "../../auth/hooks/usePermissions";
 import "./UserDashboardPage.css";
 
 interface DisplayDelegation extends DelegatedTaskRecord {
@@ -10,7 +11,7 @@ interface DisplayDelegation extends DelegatedTaskRecord {
 
 export function UserDelegationPage() {
   const user = useAuthStore(state => state.user);
-  const isAdmin = user?.roles.includes("System Admin");
+  const isAdmin = useIsAdminOrManagement();
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [currentEmployee, setCurrentEmployee] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"received" | "delegated">("delegated");

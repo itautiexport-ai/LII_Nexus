@@ -35,17 +35,11 @@ export class DelegationService {
       return this.repo.list({ page, pageSize, assignedBy: myIds, status });
     }
 
-    if (scope === "all") {
-      if (hasViewOverride) {
-        return this.repo.list({ page, pageSize, status });
-      }
-      return this.repo.list({ page, pageSize, assignedTo: myIds, status });
-    }
-
     if (hasViewOverride) {
       return this.repo.list({ page, pageSize, status });
     }
-    return this.repo.list({ page, pageSize, assignedTo: myIds, status });
+
+    return this.repo.list({ page, pageSize, involvingUser: myIds, status });
   }
 
   async listIDelegated(actorUserId: string) {

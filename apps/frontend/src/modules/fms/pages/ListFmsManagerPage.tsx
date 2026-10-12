@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fmsApi, FmsManager } from "../api/fmsApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
-import { useCanDelete } from "../../auth/hooks/usePermissions";
+import { useCanDelete, useIsAdminOrManagement } from "../../auth/hooks/usePermissions";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import "./Fms.css";
 
@@ -12,13 +12,14 @@ export function ListFmsManagerPage() {
   const [loading, setLoading] = useState(true);
   const user = useAuthStore(state => state.user);
   const canDelete = useCanDelete();
+  const isAdminOrManagement = useIsAdminOrManagement();
 
   const fetchFmsList = async () => {
     setLoading(true);
     try {
       const allManagers = await fmsApi.getAll();
       
-      if (user && !user.roles.includes("System Admin")) {
+      if (user && !isAdminOrManagement) {
         const empRes = await axiosInstance.get("/employees/me");
         const myEmployeeId = empRes.data?.data?.id;
         

@@ -23,11 +23,14 @@ export function useIsAdminOrManagement(): boolean {
   const user = useAuthStore((s) => s.user);
   if (!user) return false;
   const isSysAdmin = useIsSystemAdmin();
-  const desig = (user.designation || "").toLowerCase();
-  const isDesignationMatch = desig.includes("admin") || desig.includes("management") || desig.includes("management executive");
+  const desig = (user.designation || "").trim().toLowerCase();
+  const isDesignationMatch = 
+    desig === "admin" || desig.includes("admin") ||
+    desig === "management" || desig.includes("management") ||
+    desig === "management executive" || desig.includes("management executive");
   const isRoleMatch = user.roles?.some((r) => {
-    const lower = r.toLowerCase();
-    return lower.includes("admin") || lower.includes("management");
+    const lower = r.toLowerCase().trim();
+    return lower === "system admin" || lower === "super admin" || lower.includes("admin") || lower.includes("management");
   }) ?? false;
   return isSysAdmin || isDesignationMatch || isRoleMatch;
 }

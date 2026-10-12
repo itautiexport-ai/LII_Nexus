@@ -64,10 +64,12 @@ export function ListChecklistPage() {
   const fetchChecklists = () => {
     standaloneChecklistApi.getAll().then(data => {
       if (user && !canEditOrViewAll) {
+        const myName = (user.fullName || "").trim().toLowerCase();
         const filtered = data.filter(c => 
           (c as any).assignTo === user.id || 
-          c.assignee_name === user.fullName ||
-          c.assigner_name === user.fullName ||
+          (c as any).assign_to === user.id ||
+          (c.assignee_name || "").trim().toLowerCase() === myName ||
+          (c.assigner_name || "").trim().toLowerCase() === myName ||
           (c as any).assignBy === user.id ||
           c.assignedBy === user.id
         );

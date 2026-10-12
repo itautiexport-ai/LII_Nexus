@@ -8,27 +8,30 @@ const roleRepository = new MySqlRoleRepository();
 
 export async function isSystemAdminUser(userId: string): Promise<boolean> {
   const [rows] = await pool.query<any[]>(`
-    SELECT r.name as role_name, r.code as role_code, u.email
+    SELECT r.name as role_name, u.email
     FROM users u
     LEFT JOIN user_roles ur ON u.id = ur.user_id
     LEFT JOIN roles r ON ur.role_id = r.id
     WHERE u.id = ?
   `, [userId]);
 
-  return rows.some((r: any) => 
-    r.role_name === 'System Admin' || 
-    r.role_name === 'Super Admin' || 
-    r.role_name === 'System Administrator' ||
-    r.role_code === 'system_admin' || 
-    r.role_code === 'super_admin' ||
-    r.email === 'admin' ||
-    r.email === 'admin@liinexus.com'
-  );
+  return rows.some((r: any) => {
+    const roleName = (r.role_name || '').toLowerCase().trim();
+    const email = (r.email || '').toLowerCase().trim();
+    return (
+      roleName === 'system admin' || 
+      roleName === 'super admin' || 
+      roleName === 'system administrator' ||
+      roleName.includes('system admin') ||
+      email === 'admin' ||
+      email === 'admin@liinexus.com'
+    );
+  });
 }
 
 export async function isAdminUser(userId: string): Promise<boolean> {
   const [rows] = await pool.query<any[]>(`
-    SELECT r.name as role_name, r.code as role_code, desig.title as designation_title, u.email
+    SELECT r.name as role_name, desig.title as designation_title, u.email
     FROM users u
     LEFT JOIN user_roles ur ON u.id = ur.user_id
     LEFT JOIN roles r ON ur.role_id = r.id
@@ -38,18 +41,18 @@ export async function isAdminUser(userId: string): Promise<boolean> {
   `, [userId]);
 
   return rows.some((r: any) => {
-    const roleName = (r.role_name || '').toLowerCase();
-    const roleCode = (r.role_code || '').toLowerCase();
-    const desigTitle = (r.designation_title || '').toLowerCase();
-    const email = (r.email || '').toLowerCase();
+    const roleName = (r.role_name || '').toLowerCase().trim();
+    const desigTitle = (r.designation_title || '').toLowerCase().trim();
+    const email = (r.email || '').toLowerCase().trim();
 
     return (
       email === 'admin' || email === 'admin@liinexus.com' ||
-      roleName.includes('admin') || roleCode.includes('admin') ||
-      roleName.includes('management') || roleCode.includes('management') ||
-      desigTitle.includes('admin') ||
-      desigTitle.includes('management') ||
-      desigTitle.includes('management executive')
+      roleName === 'system admin' || roleName === 'super admin' ||
+      roleName.includes('admin') ||
+      roleName.includes('management') ||
+      desigTitle === 'admin' || desigTitle.includes('admin') ||
+      desigTitle === 'management' || desigTitle.includes('management') ||
+      desigTitle === 'management executive' || desigTitle.includes('management executive')
     );
   });
 }
