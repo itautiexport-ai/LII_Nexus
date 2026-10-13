@@ -211,6 +211,14 @@
   vertical-align: middle;
 }
 
+.chk-td:nth-child(1),
+.chk-td:nth-child(2) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
 .chk-td-strong {
   font-weight: 600;
   color: #111827;

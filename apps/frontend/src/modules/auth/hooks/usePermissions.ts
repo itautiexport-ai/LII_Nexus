@@ -24,14 +24,18 @@ export function useIsAdminOrManagement(): boolean {
   if (!user) return false;
   const isSysAdmin = useIsSystemAdmin();
   const desig = (user.designation || "").trim().toLowerCase();
-  const isDesignationMatch =
-    desig === "admin" || desig.includes("admin") ||
-    desig === "management" || desig.includes("management") ||
-    desig === "management executive" || desig.includes("management executive");
-  const isRoleMatch = user.roles?.some((r) => {
-    const lower = r.toLowerCase().trim();
-    return lower === "system admin" || lower === "super admin" || lower.includes("admin") || lower.includes("management");
-  }) ?? false;
+  const elevatedAccessNames = new Set([
+    "admin",
+    "system admin",
+    "system administrator",
+    "super admin",
+    "management",
+    "management executive",
+  ]);
+  const isDesignationMatch = elevatedAccessNames.has(desig);
+  const isRoleMatch = user.roles?.some((r) =>
+    elevatedAccessNames.has(r.toLowerCase().trim())
+  ) ?? false;
   return isSysAdmin || isDesignationMatch || isRoleMatch;
 }
 

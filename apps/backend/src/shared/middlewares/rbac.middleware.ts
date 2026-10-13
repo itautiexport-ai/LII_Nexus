@@ -22,7 +22,6 @@ export async function isSystemAdminUser(userId: string): Promise<boolean> {
       roleName === 'system admin' ||
       roleName === 'super admin' ||
       roleName === 'system administrator' ||
-      roleName.includes('system admin') ||
       email === 'admin' ||
       email === 'admin@liinexus.com'
     );
@@ -45,14 +44,25 @@ export async function isAdminUser(userId: string): Promise<boolean> {
     const desigTitle = (r.designation_title || '').toLowerCase().trim();
     const email = (r.email || '').toLowerCase().trim();
 
+    const elevatedRoleNames = [
+      'admin',
+      'system admin',
+      'system administrator',
+      'super admin',
+      'management',
+      'management executive',
+    ];
+    const elevatedDesignationNames = [
+      'admin',
+      'management',
+      'management executive',
+    ];
+
     return (
-      email === 'admin' || email === 'admin@liinexus.com' ||
-      roleName === 'system admin' || roleName === 'super admin' ||
-      roleName.includes('admin') ||
-      roleName.includes('management') ||
-      desigTitle === 'admin' || desigTitle.includes('admin') ||
-      desigTitle === 'management' || desigTitle.includes('management') ||
-      desigTitle === 'management executive' || desigTitle.includes('management executive')
+      email === 'admin' ||
+      email === 'admin@liinexus.com' ||
+      elevatedRoleNames.includes(roleName) ||
+      elevatedDesignationNames.includes(desigTitle)
     );
   });
 }
