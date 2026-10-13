@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { FmsExecutionService } from "../../application/services/FmsExecutionService";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
+import { isAdminUser } from "../../../../shared/middlewares/rbac.middleware";
 
 export class FmsExecutionController {
   constructor(private service: FmsExecutionService) {}
