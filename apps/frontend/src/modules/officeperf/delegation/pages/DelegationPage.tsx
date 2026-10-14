@@ -44,6 +44,17 @@ export default function DelegationPage() {
   const [extensionRequestedDate, setExtensionRequestedDate] = useState("");
   const [isSubmittingExtension, setIsSubmittingExtension] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const availableColumns = useMemo(() => [
     { key: "select", label: "Select Checkbox", width: 44 },
     { key: "title", label: "Task Title", width: 220 },
@@ -364,26 +375,26 @@ export default function DelegationPage() {
       </div>
 
       {/* Metrics Summary Strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fit, minmax(200px, 1fr))", gap: isMobile ? 8 : 12, marginBottom: 16 }}>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: isMobile ? "10px 12px" : "12px 16px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Delegated</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginTop: 4 }}>{totalItems || list.length}</div>
+          <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: "#0f172a", marginTop: 4 }}>{totalItems || list.length}</div>
         </div>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: isMobile ? "10px 12px" : "12px 16px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pending / Due Tasks</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b", marginTop: 4 }}>
+          <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: "#f59e0b", marginTop: 4 }}>
             {list.filter(t => t.displayStatus === "pending" || t.displayStatus === "running").length}
           </div>
         </div>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: isMobile ? "10px 12px" : "12px 16px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Completed Tasks</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#10b981", marginTop: 4 }}>
+          <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: "#10b981", marginTop: 4 }}>
             {list.filter(t => t.displayStatus === "completed").length}
           </div>
         </div>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px" }}>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: isMobile ? "10px 12px" : "12px 16px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Historical Delayed</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#ef4444", marginTop: 4 }}>
+          <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: "#ef4444", marginTop: 4 }}>
             {list.filter(t => t.displayStatus === "delayed").length}
           </div>
         </div>
@@ -412,17 +423,18 @@ export default function DelegationPage() {
         </form>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #ddd" }}>
-        <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #ddd", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <button
             onClick={() => { setTab("received"); setSelectedIds([]); }}
             style={{
-              padding: "8px 16px",
+              padding: "8px 14px",
               border: "none",
               background: "none",
               borderBottom: tab === "received" ? "2px solid #4a90d9" : "2px solid transparent",
               fontWeight: tab === "received" ? 600 : 400,
-              cursor: "pointer"
+              cursor: "pointer",
+              whiteSpace: "nowrap"
             }}
           >
             Assigned to Me ({received.length})
@@ -430,7 +442,7 @@ export default function DelegationPage() {
           <button
             onClick={() => { setTab("delegated"); setSelectedIds([]); }}
             style={{
-              padding: "8px 16px",
+              padding: "8px 14px",
               border: "none",
               background: "none",
               borderBottom: tab === "delegated" ? "2px solid #4a90d9" : "2px solid transparent",
@@ -438,7 +450,8 @@ export default function DelegationPage() {
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: 6
+              gap: 6,
+              whiteSpace: "nowrap"
             }}
           >
             Tasks Assigned by Me ({delegated.length})
@@ -449,12 +462,49 @@ export default function DelegationPage() {
             )}
           </button>
         </div>
-        <div style={{ paddingBottom: 6 }}>
-          <TableFreezeButton
-            onClick={openFreezeModal}
-            effectiveFreezeCount={effectiveFreezeCount}
-            isHeaderFrozen={freezeSettings.freezeHeader}
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 6 }}>
+          <div style={{ display: "inline-flex", background: "#f1f5f9", padding: "3px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+            <button
+              onClick={() => setViewMode("card")}
+              style={{
+                padding: "5px 10px",
+                fontSize: "12px",
+                fontWeight: viewMode === "card" ? 600 : 500,
+                background: viewMode === "card" ? "#ffffff" : "transparent",
+                color: viewMode === "card" ? "#0f172a" : "#64748b",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                boxShadow: viewMode === "card" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              📱 Cards
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              style={{
+                padding: "5px 10px",
+                fontSize: "12px",
+                fontWeight: viewMode === "table" ? 600 : 500,
+                background: viewMode === "table" ? "#ffffff" : "transparent",
+                color: viewMode === "table" ? "#0f172a" : "#64748b",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              📊 Table
+            </button>
+          </div>
+
+          {!isMobile && (
+            <TableFreezeButton
+              onClick={openFreezeModal}
+              effectiveFreezeCount={effectiveFreezeCount}
+              isHeaderFrozen={freezeSettings.freezeHeader}
+            />
+          )}
         </div>
       </div>
 
@@ -526,8 +576,200 @@ export default function DelegationPage() {
         )}
       </div>
 
-      <div style={getContainerStyle()}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: "1350px" }}>
+      {isMobile && viewMode === "card" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+          {paginatedList.map((t) => {
+            const myEmpId = currentEmployee?.id;
+            const myUserId = user?.id;
+            const myFullName = (currentEmployee?.fullName || user?.fullName || "").trim().toLowerCase();
+            const taskAssignedBy = (t as any).assignedBy;
+            const taskAssignedByName = (t.assignedByName || "").trim().toLowerCase();
+            const isAssigner = (myEmpId && taskAssignedBy === myEmpId) ||
+                               (myUserId && taskAssignedBy === myUserId) ||
+                               (myFullName && taskAssignedByName === myFullName);
+            const canReview = isAssigner || isAdmin;
+            const isAssignee = (myEmpId && (t as any).assignedTo === myEmpId) ||
+                               (myUserId && (t as any).assignedTo === myUserId) ||
+                               (myFullName && (t.assignedToName || "").trim().toLowerCase() === myFullName);
+            const isDelayed = t.displayStatus === "delayed";
+
+            return (
+              <div
+                key={t.id}
+                style={{
+                  background: "#ffffff",
+                  border: isDelayed ? "1px solid #fca5a5" : "1px solid #cbd5e1",
+                  borderRadius: "10px",
+                  padding: "14px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {isAdmin && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(t.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedIds([...selectedIds, t.id]);
+                          else setSelectedIds(selectedIds.filter(id => id !== t.id));
+                        }}
+                      />
+                    )}
+                    <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#1e293b", lineHeight: "1.4" }}>
+                      {t.title}
+                    </h4>
+                  </div>
+                  <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                    <span style={{ fontSize: "11px", color: priorityColors[t.priority], fontWeight: 700, background: "#f8fafc", border: `1px solid ${priorityColors[t.priority]}40`, padding: "2px 8px", borderRadius: "4px", textTransform: "capitalize" }}>
+                      {t.priority}
+                    </span>
+                    <span style={{ fontSize: "11px", color: statusColors[t.displayStatus] || "#475569", fontWeight: 700, background: "#f8fafc", border: `1px solid ${statusColors[t.displayStatus] || "#cbd5e1"}40`, padding: "2px 8px", borderRadius: "4px", textTransform: "capitalize" }}>
+                      {t.displayStatus}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "12px", color: "#64748b" }}>
+                  <div>
+                    <span style={{ color: "#94a3b8" }}>From: </span>
+                    <strong style={{ color: "#334155" }}>{t.assignedByName || "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#94a3b8" }}>Assigned To: </span>
+                    <strong style={{ color: "#2563eb" }}>{t.assignedToName || "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#94a3b8" }}>Assigned: </span>
+                    <strong style={{ color: "#334155" }}>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#94a3b8" }}>Planned Date: </span>
+                    <strong style={{ color: isDelayed ? "#dc2626" : "#334155" }}>{t.dueDate || "—"}</strong>
+                  </div>
+                </div>
+
+                {/* Extension Section */}
+                {t.extensionStatus === "pending" ? (
+                  <div style={{ background: "#fffbeb", border: "1px solid #fde68a", padding: "8px 10px", borderRadius: 6, fontSize: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 700, color: "#b45309" }}>⏳ Extension Pending</span>
+                      <span style={{ fontWeight: 600, color: "#78350f" }}>New: {t.extensionRequestedDate ? new Date(t.extensionRequestedDate).toLocaleDateString() : "—"}</span>
+                    </div>
+                    {t.extensionReason && (
+                      <div style={{ color: "#451a03", background: "#fef3c7", padding: "4px", borderRadius: 4, marginTop: 4 }}>
+                        <strong>Reason:</strong> {t.extensionReason}
+                      </div>
+                    )}
+                    {canReview && (
+                      <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
+                        <button
+                          onClick={() => openExtensionReview(t, "approved")}
+                          style={{ flex: 1, padding: "6px", background: "#10b981", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}
+                        >
+                          ✓ Accept
+                        </button>
+                        <button
+                          onClick={() => openExtensionReview(t, "rejected")}
+                          style={{ flex: 1, padding: "6px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}
+                        >
+                          ✕ Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : t.extensionStatus === "approved" ? (
+                  <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#065f46" }}>
+                    ✓ Extension Approved {t.extensionRequestedDate ? `to ${new Date(t.extensionRequestedDate).toLocaleDateString()}` : ""}
+                  </div>
+                ) : t.extensionStatus === "rejected" ? (
+                  <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#991b1b" }}>
+                    ✕ Extension Rejected {t.extensionRejectionReason ? `: ${t.extensionRejectionReason}` : ""}
+                  </div>
+                ) : isAssignee && t.displayStatus !== "completed" ? (
+                  <div>
+                    <button
+                      onClick={() => openRequestExtension(t.id)}
+                      style={{ padding: "4px 8px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", borderRadius: 4, cursor: "pointer", fontSize: 11, fontWeight: 600 }}
+                    >
+                      ⏱ Request Extension
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* Files */}
+                {t.files.length > 0 && (
+                  <div style={{ fontSize: 12, color: "#64748b" }}>
+                    <span>Files: </span>
+                    {t.files.map((f, i) => (
+                      <span key={f.id}>
+                        <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>{f.fileName}</a>
+                        {i < t.files.length - 1 ? ", " : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
+                  {tab === "received" && t.displayStatus !== "completed" && (
+                    <button
+                      onClick={() => handleStatusChange(t.id, t.displayStatus === "running" ? "completed" : "running")}
+                      style={{
+                        padding: "6px 12px",
+                        background: t.displayStatus === "running" ? "#10b981" : "#2563eb",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        fontWeight: 700
+                      }}
+                    >
+                      {t.displayStatus === "running" ? "✓ Mark Completed" : "▶ Start Task"}
+                    </button>
+                  )}
+                  {t.displayStatus !== "completed" && (
+                    <button
+                      onClick={() => handleAddProof(t.id)}
+                      style={{ padding: "6px 10px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#475569" }}
+                    >
+                      📎 Proof
+                    </button>
+                  )}
+                  {canViewAll && (
+                    <button
+                      onClick={() => handleOpenEdit(t)}
+                      style={{ padding: "6px 10px", background: "#e0f2fe", color: "#0369a1", border: "1px solid #7dd3fc", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(t.id)}
+                      style={{ padding: "6px 10px", background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                    >
+                      🗑 Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {filteredList.length === 0 && (
+            <div style={{ padding: 24, textAlign: "center", color: "#64748b", background: "#f8fafc", borderRadius: 8 }}>
+              {hasActiveFilters ? "No delegated tasks found matching the filter criteria." : "Nothing here."}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div style={getContainerStyle()}>
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: "1350px" }}>
           <thead>
             <tr style={{ textAlign: "left" }}>
               <th style={getStickyHeaderStyle(0, { customStyle: { padding: 8, width: 44, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>
@@ -812,6 +1054,8 @@ export default function DelegationPage() {
           </tbody>
         </table>
       </div>
+      </div>
+      )}
 
       {/* Pagination Controls */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 4px", flexWrap: "wrap", gap: 12 }}>

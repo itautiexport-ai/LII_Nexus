@@ -24,6 +24,21 @@ export default function MyChecklistPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "pipeline">("active");
 
+  // Mobile Responsiveness
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const [showModal, setShowModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<StandaloneChecklist | null>(null);
   const [notes, setNotes] = useState("");
@@ -138,23 +153,23 @@ export default function MyChecklistPage() {
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Loading checklists...</div>;
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 32px" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "12px 10px" : "24px 32px" }}>
+      <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+        <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: "#0f172a", margin: "0 0 6px 0" }}>
           My Checklists
         </h1>
-        <p style={{ color: "#64748b", fontSize: 15, margin: 0 }}>
+        <p style={{ color: "#64748b", fontSize: isMobile ? 13 : 15, margin: 0 }}>
           Manage your daily active checklists and track upcoming tasks in pipeline.
         </p>
       </div>
 
       {/* Navigation Tabs */}
-      <div style={{ display: "flex", gap: 12, borderBottom: "2px solid #e2e8f0", marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 8, borderBottom: "2px solid #e2e8f0", marginBottom: 16, overflowX: "auto", whiteSpace: "nowrap" }}>
         <button
           onClick={() => setActiveTab("active")}
           style={{
-            padding: "12px 24px",
-            fontSize: 15,
+            padding: isMobile ? "10px 14px" : "12px 24px",
+            fontSize: isMobile ? 14 : 15,
             fontWeight: activeTab === "active" ? 700 : 500,
             color: activeTab === "active" ? "#2563eb" : "#64748b",
             borderBottom: activeTab === "active" ? "3px solid #2563eb" : "3px solid transparent",
@@ -164,7 +179,8 @@ export default function MyChecklistPage() {
             marginBottom: -2,
             display: "flex",
             alignItems: "center",
-            gap: 8
+            gap: 8,
+            flexShrink: 0,
           }}
         >
           Active Checklists
@@ -183,8 +199,8 @@ export default function MyChecklistPage() {
         <button
           onClick={() => setActiveTab("pipeline")}
           style={{
-            padding: "12px 24px",
-            fontSize: 15,
+            padding: isMobile ? "10px 14px" : "12px 24px",
+            fontSize: isMobile ? 14 : 15,
             fontWeight: activeTab === "pipeline" ? 700 : 500,
             color: activeTab === "pipeline" ? "#2563eb" : "#64748b",
             borderBottom: activeTab === "pipeline" ? "3px solid #2563eb" : "3px solid transparent",
@@ -194,10 +210,11 @@ export default function MyChecklistPage() {
             marginBottom: -2,
             display: "flex",
             alignItems: "center",
-            gap: 8
+            gap: 8,
+            flexShrink: 0,
           }}
         >
-          Checklists in Pipeline (Next 7 Days)
+          Checklists in Pipeline
           <span style={{
             background: activeTab === "pipeline" ? "#dbeafe" : "#f1f5f9",
             color: activeTab === "pipeline" ? "#1e40af" : "#475569",
@@ -211,6 +228,48 @@ export default function MyChecklistPage() {
         </button>
       </div>
 
+      {/* Mobile Card / Table Mode Switcher */}
+      {isMobile && (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+          <button
+            onClick={() => setViewMode("card")}
+            style={{
+              flex: 1,
+              padding: "10px",
+              borderRadius: "6px",
+              border: "1px solid",
+              borderColor: viewMode === "card" ? "#2563eb" : "#cbd5e1",
+              background: viewMode === "card" ? "#eff6ff" : "#ffffff",
+              color: viewMode === "card" ? "#1d4ed8" : "#475569",
+              fontWeight: "600",
+              fontSize: "13px",
+              cursor: "pointer",
+              minHeight: "42px",
+            }}
+          >
+            📱 Card View
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            style={{
+              flex: 1,
+              padding: "10px",
+              borderRadius: "6px",
+              border: "1px solid",
+              borderColor: viewMode === "table" ? "#2563eb" : "#cbd5e1",
+              background: viewMode === "table" ? "#eff6ff" : "#ffffff",
+              color: viewMode === "table" ? "#1d4ed8" : "#475569",
+              fontWeight: "600",
+              fontSize: "13px",
+              cursor: "pointer",
+              minHeight: "42px",
+            }}
+          >
+            📊 Table View
+          </button>
+        </div>
+      )}
+
       {/* ACTIVE TAB CONTENT */}
       {activeTab === "active" && (
         <div>
@@ -219,81 +278,163 @@ export default function MyChecklistPage() {
               <p style={{ color: "#64748b", fontSize: 16, margin: 0 }}>No active checklists due right now.</p>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
-              {/* Standalone Active Tasks List Table */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
+              {/* Standalone Active Tasks */}
               {activeStandalone.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "#475569", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      Standalone Tasks
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#475569", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Standalone Tasks ({activeStandalone.length})
                     </h3>
-                    <TableFreezeButton
-                      onClick={openFreezeModal}
-                      effectiveFreezeCount={effectiveFreezeCount}
-                      isHeaderFrozen={freezeSettings.freezeHeader}
-                    />
+                    {!isMobile && (
+                      <TableFreezeButton
+                        onClick={openFreezeModal}
+                        effectiveFreezeCount={effectiveFreezeCount}
+                        isHeaderFrozen={freezeSettings.freezeHeader}
+                      />
+                    )}
                   </div>
-                  <div style={getContainerStyle({ borderRadius: "8px", border: "1px solid #e2e8f0" })}>
-                    <table className="user-dashboard-table" style={{ background: "#fff", borderCollapse: "separate", borderSpacing: 0, width: "100%", minWidth: "850px" }}>
-                      <thead>
-                        <tr>
-                          <th style={getStickyHeaderStyle(0, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Task Name</th>
-                          <th style={getStickyHeaderStyle(1, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Assigned By</th>
-                          <th style={getStickyHeaderStyle(2, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Planned Date</th>
-                          <th style={getStickyHeaderStyle(3, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Priority</th>
-                          <th style={getStickyHeaderStyle(4, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Frequency</th>
-                          <th style={getStickyHeaderStyle(5, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeStandalone.map((item) => {
-                          const isAssignee = (employee && item.assignTo === employee.id) || (user && item.assignTo === user.id) || !item.assignTo;
-                          return (
-                            <tr key={`${item.id}_${item.occurrenceDate || item.plannedDate}`}>
-                              <td style={getStickyCellStyle(0, { customStyle: { fontWeight: "600", color: "#1e293b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "break-word", lineHeight: "1.45" } })}>{item.taskName}</td>
-                              <td style={getStickyCellStyle(1, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.assigner_name || "Manager"}</td>
-                              <td style={getStickyCellStyle(2, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
-                                <div>{new Date(item.plannedDate).toLocaleString()}</div>
+
+                  {/* Mobile Card Feed */}
+                  {isMobile && viewMode === "card" ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      {activeStandalone.map((item) => {
+                        const isAssignee = (employee && item.assignTo === employee.id) || (user && item.assignTo === user.id) || !item.assignTo;
+                        return (
+                          <div
+                            key={`${item.id}_${item.occurrenceDate || item.plannedDate}`}
+                            style={{
+                              background: "#ffffff",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: "10px",
+                              padding: "16px",
+                              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", marginBottom: "8px" }}>
+                              <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#1e293b", lineHeight: "1.4" }}>
+                                {item.taskName}
+                              </h4>
+                              <span
+                                className={`status-pill ${item.priority.toLowerCase()}`}
+                                style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "4px", flexShrink: 0 }}
+                              >
+                                {item.priority}
+                              </span>
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px", color: "#64748b", margin: "10px 0" }}>
+                              <div>
+                                <span style={{ color: "#94a3b8" }}>Assigner: </span>
+                                <strong style={{ color: "#334155" }}>{item.assigner_name || "Manager"}</strong>
+                              </div>
+                              <div>
+                                <span style={{ color: "#94a3b8" }}>Frequency: </span>
+                                <strong style={{ color: "#334155" }}>{item.frequency}</strong>
+                              </div>
+                              <div style={{ gridColumn: "span 2" }}>
+                                <span style={{ color: "#94a3b8" }}>Planned Date: </span>
+                                <strong style={{ color: "#334155" }}>{new Date(item.plannedDate).toLocaleDateString()}</strong>
                                 {item.isOverdue && (
-                                  <span style={{ fontSize: "10px", fontWeight: 700, backgroundColor: "#fee2e2", color: "#dc2626", padding: "1px 5px", borderRadius: "3px", marginTop: "2px", display: "inline-block" }}>
+                                  <span style={{ fontSize: "10px", fontWeight: 700, backgroundColor: "#fee2e2", color: "#dc2626", padding: "2px 6px", borderRadius: "3px", marginLeft: "6px" }}>
                                     OVERDUE
                                   </span>
                                 )}
-                              </td>
-                              <td style={getStickyCellStyle(3, { customStyle: { backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
-                                <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", padding: "2px 6px" }}>
-                                  {item.priority}
-                                </span>
-                              </td>
-                              <td style={getStickyCellStyle(4, { customStyle: { fontSize: "13px", color: "#64748b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.frequency}</td>
-                              <td style={getStickyCellStyle(5, { customStyle: { backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
-                                {isAssignee ? (
-                                  <button
-                                    onClick={() => handleOpenCompleteModal(item)}
-                                    style={{
-                                      background: "#2563eb",
-                                      color: "#fff",
-                                      border: "none",
-                                      padding: "6px 12px",
-                                      borderRadius: "6px",
-                                      fontWeight: "600",
-                                      fontSize: "12px",
-                                      cursor: "pointer",
-                                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-                                    }}
-                                  >
-                                    Complete
-                                  </button>
-                                ) : (
-                                  <span style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>View Only</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                              </div>
+                            </div>
+
+                            {isAssignee ? (
+                              <button
+                                onClick={() => handleOpenCompleteModal(item)}
+                                style={{
+                                  width: "100%",
+                                  background: "#2563eb",
+                                  color: "#ffffff",
+                                  border: "none",
+                                  padding: "10px 14px",
+                                  borderRadius: "6px",
+                                  fontWeight: "600",
+                                  fontSize: "13px",
+                                  cursor: "pointer",
+                                  minHeight: "42px",
+                                  marginTop: "6px",
+                                }}
+                              >
+                                ✓ Complete Task
+                              </button>
+                            ) : (
+                              <div style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic", textAlign: "center", marginTop: "6px" }}>
+                                View Only
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Table View with responsive scroll */
+                    <div style={{ ...getContainerStyle({ borderRadius: "8px", border: "1px solid #e2e8f0" }), overflowX: "auto", WebkitOverflowScrolling: "touch", width: "100%" }}>
+                      <table className="user-dashboard-table" style={{ background: "#fff", borderCollapse: "separate", borderSpacing: 0, width: "100%", minWidth: "750px" }}>
+                        <thead>
+                          <tr>
+                            <th style={getStickyHeaderStyle(0, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Task Name</th>
+                            <th style={getStickyHeaderStyle(1, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Assigned By</th>
+                            <th style={getStickyHeaderStyle(2, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Planned Date</th>
+                            <th style={getStickyHeaderStyle(3, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Priority</th>
+                            <th style={getStickyHeaderStyle(4, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Frequency</th>
+                            <th style={getStickyHeaderStyle(5, { customStyle: { color: "#475569", fontWeight: "600", background: "#f8fafc", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activeStandalone.map((item) => {
+                            const isAssignee = (employee && item.assignTo === employee.id) || (user && item.assignTo === user.id) || !item.assignTo;
+                            return (
+                              <tr key={`${item.id}_${item.occurrenceDate || item.plannedDate}`}>
+                                <td style={getStickyCellStyle(0, { customStyle: { fontWeight: "600", color: "#1e293b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "break-word", lineHeight: "1.45" } })}>{item.taskName}</td>
+                                <td style={getStickyCellStyle(1, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.assigner_name || "Manager"}</td>
+                                <td style={getStickyCellStyle(2, { customStyle: { fontSize: "13px", color: "#475569", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
+                                  <div>{new Date(item.plannedDate).toLocaleDateString()}</div>
+                                  {item.isOverdue && (
+                                    <span style={{ fontSize: "10px", fontWeight: 700, backgroundColor: "#fee2e2", color: "#dc2626", padding: "1px 5px", borderRadius: "3px", marginTop: "2px", display: "inline-block" }}>
+                                      OVERDUE
+                                    </span>
+                                  )}
+                                </td>
+                                <td style={getStickyCellStyle(3, { customStyle: { backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
+                                  <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", padding: "2px 6px" }}>
+                                    {item.priority}
+                                  </span>
+                                </td>
+                                <td style={getStickyCellStyle(4, { customStyle: { fontSize: "13px", color: "#64748b", backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>{item.frequency}</td>
+                                <td style={getStickyCellStyle(5, { customStyle: { backgroundColor: "#ffffff", padding: "10px 12px", borderBottom: "1px solid #e2e8f0" } })}>
+                                  {isAssignee ? (
+                                    <button
+                                      onClick={() => handleOpenCompleteModal(item)}
+                                      style={{
+                                        background: "#2563eb",
+                                        color: "#fff",
+                                        border: "none",
+                                        padding: "6px 12px",
+                                        borderRadius: "6px",
+                                        fontWeight: "600",
+                                        fontSize: "12px",
+                                        cursor: "pointer",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                                      }}
+                                    >
+                                      Complete
+                                    </button>
+                                  ) : (
+                                    <span style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>View Only</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -342,44 +483,99 @@ export default function MyChecklistPage() {
             <div style={{ padding: 40, textAlign: "center", background: "#f8fafc", borderRadius: 12, border: "1px dashed #cbd5e1" }}>
               <p style={{ color: "#64748b", fontSize: 16, margin: 0 }}>No checklists in pipeline for the next 7 days.</p>
             </div>
+          ) : isMobile && viewMode === "card" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {pipelineStandalone.map((item) => {
+                const pDate = new Date(item.plannedDate);
+                const diffTime = pDate.getTime() - now.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      padding: "16px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", marginBottom: "8px" }}>
+                      <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#334155", lineHeight: "1.4" }}>
+                        {item.taskName}
+                      </h4>
+                      <span
+                        className={`status-pill ${item.priority.toLowerCase()}`}
+                        style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "4px", flexShrink: 0 }}
+                      >
+                        {item.priority}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px", color: "#64748b", margin: "10px 0" }}>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Assigner: </span>
+                        <strong style={{ color: "#334155" }}>{item.assigner_name || "Manager"}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Frequency: </span>
+                        <strong style={{ color: "#334155" }}>{item.frequency}</strong>
+                      </div>
+                      <div style={{ gridColumn: "span 2" }}>
+                        <span style={{ color: "#94a3b8" }}>Scheduled Date: </span>
+                        <strong style={{ color: "#334155" }}>{pDate.toLocaleDateString()}</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: "10px", display: "flex", justifyContent: "flex-end" }}>
+                      <span style={{ fontSize: "12px", fontWeight: "600", color: "#d97706", background: "#fef3c7", padding: "4px 10px", borderRadius: "12px" }}>
+                        Due in {diffDays} day{diffDays > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <table className="user-dashboard-table" style={{ background: "#fff", borderRadius: "8px", border: "1px solid #cbd5e1", overflow: "hidden", width: "100%" }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={{ color: "#475569", fontWeight: "600" }}>Task Name</th>
-                  <th style={{ color: "#475569", fontWeight: "600" }}>Assigned By</th>
-                  <th style={{ color: "#475569", fontWeight: "600" }}>Planned Date</th>
-                  <th style={{ color: "#475569", fontWeight: "600" }}>Priority</th>
-                  <th style={{ color: "#475569", fontWeight: "600" }}>Frequency</th>
-                  <th style={{ color: "#475569", fontWeight: "600" }}>Countdown</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pipelineStandalone.map((item) => {
-                  const pDate = new Date(item.plannedDate);
-                  const diffTime = pDate.getTime() - now.getTime();
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  return (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: "600", color: "#475569" }}>{item.taskName}</td>
-                      <td style={{ fontSize: "13px", color: "#64748b" }}>{item.assigner_name || "Manager"}</td>
-                      <td style={{ fontSize: "13px", color: "#64748b" }}>{pDate.toLocaleDateString()}</td>
-                      <td>
-                        <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", opacity: 0.8, padding: "2px 6px" }}>
-                          {item.priority}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: "13px", color: "#64748b" }}>{item.frequency}</td>
-                      <td>
-                        <span style={{ fontSize: "12px", fontWeight: "600", color: "#d97706", background: "#fef3c7", padding: "4px 10px", borderRadius: "12px" }}>
-                          In {diffDays} day{diffDays > 1 ? "s" : ""}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table className="user-dashboard-table" style={{ background: "#fff", borderRadius: "8px", border: "1px solid #cbd5e1", overflow: "hidden", width: "100%", minWidth: "650px" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    <th style={{ color: "#475569", fontWeight: "600" }}>Task Name</th>
+                    <th style={{ color: "#475569", fontWeight: "600" }}>Assigned By</th>
+                    <th style={{ color: "#475569", fontWeight: "600" }}>Planned Date</th>
+                    <th style={{ color: "#475569", fontWeight: "600" }}>Priority</th>
+                    <th style={{ color: "#475569", fontWeight: "600" }}>Frequency</th>
+                    <th style={{ color: "#475569", fontWeight: "600" }}>Countdown</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pipelineStandalone.map((item) => {
+                    const pDate = new Date(item.plannedDate);
+                    const diffTime = pDate.getTime() - now.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return (
+                      <tr key={item.id}>
+                        <td style={{ fontWeight: "600", color: "#475569" }}>{item.taskName}</td>
+                        <td style={{ fontSize: "13px", color: "#64748b" }}>{item.assigner_name || "Manager"}</td>
+                        <td style={{ fontSize: "13px", color: "#64748b" }}>{pDate.toLocaleDateString()}</td>
+                        <td>
+                          <span className={`status-pill ${item.priority.toLowerCase()}`} style={{ fontSize: "11px", opacity: 0.8, padding: "2px 6px" }}>
+                            {item.priority}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "13px", color: "#64748b" }}>{item.frequency}</td>
+                        <td>
+                          <span style={{ fontSize: "12px", fontWeight: "600", color: "#d97706", background: "#fef3c7", padding: "4px 10px", borderRadius: "12px" }}>
+                            In {diffDays} day{diffDays > 1 ? "s" : ""}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

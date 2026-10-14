@@ -28,6 +28,17 @@ export function MyFmsPage() {
   const [inputData, setInputData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const fetchTasks = useCallback(
     async (
       targetTab = activeTab,
@@ -152,12 +163,49 @@ export function MyFmsPage() {
             View, track, and execute all FMS workflow tasks assigned to you across processes.
           </p>
         </div>
-        <button
-          className="my-fms-btn-secondary"
-          onClick={() => fetchTasks(activeTab, page, pageSize, searchTerm, selectedProcess)}
-        >
-          🔄 Refresh List
-        </button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "inline-flex", background: "#f1f5f9", padding: "3px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+            <button
+              onClick={() => setViewMode("card")}
+              style={{
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: viewMode === "card" ? 600 : 500,
+                background: viewMode === "card" ? "#ffffff" : "transparent",
+                color: viewMode === "card" ? "#0f172a" : "#64748b",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                boxShadow: viewMode === "card" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              📱 Cards
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              style={{
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: viewMode === "table" ? 600 : 500,
+                background: viewMode === "table" ? "#ffffff" : "transparent",
+                color: viewMode === "table" ? "#0f172a" : "#64748b",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              📊 Table
+            </button>
+          </div>
+
+          <button
+            className="my-fms-btn-secondary"
+            onClick={() => fetchTasks(activeTab, page, pageSize, searchTerm, selectedProcess)}
+          >
+            🔄 Refresh
+          </button>
+        </div>
       </div>
 
       {/* Quick Summary Cards */}
@@ -264,74 +312,151 @@ export function MyFmsPage() {
                 : "No tasks match your selected filter criteria."}
             </p>
           </div>
-        ) : (
-          <table className="my-fms-table" data-no-enhance="true">
-            <thead>
-              <tr>
-                <th data-no-filter="true">Process / FMS Name</th>
-                <th data-no-filter="true">Reference / Order Title</th>
-                <th data-no-filter="true">Step Name</th>
-                <th data-no-filter="true">Timeline / Due</th>
-                <th data-no-filter="true">Assigned Date</th>
-                <th data-no-filter="true">Status</th>
-                <th data-no-filter="true" style={{ textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((t) => (
-                <tr key={t.instanceStepId}>
-                  <td>
-                    <div style={{ fontWeight: 700, color: "#0f172a" }}>{t.managerName}</div>
+        ) : isMobile && viewMode === "card" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "12px" }}>
+            {tasks.map((t) => (
+              <div
+                key={t.instanceStepId}
+                style={{
+                  background: "#ffffff",
+                  border: t.status === "In Progress" ? "1px solid #f59e0b" : "1px solid #cbd5e1",
+                  borderRadius: "10px",
+                  padding: "16px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a", lineHeight: "1.3" }}>
+                      {t.managerName}
+                    </h4>
                     {t.formData?.aliasName && (
-                      <div style={{ fontSize: "12px", color: "#64748b" }}>Alias: {t.formData.aliasName}</div>
+                      <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>Alias: {t.formData.aliasName}</div>
                     )}
-                  </td>
-                  <td>
-                    <span style={{ fontWeight: 600, color: "#2563eb", background: "#eff6ff", padding: "4px 8px", borderRadius: "6px" }}>
-                      {t.referenceTitle}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{t.stepName}</div>
+                  </div>
+                  <div>{renderStatusPill(t.status)}</div>
+                </div>
+
+                <div style={{ background: "#f8fafc", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Reference / Order</div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#2563eb", marginTop: "2px" }}>{t.referenceTitle}</div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px", color: "#64748b" }}>
+                  <div>
+                    <span style={{ color: "#94a3b8" }}>Current Step: </span>
+                    <strong style={{ color: "#334155", display: "block" }}>{t.stepName}</strong>
                     {t.sequenceOrder !== undefined && (
-                      <div style={{ fontSize: "11px", color: "#94a3b8" }}>Step #{t.sequenceOrder + 1}</div>
+                      <span style={{ fontSize: "11px", color: "#94a3b8" }}>Step #{t.sequenceOrder + 1}</span>
                     )}
-                  </td>
-                  <td>
-                    <span style={{ fontWeight: 600, color: "#475569" }}>
-                      {t.timelineHours} {t.timelineUnit}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ fontSize: "13px", color: "#64748b" }}>
-                      {new Date(t.assignedAt).toLocaleDateString()}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>
-                      {new Date(t.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </td>
-                  <td>{renderStatusPill(t.status)}</td>
-                  <td style={{ textAlign: "right" }}>
-                    {t.status === "In Progress" ? (
-                      <button
-                        className="my-fms-btn-action"
-                        onClick={() => handleExecuteClick(t)}
-                      >
-                        ⚡ Execute Step
-                      </button>
-                    ) : (
-                      <button
-                        className="my-fms-btn-secondary"
-                        onClick={() => handleExecuteClick(t)}
-                      >
-                        👁️ View Details
-                      </button>
-                    )}
-                  </td>
+                  </div>
+                  <div>
+                    <span style={{ color: "#94a3b8" }}>Timeline / Due: </span>
+                    <strong style={{ color: "#334155", display: "block" }}>{t.timelineHours} {t.timelineUnit}</strong>
+                  </div>
+                  <div style={{ gridColumn: "span 2" }}>
+                    <span style={{ color: "#94a3b8" }}>Assigned At: </span>
+                    <strong style={{ color: "#334155" }}>
+                      {new Date(t.assignedAt).toLocaleDateString()} {new Date(t.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </strong>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "4px" }}>
+                  {t.status === "In Progress" ? (
+                    <button
+                      className="my-fms-btn-action"
+                      style={{ width: "100%", justifyContent: "center", padding: "10px", fontSize: "14px" }}
+                      onClick={() => handleExecuteClick(t)}
+                    >
+                      ⚡ Execute Step
+                    </button>
+                  ) : (
+                    <button
+                      className="my-fms-btn-secondary"
+                      style={{ width: "100%", justifyContent: "center", padding: "8px", fontSize: "13px" }}
+                      onClick={() => handleExecuteClick(t)}
+                    >
+                      👁️ View Details
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <table className="my-fms-table" data-no-enhance="true" style={{ minWidth: "850px" }}>
+              <thead>
+                <tr>
+                  <th data-no-filter="true">Process / FMS Name</th>
+                  <th data-no-filter="true">Reference / Order Title</th>
+                  <th data-no-filter="true">Step Name</th>
+                  <th data-no-filter="true">Timeline / Due</th>
+                  <th data-no-filter="true">Assigned Date</th>
+                  <th data-no-filter="true">Status</th>
+                  <th data-no-filter="true" style={{ textAlign: "right" }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {tasks.map((t) => (
+                  <tr key={t.instanceStepId}>
+                    <td>
+                      <div style={{ fontWeight: 700, color: "#0f172a" }}>{t.managerName}</div>
+                      {t.formData?.aliasName && (
+                        <div style={{ fontSize: "12px", color: "#64748b" }}>Alias: {t.formData.aliasName}</div>
+                      )}
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: "#2563eb", background: "#eff6ff", padding: "4px 8px", borderRadius: "6px" }}>
+                        {t.referenceTitle}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{t.stepName}</div>
+                      {t.sequenceOrder !== undefined && (
+                        <div style={{ fontSize: "11px", color: "#94a3b8" }}>Step #{t.sequenceOrder + 1}</div>
+                      )}
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>
+                        {t.timelineHours} {t.timelineUnit}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: "13px", color: "#64748b" }}>
+                        {new Date(t.assignedAt).toLocaleDateString()}
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        {new Date(t.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </td>
+                    <td>{renderStatusPill(t.status)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {t.status === "In Progress" ? (
+                        <button
+                          className="my-fms-btn-action"
+                          onClick={() => handleExecuteClick(t)}
+                        >
+                          ⚡ Execute Step
+                        </button>
+                      ) : (
+                        <button
+                          className="my-fms-btn-secondary"
+                          onClick={() => handleExecuteClick(t)}
+                        >
+                          👁️ View Details
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

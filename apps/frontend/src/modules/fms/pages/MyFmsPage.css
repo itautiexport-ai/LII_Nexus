@@ -378,3 +378,58 @@
   color: #334155;
   margin-bottom: 6px;
 }
+
+@media (max-width: 768px) {
+  .my-fms-container {
+    padding: 16px 12px;
+  }
+  .my-fms-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .my-fms-title {
+    font-size: 22px;
+  }
+  .my-fms-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .my-fms-stat-card {
+    padding: 10px 12px;
+  }
+  .my-fms-stat-title {
+    font-size: 11px;
+  }
+  .my-fms-stat-value {
+    font-size: 18px;
+  }
+  .my-fms-stat-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  .my-fms-controls {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .my-fms-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    flex-wrap: nowrap;
+  }
+  .my-fms-tab-btn {
+    white-space: nowrap;
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+  .my-fms-search-box {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .my-fms-detail-box {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}

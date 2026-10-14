@@ -36,6 +36,19 @@ export function ListChecklistPage() {
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const {
     settings: freezeSettings,
     isModalOpen: isFreezeModalOpen,
@@ -129,21 +142,161 @@ export function ListChecklistPage() {
   return (
     <div className="chk-container">
       <div className="chk-card">
-        <div className="chk-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 className="chk-title" style={{ margin: 0 }}>LIST CHECKLISTS</h2>
-          <TableFreezeButton
-            onClick={openFreezeModal}
-            effectiveFreezeCount={effectiveFreezeCount}
-            isHeaderFrozen={freezeSettings.freezeHeader}
-          />
+        <div className="chk-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+          <div>
+            <h2 className="chk-title" style={{ margin: 0, fontSize: isMobile ? "20px" : "24px" }}>LIST CHECKLISTS</h2>
+            <span style={{ fontSize: "12px", color: "#64748b" }}>Total: {checklists.length}</span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <div style={{ display: "inline-flex", background: "#f1f5f9", padding: "3px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+              <button
+                onClick={() => setViewMode("card")}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  fontWeight: viewMode === "card" ? 600 : 500,
+                  background: viewMode === "card" ? "#ffffff" : "transparent",
+                  color: viewMode === "card" ? "#0f172a" : "#64748b",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  boxShadow: viewMode === "card" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                }}
+              >
+                📱 Cards
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  fontWeight: viewMode === "table" ? 600 : 500,
+                  background: viewMode === "table" ? "#ffffff" : "transparent",
+                  color: viewMode === "table" ? "#0f172a" : "#64748b",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                }}
+              >
+                📊 Table
+              </button>
+            </div>
+
+            {!isMobile && (
+              <TableFreezeButton
+                onClick={openFreezeModal}
+                effectiveFreezeCount={effectiveFreezeCount}
+                isHeaderFrozen={freezeSettings.freezeHeader}
+              />
+            )}
+          </div>
         </div>
-        <div className="chk-card-content" style={{ padding: 0 }}>
+        <div className="chk-card-content" style={{ padding: isMobile ? "12px" : "0" }}>
           {loading ? (
             <div className="chk-empty">Loading...</div>
           ) : checklists.length === 0 ? (
             <div className="chk-empty">No checklists found.</div>
+          ) : isMobile && viewMode === "card" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {checklists.map(c => {
+                const taskTitle = (c as any).task_name || c.taskName;
+                const assigneeName = (c as any).assignee_name || "Unknown";
+                const plannedDateFormatted = formatIndianDateTime((c as any).planned_date || c.plannedDate);
+                return (
+                  <div
+                    key={c.id}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      padding: "14px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                      <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#1e293b", lineHeight: "1.4" }}>
+                        {taskTitle}
+                      </h4>
+                      <span className={`chk-pill ${
+                        c.priority === 'High' ? 'chk-pill-high' :
+                        c.priority === 'Medium' ? 'chk-pill-medium' :
+                        'chk-pill-low'
+                      }`} style={{ fontSize: "11px", padding: "2px 8px", flexShrink: 0 }}>
+                        {c.priority}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "12px", color: "#64748b" }}>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Assigned To: </span>
+                        <strong style={{ color: "#334155" }}>{assigneeName}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Frequency: </span>
+                        <strong style={{ color: "#334155" }}>{c.frequency}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Mode: </span>
+                        <strong style={{ color: "#334155" }}>{c.mode}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Date: </span>
+                        <strong style={{ color: "#334155" }}>{plannedDateFormatted}</strong>
+                      </div>
+                    </div>
+
+                    {(canEditOrViewAll || canDelete) && (
+                      <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
+                        {canEditOrViewAll && (
+                          <button
+                            onClick={() => handleOpenEdit(c)}
+                            style={{
+                              flex: 1,
+                              background: "#2563eb",
+                              color: "white",
+                              border: "none",
+                              padding: "8px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              fontWeight: 600
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(c.id)}
+                            style={{
+                              flex: 1,
+                              background: "#fee2e2",
+                              color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              padding: "8px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              fontWeight: 600
+                            }}
+                          >
+                            🗑 Delete
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <div style={getContainerStyle({ border: "1px solid #e2e8f0" })}>
+            <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <div style={getContainerStyle({ border: "1px solid #e2e8f0", minWidth: "750px" })}>
               <table className="chk-table" style={{ borderCollapse: "separate", borderSpacing: 0, width: "100%" }}>
                 <thead>
                   <tr>
@@ -202,6 +355,7 @@ export function ListChecklistPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
             </div>
           )}
         </div>

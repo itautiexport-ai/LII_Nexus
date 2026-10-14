@@ -16,6 +16,21 @@ export function UserDelegationPage() {
   const [currentEmployee, setCurrentEmployee] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"received" | "delegated">("received");
 
+  // Mobile Responsiveness
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const [receivedDelegations, setReceivedDelegations] = useState<DisplayDelegation[]>([]);
   const [delegatedByMe, setDelegatedByMe] = useState<DisplayDelegation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,22 +155,64 @@ export function UserDelegationPage() {
 
   return (
     <div className="user-dashboard-container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "12px" }}>
         <div>
-          <h1 className="user-dashboard-title" style={{ margin: 0 }}>My Delegation Center</h1>
+          <h1 className="user-dashboard-title" style={{ margin: 0, fontSize: isMobile ? "22px" : "28px" }}>My Delegation Center</h1>
           <p style={{ color: "#64748b", margin: "4px 0 0 0", fontSize: "14px" }}>
             Track tasks assigned to you and review requests on tasks you have delegated.
           </p>
         </div>
+
+        {/* View Toggle */}
+        <div style={{ display: "inline-flex", background: "#f1f5f9", padding: "3px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+          <button
+            onClick={() => setViewMode("card")}
+            style={{
+              padding: "6px 14px",
+              fontSize: "13px",
+              fontWeight: viewMode === "card" ? 600 : 500,
+              background: viewMode === "card" ? "#ffffff" : "transparent",
+              color: viewMode === "card" ? "#0f172a" : "#64748b",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              boxShadow: viewMode === "card" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px"
+            }}
+          >
+            📱 Card View
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            style={{
+              padding: "6px 14px",
+              fontSize: "13px",
+              fontWeight: viewMode === "table" ? 600 : 500,
+              background: viewMode === "table" ? "#ffffff" : "transparent",
+              color: viewMode === "table" ? "#0f172a" : "#64748b",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px"
+            }}
+          >
+            📊 Table View
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "12px", borderBottom: "2px solid #e2e8f0", marginBottom: "1.5rem" }}>
+      <div style={{ display: "flex", gap: "8px", borderBottom: "2px solid #e2e8f0", marginBottom: "1.5rem", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <button
           onClick={() => setActiveTab("received")}
           style={{
-            padding: "10px 20px",
-            fontSize: "15px",
+            padding: "10px 16px",
+            fontSize: "14px",
             fontWeight: activeTab === "received" ? 700 : 500,
             color: activeTab === "received" ? "#2563eb" : "#64748b",
             borderBottom: activeTab === "received" ? "3px solid #2563eb" : "3px solid transparent",
@@ -165,7 +222,8 @@ export function UserDelegationPage() {
             marginBottom: "-2px",
             display: "flex",
             alignItems: "center",
-            gap: "8px"
+            gap: "8px",
+            whiteSpace: "nowrap"
           }}
         >
           Assigned to Me
@@ -184,8 +242,8 @@ export function UserDelegationPage() {
         <button
           onClick={() => setActiveTab("delegated")}
           style={{
-            padding: "10px 20px",
-            fontSize: "15px",
+            padding: "10px 16px",
+            fontSize: "14px",
             fontWeight: activeTab === "delegated" ? 700 : 500,
             color: activeTab === "delegated" ? "#2563eb" : "#64748b",
             borderBottom: activeTab === "delegated" ? "3px solid #2563eb" : "3px solid transparent",
@@ -195,7 +253,8 @@ export function UserDelegationPage() {
             marginBottom: "-2px",
             display: "flex",
             alignItems: "center",
-            gap: "8px"
+            gap: "8px",
+            whiteSpace: "nowrap"
           }}
         >
           Tasks Assigned by Me
@@ -231,104 +290,224 @@ export function UserDelegationPage() {
             <div style={{ padding: "3rem", textAlign: "center", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
               <p style={{ color: "#64748b", fontSize: "15px", margin: 0 }}>No delegated tasks assigned to you right now.</p>
             </div>
-          ) : (
-            <table className="user-dashboard-table">
-              <thead>
-                <tr>
-                  <th>Task Title</th>
-                  <th>Assigned By</th>
-                  <th>Assigned Date</th>
-                  <th>Planned Due Date</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Extension</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {receivedDelegations.map(d => (
-                  <tr key={d.id}>
-                    <td style={{ fontWeight: 600 }}>{d.title}</td>
-                    <td>{d.assignedByName || "Manager"}</td>
-                    <td>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</td>
-                    <td>
-                      <span style={{ fontWeight: 500 }}>
-                        {new Date(d.dueDate).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td><span className={`status-pill ${d.priority}`}>{d.priority}</span></td>
-                    <td>
-                      <span className={`status-pill ${d.baseStatus}`}>{d.displayStatus || d.baseStatus}</span>
-                    </td>
-                    {/* Extension Column */}
-                    <td>
-                      {d.extensionStatus === "pending" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fffbeb", border: "1px solid #fde68a", padding: "6px 8px", borderRadius: 6 }}>
-                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#b45309" }}>
-                            ⏳ Extension Pending
+          ) : isMobile && viewMode === "card" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {receivedDelegations.map(d => {
+                const isOverdue = new Date(d.dueDate).getTime() < new Date().setHours(0, 0, 0, 0) && d.baseStatus !== "completed";
+                return (
+                  <div
+                    key={d.id}
+                    style={{
+                      background: "#ffffff",
+                      border: isOverdue ? "1px solid #fca5a5" : "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      padding: "16px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                      <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#334155", lineHeight: "1.4" }}>
+                        {d.title}
+                      </h4>
+                      <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                        <span className={`status-pill ${d.priority}`} style={{ fontSize: "11px", padding: "2px 8px" }}>
+                          {d.priority}
+                        </span>
+                        <span className={`status-pill ${d.baseStatus}`} style={{ fontSize: "11px", padding: "2px 8px" }}>
+                          {d.displayStatus || d.baseStatus}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px", color: "#64748b" }}>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Assigned By: </span>
+                        <strong style={{ color: "#334155" }}>{d.assignedByName || "Manager"}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>Assigned On: </span>
+                        <strong style={{ color: "#334155" }}>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</strong>
+                      </div>
+                      <div style={{ gridColumn: "span 2" }}>
+                        <span style={{ color: "#94a3b8" }}>Planned Due Date: </span>
+                        <strong style={{ color: isOverdue ? "#dc2626" : "#334155" }}>
+                          {new Date(d.dueDate).toLocaleDateString()}
+                        </strong>
+                        {isOverdue && (
+                          <span style={{ marginLeft: "8px", background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", padding: "2px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: 700 }}>
+                            OVERDUE
                           </span>
-                          <span style={{ fontSize: "11px", color: "#78350f" }}>
-                            New Date: <strong>{d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : "—"}</strong>
-                          </span>
-                          {d.extensionReason && (
-                            <span style={{ fontSize: "11px", color: "#451a03", background: "#fef3c7", padding: "2px 4px", borderRadius: 4 }}>
-                              <strong>Reason:</strong> {d.extensionReason}
-                            </span>
-                          )}
-                        </div>
-                      ) : d.extensionStatus === "approved" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "4px 8px", borderRadius: 6 }}>
-                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
-                            ✓ Extension Approved
-                          </span>
-                          {d.extensionRequestedDate && (
-                            <span style={{ fontSize: "11px", color: "#047857" }}>
-                              Extended to: {new Date(d.extensionRequestedDate).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      ) : d.extensionStatus === "rejected" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#fef2f2", border: "1px solid #fecaca", padding: "4px 8px", borderRadius: 6 }}>
-                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#b91c1c" }}>
-                            ✕ Extension Rejected
-                          </span>
-                          {d.extensionRejectionReason && (
-                            <span style={{ fontSize: "11px", color: "#991b1b" }}>
-                              <strong>Reason:</strong> {d.extensionRejectionReason}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div>
-                          {d.baseStatus !== "completed" ? (
-                            <button
-                              onClick={() => openExtensionModal(d.id)}
-                              style={{ padding: '4px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: "12px" }}
-                            >
-                              ⏱ Request Ext.
-                            </button>
-                          ) : (
-                            <span style={{ color: "#94a3b8" }}>—</span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                        {d.baseStatus !== "completed" && (
-                          <button
-                            onClick={() => handleStatusChange(d.id, "completed")}
-                            style={{ padding: '0.4rem 0.8rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: "13px" }}
-                          >
-                            Complete Task
-                          </button>
                         )}
                       </div>
-                    </td>
+                    </div>
+
+                    {/* Extension Status Area */}
+                    {d.extensionStatus === "pending" ? (
+                      <div style={{ background: "#fffbeb", border: "1px solid #fde68a", padding: "8px 10px", borderRadius: 6, fontSize: "12px" }}>
+                        <div style={{ fontWeight: 700, color: "#b45309", marginBottom: 2 }}>⏳ Extension Pending</div>
+                        <div style={{ color: "#78350f" }}>Requested New Date: <strong>{d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : "—"}</strong></div>
+                        {d.extensionReason && (
+                          <div style={{ color: "#451a03", marginTop: 4, background: "#fef3c7", padding: "4px", borderRadius: 4 }}>
+                            <strong>Reason:</strong> {d.extensionReason}
+                          </div>
+                        )}
+                      </div>
+                    ) : d.extensionStatus === "approved" ? (
+                      <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#065f46" }}>
+                        <strong>✓ Extension Approved</strong> to {d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : ""}
+                      </div>
+                    ) : d.extensionStatus === "rejected" ? (
+                      <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#991b1b" }}>
+                        <strong>✕ Extension Rejected:</strong> {d.extensionRejectionReason || "No reason given"}
+                      </div>
+                    ) : null}
+
+                    {/* Actions */}
+                    <div style={{ display: "flex", gap: "8px", marginTop: "4px", flexWrap: "wrap" }}>
+                      {d.baseStatus !== "completed" && !d.extensionStatus && (
+                        <button
+                          onClick={() => openExtensionModal(d.id)}
+                          style={{
+                            flex: 1,
+                            padding: "8px 12px",
+                            background: "#fffbeb",
+                            color: "#92400e",
+                            border: "1px solid #fde68a",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            fontSize: "13px"
+                          }}
+                        >
+                          ⏱ Request Extension
+                        </button>
+                      )}
+                      {d.baseStatus !== "completed" && (
+                        <button
+                          onClick={() => handleStatusChange(d.id, "completed")}
+                          style={{
+                            flex: 1,
+                            padding: "8px 12px",
+                            background: "#10b981",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                            fontSize: "13px"
+                          }}
+                        >
+                          ✓ Complete Task
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table className="user-dashboard-table" style={{ minWidth: "750px" }}>
+                <thead>
+                  <tr>
+                    <th>Task Title</th>
+                    <th>Assigned By</th>
+                    <th>Assigned Date</th>
+                    <th>Planned Due Date</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Extension</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {receivedDelegations.map(d => (
+                    <tr key={d.id}>
+                      <td style={{ fontWeight: 600 }}>{d.title}</td>
+                      <td>{d.assignedByName || "Manager"}</td>
+                      <td>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</td>
+                      <td>
+                        <span style={{ fontWeight: 500 }}>
+                          {new Date(d.dueDate).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td><span className={`status-pill ${d.priority}`}>{d.priority}</span></td>
+                      <td>
+                        <span className={`status-pill ${d.baseStatus}`}>{d.displayStatus || d.baseStatus}</span>
+                      </td>
+                      {/* Extension Column */}
+                      <td>
+                        {d.extensionStatus === "pending" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fffbeb", border: "1px solid #fde68a", padding: "6px 8px", borderRadius: 6 }}>
+                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#b45309" }}>
+                              ⏳ Extension Pending
+                            </span>
+                            <span style={{ fontSize: "11px", color: "#78350f" }}>
+                              New Date: <strong>{d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : "—"}</strong>
+                            </span>
+                            {d.extensionReason && (
+                              <span style={{ fontSize: "11px", color: "#451a03", background: "#fef3c7", padding: "2px 4px", borderRadius: 4 }}>
+                                <strong>Reason:</strong> {d.extensionReason}
+                              </span>
+                            )}
+                          </div>
+                        ) : d.extensionStatus === "approved" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "4px 8px", borderRadius: 6 }}>
+                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
+                              ✓ Extension Approved
+                            </span>
+                            {d.extensionRequestedDate && (
+                              <span style={{ fontSize: "11px", color: "#047857" }}>
+                                Extended to: {new Date(d.extensionRequestedDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        ) : d.extensionStatus === "rejected" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#fef2f2", border: "1px solid #fecaca", padding: "4px 8px", borderRadius: 6 }}>
+                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#b91c1c" }}>
+                              ✕ Extension Rejected
+                            </span>
+                            {d.extensionRejectionReason && (
+                              <span style={{ fontSize: "11px", color: "#991b1b" }}>
+                                <strong>Reason:</strong> {d.extensionRejectionReason}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            {d.baseStatus !== "completed" ? (
+                              <button
+                                onClick={() => openExtensionModal(d.id)}
+                                style={{ padding: '4px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: "12px" }}
+                              >
+                                ⏱ Request Ext.
+                              </button>
+                            ) : (
+                              <span style={{ color: "#94a3b8" }}>—</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                          {d.baseStatus !== "completed" && (
+                            <button
+                              onClick={() => handleStatusChange(d.id, "completed")}
+                              style={{ padding: '0.4rem 0.8rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: "13px" }}
+                            >
+                              Complete Task
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       )}
@@ -340,118 +519,224 @@ export function UserDelegationPage() {
             <div style={{ padding: "3rem", textAlign: "center", background: "#f8fafc", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
               <p style={{ color: "#64748b", fontSize: "15px", margin: 0 }}>You haven't delegated any tasks yet.</p>
             </div>
-          ) : (
-            <table className="user-dashboard-table">
-              <thead>
-                <tr>
-                  <th>Task Title</th>
-                  <th>Assigned To</th>
-                  <th>Assigned Date</th>
-                  <th>Planned Due Date</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Extension</th>
-                </tr>
-              </thead>
-              <tbody>
-                {delegatedByMe.map(d => (
-                  <tr key={d.id}>
-                    <td style={{ fontWeight: 600 }}>{d.title}</td>
-                    <td>{d.assignedToName || "Team Member"}</td>
-                    <td>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</td>
-                    <td>
-                      <span style={{ fontWeight: 500 }}>
-                        {new Date(d.dueDate).toLocaleDateString()}
+          ) : isMobile && viewMode === "card" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {delegatedByMe.map(d => (
+                <div
+                  key={d.id}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "10px",
+                    padding: "16px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#334155", lineHeight: "1.4" }}>
+                      {d.title}
+                    </h4>
+                    <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                      <span className={`status-pill ${d.priority}`} style={{ fontSize: "11px", padding: "2px 8px" }}>
+                        {d.priority}
                       </span>
-                    </td>
-                    <td><span className={`status-pill ${d.priority}`}>{d.priority}</span></td>
-                    <td>
-                      <span className={`status-pill ${d.baseStatus}`}>{d.displayStatus || d.baseStatus}</span>
-                    </td>
-                    {/* Dedicated Extension Column for Assigner */}
-                    <td style={{ minWidth: "220px" }}>
-                      {d.extensionStatus === "pending" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "#fffbeb", border: "1px solid #fde68a", padding: "8px", borderRadius: 6 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#b45309" }}>
-                              ⏳ Pending Review
-                            </span>
-                            <span style={{ fontSize: "11px", fontWeight: 600, color: "#78350f" }}>
-                              New: {d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : "—"}
-                            </span>
-                          </div>
-                          {d.extensionReason && (
-                            <div style={{ fontSize: "11px", color: "#451a03", background: "#fef3c7", padding: "4px 6px", borderRadius: 4, wordBreak: "break-word" }}>
-                              <strong>Reason:</strong> {d.extensionReason}
-                            </div>
-                          )}
-                          <div style={{ display: "flex", gap: "6px", marginTop: 2 }}>
-                            <button
-                              onClick={() => openExtensionReview(d, "approved")}
-                              title="Accept Extension"
-                              style={{
-                                flex: 1,
-                                padding: "4px 8px",
-                                background: "#10b981",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                fontWeight: 700
-                              }}
-                            >
-                              ✓ Accept
-                            </button>
-                            <button
-                              onClick={() => openExtensionReview(d, "rejected")}
-                              title="Reject Extension (Reason Required)"
-                              style={{
-                                flex: 1,
-                                padding: "4px 8px",
-                                background: "#ef4444",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                fontWeight: 700
-                              }}
-                            >
-                              ✕ Reject
-                            </button>
-                          </div>
+                      <span className={`status-pill ${d.baseStatus}`} style={{ fontSize: "11px", padding: "2px 8px" }}>
+                        {d.displayStatus || d.baseStatus}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px", color: "#64748b" }}>
+                    <div>
+                      <span style={{ color: "#94a3b8" }}>Assigned To: </span>
+                      <strong style={{ color: "#334155" }}>{d.assignedToName || "Team Member"}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: "#94a3b8" }}>Assigned On: </span>
+                      <strong style={{ color: "#334155" }}>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</strong>
+                    </div>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <span style={{ color: "#94a3b8" }}>Planned Due Date: </span>
+                      <strong style={{ color: "#334155" }}>{new Date(d.dueDate).toLocaleDateString()}</strong>
+                    </div>
+                  </div>
+
+                  {/* Extension Area for Assigner */}
+                  {d.extensionStatus === "pending" ? (
+                    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", padding: "10px", borderRadius: 8, fontSize: "12px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontWeight: 700, color: "#b45309" }}>⏳ Extension Requested</span>
+                        <span style={{ fontWeight: 600, color: "#78350f" }}>New: {d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : "—"}</span>
+                      </div>
+                      {d.extensionReason && (
+                        <div style={{ color: "#451a03", background: "#fef3c7", padding: "6px", borderRadius: 4, marginBottom: 8 }}>
+                          <strong>Reason:</strong> {d.extensionReason}
                         </div>
-                      ) : d.extensionStatus === "approved" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "4px 8px", borderRadius: 6 }}>
-                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
-                            ✓ Extension Approved
-                          </span>
-                          {d.extensionRequestedDate && (
-                            <span style={{ fontSize: "11px", color: "#047857" }}>
-                              Extended: {new Date(d.extensionRequestedDate).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      ) : d.extensionStatus === "rejected" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#fef2f2", border: "1px solid #fecaca", padding: "4px 8px", borderRadius: 6 }}>
-                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#b91c1c" }}>
-                            ✕ Extension Rejected
-                          </span>
-                          {d.extensionRejectionReason && (
-                            <span style={{ fontSize: "11px", color: "#991b1b", wordBreak: "break-word" }}>
-                              <strong>Reason:</strong> {d.extensionRejectionReason}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ color: "#94a3b8" }}>—</span>
                       )}
-                    </td>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={() => openExtensionReview(d, "approved")}
+                          style={{
+                            flex: 1,
+                            padding: "8px",
+                            background: "#10b981",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontWeight: 700
+                          }}
+                        >
+                          ✓ Accept
+                        </button>
+                        <button
+                          onClick={() => openExtensionReview(d, "rejected")}
+                          style={{
+                            flex: 1,
+                            padding: "8px",
+                            background: "#ef4444",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontWeight: 700
+                          }}
+                        >
+                          ✕ Reject
+                        </button>
+                      </div>
+                    </div>
+                  ) : d.extensionStatus === "approved" ? (
+                    <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#065f46" }}>
+                      <strong>✓ Extension Approved</strong> (to {d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : ""})
+                    </div>
+                  ) : d.extensionStatus === "rejected" ? (
+                    <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#991b1b" }}>
+                      <strong>✕ Extension Rejected:</strong> {d.extensionRejectionReason || "No reason given"}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table className="user-dashboard-table" style={{ minWidth: "750px" }}>
+                <thead>
+                  <tr>
+                    <th>Task Title</th>
+                    <th>Assigned To</th>
+                    <th>Assigned Date</th>
+                    <th>Planned Due Date</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Extension</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {delegatedByMe.map(d => (
+                    <tr key={d.id}>
+                      <td style={{ fontWeight: 600 }}>{d.title}</td>
+                      <td>{d.assignedToName || "Team Member"}</td>
+                      <td>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</td>
+                      <td>
+                        <span style={{ fontWeight: 500 }}>
+                          {new Date(d.dueDate).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td><span className={`status-pill ${d.priority}`}>{d.priority}</span></td>
+                      <td>
+                        <span className={`status-pill ${d.baseStatus}`}>{d.displayStatus || d.baseStatus}</span>
+                      </td>
+                      {/* Dedicated Extension Column for Assigner */}
+                      <td style={{ minWidth: "220px" }}>
+                        {d.extensionStatus === "pending" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "#fffbeb", border: "1px solid #fde68a", padding: "8px", borderRadius: 6 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: "11px", fontWeight: 700, color: "#b45309" }}>
+                                ⏳ Pending Review
+                              </span>
+                              <span style={{ fontSize: "11px", fontWeight: 600, color: "#78350f" }}>
+                                New: {d.extensionRequestedDate ? new Date(d.extensionRequestedDate).toLocaleDateString() : "—"}
+                              </span>
+                            </div>
+                            {d.extensionReason && (
+                              <div style={{ fontSize: "11px", color: "#451a03", background: "#fef3c7", padding: "4px 6px", borderRadius: 4, wordBreak: "break-word" }}>
+                                <strong>Reason:</strong> {d.extensionReason}
+                              </div>
+                            )}
+                            <div style={{ display: "flex", gap: "6px", marginTop: 2 }}>
+                              <button
+                                onClick={() => openExtensionReview(d, "approved")}
+                                title="Accept Extension"
+                                style={{
+                                  flex: 1,
+                                  padding: "4px 8px",
+                                  background: "#10b981",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontSize: "12px",
+                                  fontWeight: 700
+                                }}
+                              >
+                                ✓ Accept
+                              </button>
+                              <button
+                                onClick={() => openExtensionReview(d, "rejected")}
+                                title="Reject Extension (Reason Required)"
+                                style={{
+                                  flex: 1,
+                                  padding: "4px 8px",
+                                  background: "#ef4444",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontSize: "12px",
+                                  fontWeight: 700
+                                }}
+                              >
+                                ✕ Reject
+                              </button>
+                            </div>
+                          </div>
+                        ) : d.extensionStatus === "approved" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "4px 8px", borderRadius: 6 }}>
+                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
+                              ✓ Extension Approved
+                            </span>
+                            {d.extensionRequestedDate && (
+                              <span style={{ fontSize: "11px", color: "#047857" }}>
+                                Extended: {new Date(d.extensionRequestedDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        ) : d.extensionStatus === "rejected" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#fef2f2", border: "1px solid #fecaca", padding: "4px 8px", borderRadius: 6 }}>
+                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#b91c1c" }}>
+                              ✕ Extension Rejected
+                            </span>
+                            {d.extensionRejectionReason && (
+                              <span style={{ fontSize: "11px", color: "#991b1b", wordBreak: "break-word" }}>
+                                <strong>Reason:</strong> {d.extensionRejectionReason}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8" }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       )}

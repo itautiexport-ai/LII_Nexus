@@ -32,6 +32,17 @@ export function FinishingRecipePage() {
   const [swatchImage, setSwatchImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -289,8 +300,8 @@ export function FinishingRecipePage() {
           )}
           <form onSubmit={handleSubmit}>
             {/* Header Section */}
-            <div className="fms-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
-              <div className="fms-form-group" style={{ gridColumn: "span 2" }}>
+            <div className="fms-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "12px" : "20px", marginBottom: "24px" }}>
+              <div className="fms-form-group" style={{ gridColumn: isMobile ? "span 1" : "span 2" }}>
                 <label className="fms-label" style={{ color: "#2563eb", fontWeight: "bold" }}>Capture Code (Auto-Fill Recipe) <small style={{ fontWeight: "normal" }}>/ कैप्चर कोड (रेसिपी स्वतः भरें)</small></label>
                 <select
                   onChange={handleCaptureCodeChange}
@@ -394,15 +405,15 @@ export function FinishingRecipePage() {
                 </select>
               </div>
 
-              <div className="fms-form-group" style={{ gridColumn: "span 2" }}>
+              <div className="fms-form-group" style={{ gridColumn: isMobile ? "span 1" : "span 2" }}>
                 <label className="fms-label">Finish Swatch Image <small style={{ color: "#64748b" }}>/ फिनिश स्वैच छवि</small></label>
-                <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="fms-input"
-                    style={{ padding: "8px", border: "1px solid #ced4da", borderRadius: "4px", flex: 1 }}
+                    style={{ padding: "8px", border: "1px solid #ced4da", borderRadius: "4px", flex: 1, minWidth: "200px" }}
                   />
                   {uploading && <span style={{ fontSize: "14px", color: "#475569" }}>Uploading...</span>}
                   {swatchImage && (
@@ -442,124 +453,307 @@ export function FinishingRecipePage() {
 
             <hr className="fms-divider" />
 
-            {/* Steps Table Section */}
-            <h3 className="fms-title" style={{ marginTop: "20px", marginBottom: "15px", fontSize: "1.2rem" }}>Recipe Steps <small style={{ fontSize: "0.7em", fontWeight: "400" }}>/ रेसिपी के चरण</small></h3>
+            {/* Steps Table Section Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "20px", marginBottom: "15px", flexWrap: "wrap", gap: "10px" }}>
+              <h3 className="fms-title" style={{ margin: 0, fontSize: "1.2rem" }}>
+                Recipe Steps <small style={{ fontSize: "0.7em", fontWeight: "400" }}>/ रेसिपी के चरण</small>
+              </h3>
+
+              <div style={{ display: "inline-flex", background: "#f1f5f9", padding: "3px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("card")}
+                  style={{
+                    padding: "5px 10px",
+                    fontSize: "12px",
+                    fontWeight: viewMode === "card" ? 600 : 500,
+                    background: viewMode === "card" ? "#ffffff" : "transparent",
+                    color: viewMode === "card" ? "#0f172a" : "#64748b",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    boxShadow: viewMode === "card" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  }}
+                >
+                  📱 Step Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  style={{
+                    padding: "5px 10px",
+                    fontSize: "12px",
+                    fontWeight: viewMode === "table" ? 600 : 500,
+                    background: viewMode === "table" ? "#ffffff" : "transparent",
+                    color: viewMode === "table" ? "#0f172a" : "#64748b",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  }}
+                >
+                  📊 Table
+                </button>
+              </div>
+            </div>
             
-            <div className="fms-table-container" style={{ overflowX: "auto" }}>
-              <table className="fms-table" style={{ minWidth: "900px" }}>
-                <thead>
-                  <tr>
-                    <th className="fms-th" style={{ width: "60px" }}>Step<br/><small>(क्र.सं)</small></th>
-                    <th className="fms-th">Process / Material<br/><small>(प्रक्रिया / सामग्री)</small></th>
-                    <th className="fms-th" style={{ width: "120px" }}>Tool / Machine<br/><small>(मशीन / उपकरण)</small></th>
-                    <th className="fms-th" style={{ width: "120px" }}>Grit / Quantity<br/><small>(ग्रिट / मात्रा)</small></th>
-                    <th className="fms-th" style={{ width: "120px" }}>Drying Time<br/><small>(सूखने का समय)</small></th>
-                    <th className="fms-th">Notes<br/><small>(नोट्स)</small></th>
-                    <th className="fms-th" style={{ width: "100px" }}>No. of Coats<br/><small>(कितने कोट)</small></th>
-                    <th className="fms-th" style={{ width: "60px" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {steps.map((step) => (
-                    <tr key={step.id} className="fms-tr">
-                      <td className="fms-td" style={{ textAlign: "center", fontWeight: "bold" }}>{step.stepNo}</td>
-                      <td className="fms-td">
-                        <input 
-                          type="text" 
-                          className="fms-input" 
-                          value={step.processMaterial} 
-                          onChange={(e) => handleStepChange(step.id, "processMaterial", e.target.value)} 
-                          style={{ padding: "6px", fontSize: "0.9rem" }}
-                          placeholder="Process/Material"
-                        />
-                      </td>
-                      <td className="fms-td">
+            {isMobile && viewMode === "card" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                {steps.map((step) => (
+                  <div
+                    key={step.id}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      padding: "16px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ background: "#2563eb", color: "#fff", fontWeight: 700, padding: "3px 10px", borderRadius: "12px", fontSize: "12px" }}>
+                        Step #{step.stepNo}
+                      </span>
+                      {steps.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeStep(step.id)}
+                          style={{
+                            background: "#fee2e2",
+                            color: "#dc2626",
+                            border: "1px solid #fecaca",
+                            borderRadius: "6px",
+                            padding: "4px 10px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            cursor: "pointer"
+                          }}
+                        >
+                          ✕ Remove Step
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Process / Material (प्रक्रिया / सामग्री)
+                      </label>
+                      <input 
+                        type="text" 
+                        className="fms-input" 
+                        value={step.processMaterial} 
+                        onChange={(e) => handleStepChange(step.id, "processMaterial", e.target.value)} 
+                        style={{ padding: "8px", fontSize: "14px" }}
+                        placeholder="e.g. PU Sealer, Sanding"
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                          Tool / Machine
+                        </label>
                         <input 
                           type="text" 
                           className="fms-input" 
                           value={step.toolMachine} 
                           onChange={(e) => handleStepChange(step.id, "toolMachine", e.target.value)} 
-                          style={{ padding: "6px", fontSize: "0.9rem" }}
-                          placeholder="e.g. Spray"
+                          style={{ padding: "8px", fontSize: "14px" }}
+                          placeholder="e.g. Spray Gun"
                         />
-                      </td>
-                      <td className="fms-td">
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                          Grit / Quantity
+                        </label>
                         <input 
                           type="text" 
                           className="fms-input" 
                           value={step.gritQuantity} 
                           onChange={(e) => handleStepChange(step.id, "gritQuantity", e.target.value)} 
-                          style={{ padding: "6px", fontSize: "0.9rem" }}
-                          placeholder="e.g. 1:3"
+                          style={{ padding: "8px", fontSize: "14px" }}
+                          placeholder="e.g. 1:3 / 220"
                         />
-                      </td>
-                      <td className="fms-td">
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                          Drying Time
+                        </label>
                         <input 
                           type="text" 
                           className="fms-input" 
                           value={step.dryingTime} 
                           onChange={(e) => handleStepChange(step.id, "dryingTime", e.target.value)} 
-                          style={{ padding: "6px", fontSize: "0.9rem" }}
-                          placeholder="e.g. 1 Hrs"
+                          style={{ padding: "8px", fontSize: "14px" }}
+                          placeholder="e.g. 1 Hr"
                         />
-                      </td>
-                      <td className="fms-td">
-                        <input 
-                          type="text" 
-                          className="fms-input" 
-                          value={step.notes} 
-                          onChange={(e) => handleStepChange(step.id, "notes", e.target.value)} 
-                          style={{ padding: "6px", fontSize: "0.9rem" }}
-                          placeholder="Notes"
-                        />
-                      </td>
-                      <td className="fms-td">
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                          No. of Coats
+                        </label>
                         <input 
                           type="text" 
                           className="fms-input" 
                           value={step.noOfCoats} 
                           onChange={(e) => handleStepChange(step.id, "noOfCoats", e.target.value)} 
-                          style={{ padding: "6px", fontSize: "0.9rem" }}
-                          placeholder="e.g. 1 Coat"
+                          style={{ padding: "8px", fontSize: "14px" }}
+                          placeholder="e.g. 2 Coats"
                         />
-                      </td>
-                      <td className="fms-td" style={{ textAlign: "center" }}>
-                        <button 
-                          type="button" 
-                          onClick={() => removeStep(step.id)}
-                          style={{ background: "#dc3545", color: "white", border: "none", borderRadius: "4px", padding: "4px 8px", cursor: "pointer", fontSize: "16px", fontWeight: "bold" }}
-                          title="Remove Step"
-                        >
-                          &times;
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </div>
 
-            <div style={{ marginTop: "15px", display: "flex", gap: "10px", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Notes / विशेष निर्देश
+                      </label>
+                      <input 
+                        type="text" 
+                        className="fms-input" 
+                        value={step.notes} 
+                        onChange={(e) => handleStepChange(step.id, "notes", e.target.value)} 
+                        style={{ padding: "8px", fontSize: "14px" }}
+                        placeholder="Additional remarks..."
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="fms-table-container" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table className="fms-table" data-no-enhance="true" style={{ minWidth: "900px" }}>
+                  <thead>
+                    <tr>
+                      <th className="fms-th" style={{ width: "60px" }}>Step<br/><small>(क्र.सं)</small></th>
+                      <th className="fms-th">Process / Material<br/><small>(प्रक्रिया / सामग्री)</small></th>
+                      <th className="fms-th" style={{ width: "120px" }}>Tool / Machine<br/><small>(मशीन / उपकरण)</small></th>
+                      <th className="fms-th" style={{ width: "120px" }}>Grit / Quantity<br/><small>(ग्रिट / मात्रा)</small></th>
+                      <th className="fms-th" style={{ width: "120px" }}>Drying Time<br/><small>(सूखने का समय)</small></th>
+                      <th className="fms-th">Notes<br/><small>(नोट्स)</small></th>
+                      <th className="fms-th" style={{ width: "100px" }}>No. of Coats<br/><small>(कितने कोट)</small></th>
+                      <th className="fms-th" style={{ width: "60px" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {steps.map((step) => (
+                      <tr key={step.id} className="fms-tr">
+                        <td className="fms-td" style={{ textAlign: "center", fontWeight: "bold" }}>{step.stepNo}</td>
+                        <td className="fms-td">
+                          <input 
+                            type="text" 
+                            className="fms-input" 
+                            value={step.processMaterial} 
+                            onChange={(e) => handleStepChange(step.id, "processMaterial", e.target.value)} 
+                            style={{ padding: "6px", fontSize: "0.9rem" }}
+                            placeholder="Process/Material"
+                          />
+                        </td>
+                        <td className="fms-td">
+                          <input 
+                            type="text" 
+                            className="fms-input" 
+                            value={step.toolMachine} 
+                            onChange={(e) => handleStepChange(step.id, "toolMachine", e.target.value)} 
+                            style={{ padding: "6px", fontSize: "0.9rem" }}
+                            placeholder="e.g. Spray"
+                          />
+                        </td>
+                        <td className="fms-td">
+                          <input 
+                            type="text" 
+                            className="fms-input" 
+                            value={step.gritQuantity} 
+                            onChange={(e) => handleStepChange(step.id, "gritQuantity", e.target.value)} 
+                            style={{ padding: "6px", fontSize: "0.9rem" }}
+                            placeholder="e.g. 1:3"
+                          />
+                        </td>
+                        <td className="fms-td">
+                          <input 
+                            type="text" 
+                            className="fms-input" 
+                            value={step.dryingTime} 
+                            onChange={(e) => handleStepChange(step.id, "dryingTime", e.target.value)} 
+                            style={{ padding: "6px", fontSize: "0.9rem" }}
+                            placeholder="e.g. 1 Hrs"
+                          />
+                        </td>
+                        <td className="fms-td">
+                          <input 
+                            type="text" 
+                            className="fms-input" 
+                            value={step.notes} 
+                            onChange={(e) => handleStepChange(step.id, "notes", e.target.value)} 
+                            style={{ padding: "6px", fontSize: "0.9rem" }}
+                            placeholder="Notes"
+                          />
+                        </td>
+                        <td className="fms-td">
+                          <input 
+                            type="text" 
+                            className="fms-input" 
+                            value={step.noOfCoats} 
+                            onChange={(e) => handleStepChange(step.id, "noOfCoats", e.target.value)} 
+                            style={{ padding: "6px", fontSize: "0.9rem" }}
+                            placeholder="e.g. 1 Coat"
+                          />
+                        </td>
+                        <td className="fms-td" style={{ textAlign: "center" }}>
+                          <button 
+                            type="button" 
+                            onClick={() => removeStep(step.id)}
+                            style={{ background: "#dc3545", color: "white", border: "none", borderRadius: "4px", padding: "4px 8px", cursor: "pointer", fontSize: "16px", fontWeight: "bold" }}
+                            title="Remove Step"
+                          >
+                            &times;
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={{ marginTop: "15px", display: "flex", gap: "10px", justifyContent: "space-between", alignItems: "center", flexDirection: isMobile ? "column" : "row" }}>
               <button 
                 type="button" 
                 onClick={addStep} 
-                style={{ background: "#007bff", color: "white", border: "none", borderRadius: "4px", padding: "8px 16px", cursor: "pointer", fontWeight: "bold", marginTop: "30px" }}
+                style={{
+                  background: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "10px 20px",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  width: isMobile ? "100%" : "auto",
+                  marginTop: isMobile ? "10px" : "30px",
+                  fontSize: "14px"
+                }}
               >
                 + ADD STEP
               </button>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "30px" }}>
+              <div style={{ display: "flex", gap: "10px", width: isMobile ? "100%" : "auto", marginTop: isMobile ? "10px" : "30px" }}>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="fms-btn-primary"
                   style={{
+                    flex: isMobile ? 1 : "initial",
                     padding: "10px 24px",
-                    fontSize: "1rem",
+                    fontSize: "14px",
                     fontWeight: "bold",
                     background: submitting ? "#94a3b8" : "#28a745",
                     border: "none",
-                    borderRadius: "4px",
+                    borderRadius: "6px",
                     color: "#fff",
                     cursor: submitting ? "not-allowed" : "pointer"
                   }}
@@ -570,13 +764,14 @@ export function FinishingRecipePage() {
                   type="button"
                   onClick={() => navigate("/admin/finishing-recipe-list")}
                   style={{
-                    padding: "10px 24px",
-                    fontSize: "1rem",
+                    flex: isMobile ? 1 : "initial",
+                    padding: "10px 20px",
+                    fontSize: "14px",
                     fontWeight: "bold",
                     background: "#6c757d",
+                    color: "white",
                     border: "none",
-                    borderRadius: "4px",
-                    color: "#fff",
+                    borderRadius: "6px",
                     cursor: "pointer"
                   }}
                 >

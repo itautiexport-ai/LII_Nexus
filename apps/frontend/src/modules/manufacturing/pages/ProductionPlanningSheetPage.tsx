@@ -217,6 +217,17 @@ export default function ProductionPlanningSheetPage() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -387,12 +398,48 @@ export default function ProductionPlanningSheetPage() {
   }, 0);
 
   return (
-    <div style={containerStyle}>
-      <div style={headerStyle}>
-        <h1 style={titleStyle}>Production Planning Sheet</h1>
+    <div style={{ ...containerStyle, padding: isMobile ? "16px 12px 40px" : "40px 20px" }}>
+      <div style={{ ...headerStyle, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", gap: "10px", marginBottom: "20px" }}>
+        <h1 style={{ ...titleStyle, fontSize: isMobile ? "22px" : "28px" }}>Production Planning Sheet</h1>
+        
+        {/* Mobile View Switcher */}
+        <div style={{ display: "inline-flex", background: "#f1f5f9", padding: "3px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+          <button
+            onClick={() => setViewMode("card")}
+            style={{
+              padding: "6px 12px",
+              fontSize: "12px",
+              fontWeight: viewMode === "card" ? 600 : 500,
+              background: viewMode === "card" ? "#ffffff" : "transparent",
+              color: viewMode === "card" ? "#0f172a" : "#64748b",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              boxShadow: viewMode === "card" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+            }}
+          >
+            📱 Cards
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            style={{
+              padding: "6px 12px",
+              fontSize: "12px",
+              fontWeight: viewMode === "table" ? 600 : 500,
+              background: viewMode === "table" ? "#ffffff" : "transparent",
+              color: viewMode === "table" ? "#0f172a" : "#64748b",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+            }}
+          >
+            📊 Table
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "24px", gap: "16px" }}>
+      <div style={{ display: "flex", justifyContent: isMobile ? "stretch" : "flex-end", alignItems: "center", marginBottom: "20px", gap: "12px", flexWrap: "wrap", flexDirection: isMobile ? "column" : "row" }}>
         <input 
           type="file" 
           accept=".xlsx, .xls, image/*" 
@@ -404,107 +451,215 @@ export default function ProductionPlanningSheetPage() {
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
           style={{
+            width: isMobile ? "100%" : "auto",
             padding: "12px 24px",
             backgroundColor: "#2563eb",
             color: "#ffffff",
             borderRadius: "8px",
             fontWeight: "600",
-            fontSize: "15px",
+            fontSize: "14px",
             border: "none",
             cursor: isUploading ? "not-allowed" : "pointer",
             boxShadow: "0 2px 10px rgba(37, 99, 235, 0.2)",
             opacity: isUploading ? 0.8 : 1,
-            transition: "all 0.2s"
+            transition: "all 0.2s",
+            textAlign: "center"
           }}
         >
-          {isUploading ? "Uploading..." : "Upload Sheet/Image"}
+          {isUploading ? "Uploading..." : "📁 Upload Sheet / Image"}
         </button>
-        <div style={{ padding: "12px 24px", backgroundColor: "#f0fdf4", color: "#166534", borderRadius: "8px", fontWeight: "600", fontSize: "16px", whiteSpace: "nowrap", border: "1px solid #bbf7d0" }}>
+        <div style={{ width: isMobile ? "100%" : "auto", textAlign: "center", padding: "10px 20px", backgroundColor: "#f0fdf4", color: "#166534", borderRadius: "8px", fontWeight: "700", fontSize: "15px", whiteSpace: "nowrap", border: "1px solid #bbf7d0" }}>
           Total CBM: {totalCbmSum.toFixed(2)}
         </div>
       </div>
 
       {/* List Section */}
-      <div style={tableContainerStyle}>
+      <div>
         {loading ? (
           <div style={emptyMessageStyle}>Loading production plans...</div>
         ) : error ? (
           <div style={emptyMessageStyle}>{error}</div>
         ) : plans.length === 0 ? (
           <div style={emptyMessageStyle}>No production plans found.</div>
-        ) : (
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Factory List</th>
-                <th style={thStyle}>Factory List No</th>
-                <th style={thStyle}>Order Date</th>
-                <th style={thStyle}>Company</th>
-                <th style={thStyle}>Total CBM</th>
-                <th style={thStyle}>ERP No.</th>
-                <th style={thStyle}>Ex-Factory Date</th>
-                <th style={thStyle}>CBM Split</th>
-                <th style={thStyle}>Process</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(Array.isArray(plans) ? plans : []).map((plan, idx) => (
-                <tr key={idx} style={{ transition: "background-color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-                  <td style={{ ...tdStyle, fontWeight: 500, color: "#111827" }}>
-                    {plan.attachmentUrl ? (
-                      <a 
-                        href={getAssetUrl(plan.attachmentUrl)} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        style={{ color: "#2563eb", textDecoration: "underline", textUnderlineOffset: "4px" }}
-                      >
-                        {plan.factoryName || "-"}
-                      </a>
-                    ) : (
-                      plan.factoryName || "-"
-                    )}
-                  </td>
-                  <td style={tdStyle}>{plan.factoryList || "-"}</td>
-                  <td style={tdStyle}>{formatDate(plan.orderDate)}</td>
-                  <td style={tdStyle}>{plan.company || "-"}</td>
-                  <td style={tdStyle}><strong style={{ color: "#2563eb" }}>{plan.totalCbm != null ? Number(plan.totalCbm).toFixed(2) : "-"}</strong></td>
-                  <td style={tdStyle}>{plan.erpNo || "-"}</td>
-                  <td style={tdStyle}>{formatDate(plan.exFactoryDate)}</td>
-                  <td style={tdStyle}>
-                    <CbmSplitCell 
-                      plan={plan} 
-                      onCbmChange={handleCbmChange} 
-                      onVendorNameChange={handleVendorNameChange} 
-                    />
-                  </td>
-                  <td style={tdStyle}>
+        ) : isMobile && viewMode === "card" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {(Array.isArray(plans) ? plans : []).map((plan, idx) => (
+              <div
+                key={plan.id || idx}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {plan.attachmentUrl ? (
+                        <a 
+                          href={getAssetUrl(plan.attachmentUrl)} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          style={{ color: "#2563eb", textDecoration: "underline" }}
+                        >
+                          {plan.factoryName || "Unnamed Plan"}
+                        </a>
+                      ) : (
+                        plan.factoryName || "Unnamed Plan"
+                      )}
+                    </h3>
+                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+                      Factory List: <strong>{plan.factoryList || "-"}</strong>
+                    </div>
+                  </div>
+                  <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "4px 10px", borderRadius: "6px", textAlign: "right" }}>
+                    <div style={{ fontSize: "10px", fontWeight: 700, color: "#1e40af", textTransform: "uppercase" }}>Total CBM</div>
+                    <div style={{ fontSize: "16px", fontWeight: 800, color: "#2563eb" }}>
+                      {plan.totalCbm != null ? Number(plan.totalCbm).toFixed(2) : "-"}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px", background: "#f9fafb", padding: "10px", borderRadius: "8px" }}>
+                  <div>
+                    <span style={{ color: "#6b7280" }}>Company: </span>
+                    <strong style={{ color: "#111827" }}>{plan.company || "-"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#6b7280" }}>ERP No: </span>
+                    <strong style={{ color: "#111827" }}>{plan.erpNo || "-"}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#6b7280" }}>Order Date: </span>
+                    <strong style={{ color: "#111827" }}>{formatDate(plan.orderDate)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#6b7280" }}>Ex-Factory: </span>
+                    <strong style={{ color: "#111827" }}>{formatDate(plan.exFactoryDate)}</strong>
+                  </div>
+                </div>
+
+                {/* CBM Split Controls */}
+                <div style={{ borderTop: "1px solid #f3f4f6", paddingTop: "10px" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>CBM Split</div>
+                  <CbmSplitCell 
+                    plan={plan} 
+                    onCbmChange={handleCbmChange} 
+                    onVendorNameChange={handleVendorNameChange} 
+                  />
+                </div>
+
+                {/* Process CBM Controls */}
+                <div style={{ borderTop: "1px solid #f3f4f6", paddingTop: "10px" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>Process Breakdown</div>
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: "4px" }}>
                     <ProcessCbmCell 
                       plan={plan} 
                       onProcessChange={handleProcessCbmChange} 
                     />
-                  </td>
-                  <td style={tdStyle}>
-                    <button 
-                      onClick={() => handleDelete(plan.id)}
-                      style={{
-                        backgroundColor: "#fee2e2",
-                        color: "#dc2626",
-                        border: "none",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        fontWeight: 500,
-                        cursor: "pointer"
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
+                  <button 
+                    onClick={() => handleDelete(plan.id)}
+                    style={{
+                      backgroundColor: "#fee2e2",
+                      color: "#dc2626",
+                      border: "1px solid #fca5a5",
+                      padding: "6px 14px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    🗑 Delete Plan
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={tableContainerStyle}>
+            <table style={{ ...tableStyle, minWidth: "1200px" }} data-no-enhance="true">
+              <thead>
+                <tr>
+                  <th style={thStyle}>Factory List</th>
+                  <th style={thStyle}>Factory List No</th>
+                  <th style={thStyle}>Order Date</th>
+                  <th style={thStyle}>Company</th>
+                  <th style={thStyle}>Total CBM</th>
+                  <th style={thStyle}>ERP No.</th>
+                  <th style={thStyle}>Ex-Factory Date</th>
+                  <th style={thStyle}>CBM Split</th>
+                  <th style={thStyle}>Process</th>
+                  <th style={thStyle}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(Array.isArray(plans) ? plans : []).map((plan, idx) => (
+                  <tr key={idx} style={{ transition: "background-color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+                    <td style={{ ...tdStyle, fontWeight: 500, color: "#111827" }}>
+                      {plan.attachmentUrl ? (
+                        <a 
+                          href={getAssetUrl(plan.attachmentUrl)} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          style={{ color: "#2563eb", textDecoration: "underline", textUnderlineOffset: "4px" }}
+                        >
+                          {plan.factoryName || "-"}
+                        </a>
+                      ) : (
+                        plan.factoryName || "-"
+                      )}
+                    </td>
+                    <td style={tdStyle}>{plan.factoryList || "-"}</td>
+                    <td style={tdStyle}>{formatDate(plan.orderDate)}</td>
+                    <td style={tdStyle}>{plan.company || "-"}</td>
+                    <td style={tdStyle}><strong style={{ color: "#2563eb" }}>{plan.totalCbm != null ? Number(plan.totalCbm).toFixed(2) : "-"}</strong></td>
+                    <td style={tdStyle}>{plan.erpNo || "-"}</td>
+                    <td style={tdStyle}>{formatDate(plan.exFactoryDate)}</td>
+                    <td style={tdStyle}>
+                      <CbmSplitCell 
+                        plan={plan} 
+                        onCbmChange={handleCbmChange} 
+                        onVendorNameChange={handleVendorNameChange} 
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <ProcessCbmCell 
+                        plan={plan} 
+                        onProcessChange={handleProcessCbmChange} 
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <button 
+                        onClick={() => handleDelete(plan.id)}
+                        style={{
+                          backgroundColor: "#fee2e2",
+                          color: "#dc2626",
+                          border: "none",
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          cursor: "pointer"
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
