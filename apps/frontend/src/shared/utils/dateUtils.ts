@@ -9,9 +9,9 @@ export function formatIndianDateTime(val: string | Date | null | undefined): str
   if (typeof val === "string") {
     let s = val.trim();
     if (!s) return "-";
-    // If string has no timezone offset (+ or Z), treat it as IST representation from MySQL
+    // If string has no timezone offset (+ or Z), treat it as UTC from MySQL
     if (!s.includes("Z") && !s.includes("+") && !s.includes("-", 10)) {
-      s = (s.includes("T") ? s : s.replace(" ", "T")) + "+05:30";
+      s = (s.includes("T") ? s : s.replace(" ", "T")) + "Z";
     }
     d = new Date(s);
   } else {
@@ -39,7 +39,7 @@ export function formatIndianTime(val: string | Date | null | undefined): string 
     let s = val.trim();
     if (!s) return "-";
     if (!s.includes("Z") && !s.includes("+") && !s.includes("-", 10)) {
-      s = (s.includes("T") ? s : s.replace(" ", "T")) + "+05:30";
+      s = (s.includes("T") ? s : s.replace(" ", "T")) + "Z";
     }
     d = new Date(s);
   } else {

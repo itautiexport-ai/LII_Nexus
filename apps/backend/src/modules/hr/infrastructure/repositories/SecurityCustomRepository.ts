@@ -89,7 +89,7 @@ export class SecurityCustomRepository {
     const id = uuid();
     await pool.query(
       `INSERT INTO security_visitor_entries (id, visitor_name, phone, company_name, person_to_meet, purpose, image_url, photo_captured_at, in_time)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())`,
       [
         id,
         data.visitorName,
@@ -106,7 +106,7 @@ export class SecurityCustomRepository {
   }
 
   async checkOutVisitorEntry(id: string): Promise<SecurityVisitorEntryRecord | null> {
-    await pool.query("UPDATE security_visitor_entries SET status = 'Checked-Out', out_time = NOW() WHERE id = ?", [id]);
+    await pool.query("UPDATE security_visitor_entries SET status = 'Checked-Out', out_time = UTC_TIMESTAMP() WHERE id = ?", [id]);
     const [rows] = await pool.query("SELECT * FROM security_visitor_entries WHERE id = ?", [id]);
     return (rows as SecurityVisitorEntryRecord[])[0] || null;
   }
