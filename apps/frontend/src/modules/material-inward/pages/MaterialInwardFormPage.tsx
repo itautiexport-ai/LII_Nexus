@@ -1,6 +1,7 @@
 import React, { FormEvent, useEffect, useState, useRef } from "react";
 import { materialInwardApi } from "../api/materialInwardApi";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { compressImage } from "../../../shared/utils/imageCompressor";
 
 const UOM_OPTIONS = ["Pcs", "Sqft", "Nos", "Kg", "Mtr", "CBM", "CFT", "Bags"];
 
@@ -59,7 +60,8 @@ export default function MaterialInwardFormPage() {
     setError(null);
 
     try {
-      const uploadedUrl = await materialInwardApi.uploadPhoto(file);
+      const fileToUpload = await compressImage(file);
+      const uploadedUrl = await materialInwardApi.uploadPhoto(fileToUpload);
       setForm((f) => ({ ...f, photoUrl: uploadedUrl }));
       setSuccess("Product photo uploaded successfully.");
     } catch (err: any) {

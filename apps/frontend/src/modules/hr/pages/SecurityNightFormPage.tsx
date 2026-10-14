@@ -3,6 +3,7 @@ import { securityCustomApi } from "../api/securityCustomApi";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../modules/auth/hooks/useAuthStore";
+import { compressImage } from "../../../shared/utils/imageCompressor";
 
 interface UploadedFile {
   url: string;
@@ -64,8 +65,9 @@ export default function SecurityNightFormPage() {
 
     try {
       const exactRealTime = new Date().toISOString();
+      const fileToUpload = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", fileToUpload);
 
       const uploadRes = await axiosInstance.post("/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -80,7 +82,8 @@ export default function SecurityNightFormPage() {
         },
       }));
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to upload image.");
+      const serverMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message;
+      setError(serverMsg || "Failed to upload image.");
     } finally {
       setUploadingCheckpoints((prev) => ({ ...prev, [checkpointId]: false }));
       e.target.value = "";
