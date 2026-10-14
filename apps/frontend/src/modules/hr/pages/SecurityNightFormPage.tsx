@@ -55,6 +55,14 @@ export default function SecurityNightFormPage() {
   // Google Forms active card indicator state
   const [focusedCard, setFocusedCard] = useState<string | null>(null);
 
+  // Mobile responsiveness
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // File Upload
   async function handleFileUpload(checkpointId: string, e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -170,7 +178,7 @@ export default function SecurityNightFormPage() {
       style={{
         background: "#f0ebf8",
         minHeight: "100vh",
-        padding: "24px 12px",
+        padding: isMobile ? "12px 8px" : "24px 12px",
         fontFamily: "Roboto, Helvetica, Arial, sans-serif",
       }}
     >
@@ -178,9 +186,9 @@ export default function SecurityNightFormPage() {
       <div
         style={{
           maxWidth: "770px",
-          margin: "0 auto 16px auto",
+          margin: "0 auto 12px auto",
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: isMobile ? "stretch" : "space-between",
           alignItems: "center",
         }}
       >
@@ -190,13 +198,16 @@ export default function SecurityNightFormPage() {
             background: "#ffffff",
             border: "1px solid #cbd5e1",
             borderRadius: "6px",
-            padding: "8px 16px",
-            fontSize: "13px",
+            padding: isMobile ? "10px 14px" : "8px 16px",
+            fontSize: isMobile ? "14px" : "13px",
             fontWeight: "600",
             color: "#334155",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
+            width: isMobile ? "100%" : "auto",
+            minHeight: "42px",
             gap: "8px",
             boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
           }}
@@ -221,7 +232,7 @@ export default function SecurityNightFormPage() {
           {/* Stunning Night Sky Banner Gradient */}
           <div
             style={{
-              height: "180px",
+              height: isMobile ? "130px" : "180px",
               background: "linear-gradient(135deg, #120024 0%, #311b92 50%, #512da8 100%)",
               position: "relative",
               display: "flex",
@@ -270,22 +281,24 @@ export default function SecurityNightFormPage() {
             <h2
               style={{
                 color: "#ffffff",
-                fontSize: "24px",
+                fontSize: isMobile ? "18px" : "24px",
                 fontWeight: "700",
                 letterSpacing: "0.5px",
                 textShadow: "0 2px 4px rgba(0,0,0,0.5)",
                 zIndex: 10,
+                textAlign: "center",
+                padding: "0 12px",
               }}
             >
               🔒 Security Guard Checkpoints
             </h2>
           </div>
 
-          <div style={{ padding: "24px" }}>
-            <h1 style={{ fontSize: "32px", fontWeight: "400", color: "#202124", margin: "0 0 8px 0" }}>
+          <div style={{ padding: isMobile ? "16px 14px" : "24px" }}>
+            <h1 style={{ fontSize: isMobile ? "22px" : "32px", fontWeight: "400", color: "#202124", margin: "0 0 8px 0" }}>
               सुरक्षा गार्ड की कार्य सारणी
             </h1>
-            <p style={{ fontSize: "14px", color: "#202124", margin: "0 0 16px 0" }}>
+            <p style={{ fontSize: isMobile ? "13px" : "14px", color: "#202124", margin: "0 0 16px 0" }}>
               हर 2 घन्टे में फॉर्म भरे-
             </p>
 
@@ -752,8 +765,10 @@ export default function SecurityNightFormPage() {
           <div
             style={{
               display: "flex",
+              flexDirection: isMobile ? "column" : "row",
+              gap: isMobile ? "12px" : "16px",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: isMobile ? "stretch" : "center",
               marginBottom: "40px",
             }}
           >
@@ -764,13 +779,18 @@ export default function SecurityNightFormPage() {
                 background: "#673ab7",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "4px",
-                padding: "10px 24px",
-                fontSize: "14px",
+                borderRadius: "6px",
+                padding: isMobile ? "14px 24px" : "10px 24px",
+                fontSize: "15px",
                 fontWeight: "600",
                 cursor: submitting ? "not-allowed" : "pointer",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                boxShadow: "0 2px 4px rgba(103, 58, 183, 0.25)",
                 transition: "background 0.2s",
+                minHeight: "48px",
+                width: isMobile ? "100%" : "auto",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
               onMouseOver={(e) => {
                 if (!submitting) e.currentTarget.style.background = "#5e35b1";
@@ -787,12 +807,16 @@ export default function SecurityNightFormPage() {
               onClick={handleClearForm}
               disabled={submitting}
               style={{
-                background: "none",
-                border: "none",
-                color: "#673ab7",
+                background: isMobile ? "#f1f5f9" : "none",
+                border: isMobile ? "1px solid #cbd5e1" : "none",
+                borderRadius: "6px",
+                color: isMobile ? "#475569" : "#673ab7",
                 fontSize: "14px",
                 fontWeight: "500",
                 cursor: "pointer",
+                padding: isMobile ? "12px 16px" : "8px 12px",
+                minHeight: isMobile ? "44px" : "auto",
+                textAlign: "center",
               }}
             >
               Clear form / फॉर्म साफ़ करें

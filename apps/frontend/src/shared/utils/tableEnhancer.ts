@@ -142,6 +142,30 @@ function injectStyles() {
       width: 100%;
     }
 
+    @media (max-width: 768px) {
+      .table-filter-bar {
+        padding: 8px 10px;
+        gap: 8px;
+      }
+      .table-search-container {
+        min-width: 100% !important;
+        max-width: 100% !important;
+      }
+      .table-filter-select-wrapper {
+        min-width: calc(50% - 4px) !important;
+        max-width: 100% !important;
+      }
+      .table-filter-reset-btn {
+        width: 100%;
+        margin-left: 0;
+      }
+      .table-pagination-controls {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+      }
+    }
+
     @media print {
       .table-filter-bar,
       .table-pagination-controls {

@@ -3,6 +3,7 @@ import { securityCustomApi } from "../api/securityCustomApi";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import { formatIndianDateTime, getIndianCurrentDateTime } from "../../../shared/utils/dateUtils";
+import { compressImage } from "../../../shared/utils/imageCompressor";
 
 export default function VisitorEntryPage() {
   const navigate = useNavigate();
@@ -26,6 +27,14 @@ export default function VisitorEntryPage() {
   const [uploading, setUploading] = useState(false);
   const [currentIndianTime, setCurrentIndianTime] = useState(() => getIndianCurrentDateTime());
 
+  // Mobile viewport detection
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentIndianTime(getIndianCurrentDateTime());
@@ -34,6 +43,30 @@ export default function VisitorEntryPage() {
   }, []);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Mobile camera / file upload handler
+  async function handleMobilePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setUploading(true);
+    setError(null);
+    try {
+      const fileToUpload = await compressImage(file);
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+      const uploadRes = await axiosInstance.post("/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setCapturedImage(uploadRes.data.data.fileUrl);
+      setPhotoTime(new Date().toISOString());
+    } catch (err: any) {
+      setError("Failed to upload photo: " + (err.message || "Error"));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
 
   // Start Camera
   async function startCamera() {
@@ -143,15 +176,49 @@ export default function VisitorEntryPage() {
   }
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "24px" }}>
-      {/* Header */}
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#0f172a", margin: "0 0 4px 0" }}>
-          Visitor Entry
-        </h1>
-        <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-          HR Security sub-module for checking in new visitors and guests.
-        </p>
+    <div style={{ background: "#f8fafc", minHeight: "100vh", padding: isMobile ? "12px 10px" : "24px" }}>
+      {/* Header with Navigation */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          justifyContent: "space-between",
+          alignItems: isMobile ? "stretch" : "center",
+          gap: "12px",
+          marginBottom: "16px",
+          maxWidth: "800px",
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: isMobile ? "20px" : "22px", fontWeight: "700", color: "#0f172a", margin: "0 0 4px 0" }}>
+            Visitor Entry
+          </h1>
+          <p style={{ fontSize: isMobile ? "13px" : "14px", color: "#64748b", margin: 0 }}>
+            HR Security sub-module for checking in new visitors and guests.
+          </p>
+        </div>
+
+        <button
+          onClick={() => navigate("/admin/hr/security/visitor-entry-history")}
+          style={{
+            background: "#ffffff",
+            border: "1px solid #cbd5e1",
+            borderRadius: "6px",
+            padding: isMobile ? "10px 14px" : "8px 16px",
+            fontSize: isMobile ? "14px" : "13px",
+            fontWeight: "600",
+            color: "#334155",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "42px",
+            gap: "8px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          }}
+        >
+          📂 View Visitor History / आगंतुक इतिहास
+        </button>
       </div>
 
       {/* Main Form Container */}
@@ -159,7 +226,7 @@ export default function VisitorEntryPage() {
         style={{
           background: "#ffffff",
           borderRadius: "10px",
-          padding: "24px",
+          padding: isMobile ? "16px 14px" : "24px",
           border: "1px solid #e2e8f0",
           boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
           maxWidth: "800px",
@@ -170,11 +237,36 @@ export default function VisitorEntryPage() {
         </h2>
 
         {successMsg && (
-          <div style={{ padding: "12px 16px", background: "#f0fdf4", color: "#15803d", borderRadius: "6px", marginBottom: "16px", fontSize: "14px", border: "1px solid #bbf7d0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              background: "#f0fdf4",
+              color: "#15803d",
+              borderRadius: "6px",
+              marginBottom: "16px",
+              fontSize: "14px",
+              border: "1px solid #bbf7d0",
+              display: "flex",
+              flexDirection: isMobile ? "column" : "row",
+              justifyContent: "space-between",
+              alignItems: isMobile ? "stretch" : "center",
+              gap: "8px",
+            }}
+          >
             <span>✅ {successMsg}</span>
             <button
               onClick={() => navigate("/admin/hr/security/visitor-entry-history")}
-              style={{ background: "#15803d", color: "#ffffff", border: "none", padding: "4px 10px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
+              style={{
+                background: "#15803d",
+                color: "#ffffff",
+                border: "none",
+                padding: "8px 12px",
+                borderRadius: "4px",
+                fontSize: "12px",
+                cursor: "pointer",
+                fontWeight: "600",
+                minHeight: isMobile ? "38px" : "auto",
+              }}
             >
               Go to History
             </button>
@@ -188,7 +280,7 @@ export default function VisitorEntryPage() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "16px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "16px" }}>
             <div>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>
                 Visitor Name *
@@ -199,7 +291,7 @@ export default function VisitorEntryPage() {
                 value={visitorName}
                 onChange={(e) => setVisitorName(e.target.value)}
                 placeholder="Enter full name"
-                style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
               />
             </div>
 
@@ -208,11 +300,11 @@ export default function VisitorEntryPage() {
                 Phone Number
               </label>
               <input
-                type="text"
+                type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter contact number"
-                style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
               />
             </div>
 
@@ -225,7 +317,7 @@ export default function VisitorEntryPage() {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Company name"
-                style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
               />
             </div>
 
@@ -238,7 +330,7 @@ export default function VisitorEntryPage() {
                 value={personToMeet}
                 onChange={(e) => setPersonToMeet(e.target.value)}
                 placeholder="Host employee name"
-                style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
               />
             </div>
 
@@ -249,7 +341,7 @@ export default function VisitorEntryPage() {
               <div
                 style={{
                   width: "100%",
-                  padding: "8px 12px",
+                  padding: "10px 12px",
                   border: "1px solid #cbd5e1",
                   borderRadius: "6px",
                   fontSize: "14px",
@@ -259,6 +351,7 @@ export default function VisitorEntryPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
+                  boxSizing: "border-box",
                 }}
               >
                 <span>🕒</span>
@@ -274,14 +367,14 @@ export default function VisitorEntryPage() {
             </label>
             
             {capturedImage ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
                 <img 
                   src={capturedImage} 
                   alt="Visitor Preview" 
-                  style={{ width: "120px", height: "120px", objectFit: "cover", borderRadius: "8px", border: "2px solid #cbd5e1" }} 
+                  style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px", border: "2px solid #cbd5e1" }} 
                 />
                 <div>
-                  <div style={{ fontSize: "13px", color: "#16a34a", fontWeight: "600", marginBottom: "4px" }}>
+                  <div style={{ fontSize: "13px", color: "#16a34a", fontWeight: "600", marginBottom: "6px" }}>
                     ✓ Photo Ready {photoTime && `• ${formatIndianDateTime(photoTime)}`}
                   </div>
                   <button
@@ -291,12 +384,12 @@ export default function VisitorEntryPage() {
                       background: "#ef4444",
                       color: "#ffffff",
                       border: "none",
-                      padding: "6px 12px",
+                      padding: "8px 14px",
                       borderRadius: "6px",
                       fontSize: "12px",
                       fontWeight: "600",
                       cursor: "pointer",
-                      transition: "all 0.2s"
+                      minHeight: "36px",
                     }}
                   >
                     Remove Photo
@@ -306,7 +399,7 @@ export default function VisitorEntryPage() {
             ) : (
               <div>
                 {cameraActive ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxWidth: "320px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxWidth: "340px" }}>
                     <video 
                       ref={videoRef} 
                       autoPlay 
@@ -323,11 +416,12 @@ export default function VisitorEntryPage() {
                           background: "#2563eb",
                           color: "#ffffff",
                           border: "none",
-                          padding: "8px 12px",
+                          padding: "10px 12px",
                           borderRadius: "6px",
                           fontSize: "13px",
                           fontWeight: "600",
-                          cursor: "pointer"
+                          cursor: "pointer",
+                          minHeight: "42px",
                         }}
                       >
                         {uploading ? "Uploading..." : "📸 Take Snapshot"}
@@ -339,11 +433,12 @@ export default function VisitorEntryPage() {
                           background: "#64748b",
                           color: "#ffffff",
                           border: "none",
-                          padding: "8px 12px",
+                          padding: "10px 12px",
                           borderRadius: "6px",
                           fontSize: "13px",
                           fontWeight: "600",
-                          cursor: "pointer"
+                          cursor: "pointer",
+                          minHeight: "42px",
                         }}
                       >
                         Cancel
@@ -352,6 +447,36 @@ export default function VisitorEntryPage() {
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+                    {/* Device Camera / File Upload for Phones */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      id="visitor-camera-file"
+                      style={{ display: "none" }}
+                      onChange={handleMobilePhotoUpload}
+                      disabled={uploading}
+                    />
+                    <label
+                      htmlFor="visitor-camera-file"
+                      style={{
+                        background: "#0284c7",
+                        color: "#ffffff",
+                        padding: isMobile ? "10px 16px" : "8px 16px",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        cursor: uploading ? "not-allowed" : "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        minHeight: "40px",
+                      }}
+                    >
+                      📷 {isMobile ? "Take Photo / Camera" : "Upload / Mobile Photo"}
+                    </label>
+
+                    {/* Web Camera option for Laptops/Desktops */}
                     <button
                       type="button"
                       onClick={startCamera}
@@ -359,19 +484,21 @@ export default function VisitorEntryPage() {
                         background: "#4f46e5",
                         color: "#ffffff",
                         border: "none",
-                        padding: "8px 16px",
+                        padding: isMobile ? "10px 16px" : "8px 16px",
                         borderRadius: "6px",
                         fontSize: "13px",
                         fontWeight: "600",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: "6px"
+                        gap: "6px",
+                        minHeight: "40px",
                       }}
                     >
-                      📷 Use Web Camera
+                      💻 Use Web Camera
                     </button>
-                    {uploading && <span style={{ fontSize: "13px", color: "#64748b" }}>Uploading...</span>}
+
+                    {uploading && <span style={{ fontSize: "13px", color: "#64748b", fontWeight: "500" }}>Uploading photo...</span>}
                   </div>
                 )}
               </div>
@@ -387,7 +514,7 @@ export default function VisitorEntryPage() {
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
               placeholder="e.g. Official Meeting, Delivery"
-              style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
             />
           </div>
 
@@ -395,17 +522,23 @@ export default function VisitorEntryPage() {
             type="submit"
             disabled={loading}
             style={{
-              padding: "10px 28px",
+              padding: "12px 28px",
               background: loading ? "#94a3b8" : "#16a34a",
               color: "#ffffff",
               border: "none",
               borderRadius: "6px",
               fontWeight: "600",
-              fontSize: "14px",
+              fontSize: "15px",
               cursor: loading ? "not-allowed" : "pointer",
+              minHeight: "48px",
+              width: isMobile ? "100%" : "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 4px rgba(22, 163, 74, 0.2)",
             }}
           >
-            {loading ? "Checking In..." : "Check-In Visitor"}
+            {loading ? "Checking In..." : "Check-In Visitor / चेक-इन करें"}
           </button>
         </form>
       </div>

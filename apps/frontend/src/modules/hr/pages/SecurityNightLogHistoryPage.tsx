@@ -64,9 +64,17 @@ export default function SecurityNightLogHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeImageModal, setActiveImageModal] = useState<{ url: string; time: string; location: string } | null>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() => (typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table"));
 
   useEffect(() => {
     loadRecords();
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   async function loadRecords() {
@@ -103,30 +111,33 @@ export default function SecurityNightLogHistoryPage() {
   });
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "24px" }}>
+    <div style={{ background: "#f8fafc", minHeight: "100vh", padding: isMobile ? "12px" : "24px" }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: "12px", marginBottom: "16px" }}>
         <div>
           <button
             onClick={() => navigate("/admin/hr/security/night-form")}
             style={{
-              marginBottom: "12px",
+              marginBottom: "10px",
               background: "#673ab7",
               color: "#ffffff",
               border: "none",
               borderRadius: "6px",
-              padding: "6px 14px",
+              padding: "8px 16px",
               fontSize: "13px",
               fontWeight: "600",
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
             }}
           >
             ← Fill Form / फॉर्म भरें
           </button>
-          <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#0f172a", margin: "0 0 4px 0" }}>
+          <h1 style={{ fontSize: isMobile ? "19px" : "22px", fontWeight: "700", color: "#0f172a", margin: "0 0 4px 0" }}>
             Security Night Log History
           </h1>
-          <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
+          <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
             Dedicated history log repository for all submitted security night patrol logs and verified photo captures.
           </p>
         </div>
@@ -141,9 +152,12 @@ export default function SecurityNightLogHistoryPage() {
             fontWeight: "600",
             color: "#334155",
             cursor: "pointer",
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
+            justifyContent: "center",
             gap: "6px",
+            alignSelf: isMobile ? "stretch" : "flex-start",
+            minHeight: "38px",
           }}
         >
           🔄 Refresh Logs
@@ -155,25 +169,67 @@ export default function SecurityNightLogHistoryPage() {
         style={{
           background: "#ffffff",
           borderRadius: "10px",
-          padding: "20px",
+          padding: isMobile ? "12px" : "20px",
           border: "1px solid #e2e8f0",
           boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
         }}
       >
+        {/* Mobile View Toggle */}
+        {isMobile && (
+          <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+            <button
+              type="button"
+              onClick={() => setViewMode("card")}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "1px solid",
+                borderColor: viewMode === "card" ? "#673ab7" : "#cbd5e1",
+                background: viewMode === "card" ? "#f3e8ff" : "#ffffff",
+                color: viewMode === "card" ? "#673ab7" : "#475569",
+                fontWeight: "600",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              📱 Card View
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "1px solid",
+                borderColor: viewMode === "table" ? "#673ab7" : "#cbd5e1",
+                background: viewMode === "table" ? "#f3e8ff" : "#ffffff",
+                color: viewMode === "table" ? "#673ab7" : "#475569",
+                fontWeight: "600",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              📊 Table View
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
-        <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexDirection: isMobile ? "column" : "row" }}>
           <input
             type="text"
             placeholder="Search guard name, location or observations..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ flex: 1, minWidth: "220px", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
+            style={{ flex: 1, minWidth: isMobile ? "100%" : "220px", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
           />
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", color: "#334155" }}
+            style={{ padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px", color: "#334155", minWidth: isMobile ? "100%" : "180px", boxSizing: "border-box" }}
           >
             <option value="all">All Patrol Statuses</option>
             <option value="normal">Normal</option>
@@ -182,12 +238,179 @@ export default function SecurityNightLogHistoryPage() {
           </select>
         </div>
 
-        {/* Table */}
+        {/* Records Content */}
         {loading ? (
           <p style={{ color: "#64748b", fontSize: "14px", padding: "16px 0" }}>Loading history logs...</p>
+        ) : isMobile && viewMode === "card" ? (
+          /* Mobile Card View */
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {filteredRecords.length === 0 ? (
+              <div style={{ padding: "28px", fontStyle: "italic", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+                No Security Night Log entries found.
+              </div>
+            ) : (
+              filteredRecords.map((r) => {
+                const parsedImages = parseImages(r.image_url);
+                return (
+                  <div
+                    key={r.id}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "10px",
+                      padding: "14px",
+                      background: "#ffffff",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    {/* Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: "700", fontSize: "15px", color: "#0f172a" }}>
+                          👮 {r.guard_name}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                          📅 Shift Date: {r.shift_date}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "12px",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          background: r.patrol_status === "Normal" ? "#dcfce7" : "#fee2e2",
+                          color: r.patrol_status === "Normal" ? "#166534" : "#991b1b",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {r.patrol_status}
+                      </span>
+                    </div>
+
+                    {/* Time & Location */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "13px" }}>
+                      <div style={{ color: "#0369a1", fontWeight: "600" }}>
+                        🕒 {formatIndianDateTime(r.photo_captured_at || r.created_at)}
+                      </div>
+                      {r.gate_location && (
+                        <div style={{ color: "#475569" }}>
+                          📍 {r.gate_location}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Photo Thumbnails */}
+                    {parsedImages.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", marginBottom: "6px", textTransform: "uppercase" }}>
+                          Verified Photos ({parsedImages.length})
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+                          {parsedImages.map((img, idx) => {
+                            const match = img.label.match(/\d{3}/);
+                            const badgeText = match ? match[0] : img.label.toLowerCase().includes("selfie") ? "Self" : String(idx + 1);
+
+                            return (
+                              <div
+                                key={idx}
+                                style={{
+                                  position: "relative",
+                                  flexShrink: 0,
+                                  cursor: "pointer",
+                                }}
+                                onClick={() =>
+                                  setActiveImageModal({
+                                    url: img.url,
+                                    time: formatIndianDateTime(img.capturedAt || r.photo_captured_at || r.created_at),
+                                    location: img.label,
+                                  })
+                                }
+                              >
+                                <img
+                                  src={img.url}
+                                  alt={img.label}
+                                  style={{
+                                    width: "56px",
+                                    height: "56px",
+                                    objectFit: "cover",
+                                    borderRadius: "8px",
+                                    border: "1px solid #cbd5e1",
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    bottom: "-2px",
+                                    right: "-2px",
+                                    background: "#673ab7",
+                                    color: "#ffffff",
+                                    fontSize: "10px",
+                                    padding: "1px 5px",
+                                    borderRadius: "4px",
+                                    fontWeight: "700",
+                                  }}
+                                >
+                                  {badgeText}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Observations */}
+                    {r.observations && (
+                      <div style={{ background: "#f8fafc", padding: "8px 10px", borderRadius: "6px", fontSize: "13px", color: "#334155" }}>
+                        <strong style={{ color: "#0f172a" }}>Observations: </strong>
+                        <span style={{ whiteSpace: "pre-line" }}>{r.observations}</span>
+                      </div>
+                    )}
+
+                    {/* Remarks */}
+                    {r.remarks && (
+                      <div style={{ fontSize: "12px", color: "#64748b" }}>
+                        <strong>Remarks: </strong>{r.remarks}
+                      </div>
+                    )}
+
+                    {/* Delete Action for Admin */}
+                    {isAdmin && (
+                      <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "8px", display: "flex", justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(r.id)}
+                          style={{
+                            background: "#fef2f2",
+                            border: "1px solid #ef4444",
+                            color: "#ef4444",
+                            padding: "8px 16px",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            minHeight: "40px",
+                          }}
+                        >
+                          🗑 Delete Entry
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         ) : (
+          /* Desktop / Responsive Table View */
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #e2e8f0", background: "#f8fafc" }}>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Verified Photos</th>
