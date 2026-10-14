@@ -110,7 +110,33 @@ export class MySqlRoleRepository implements IRoleRepository {
        WHERE ur.user_id = ?`,
       [userId]
     );
-    return rows.map((r) => r.key);
+    const keys = new Set<string>(rows.map((r) => r.key));
+
+    const [userRoles] = await pool.query<any[]>(
+      `SELECT r.name FROM roles r
+       JOIN user_roles ur ON ur.role_id = r.id
+       WHERE ur.user_id = ?`,
+      [userId]
+    );
+    for (const r of userRoles) {
+      if (!r.name) continue;
+      if (r.name.includes(".")) {
+        keys.add(r.name);
+      }
+      if (
+        r.name === "Menu: Material Inward -> Material Inward Form" ||
+        r.name === "Menu: Material Inward" ||
+        r.name === "Material Inward Access"
+      ) {
+        keys.add("material_inward.create");
+        keys.add("material_inward.view");
+      }
+      if (r.name === "Menu: Material Inward -> List of Materials") {
+        keys.add("material_inward.view");
+      }
+    }
+
+    return Array.from(keys);
   }
 
   async assignRoleToUser(userId: string, roleId: string, scopeType: string, scopeId: string): Promise<void> {

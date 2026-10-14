@@ -9,20 +9,20 @@ const repo = new MySqlMaterialInwardRepository();
 const service = new MaterialInwardService(repo);
 
 export const createMaterialInwardSchema = z.object({
-  inwardDate: z.string().optional().transform((v) => (v ? new Date(v) : new Date())),
+  inwardDate: z.string().nullable().optional().transform((v) => (v ? new Date(v) : new Date())),
   supplierName: z.string().min(1),
-  poNumber: z.string().nullable().optional(),
-  invoiceChallanNo: z.string().nullable().optional(),
-  invoiceChallanDate: z.string().optional().transform((v) => (v ? new Date(v) : null)),
-  vehicleNumber: z.string().nullable().optional(),
-  driverName: z.string().nullable().optional(),
-  driverContact: z.string().nullable().optional(),
+  poNumber: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  invoiceChallanNo: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  invoiceChallanDate: z.string().nullable().optional().transform((v) => (v ? new Date(v) : null)),
+  vehicleNumber: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  driverName: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  driverContact: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
   materialName: z.string().min(1),
   quantityReceived: z.number().nonnegative(),
   uom: z.string().min(1),
-  receivedBy: z.string().nullable().optional(),
-  remarks: z.string().nullable().optional(),
-  photoUrl: z.string().nullable().optional(),
+  receivedBy: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  remarks: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
+  photoUrl: z.string().nullable().optional().transform((v) => (v && v.trim() ? v.trim() : null)),
   status: z.enum(["Pending", "Inspected", "Approved", "Rejected"]).optional().default("Pending"),
 });
 

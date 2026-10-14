@@ -64,7 +64,8 @@ export default function MaterialInwardFormPage() {
       setSuccess("Product photo uploaded successfully.");
     } catch (err: any) {
       console.error("Upload error:", err);
-      setError("Failed to upload photo to the server. Please try again.");
+      const serverMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message;
+      setError(serverMsg || "Failed to upload photo to the server. Please try again.");
       setSelectedPhoto(null);
       setPhotoPreview(null);
     } finally {
@@ -128,7 +129,8 @@ export default function MaterialInwardFormPage() {
       setPhotoPreview(null);
     } catch (err: any) {
       console.error("Submit error:", err);
-      setError(err.response?.data?.message || "Failed to create material inward record. Please check details.");
+      const serverMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message;
+      setError(serverMsg || "Failed to create material inward record. Please check details.");
     } finally {
       setIsLoading(false);
     }
