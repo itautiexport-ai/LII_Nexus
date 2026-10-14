@@ -5,7 +5,14 @@ const getApiBaseUrl = () => {
   }
   if (typeof window !== "undefined" && window.location?.hostname) {
     const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1") {
+    const isLocalNetwork =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.startsWith("192.168.") ||
+      host.startsWith("10.") ||
+      host.startsWith("172.") ||
+      host.endsWith(".local");
+    if (isLocalNetwork) {
       const protocol = window.location.protocol || "http:";
       return `${protocol}//${host}:4000/api/v1`;
     }
