@@ -220,11 +220,13 @@ export const AiHelperWidget: React.FC = () => {
   };
 
   return (
-    <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 99999, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div className="milo-widget-wrapper" style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 99999, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       {/* Floating Toggle Button */}
       {!isOpen && (
         <button
           onClick={handleOpen}
+          className="milo-launcher-btn"
+          aria-label="Ask Milo AI"
           style={{
             display: "flex",
             alignItems: "center",
@@ -242,14 +244,15 @@ export const AiHelperWidget: React.FC = () => {
           }}
         >
           <img src="/milo-avatar.png" alt="Milo" style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(255,255,255,0.4)" }} />
-          <span>Ask Milo</span>
-          <span style={{ background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "12px", fontSize: "11px" }}>Milo AI</span>
+          <span className="milo-btn-text">Ask Milo</span>
+          <span className="milo-badge" style={{ background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "12px", fontSize: "11px" }}>Milo AI</span>
         </button>
       )}
 
       {/* Main Chat Drawer */}
       {isOpen && (
         <div
+          className="milo-chat-drawer"
           style={{
             width: "420px",
             maxWidth: "calc(100vw - 32px)",
@@ -549,6 +552,34 @@ export const AiHelperWidget: React.FC = () => {
           0% { opacity: 1; }
           50% { opacity: 0.4; }
           100% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+          .milo-widget-wrapper {
+            bottom: 14px !important;
+            right: 14px !important;
+          }
+          .milo-launcher-btn {
+            padding: 0 !important;
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 50% !important;
+            justify-content: center !important;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
+          }
+          .milo-btn-text, .milo-badge {
+            display: none !important;
+          }
+          .milo-chat-drawer {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100% !important;
+            max-width: 100vw !important;
+            max-height: 100% !important;
+            border-radius: 0 !important;
+            z-index: 100000 !important;
+          }
         }
       `}</style>
     </div>

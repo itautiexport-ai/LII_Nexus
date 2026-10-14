@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./app/App";
 import { initSelectEnhancer } from "./shared/utils/selectEnhancer";
 import { initTableEnhancer } from "./shared/utils/tableEnhancer";
+import "./shared/styles/mobileResponsive.css";
 
 initSelectEnhancer();
 initTableEnhancer();

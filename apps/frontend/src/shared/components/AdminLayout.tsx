@@ -565,13 +565,79 @@ export default function AdminLayout() {
       <style>{SIDEBAR_STYLES}</style>
 
       <div className="mobile-topbar">
-        <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu">☰</button>
-        <span className="mobile-title">LII Nexus Admin</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu">☰</button>
+          <span className="mobile-title">LII Nexus Admin</span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <NotificationBell />
+          {user?.avatarUrl ? (
+            <img
+              src={getAssetUrl(user.avatarUrl)}
+              alt={user?.fullName}
+              style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #c7d2fe", cursor: "pointer" }}
+              onClick={handleLogout}
+              title={`${user?.fullName} (Tap to logout)`}
+            />
+          ) : (
+            <div
+              onClick={handleLogout}
+              title={`${user?.fullName} (Tap to logout)`}
+              style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "linear-gradient(135deg, #4338ca, #6366f1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer",
+                border: "1.5px solid #c7d2fe",
+              }}
+            >
+              {user?.fullName?.charAt(0)?.toUpperCase() ?? "?"}
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            style={{
+              background: "#f1f5f9",
+              color: "#475569",
+              border: "1px solid #cbd5e1",
+              padding: "4px 8px",
+              borderRadius: "4px",
+              fontSize: "11px",
+              fontWeight: "600",
+              cursor: "pointer",
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {mobileOpen && <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} />}
 
       <aside className={"admin-sidebar" + (mobileOpen ? " open" : "")}>
+        <div className="mobile-sidebar-close-row" style={{ display: "flex", justifyContent: "flex-end", padding: "8px 12px 0" }}>
+          <button
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            style={{
+              background: "#f1f5f9",
+              border: "1px solid #cbd5e1",
+              borderRadius: "50%",
+              width: "28px",
+              height: "28px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+              fontSize: "14px",
+              color: "#475569",
+            }}
+          >
+            ✕
+          </button>
+        </div>
         {sidebarContent}
       </aside>
 
@@ -828,11 +894,14 @@ const SIDEBAR_STYLES = `
 
   .mobile-topbar { display: none; }
   .sidebar-backdrop { display: none; }
+  .mobile-sidebar-close-row { display: none; }
 
   @media (max-width: 860px) {
+    .mobile-sidebar-close-row { display: flex; }
     .mobile-topbar {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -840,7 +909,8 @@ const SIDEBAR_STYLES = `
       padding: 0 12px;
       background: #fff;
       border-bottom: 1px solid #e5e7eb;
-      z-index: 30;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      z-index: 100;
     }
     .mobile-menu-btn {
       border: none;
@@ -857,9 +927,9 @@ const SIDEBAR_STYLES = `
       position: fixed;
       top: 0;
       left: -280px;
-      width: 260px;
-      z-index: 50;
-      box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+      width: 270px;
+      z-index: 150;
+      box-shadow: 2px 0 16px rgba(0,0,0,0.15);
       transition: left 0.25s ease;
     }
     .admin-sidebar.open { left: 0; }
@@ -868,13 +938,26 @@ const SIDEBAR_STYLES = `
       display: block;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.35);
-      z-index: 40;
+      background: rgba(0,0,0,0.4);
+      z-index: 140;
+    }
+
+    .content-topbar {
+      display: none !important;
     }
 
     .admin-content {
       margin-top: 52px;
       height: calc(100vh - 52px);
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .content-inner {
+      padding: 12px 8px 36px !important;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
   }
 
@@ -885,6 +968,12 @@ const SIDEBAR_STYLES = `
   table th, table td {
     border: 1px solid #94a3b8 !important; /* Professional Slate border color */
     padding: 12px 14px !important;
+  }
+  @media (max-width: 860px) {
+    table th, table td {
+      padding: 8px 10px !important;
+      font-size: 13px !important;
+    }
   }
   table th {
     background-color: #e2e8f0 !important; /* Slightly darker slate header */

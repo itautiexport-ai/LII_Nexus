@@ -142,6 +142,37 @@ function injectStyles() {
       width: 100%;
     }
 
+    .table-filter-mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      width: 100%;
+      min-height: 38px;
+      box-sizing: border-box;
+      transition: background 0.15s ease;
+    }
+    .table-filter-mobile-toggle:hover {
+      background-color: #f1f5f9;
+    }
+    .table-filter-count-badge {
+      background-color: #4f46e5;
+      color: #ffffff;
+      border-radius: 12px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      display: none;
+    }
+
     @media (max-width: 768px) {
       .table-filter-bar {
         padding: 8px 10px;
@@ -151,9 +182,25 @@ function injectStyles() {
         min-width: 100% !important;
         max-width: 100% !important;
       }
+      .table-filter-mobile-toggle {
+        display: flex;
+      }
+      .table-selects-container {
+        display: none !important;
+        width: 100% !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      .table-selects-container.mobile-expanded {
+        display: flex !important;
+      }
       .table-filter-select-wrapper {
-        min-width: calc(50% - 4px) !important;
+        min-width: 100% !important;
         max-width: 100% !important;
+      }
+      .table-page-size-container {
+        width: 100%;
+        justify-content: space-between;
       }
       .table-filter-reset-btn {
         width: 100%;
@@ -193,6 +240,8 @@ class TableFilterEnhancer {
   paginationControls: HTMLDivElement | null = null;
   pageSizeSelector: HTMLSelectElement | null = null;
   infoLabel: HTMLDivElement | null = null;
+  mobileToggleBtn: HTMLButtonElement | null = null;
+  badgeEl: HTMLSpanElement | null = null;
 
   constructor(table: HTMLTableElement) {
     this.table = table as EnhancedHTMLTableElement;
@@ -232,6 +281,14 @@ class TableFilterEnhancer {
     }
     
     this.headers = thList;
+
+    // Wrap table in responsive scroll container if not already wrapped
+    if (!this.table.parentElement?.classList.contains("table-responsive-wrapper")) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-responsive-wrapper";
+      this.table.parentNode?.insertBefore(wrapper, this.table);
+      wrapper.appendChild(this.table);
+    }
   }
 
   createFilterBar() {
@@ -276,6 +333,27 @@ class TableFilterEnhancer {
     selectsContainer.style.gap = "8px";
     selectsContainer.style.alignItems = "center";
     this.filterBar.appendChild(selectsContainer);
+
+    // Mobile Toggle for Column Filters
+    this.mobileToggleBtn = document.createElement("button");
+    this.mobileToggleBtn.type = "button";
+    this.mobileToggleBtn.className = "table-filter-mobile-toggle";
+    this.mobileToggleBtn.innerHTML = `<span>⚡ Filter Options</span>`;
+
+    this.badgeEl = document.createElement("span");
+    this.badgeEl.className = "table-filter-count-badge";
+    this.badgeEl.textContent = "0";
+    this.mobileToggleBtn.appendChild(this.badgeEl);
+
+    this.mobileToggleBtn.addEventListener("click", () => {
+      selectsContainer.classList.toggle("mobile-expanded");
+      const isExpanded = selectsContainer.classList.contains("mobile-expanded");
+      const titleSpan = this.mobileToggleBtn?.querySelector("span");
+      if (titleSpan) {
+        titleSpan.textContent = isExpanded ? "▲ Hide Filters" : "⚡ Filter Options";
+      }
+    });
+    this.filterBar.appendChild(this.mobileToggleBtn);
 
     this.headers.forEach((th, index) => {
       const colName = th.textContent?.trim() || "";
@@ -378,7 +456,10 @@ class TableFilterEnhancer {
 
     this.filterBar.appendChild(this.resetBtn);
 
-    this.table.parentNode?.insertBefore(this.filterBar, this.table);
+    const targetParent = this.table.parentElement?.classList.contains("table-responsive-wrapper")
+      ? this.table.parentElement
+      : this.table;
+    targetParent.parentNode?.insertBefore(this.filterBar, targetParent);
   }
 
   updateFilterBarOptions() {
@@ -598,6 +679,16 @@ class TableFilterEnhancer {
     if (!this.resetBtn) return;
     const hasActiveFilters = this.activeFilters.size > 0 || this.globalSearchQuery !== "";
     this.resetBtn.disabled = !hasActiveFilters;
+
+    const count = this.activeFilters.size + (this.globalSearchQuery ? 1 : 0);
+    if (this.badgeEl) {
+      if (count > 0) {
+        this.badgeEl.style.display = "inline-block";
+        this.badgeEl.textContent = count.toString();
+      } else {
+        this.badgeEl.style.display = "none";
+      }
+    }
   }
 
   clearAllFilters() {
@@ -638,7 +729,10 @@ class TableFilterEnhancer {
     this.paginationControls.appendChild(this.infoLabel);
     this.paginationControls.appendChild(buttonsContainer);
 
-    this.table.parentNode?.insertBefore(this.paginationControls, this.table.nextSibling);
+    const targetParent = this.table.parentElement?.classList.contains("table-responsive-wrapper")
+      ? this.table.parentElement
+      : this.table;
+    targetParent.parentNode?.insertBefore(this.paginationControls, targetParent.nextSibling);
   }
 
   updatePaginationUI(totalMatching: number, totalPages: number, startIdx: number, endIdx: number) {
