@@ -681,7 +681,7 @@ export default function SecurityNightFormPage() {
             }}
           >
             <div style={{ fontSize: "16px", color: "#202124", marginBottom: "8px" }}>
-              कुंजी अवलोकन / Key Observations
+              मुख्य अवलोकन / Key Observations
             </div>
             <div style={{ marginTop: "16px" }}>
               <textarea
