@@ -4,6 +4,7 @@ import { axiosInstance } from "../../../services/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../modules/auth/hooks/useAuthStore";
 import { compressImage } from "../../../shared/utils/imageCompressor";
+import { formatIndianDateTime, getIndianDateString } from "../../../shared/utils/dateUtils";
 
 interface UploadedFile {
   url: string;
@@ -42,7 +43,7 @@ export default function SecurityNightFormPage() {
 
   // Form State
   const [guardName, setGuardName] = useState("");
-  const [shiftDate, setShiftDate] = useState(new Date().toISOString().split("T")[0]);
+  const [shiftDate, setShiftDate] = useState(() => getIndianDateString());
   const [patrolStatus, setPatrolStatus] = useState("Normal");
   const [observations, setObservations] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -557,7 +558,7 @@ export default function SecurityNightFormPage() {
                           🔒 Photo Saved & Locked
                         </div>
                         <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
-                          🕒 Timestamp: {new Date(images[cp.id].capturedAt).toLocaleString()}
+                          🕒 Timestamp: {formatIndianDateTime(images[cp.id].capturedAt)}
                         </div>
                       </div>
                     </div>

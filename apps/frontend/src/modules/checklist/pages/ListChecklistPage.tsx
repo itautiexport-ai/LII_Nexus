@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { standaloneChecklistApi, StandaloneChecklist } from "../api/checklistApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import { useCanDelete, useIsAdminOrManagement } from "../../auth/hooks/usePermissions";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 import { useTableFreeze } from "../../../shared/hooks/useTableFreeze";
 import { TableFreezeButton } from "../../../shared/components/TableFreezeButton";
 import { TableFreezeModal } from "../../../shared/components/TableFreezeModal";
@@ -162,7 +163,7 @@ export function ListChecklistPage() {
                       <td style={getStickyCellStyle(1, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">
                         {(c as any).assignee_name || "Unknown"}
                       </td>
-                      <td style={getStickyCellStyle(2, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">{new Date((c as any).planned_date || c.plannedDate).toLocaleString()}</td>
+                      <td style={getStickyCellStyle(2, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">{formatIndianDateTime((c as any).planned_date || c.plannedDate)}</td>
                       <td style={getStickyCellStyle(3, { customStyle: { backgroundColor: "#ffffff" } })} className="chk-td">
                         <span className={`chk-pill ${
                           c.priority === 'High' ? 'chk-pill-high' :

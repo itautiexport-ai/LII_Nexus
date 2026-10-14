@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { behaviourApi, GeneratedInsightRecord, InsightRuleRecord } from "../api/behaviourApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 
 const severityColors: Record<string, string> = { info: "#4a90d9", warning: "#e08e0b", critical: "#c0392b" };
 
@@ -46,7 +47,7 @@ export default function InsightsPage() {
       {insights.map((i) => (
         <div key={i.id} style={{ border: "1px solid #e0e0e0", borderRadius: 6, padding: 12, marginBottom: 8, borderLeft: `4px solid ${severityColors[i.severity]}` }}>
           <span style={{ fontSize: 13 }}>{i.message}</span>
-          <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>{i.ruleKey} · {new Date(i.generatedAt).toLocaleString()}</div>
+          <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>{i.ruleKey} · {formatIndianDateTime(i.generatedAt)}</div>
         </div>
       ))}
       {insights.length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No insights generated for this period yet — try "Run Insights Engine."</p>}

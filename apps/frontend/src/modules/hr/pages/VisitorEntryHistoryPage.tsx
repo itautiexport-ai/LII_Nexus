@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { securityCustomApi, SecurityVisitorEntryRecord } from "../api/securityCustomApi";
 import { useIsAdmin } from "../../auth/hooks/usePermissions";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 
 export default function VisitorEntryHistoryPage() {
   const isAdmin = useIsAdmin();
@@ -174,8 +175,8 @@ export default function VisitorEntryHistoryPage() {
                       <td style={{ padding: "10px 12px", fontSize: "14px", color: "#334155" }}>{r.company_name || "-"}</td>
                       <td style={{ padding: "10px 12px", fontSize: "14px", color: "#334155" }}>{r.person_to_meet || "-"}</td>
                       <td style={{ padding: "10px 12px", fontSize: "14px", color: "#334155" }}>{r.purpose || "-"}</td>
-                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#334155" }}>{new Date(r.in_time).toLocaleString()}</td>
-                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#334155" }}>{r.out_time ? new Date(r.out_time).toLocaleString() : "-"}</td>
+                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#334155" }}>{formatIndianDateTime(r.in_time)}</td>
+                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#334155" }}>{formatIndianDateTime(r.out_time)}</td>
                       <td style={{ padding: "10px 12px", fontSize: "14px" }}>
                         <span
                           style={{

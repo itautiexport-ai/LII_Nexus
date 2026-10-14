@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { notificationApi, NotificationRecord } from "../api/notificationApi";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 
 const priorityColors: Record<string, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
 const statusColors: Record<string, string> = { pending: "#4a4a4a", actioned: "#1a7f37", dismissed: "#999" };
@@ -62,7 +63,7 @@ export default function NotificationCenterPage() {
               {n.escalationLevel > 1 && <span style={{ fontSize: 10, color: "#c0392b", fontWeight: 700, marginLeft: 6 }}>ESCALATED (L{n.escalationLevel})</span>}
               {n.description && <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>{n.description}</p>}
               <p style={{ fontSize: 11, color: "#aaa", margin: "4px 0 0" }}>
-                {new Date(n.createdAt).toLocaleString()}{n.dueDate && ` · Due ${n.dueDate}`}
+                {formatIndianDateTime(n.createdAt)}{n.dueDate && ` · Due ${n.dueDate}`}
               </p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>

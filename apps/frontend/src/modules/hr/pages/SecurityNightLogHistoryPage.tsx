@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { securityCustomApi, SecurityNightFormRecord } from "../api/securityCustomApi";
 import { useNavigate } from "react-router-dom";
 import { useIsAdmin } from "../../auth/hooks/usePermissions";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 
 const CHECKPOINTS = [
   { id: "501", label: "एच टी पैनल रूम / पिछे वाला गेट 501- फोटो", short: "HT Panel / Back Gate 501" },
@@ -235,11 +236,7 @@ export default function SecurityNightLogHistoryPage() {
                                     onClick={() =>
                                       setActiveImageModal({
                                         url: img.url,
-                                        time: img.capturedAt
-                                          ? new Date(img.capturedAt).toLocaleString()
-                                          : r.photo_captured_at
-                                          ? new Date(r.photo_captured_at).toLocaleString()
-                                          : new Date(r.created_at).toLocaleString(),
+                                        time: formatIndianDateTime(img.capturedAt || r.photo_captured_at || r.created_at),
                                         location: img.label,
                                       })
                                     }
@@ -282,11 +279,7 @@ export default function SecurityNightLogHistoryPage() {
 
                         {/* Real-Time Stamp */}
                         <td style={{ padding: "10px 12px", fontSize: "12px", color: "#0369a1", fontWeight: "600" }}>
-                          {r.photo_captured_at ? (
-                            <span>🕒 {new Date(r.photo_captured_at).toLocaleString()}</span>
-                          ) : (
-                            <span style={{ color: "#64748b" }}>{new Date(r.created_at).toLocaleString()}</span>
-                          )}
+                          <span>🕒 {formatIndianDateTime(r.photo_captured_at || r.created_at)}</span>
                         </td>
 
                         <td style={{ padding: "10px 12px", fontWeight: "600", fontSize: "14px", color: "#0f172a" }}>

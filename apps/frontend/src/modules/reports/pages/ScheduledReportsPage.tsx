@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { reportApi, REPORT_TYPE_LABELS, ReportType, ScheduledReportRecord } from "../api/reportApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 
 const REPORT_TYPES = Object.keys(REPORT_TYPE_LABELS) as ReportType[];
 
@@ -76,7 +77,7 @@ export default function ScheduledReportsPage() {
               <td style={{ padding: 8 }}>{s.name}</td>
               <td style={{ padding: 8 }}>{REPORT_TYPE_LABELS[s.reportType]}</td>
               <td style={{ padding: 8, textTransform: "capitalize" }}>{s.frequency}</td>
-              <td style={{ padding: 8, fontSize: 12 }}>{new Date(s.nextDueAt).toLocaleString()}</td>
+              <td style={{ padding: 8, fontSize: 12 }}>{formatIndianDateTime(s.nextDueAt)}</td>
               <td style={{ padding: 8 }}>{s.status}</td>
               <td style={{ padding: 8, display: "flex", gap: 6 }}>
                 <button onClick={() => handleToggle(s)}>{s.status === "active" ? "Pause" : "Resume"}</button>

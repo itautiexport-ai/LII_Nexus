@@ -1,7 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { securityCustomApi } from "../api/securityCustomApi";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
+import { formatIndianDateTime, getIndianCurrentDateTime } from "../../../shared/utils/dateUtils";
 
 export default function VisitorEntryPage() {
   const navigate = useNavigate();
@@ -23,6 +24,14 @@ export default function VisitorEntryPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [currentIndianTime, setCurrentIndianTime] = useState(() => getIndianCurrentDateTime());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndianTime(getIndianCurrentDateTime());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -232,6 +241,30 @@ export default function VisitorEntryPage() {
                 style={{ width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "14px" }}
               />
             </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>
+                Entry Time / प्रवेश समय (IST)
+              </label>
+              <div
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  background: "#f8fafc",
+                  color: "#0369a1",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span>🕒</span>
+                <span>{currentIndianTime}</span>
+              </div>
+            </div>
           </div>
 
           {/* Photo Section */}
@@ -249,7 +282,7 @@ export default function VisitorEntryPage() {
                 />
                 <div>
                   <div style={{ fontSize: "13px", color: "#16a34a", fontWeight: "600", marginBottom: "4px" }}>
-                    ✓ Photo Ready
+                    ✓ Photo Ready {photoTime && `• ${formatIndianDateTime(photoTime)}`}
                   </div>
                   <button
                     type="button"

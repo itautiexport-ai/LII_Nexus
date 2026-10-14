@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { documentApi, DocumentDetail, inferPreviewKind, LinkEntityType } from "../api/documentApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 
 const statusColors: Record<string, string> = { pending_approval: "#e08e0b", approved: "#1a7f37", rejected: "#c0392b" };
 
@@ -95,7 +96,7 @@ export default function DocumentDetailPage() {
               <td style={{ padding: 8 }}>v{v.versionNumber}</td>
               <td style={{ padding: 8 }}>{v.fileName}</td>
               <td style={{ padding: 8, color: statusColors[v.approvalStatus] }}>{v.approvalStatus.replace("_", " ")}{v.rejectionReason && <div style={{ fontSize: 11, color: "#999" }}>{v.rejectionReason}</div>}</td>
-              <td style={{ padding: 8, fontSize: 12 }}>{new Date(v.uploadedAt).toLocaleString()}</td>
+              <td style={{ padding: 8, fontSize: 12 }}>{formatIndianDateTime(v.uploadedAt)}</td>
               <td style={{ padding: 8 }}>
                 {v.approvalStatus === "pending_approval" && v.versionNumber === doc.versions[0].versionNumber && (
                   <PermissionGate permission="document.approve">

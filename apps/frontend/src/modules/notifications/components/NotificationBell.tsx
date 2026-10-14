@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { notificationApi, NotificationRecord } from "../api/notificationApi";
+import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
 
 const priorityColors: Record<string, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
 
@@ -76,7 +77,7 @@ export default function NotificationBell() {
                   <span style={{ fontSize: 10, color: priorityColors[n.priority], fontWeight: 700, textTransform: "uppercase" }}>{n.priority}</span>
                 </div>
                 {n.description && <p style={{ fontSize: 12, color: "#777", margin: "4px 0 0" }}>{n.description}</p>}
-                <p style={{ fontSize: 11, color: "#aaa", margin: "4px 0 0" }}>{new Date(n.createdAt).toLocaleString()}</p>
+                <p style={{ fontSize: 11, color: "#aaa", margin: "4px 0 0" }}>{formatIndianDateTime(n.createdAt)}</p>
               </div>
             ))}
             {items.length === 0 && <p style={{ padding: 16, fontSize: 13, color: "#999", textAlign: "center" }}>You're all caught up.</p>}
