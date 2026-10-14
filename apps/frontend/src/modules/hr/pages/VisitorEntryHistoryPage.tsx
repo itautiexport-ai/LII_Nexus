@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { securityCustomApi, SecurityVisitorEntryRecord } from "../api/securityCustomApi";
+import { useIsAdmin } from "../../auth/hooks/usePermissions";
 
 export default function VisitorEntryHistoryPage() {
+  const isAdmin = useIsAdmin();
   const [records, setRecords] = useState<SecurityVisitorEntryRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -207,21 +209,26 @@ export default function VisitorEntryHistoryPage() {
                               Check Out
                             </button>
                           )}
-                          <button
-                            onClick={() => handleDelete(r.id)}
-                            style={{
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              color: "#ef4444",
-                              padding: "4px 10px",
-                              borderRadius: "4px",
-                              fontSize: "12px",
-                              fontWeight: "600",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Delete
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDelete(r.id)}
+                              style={{
+                                background: "transparent",
+                                border: "1px solid #ef4444",
+                                color: "#ef4444",
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Delete
+                            </button>
+                          )}
+                          {!isAdmin && r.status !== "Checked-In" && (
+                            <span style={{ color: "#94a3b8", fontSize: "12px" }}>-</span>
+                          )}
                         </div>
                       </td>
                     </tr>

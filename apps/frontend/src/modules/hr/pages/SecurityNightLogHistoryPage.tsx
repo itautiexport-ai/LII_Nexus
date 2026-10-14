@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { securityCustomApi, SecurityNightFormRecord } from "../api/securityCustomApi";
 import { useNavigate } from "react-router-dom";
+import { useIsAdmin } from "../../auth/hooks/usePermissions";
 
 const CHECKPOINTS = [
   { id: "501", label: "एच टी पैनल रूम / पिछे वाला गेट 501- फोटो", short: "HT Panel / Back Gate 501" },
@@ -56,6 +57,7 @@ function parseImages(imageUrlStr: string | null): LogImage[] {
 
 export default function SecurityNightLogHistoryPage() {
   const navigate = useNavigate();
+  const isAdmin = useIsAdmin();
   const [records, setRecords] = useState<SecurityNightFormRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -195,13 +197,15 @@ export default function SecurityNightLogHistoryPage() {
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Patrol Status</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Observations</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Remarks</th>
-                  <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Action</th>
+                  {isAdmin && (
+                    <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Action</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: "28px", fontStyle: "italic", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+                    <td colSpan={isAdmin ? 9 : 8} style={{ padding: "28px", fontStyle: "italic", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
                       No Security Night Log entries found.
                     </td>
                   </tr>
@@ -314,23 +318,25 @@ export default function SecurityNightLogHistoryPage() {
                         <td style={{ padding: "10px 12px", fontSize: "14px", color: "#334155" }}>
                           {r.remarks || "-"}
                         </td>
-                        <td style={{ padding: "10px 12px" }}>
-                          <button
-                            onClick={() => handleDelete(r.id)}
-                            style={{
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              color: "#ef4444",
-                              padding: "4px 10px",
-                              borderRadius: "4px",
-                              fontSize: "12px",
-                              fontWeight: "600",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </td>
+                        {isAdmin && (
+                          <td style={{ padding: "10px 12px" }}>
+                            <button
+                              onClick={() => handleDelete(r.id)}
+                              style={{
+                                background: "transparent",
+                                border: "1px solid #ef4444",
+                                color: "#ef4444",
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
