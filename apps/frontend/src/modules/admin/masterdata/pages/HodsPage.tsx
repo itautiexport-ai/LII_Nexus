@@ -17,7 +17,8 @@ export default function HodsPage() {
     setLoading(true);
     try {
       const data = await masterDataApi.getHods();
-      setHods(data);
+      const masterHods = (data || []).filter((h) => Boolean(h.created_at || h.createdAt));
+      setHods(masterHods);
     } catch (err: any) {
       console.error(err);
     } finally {

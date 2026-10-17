@@ -80,7 +80,12 @@ export default function DprEntryPage() {
       setShifts(shiftList);
       setEmployees(empList.filter((e: any) => e.status === "active"));
       setWoodTypes(woodTypesRes.status === "fulfilled" ? woodTypesRes.value.filter((w: any) => w.status === "active") : []);
-      setHods(hodsRes.status === "fulfilled" ? hodsRes.value : []);
+
+      const rawHods: Hod[] = hodsRes.status === "fulfilled" ? hodsRes.value : [];
+      // Only show HODs created in Master Data (master_hods), excluding employee records added during user creation
+      const masterHods = rawHods.filter((h) => Boolean(h.created_at || h.createdAt));
+      setHods(masterHods);
+
       setTodayEntries(entriesRes.status === "fulfilled" ? entriesRes.value.items : []);
 
       if (meRes.status !== "fulfilled") {
@@ -158,12 +163,12 @@ export default function DprEntryPage() {
     try {
       const result = await Tesseract.recognize(file, 'eng');
       const text = result.data.text;
-      
+
       // Simple heuristic parsing logic
       // Assume lines look like: "Wardrobe A-Type ITM001 Teak 100 90 Pcs 90 10"
       // This is a naive parser. We split by newlines, extract words/numbers.
       const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      
+
       const extractedItems: DprItemRecord[] = [];
 
       lines.forEach(line => {
@@ -175,11 +180,11 @@ export default function DprEntryPage() {
           const orderQty = nums[0] || 0;
           const okQty = nums[1] || 0;
           const reworkQty = nums.length > 2 ? nums[2] : 0;
-          
+
           // Try to guess Product Code (word with both letters and numbers)
           const words = line.split(/\s+/);
           const productCode = words.find(w => /[a-zA-Z]/.test(w) && /[0-9]/.test(w)) || "";
-          
+
           // Use the rest of the text for alias name roughly
           const textOnlyWords = words.filter(w => !/\d/.test(w));
           const aliasName = textOnlyWords.slice(0, 3).join(" ") || "Scanned Item";
@@ -254,7 +259,7 @@ export default function DprEntryPage() {
 
       await dprApi.create(payload);
       setSuccess("DPR Entry saved successfully!");
-      
+
       // Reset all form details for new entry
       setItems([{
         aliasName: "",
@@ -331,11 +336,11 @@ export default function DprEntryPage() {
           <p className="dpr-subtitle">Fill daily production data for your shift</p>
         </div>
         <div>
-          <input 
-            type="file" 
-            accept="image/*" 
-            ref={fileInputRef} 
-            style={{ display: "none" }} 
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            style={{ display: "none" }}
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
                 setImageFile(e.target.files[0]);
@@ -343,8 +348,8 @@ export default function DprEntryPage() {
             }}
           />
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={downloadTemplate}
               style={{
                 backgroundColor: "#f3f4f6",
@@ -366,8 +371,8 @@ export default function DprEntryPage() {
             {imageFile && (
               <span style={{ fontSize: "13px", color: "#6b7280" }}>{imageFile.name}</span>
             )}
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               style={{
                 backgroundColor: "#1a7f37",
@@ -387,8 +392,8 @@ export default function DprEntryPage() {
               📷 {imageFile ? "Change Image" : "Upload Image"}
             </button>
             {imageFile && (
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setImageFile(null)}
                 style={{
                   backgroundColor: "#fee2e2",
@@ -541,9 +546,9 @@ export default function DprEntryPage() {
                   <span className="card-icon">📦</span> Item-wise Production Details
                 </div>
                 <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
+                  <input
+                    type="file"
+                    accept="image/*"
                     capture="environment"
                     ref={scanInputRef}
                     onChange={handleScanImage}

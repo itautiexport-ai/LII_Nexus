@@ -24,7 +24,8 @@ export interface Uom {
 export interface Hod {
   id: string;
   name: string;
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string;
 }
 
 export interface Merchant {
