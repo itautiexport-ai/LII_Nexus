@@ -9,8 +9,6 @@ export function ComplaintsHubPage() {
   const allItems = [
     { label: "New Complaint", to: "/admin/crm/complaints/new", desc: "Log a new customer complaint" },
     { label: "List Complaints", to: "/admin/crm/complaints", desc: "View all complaints" },
-    { label: "Investigation", to: "/admin/crm/investigation", desc: "Manage complaint investigations" },
-    { label: "CAPA", to: "/admin/crm/capa", desc: "Manage Corrective and Preventive Actions" },
   ];
 
   const items = allItems.filter(item => {

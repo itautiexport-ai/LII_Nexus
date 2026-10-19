@@ -24,7 +24,9 @@ export class WhatsAppBotService {
     });
 
     this.client.on("qr", (qr) => {
-      console.log("[WhatsAppBotService] QR Code received. Awaiting scan.");
+      if (this.status !== "qr") {
+        console.log("[WhatsAppBotService] QR Code received. Awaiting scan.");
+      }
       this.qrCode = qr;
       this.status = "qr";
     });

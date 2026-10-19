@@ -38,6 +38,7 @@ export const SECTIONS: NavSection[] = [
           { label: "Shifts", to: "/admin/shifts" },
           { label: "Wood Types", to: "/admin/wood-types" },
           { label: "Wood Thickness Prices", to: "/admin/wood-thickness-prices" },
+          { label: "Metal Prices", to: "/admin/metal-prices" },
           { label: "Priorities", to: "/admin/priorities" },
           { label: "UOMs", to: "/admin/uoms" },
           { label: "HOD Names", to: "/admin/hods" },
@@ -48,6 +49,7 @@ export const SECTIONS: NavSection[] = [
           { label: "Employees", to: "/admin/employees" },
           { label: "Buyers", to: "/admin/buyers" },
           { label: "Finish Codes", to: "/admin/finish-codes" },
+          { label: "QC Names", to: "/admin/qc-names" },
           { label: "Weights", to: "/admin/module-weights" },
         ]
       }
@@ -151,7 +153,8 @@ export const SECTIONS: NavSection[] = [
     allowedRoles: ["System Admin", "Finishing Access"],
     items: [
       { label: "Finishing Recipe Form", to: "/admin/finishing-recipe" },
-      { label: "Finishing Recipe List", to: "/admin/finishing-recipe-list" }
+      { label: "Finishing Recipe List", to: "/admin/finishing-recipe-list" },
+      { label: "Finishing Library", to: "/admin/finishing-library" }
     ],
   },
   {
@@ -177,10 +180,16 @@ export const SECTIONS: NavSection[] = [
         items: [
           { label: "New Complaint", to: "/admin/crm/complaints/new" },
           { label: "List Complaints", to: "/admin/crm/complaints" },
-          { label: "Investigation", to: "/admin/crm/investigation" },
-          { label: "CAPA", to: "/admin/crm/capa" },
         ]
       }
+    ],
+  },
+  {
+    key: "qms",
+    label: "QMS",
+    allowedRoles: ["System Admin", "QMS Access", "Quality", "HOD", "CEO", "Supervisor"],
+    items: [
+      { label: "IQC", to: "/admin/qms/iqc" },
     ],
   },
   {
@@ -323,8 +332,9 @@ export const SECTIONS: NavSection[] = [
   {
     key: "reports",
     label: "Reports",
-    allowedRoles: ["System Admin", "CEO", "HOD", "Supervisor", "HR"],
+    allowedRoles: ["System Admin", "CEO", "HOD", "Supervisor", "HR", "Merchant", "Admin"],
     items: [
+      { label: "Lead Report", to: "/admin/reports/lead-report" },
       {
         label: "Production Report",
         to: "/admin/reports/production-hub",

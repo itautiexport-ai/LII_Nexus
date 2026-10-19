@@ -161,6 +161,29 @@ export class MySqlMasterDataRepository {
     await pool.query("DELETE FROM master_hods WHERE id = ?", [id]);
   }
 
+  // QC Names
+  async getQcNames() {
+    const [rows] = await pool.query<any[]>("SELECT * FROM master_qc_names ORDER BY name ASC");
+    return rows;
+  }
+
+  async createQcName(name: string) {
+    const id = uuid();
+    await pool.query("INSERT INTO master_qc_names (id, name) VALUES (?, ?)", [id, name]);
+    const [rows]: any = await pool.query("SELECT * FROM master_qc_names WHERE id = ?", [id]);
+    return rows[0];
+  }
+
+  async updateQcName(id: string, name: string) {
+    await pool.query("UPDATE master_qc_names SET name = ? WHERE id = ?", [name, id]);
+    const [rows]: any = await pool.query("SELECT * FROM master_qc_names WHERE id = ?", [id]);
+    return rows[0];
+  }
+
+  async deleteQcName(id: string) {
+    await pool.query("DELETE FROM master_qc_names WHERE id = ?", [id]);
+  }
+
   // Merchants
   async getMerchants() {
     const [rows] = await pool.query("SELECT * FROM master_merchants ORDER BY name ASC");

@@ -45,14 +45,18 @@ export async function isAdminUser(userId: string): Promise<boolean> {
     const desigTitle = (r.designation_title || '').toLowerCase().trim();
     const email = (r.email || '').toLowerCase().trim();
 
+    // Executives are NEVER admin or management!
+    if (desigTitle.includes('executive')) {
+      return false;
+    }
+
+    const exactAdminRoles = ['system admin', 'super admin', 'system administrator', 'admin', 'administrator', 'ceo', 'director', 'management'];
+    const exactAdminDesigs = ['admin', 'system admin', 'administrator', 'ceo', 'chief executive officer', 'director', 'management'];
+
     return (
       email === 'admin' || email === 'admin@liinexus.com' ||
-      roleName === 'system admin' || roleName === 'super admin' ||
-      roleName.includes('admin') ||
-      roleName.includes('management') ||
-      desigTitle === 'admin' || desigTitle.includes('admin') ||
-      desigTitle === 'management' || desigTitle.includes('management') ||
-      desigTitle === 'management executive' || desigTitle.includes('management executive')
+      exactAdminRoles.includes(roleName) ||
+      exactAdminDesigs.includes(desigTitle)
     );
   });
 }

@@ -43,6 +43,8 @@ export interface OfficeEmReport {
     delegation: OfficeEmModuleScore;
   };
   finalGapScore: number | null;
+  adjustedGapScore6040?: number | null;
+  taskGapScore6040?: number | null;
 }
 
 export const officeEmApi = {

@@ -61,7 +61,27 @@ export default function ReportsHubPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Reports & Business Intelligence</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+        <h1 style={{ fontSize: 20, margin: 0 }}>Reports & Business Intelligence</h1>
+        <button
+          onClick={() => navigate("/admin/reports/lead-report")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            color: "#1d4ed8",
+            fontWeight: 600,
+            fontSize: 13,
+            padding: "7px 14px",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          <span>🎪</span> View Lead Report (Management Dashboard) &rarr;
+        </button>
+      </div>
 
       <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 280 }}>

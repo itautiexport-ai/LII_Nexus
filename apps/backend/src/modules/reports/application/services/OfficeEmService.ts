@@ -43,6 +43,8 @@ export interface OfficeEmReport {
     delegation: OfficeEmModuleScore;
   };
   finalGapScore: number | null;
+  adjustedGapScore6040?: number | null;
+  taskGapScore6040?: number | null;
 }
 
 function getPriorityPoints(priority: string | null): number {
@@ -492,6 +494,42 @@ export class OfficeEmService {
       finalGapScore = parseFloat(finalGapScore.toFixed(1));
     }
 
+    // ==========================================
+    // 60:40 Additional Calculation (Same-Week Completion Rule)
+    // If all tasks are completed in the same week, the completion penalty is 0,
+    // and penalty is strictly capped to the timeliness portion (max 40% of module weight).
+    // ==========================================
+    const calcModule6040 = (mod: OfficeEmModuleScore): number => {
+      if (!mod.isActive || mod.totalDuePoints === 0) return 0;
+      if (mod.completionPercent >= 100) {
+        return -1 * (mod.timelinessGap * 0.4);
+      }
+      return mod.gapScore;
+    };
+
+    const fms6040 = calcModule6040(fmsScore);
+    const checklist6040 = calcModule6040(checklistScore);
+    const delegation6040 = calcModule6040(delegationScore);
+
+    const taskWeightedSum6040 = (fms6040 * (fmsRedistributedWeight / 100)) +
+                                (checklist6040 * (checklistRedistributedWeight / 100)) +
+                                (delegation6040 * (delegationRedistributedWeight / 100));
+
+    const taskGapScore6040 = parseFloat(taskWeightedSum6040.toFixed(1));
+    let adjustedGapScore6040: number | null = null;
+
+    if (!isEvaluationPending && hodScore !== null && hrScore !== null) {
+      const hodGapScore = -100 * (1 - hodScore / 5);
+      const hrGapScore = -100 * (1 - hrScore / 5);
+
+      let adjustedTotal = taskWeightedSum6040 +
+                          (hodGapScore * (hodRedistributedWeight / 100)) +
+                          (hrGapScore * (hrRedistributedWeight / 100));
+
+      adjustedTotal = Math.max(-100, adjustedTotal);
+      adjustedGapScore6040 = parseFloat(adjustedTotal.toFixed(1));
+    }
+
     return {
       employeeId: userId,
       employeeName,
@@ -509,7 +547,9 @@ export class OfficeEmService {
         checklist: checklistScore,
         delegation: delegationScore
       },
-      finalGapScore
+      finalGapScore,
+      adjustedGapScore6040,
+      taskGapScore6040
     };
   }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../../fms/pages/Fms.css";
 import { masterDataApi } from "../../admin/masterdata/api/masterDataApi";
 import { finishingRecipeApi } from "../api/finishingRecipeApi";
@@ -31,6 +31,19 @@ export function FinishingRecipePage() {
 
   const [swatchImage, setSwatchImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (videoStream) {
+        videoStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [videoStream]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,11 +64,81 @@ export function FinishingRecipePage() {
         }
       );
       setSwatchImage(res.data.data.fileUrl);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to upload image.");
+      alert(err.response?.data?.message || "Failed to upload image.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const startCamera = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      setVideoStream(stream);
+      setCameraActive(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(console.error);
+        }
+      }, 100);
+    } catch (err) {
+      console.warn("Direct getUserMedia camera failed, using native device camera fallback", err);
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoStream) {
+      videoStream.getTracks().forEach((track) => track.stop());
+      setVideoStream(null);
+    }
+    setCameraActive(false);
+  };
+
+  const captureFromCamera = async () => {
+    if (!videoRef.current) return;
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        setUploading(true);
+        try {
+          const file = new File([blob], `swatch-${Date.now()}.jpg`, { type: "image/jpeg" });
+          const formDataObj = new FormData();
+          formDataObj.append("file", file);
+
+          const res = await axiosInstance.post<{ success: boolean; data: { fileUrl: string } }>(
+            "/standalone-checklists/upload-attachment",
+            formDataObj,
+            { headers: { "Content-Type": "multipart/form-data" } }
+          );
+          setSwatchImage(res.data.data.fileUrl);
+          stopCamera();
+        } catch (err: any) {
+          console.error(err);
+          alert(err.response?.data?.message || "Failed to upload captured photo.");
+        } finally {
+          setUploading(false);
+        }
+      }, "image/jpeg", 0.9);
+    } catch (err: any) {
+      alert("Failed to capture photo: " + (err.message || "Error"));
     }
   };
 
@@ -394,49 +477,196 @@ export function FinishingRecipePage() {
                 </select>
               </div>
 
-              <div className="fms-form-group" style={{ gridColumn: "span 2" }}>
-                <label className="fms-label">Finish Swatch Image <small style={{ color: "#64748b" }}>/ फिनिश स्वैच छवि</small></label>
-                <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="fms-input"
-                    style={{ padding: "8px", border: "1px solid #ced4da", borderRadius: "4px", flex: 1 }}
-                  />
-                  {uploading && <span style={{ fontSize: "14px", color: "#475569" }}>Uploading...</span>}
-                  {swatchImage && (
-                    <div style={{ position: "relative" }}>
-                      <img 
-                        src={swatchImage} 
-                        alt="Swatch Swatch Preview" 
-                        style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "1px solid #cbd5e1" }} 
-                      />
-                      <button 
+              <div className="fms-form-group">
+                <label className="fms-label">
+                  Swatch Image <small style={{ color: "#64748b" }}>/ स्वैच छवि</small>
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  style={{ display: "none" }}
+                />
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageUpload}
+                  style={{ display: "none" }}
+                />
+
+                {!swatchImage ? (
+                  <div
+                    style={{
+                      border: "1px solid #d1d5db",
+                      borderRadius: "4px",
+                      padding: "4px 8px",
+                      backgroundColor: "#f8fafc",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "8px",
+                      minHeight: "42px",
+                      boxSizing: "border-box"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+                      <span style={{ fontSize: "16px" }}>🖼️</span>
+                      <span style={{ fontSize: "12px", color: "#475569", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {uploading ? "Uploading Swatch..." : "Add Swatch:"}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                      <button
                         type="button"
-                        onClick={() => setSwatchImage(null)}
+                        onClick={startCamera}
+                        disabled={uploading}
                         style={{
-                          position: "absolute",
-                          top: "-8px",
-                          right: "-8px",
-                          background: "#ef4444",
-                          color: "white",
+                          background: "#4f46e5",
+                          color: "#fff",
                           border: "none",
-                          borderRadius: "50%",
-                          width: "20px",
-                          height: "20px",
-                          cursor: "pointer",
+                          borderRadius: "4px",
+                          padding: "6px 12px",
                           fontSize: "12px",
-                          display: "flex",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "inline-flex",
                           alignItems: "center",
-                          justifyContent: "center"
+                          gap: "4px",
+                          boxShadow: "0 1px 2px rgba(79,70,229,0.2)"
                         }}
+                        title="Take photo directly using camera"
                       >
-                        ✕
+                        📸 Take Picture
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        style={{
+                          background: "#2563eb",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "4px",
+                          padding: "6px 12px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          boxShadow: "0 1px 2px rgba(37,99,235,0.2)"
+                        }}
+                        title="Browse and select image from files"
+                      >
+                        📁 Browse
                       </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      border: "1px solid #bfdbfe",
+                      borderRadius: "4px",
+                      padding: "5px 10px",
+                      backgroundColor: "#eff6ff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                      minHeight: "42px",
+                      boxSizing: "border-box"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+                      <img
+                        src={swatchImage}
+                        alt="Swatch Preview"
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          objectFit: "cover",
+                          borderRadius: "4px",
+                          border: "1px solid #cbd5e1",
+                          flexShrink: 0
+                        }}
+                      />
+                      <div style={{ overflow: "hidden" }}>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: "#1e3a8a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          Swatch Attached
+                        </div>
+                        <a
+                          href={swatchImage}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: "11px", color: "#2563eb", textDecoration: "underline" }}
+                        >
+                          View Full &rarr;
+                        </a>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "5px", flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={startCamera}
+                        style={{
+                          background: "#e0e7ff",
+                          color: "#4338ca",
+                          border: "none",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                        title="Retake photo using camera"
+                      >
+                        📸 Retake
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          background: "#e2e8f0",
+                          color: "#1e293b",
+                          border: "none",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                        title="Choose another file"
+                      >
+                        📁 Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSwatchImage(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                          if (cameraInputRef.current) cameraInputRef.current.value = "";
+                        }}
+                        style={{
+                          background: "#fee2e2",
+                          color: "#dc2626",
+                          border: "none",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        ✕ Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -587,6 +817,111 @@ export function FinishingRecipePage() {
           </form>
         </div>
       </div>
+
+      {/* Camera Capture Modal */}
+      {cameraActive && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 99999,
+            padding: "16px"
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              padding: "20px",
+              maxWidth: "520px",
+              width: "100%",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.25)",
+              position: "relative"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>📸</span> Capture Swatch Photo <small style={{ fontWeight: "normal", color: "#64748b" }}>/ स्वैच फ़ोटो लें</small>
+              </h3>
+              <button
+                type="button"
+                onClick={stopCamera}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: "20px",
+                  color: "#64748b",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  padding: "4px"
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ position: "relative", backgroundColor: "#0f172a", borderRadius: "8px", overflow: "hidden", marginBottom: "16px", aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+              {uploading && (
+                <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px", fontWeight: "600" }}>
+                  Uploading photo...
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={stopCamera}
+                disabled={uploading}
+                style={{
+                  padding: "8px 16px",
+                  background: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={captureFromCamera}
+                disabled={uploading}
+                style={{
+                  padding: "8px 20px",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  boxShadow: "0 2px 4px rgba(37,99,235,0.3)"
+                }}
+              >
+                📸 {uploading ? "Uploading..." : "Snap & Use Photo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

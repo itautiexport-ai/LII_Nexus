@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { FinishingRecipePage } from "../../modules/finishing/pages/FinishingRecipePage";
 import FinishingRecipeListPage from "../../modules/finishing/pages/FinishingRecipeListPage";
+import FinishingLibraryPage from "../../modules/finishing/pages/FinishingLibraryPage";
 import AttendanceCalculatorPage from "../../modules/hr/pages/AttendanceCalculatorPage";
 import AnnualTrainingPlannerPage from "../../modules/hr/pages/AnnualTrainingPlannerPage";
 import DelegationHubPage from "../../modules/officeperf/delegation/pages/DelegationHubPage";
@@ -21,6 +22,7 @@ import ShiftsPage from "../../modules/admin/factory/shifts/pages/ShiftsPage";
 import ProductionEntryPage from "../../modules/factory/pages/ProductionEntryPage";
 import WoodTypesPage from "../../modules/admin/masterdata/pages/WoodTypesPage";
 import WoodThicknessPricesPage from "../../modules/admin/masterdata/pages/WoodThicknessPricesPage";
+import MetalPricesPage from "../../modules/admin/masterdata/pages/MetalPricesPage";
 import PrioritiesPage from "../../modules/admin/masterdata/pages/PrioritiesPage";
 import MachinesProductsPage from "../../modules/documents/pages/MachinesProductsPage";
 import MyProductionPage from "../../modules/factory/pages/MyProductionPage";
@@ -66,6 +68,7 @@ import BuyersPage from "../../modules/admin/masterdata/pages/BuyersPage";
 import UomsPage from "../../modules/admin/masterdata/pages/UomsPage";
 import FinishCodesPage from "../../modules/admin/masterdata/pages/FinishCodesPage";
 import HodsPage from "../../modules/admin/masterdata/pages/HodsPage";
+import QcNamesPage from "../../modules/admin/masterdata/pages/QcNamesPage";
 import MerchantsPage from "../../modules/admin/masterdata/pages/MerchantsPage";
 import ModuleWeightsPage from "../../modules/admin/masterdata/pages/ModuleWeightsPage";
 import NotificationCenterPage from "../../modules/notifications/pages/NotificationCenterPage";
@@ -82,6 +85,7 @@ import AppraisalIndexPage from "../../modules/reports/pages/AppraisalIndexPage";
 import DashboardWidgetsPage from "../../modules/reports/pages/DashboardWidgetsPage";
 import DailyProductionReportPage from "../../modules/reports/pages/DailyProductionReportPage";
 import DetailedProductionReportPage from "../../modules/reports/pages/DetailedProductionReportPage";
+import LeadReportPage from "../../modules/reports/pages/LeadReportPage";
 import MyBehaviourPage from "../../modules/behaviour/pages/MyBehaviourPage";
 import BehaviourAnalyticsPage from "../../modules/behaviour/pages/BehaviourAnalyticsPage";
 import BehaviourHealthPage from "../../modules/behaviour/pages/BehaviourHealthPage";
@@ -132,6 +136,14 @@ import { FmsManagerPage } from "../../modules/fms/pages/FmsManagerPage";
 import ProductionPlanningSheetPage from "../../modules/manufacturing/pages/ProductionPlanningSheetPage";
 import NewProductionPlanningSheetPage from "../../modules/manufacturing/pages/NewProductionPlanningSheetPage";
 import WhatsAppIntegrationPage from "../../modules/admin/whatsapp/pages/WhatsAppIntegrationPage";
+
+import IqcInspectionPage from "../../modules/qms/pages/IqcInspectionPage";
+import QmsDashboardPage from "../../modules/qms/pages/QmsDashboardPage";
+import QmsInspectionsPage from "../../modules/qms/pages/QmsInspectionsPage";
+import QmsNcrPage from "../../modules/qms/pages/QmsNcrPage";
+import QmsCapaPage from "../../modules/qms/pages/QmsCapaPage";
+import QmsAuditsPage from "../../modules/qms/pages/QmsAuditsPage";
+import QmsStandardsPage from "../../modules/qms/pages/QmsStandardsPage";
 
 import HodEvaluationPage from "../../modules/performance-evaluation/pages/HodEvaluationPage";
 import HrEvaluationPage from "../../modules/performance-evaluation/pages/HrEvaluationPage";
@@ -208,6 +220,7 @@ export default function AppRouter() {
           <Route path="modules/:moduleKey" element={<ModuleLandingPage />} />
           <Route path="finishing-recipe" element={<FinishingRecipePage />} />
           <Route path="finishing-recipe-list" element={<FinishingRecipeListPage />} />
+          <Route path="finishing-library" element={<FinishingLibraryPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="permissions" element={<PermissionsPage />} />
           <Route path="whatsapp" element={<WhatsAppIntegrationPage />} />
@@ -221,11 +234,13 @@ export default function AppRouter() {
           <Route path="master-data" element={<MasterDataHubPage />} />
           <Route path="wood-types" element={<WoodTypesPage />} />
           <Route path="wood-thickness-prices" element={<WoodThicknessPricesPage />} />
+          <Route path="metal-prices" element={<MetalPricesPage />} />
           <Route path="priorities" element={<PrioritiesPage />} />
           <Route path="buyers" element={<BuyersPage />} />
           <Route path="uoms" element={<UomsPage />} />
           <Route path="finish-codes" element={<FinishCodesPage />} />
           <Route path="hods" element={<HodsPage />} />
+          <Route path="qc-names" element={<QcNamesPage />} />
           <Route path="merchants" element={<MerchantsPage />} />
           <Route path="module-weights" element={<ModuleWeightsPage />} />
           <Route path="machine-targets" element={<MachineTargetsPage />} />
@@ -317,6 +332,8 @@ export default function AppRouter() {
           <Route path="order-management/:id" element={<OrderInHandFormPage />} />
           <Route path="crm/leads" element={<LeadsListPage />} />
           <Route path="crm/leads/new" element={<LeadFormPage />} />
+          <Route path="crm/leads/edit/:id" element={<LeadFormPage />} />
+          <Route path="crm/leads/:id/edit" element={<LeadFormPage />} />
           <Route path="crm/leads/:id" element={<LeadDetailPage />} />
           <Route path="crm/dashboards" element={<CrmDashboardsPage />} />
           <Route path="user-dashboard/delegation" element={<UserDelegationPage />} />
@@ -333,6 +350,17 @@ export default function AppRouter() {
           <Route path="crm/investigation/new" element={<InvestigationFormPage />} />
           <Route path="crm/capa" element={<CapaListPage />} />
           <Route path="crm/capa/new" element={<CapaFormPage />} />
+
+          {/* QMS (Quality Management System) Routes */}
+          <Route path="qms" element={<IqcInspectionPage />} />
+          <Route path="qms/iqc" element={<IqcInspectionPage />} />
+          <Route path="qms/dashboard" element={<QmsDashboardPage />} />
+          <Route path="qms/inspections" element={<QmsInspectionsPage />} />
+          <Route path="qms/ncr" element={<QmsNcrPage />} />
+          <Route path="qms/capa" element={<QmsCapaPage />} />
+          <Route path="qms/audits" element={<QmsAuditsPage />} />
+          <Route path="qms/standards" element={<QmsStandardsPage />} />
+
           <Route path="costing/hub" element={<CostingHubPage />} />
           <Route path="costing/list" element={<CostEstimationsListPage />} />
           <Route path="costing/new" element={<CostEstimationFormPage />} />
@@ -345,6 +373,7 @@ export default function AppRouter() {
           <Route path="notification-templates" element={<NotificationTemplatesPage />} />
           <Route path="escalation-rules" element={<EscalationRulesPage />} />
           <Route path="reports" element={<ReportsHubPage />} />
+          <Route path="reports/lead-report" element={<LeadReportPage />} />
           <Route path="reports/dashboard" element={<DashboardWidgetsPage />} />
           <Route path="reports/production-hub" element={<ProductionReportHubPage />} />
           <Route path="reports/daily-production" element={<DailyProductionReportPage />} />

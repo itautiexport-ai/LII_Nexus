@@ -132,6 +132,27 @@ export class MasterDataController {
     res.json({ success: true });
   }
 
+  // QC Names
+  async getQcNames(_req: Request, res: Response) {
+    const data = await this.service.getQcNames();
+    res.json({ success: true, data });
+  }
+
+  async createQcName(req: Request, res: Response) {
+    const data = await this.service.createQcName(req.body.name);
+    res.json({ success: true, data });
+  }
+
+  async updateQcName(req: Request, res: Response) {
+    const data = await this.service.updateQcName(req.params.id, req.body.name);
+    res.json({ success: true, data });
+  }
+
+  async deleteQcName(req: Request, res: Response) {
+    await this.service.deleteQcName(req.params.id);
+    res.json({ success: true });
+  }
+
   // Merchants
   async getMerchants(_req: Request, res: Response) {
     const data = await this.service.getMerchants();

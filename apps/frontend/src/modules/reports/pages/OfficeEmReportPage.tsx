@@ -598,6 +598,58 @@ export default function OfficeEmReportPage() {
                     })}
                   </div>
 
+                  {/* 60:40 Adjusted Score Stat Card */}
+                  <div
+                    style={{
+                      background: "#f0fdf4",
+                      border: "1px solid #86efac",
+                      borderRadius: "12px",
+                      padding: "16px 20px",
+                      marginTop: "16px",
+                      marginBottom: "16px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "15px", fontWeight: "800", color: "#166534" }}>
+                          60:40 Adjusted Score
+                        </span>
+                        <span
+                          style={{
+                            background: "#dcfce7",
+                            color: "#15803d",
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            padding: "3px 8px",
+                            borderRadius: "12px",
+                            border: "1px solid #bbf7d0",
+                          }}
+                        >
+                          Same-Week Rule
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#15803d", lineHeight: "1.4" }}>
+                        All tasks completed in same week: full 60% completion secured; penalty capped at 40% timeliness.
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", minWidth: "150px" }}>
+                      <div style={{ fontSize: "24px", fontWeight: "900", color: "#15803d", letterSpacing: "-0.02em" }}>
+                        {activeReport.adjustedGapScore6040 !== null && activeReport.adjustedGapScore6040 !== undefined
+                          ? `${activeReport.adjustedGapScore6040.toFixed(1)}`
+                          : (activeReport.taskGapScore6040 !== null && activeReport.taskGapScore6040 !== undefined
+                              ? `${activeReport.taskGapScore6040.toFixed(1)}`
+                              : "-")}
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#166534", fontWeight: "600" }}>
+                        {activeReport.isEvaluationPending ? "Tasks Only (HOD/HR Pending)" : "Overall Final"}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="modal-footer-summary">
                     <div className="footer-stat">
                       <span>Average Task Gap Score:</span>
@@ -609,6 +661,16 @@ export default function OfficeEmReportPage() {
                       <span>Final Gap Score:</span>
                       <strong className="final-score">
                         {activeReport.finalGapScore !== null ? activeReport.finalGapScore.toFixed(1) : "Pending"}
+                      </strong>
+                    </div>
+                    <div className="footer-stat" style={{ marginTop: "12px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
+                      <span>60:40 Adjusted Score:</span>
+                      <strong className="final-score" style={{ color: "#16a34a" }}>
+                        {activeReport.adjustedGapScore6040 !== null && activeReport.adjustedGapScore6040 !== undefined
+                          ? activeReport.adjustedGapScore6040.toFixed(1)
+                          : (activeReport.taskGapScore6040 !== null && activeReport.taskGapScore6040 !== undefined
+                              ? `${activeReport.taskGapScore6040.toFixed(1)} (Tasks Only)`
+                              : "Pending")}
                       </strong>
                     </div>
                   </div>

@@ -12,6 +12,7 @@ export function MasterDataHubPage() {
     { label: "Shifts", to: "/admin/shifts", desc: "Manage work shifts" },
     { label: "Wood Types", to: "/admin/wood-types", desc: "Manage wood types" },
     { label: "Wood Thickness Prices", to: "/admin/wood-thickness-prices", desc: "Manage wood thickness pricing rates per CFT" },
+    { label: "Metal Prices", to: "/admin/metal-prices", desc: "Manage standard metal pricing rates by type, profile, and gauge" },
     { label: "Priorities", to: "/admin/priorities", desc: "Manage priority levels" },
     { label: "UOMs", to: "/admin/uoms", desc: "Manage units of measurement" },
     { label: "HOD Names", to: "/admin/hods", desc: "Manage heads of departments" },
@@ -22,6 +23,7 @@ export function MasterDataHubPage() {
     { label: "Employees", to: "/admin/employees", desc: "Manage employee records" },
     { label: "Buyers", to: "/admin/buyers", desc: "Manage buyers" },
     { label: "Finish Codes", to: "/admin/finish-codes", desc: "Manage finish codes" },
+    { label: "QC Names", to: "/admin/qc-names", desc: "Manage Quality Controller (QC) inspectors" },
   ];
 
   const items = allItems.filter(item => {

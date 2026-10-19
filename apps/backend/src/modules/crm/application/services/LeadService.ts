@@ -8,6 +8,8 @@ import { NotificationService } from "../../../notifications/application/services
 import { MySqlNotificationRepository } from "../../../notifications/infrastructure/repositories/MySqlNotificationRepository";
 import { MySqlEmployeeRepository } from "../../../organization/infrastructure/repositories/MySqlEmployeeRepository";
 
+import { pool } from "../../../../infrastructure/database/mysql/connection";
+
 const notificationService = new NotificationService(new MySqlNotificationRepository());
 const employeeRepo = new MySqlEmployeeRepository();
 
@@ -23,19 +25,182 @@ const STAGE_STATUS_SYNC: Partial<Record<SalesStage, "won" | "lost">> = {
 export class LeadService {
   constructor(private readonly repo: ICrmRepository, private readonly scope: EmployeeScopeService) {}
 
-  /** Self-only-or-override: a merchant's own leads are always visible/
-   *  editable; anyone else's require crm.lead.view / crm.lead.update. This
-   *  is deliberately simpler than EmployeeScopeService's self-or-manager
-   *  pattern - a CRM lead isn't an org-chart relationship, it's a direct
-   *  ownership assignment. */
-  private async assertCanAccessLead(assignedMerchantId: string | null, actorUserId: string, hasOverride: boolean) {
-    if (hasOverride) return;
-    if (!assignedMerchantId) {
-      throw new ForbiddenError("This lead is unassigned. Only someone with lead view/edit override permission can access it.");
+  /**
+   * Determine whether the actor can view ALL leads across the company.
+   * Rules:
+   * 1. Admin roles: System Admin, Admin, Super Admin, Director, CEO, Management
+   * 2. Admin designations: ADMIN, SYSTEM ADMIN, DIRECTOR, CEO, CHIEF EXECUTIVE OFFICER, MANAGEMENT
+   * 3. Merchant HOD: Designation has HOD and Department is CRM / Merchant / Sales, or designation is Merchant HOD.
+   * All other users (Executives, Merchants, other departments) can ONLY see leads assigned to them.
+   */
+  async canActorViewAllLeads(actorUserId: string): Promise<boolean> {
+    const [roleRows] = await pool.query<any[]>(`
+      SELECT r.name 
+      FROM roles r
+      JOIN user_roles ur ON ur.role_id = r.id
+      WHERE ur.user_id = ?
+    `, [actorUserId]);
+    const roleNames = roleRows.map((r: any) => (r.name || "").toLowerCase().trim());
+
+    // Check Admin / Director / Super Admin roles
+    if (roleNames.some((r: string) => 
+      ["admin", "system admin", "super admin", "director", "ceo", "management", "management executive"].includes(r)
+    )) {
+      return true;
     }
-    const actor = await this.scope.getEmployeeForUser(actorUserId);
-    if (!actor || actor.id !== assignedMerchantId) {
-      throw new ForbiddenError("You can only access your own assigned leads unless granted broader access.");
+
+    // Check Employee designation & department
+    const [empRows] = await pool.query<any[]>(`
+      SELECT e.id, d.name as dept_name, desig.title as designation_title
+      FROM employees e
+      LEFT JOIN departments d ON d.id = e.department_id
+      LEFT JOIN designations desig ON desig.id = e.designation_id
+      WHERE (e.user_id = ? OR e.id = ?) AND e.deleted_at IS NULL
+      LIMIT 1
+    `, [actorUserId, actorUserId]);
+
+    if (empRows.length > 0) {
+      const desig = (empRows[0].designation_title || "").toLowerCase().trim();
+      const dept = (empRows[0].dept_name || "").toLowerCase().trim();
+
+      // Admin / Director / CEO / Management designation
+      if (["admin", "system admin", "director", "ceo", "chief executive officer", "management", "management executive"].includes(desig)) {
+        return true;
+      }
+
+      // ONLY Merchant HOD: Designation has HOD and Department has CRM / Merchant / Sales
+      const isHod = desig.includes("hod") || desig.includes("head of department");
+      const isMerchantDept = dept.includes("crm") || dept.includes("merchant") || dept.includes("sales");
+      if (isHod && isMerchantDept) {
+        return true;
+      }
+      if (desig.includes("merchant hod")) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Determine whether the actor can transfer / reassign leads.
+   * STRICT REQUIREMENT: Only Admin, Management (Director, CEO, Management), and Merchant HOD.
+   * Regular executives / merchants CANNOT transfer leads.
+   */
+  async canActorTransferLead(actorUserId: string): Promise<boolean> {
+    const [empRows] = await pool.query<any[]>(`
+      SELECT e.id, desig.title as designation_title, d.name as dept_name
+      FROM employees e
+      LEFT JOIN designations desig ON desig.id = e.designation_id
+      LEFT JOIN departments d ON d.id = e.department_id
+      WHERE (e.user_id = ? OR e.id = ?) AND e.deleted_at IS NULL
+      LIMIT 1
+    `, [actorUserId, actorUserId]);
+
+    const desig = empRows.length > 0 ? (empRows[0].designation_title || "").toLowerCase().trim() : "";
+    const dept = empRows.length > 0 ? (empRows[0].dept_name || "").toLowerCase().trim() : "";
+
+    // 1. Any designation containing "executive" is strictly DENIED
+    if (desig.includes("executive")) {
+      return false;
+    }
+
+    // 2. Admin by email
+    const [userRows] = await pool.query<any[]>(`
+      SELECT email FROM users WHERE id = ? LIMIT 1
+    `, [actorUserId]);
+    if (userRows.length > 0) {
+      const email = (userRows[0].email || "").toLowerCase().trim();
+      if (email === "admin" || email === "admin@liinexus.com") {
+        return true;
+      }
+    }
+
+    const [roleRows] = await pool.query<any[]>(`
+      SELECT r.name 
+      FROM roles r
+      JOIN user_roles ur ON ur.role_id = r.id
+      WHERE ur.user_id = ?
+    `, [actorUserId]);
+    const roleNames = roleRows.map((r: any) => (r.name || "").toLowerCase().trim());
+
+    // 3. Admin roles / designations
+    if (roleNames.some((r: string) => ["admin", "system admin", "super admin", "administrator"].includes(r))) {
+      return true;
+    }
+    if (["admin", "system admin", "administrator"].includes(desig)) {
+      return true;
+    }
+
+    // 4. Management (Director, CEO, Management)
+    if (roleNames.some((r: string) => ["director", "ceo", "management"].includes(r))) {
+      return true;
+    }
+    if (["director", "ceo", "chief executive officer", "management"].includes(desig)) {
+      return true;
+    }
+
+    // 5. Merchant HOD (designation is HOD/Head of Department and department is CRM/Merchant/Sales)
+    if ((desig === "hod" || desig === "head of department") && (dept.includes("crm") || dept.includes("merchant") || dept.includes("sales"))) {
+      return true;
+    }
+    if (desig === "merchant hod" || desig === "crm hod" || roleNames.includes("merchant hod") || roleNames.includes("crm hod")) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Resolves all possible assigned_merchant_id values corresponding to this actor.
+   * In crm_leads, assigned_merchant_id references master_merchants(id).
+   */
+  async getMerchantIdsForActor(actorUserId: string): Promise<string[]> {
+    const [merchants] = await pool.query<any[]>("SELECT id, name FROM master_merchants WHERE status = 'active' OR status IS NULL");
+    const [userRows] = await pool.query<any[]>(`
+      SELECT u.id, u.full_name, u.email, e.id as emp_id, e.full_name as emp_name
+      FROM users u
+      LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.id) AND e.deleted_at IS NULL
+      WHERE u.id = ?
+      LIMIT 1
+    `, [actorUserId]);
+
+    if (userRows.length === 0) return [];
+    const u = userRows[0];
+    const ids = new Set<string>();
+    if (u.id) ids.add(u.id);
+    if (u.emp_id) ids.add(u.emp_id);
+
+    const uName = (u.full_name || "").trim().toLowerCase();
+    const empName = (u.emp_name || "").trim().toLowerCase();
+    const uFirst = uName.split(" ")[0];
+
+    for (const m of merchants) {
+      const mName = m.name.trim().toLowerCase();
+      const mFirst = mName.split(" ")[0];
+
+      if (mName === uName || mName === empName) {
+        ids.add(m.id);
+      } else if (uFirst && uFirst === mFirst && (uName.includes(mFirst) || mName.includes(uFirst))) {
+        ids.add(m.id);
+      } else if (uName.includes(mName) || mName.includes(uName)) {
+        ids.add(m.id);
+      }
+    }
+    return Array.from(ids);
+  }
+
+  /** Self-assigned or Admin/Merchant HOD override */
+  private async assertCanAccessLead(assignedMerchantId: string | null, actorUserId: string, _hasOverride?: boolean) {
+    const canSeeAll = await this.canActorViewAllLeads(actorUserId);
+    if (canSeeAll) return;
+
+    if (!assignedMerchantId) {
+      throw new ForbiddenError("This lead is unassigned. Only Admin or Merchant HOD can access it.");
+    }
+    const merchantIds = await this.getMerchantIdsForActor(actorUserId);
+    if (!merchantIds.includes(assignedMerchantId)) {
+      throw new ForbiddenError("You can only access leads assigned to you.");
     }
   }
 
@@ -50,16 +215,22 @@ export class LeadService {
     return actor?.id ?? null;
   }
 
-  async list(params: ListLeadsParams, actorUserId: string, hasViewOverride: boolean) {
-    if (hasViewOverride) return this.repo.list(params);
-    const actor = await this.scope.requireEmployeeForUser(actorUserId);
-    return this.repo.list({ ...params, assignedMerchantId: actor.id });
+  async list(params: ListLeadsParams, actorUserId: string, _hasViewOverride?: boolean) {
+    const canSeeAll = await this.canActorViewAllLeads(actorUserId);
+    if (canSeeAll) {
+      return this.repo.list(params);
+    }
+    const merchantIds = await this.getMerchantIdsForActor(actorUserId);
+    if (merchantIds.length === 0) {
+      return { items: [], total: 0 };
+    }
+    return this.repo.list({ ...params, assignedMerchantIds: merchantIds });
   }
 
-  async getById(id: string, actorUserId: string, hasViewOverride: boolean) {
+  async getById(id: string, actorUserId: string, _hasViewOverride?: boolean) {
     const lead = await this.repo.getWithContext(id);
     if (!lead) throw new NotFoundError("Lead not found.");
-    await this.assertCanAccessLead(lead.assignedMerchantId, actorUserId, hasViewOverride);
+    await this.assertCanAccessLead(lead.assignedMerchantId, actorUserId);
     const [followups, files] = await Promise.all([this.repo.listFollowupsForLead(id), this.repo.listFilesForLead(id)]);
     return { ...lead, followups, files };
   }
@@ -73,16 +244,23 @@ export class LeadService {
     return existing ? `LEAD-${String(seq).padStart(6, "0")}-${Date.now().toString().slice(-4)}` : code;
   }
 
-  async create(input: Omit<CreateLeadData, "id" | "leadCode" | "createdBy">, actorUserId: string, hasCreateOverride: boolean) {
-    // Creating a lead for someone else's book requires the create
-    // permission generally (route-gated); assigning it to yourself vs.
-    // someone else is separate and always allowed at creation time (the
-    // assignment-change restriction applies to *reassigning* an existing
-    // lead via crm.lead.assign, not to who a brand-new lead is filed under).
+  async create(input: Omit<CreateLeadData, "id" | "leadCode" | "createdBy">, actorUserId: string, hasCreateOverride?: boolean) {
     void hasCreateOverride;
     const leadCode = await this.generateLeadCode();
     const createdBy = await this.resolveActorEmployeeId(actorUserId);
-    const lead = await this.repo.create({ id: uuid(), leadCode, createdBy, ...input });
+
+    let assignedMerchantId = input.assignedMerchantId;
+    const canTransfer = await this.canActorTransferLead(actorUserId);
+    if (!canTransfer) {
+      const merchantIds = await this.getMerchantIdsForActor(actorUserId);
+      if (merchantIds.length > 0) {
+        assignedMerchantId = merchantIds[0];
+      } else {
+        assignedMerchantId = undefined;
+      }
+    }
+
+    const lead = await this.repo.create({ id: uuid(), leadCode, createdBy, ...input, assignedMerchantId });
     await AuditService.record({
       actorUserId, action: "CRM_LEAD_CREATED", entityType: "crm_lead", entityId: lead.id,
       afterState: { leadCode: lead.leadCode, contactName: lead.contactName, leadSource: lead.leadSource, leadCategory: lead.leadCategory },
@@ -113,6 +291,10 @@ export class LeadService {
   }
 
   async assign(id: string, merchantId: string | null, actorUserId: string) {
+    const canTransfer = await this.canActorTransferLead(actorUserId);
+    if (!canTransfer) {
+      throw new ForbiddenError("Only Admin, Management, and Merchant HOD can transfer or reassign leads.");
+    }
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("Lead not found.");
     const updatedBy = await this.resolveActorEmployeeId(actorUserId);
@@ -130,6 +312,7 @@ export class LeadService {
   async remove(id: string, actorUserId: string) {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("Lead not found.");
+    await this.assertCanAccessLead(existing.assignedMerchantId, actorUserId);
     await this.repo.softDelete(id);
     await AuditService.record({ actorUserId, action: "CRM_LEAD_DELETED", entityType: "crm_lead", entityId: id });
   }

@@ -37,7 +37,7 @@ router.get("/crm/leads", asyncHandler(LeadController.list));
 router.post("/crm/leads", requirePermission("crm.lead.create"), validate(createLeadSchema), asyncHandler(LeadController.create));
 router.get("/crm/leads/:id", asyncHandler(LeadController.getById));
 router.patch("/crm/leads/:id", validate(updateLeadSchema), asyncHandler(LeadController.update));
-router.patch("/crm/leads/:id/assign", requirePermission("crm.lead.assign"), validate(assignLeadSchema), asyncHandler(LeadController.assign));
+router.patch("/crm/leads/:id/assign", validate(assignLeadSchema), asyncHandler(LeadController.assign));
 router.delete("/crm/leads/:id", requirePermission("crm.lead.delete"), asyncHandler(LeadController.remove));
 router.post("/crm/leads/:id/followups", validate(logFollowupSchema), asyncHandler(LeadController.logFollowup));
 router.post("/crm/leads/:id/files", validate(addFileSchema), asyncHandler(LeadController.addFile));

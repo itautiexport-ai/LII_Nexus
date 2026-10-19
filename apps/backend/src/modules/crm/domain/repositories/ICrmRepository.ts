@@ -67,6 +67,7 @@ export interface ListLeadsParams {
   pageSize: number;
   search?: string;
   assignedMerchantId?: string;
+  assignedMerchantIds?: string[];
   status?: LeadStatus;
   salesStage?: SalesStage;
   leadSource?: LeadSource;
