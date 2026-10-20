@@ -98,6 +98,25 @@ export class MasterDataService {
     await this.repo.deleteHod(id);
   }
 
+  // QC Names
+  async getQcNames() {
+    return await this.repo.getQcNames();
+  }
+
+  async createQcName(name: string) {
+    if (!name) throw new Error("Name is required");
+    return await this.repo.createQcName(name);
+  }
+
+  async updateQcName(id: string, name: string) {
+    if (!name) throw new Error("Name is required");
+    return await this.repo.updateQcName(id, name);
+  }
+
+  async deleteQcName(id: string) {
+    await this.repo.deleteQcName(id);
+  }
+
   // Merchants
   async getMerchants() {
     return await this.repo.getMerchants();

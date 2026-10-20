@@ -149,4 +149,27 @@ export const masterDataApi = {
   async deleteFinishCode(id: string): Promise<void> {
     await axiosInstance.delete(`/finish-codes/${id}`);
   },
+
+  // QC Names
+  async getQcNames(): Promise<QcName[]> {
+    const res = await axiosInstance.get("/qc-names");
+    return res.data.data;
+  },
+  async createQcName(name: string): Promise<QcName> {
+    const res = await axiosInstance.post("/qc-names", { name });
+    return res.data.data;
+  },
+  async updateQcName(id: string, name: string): Promise<QcName> {
+    const res = await axiosInstance.put(`/qc-names/${id}`, { name });
+    return res.data.data;
+  },
+  async deleteQcName(id: string): Promise<void> {
+    await axiosInstance.delete(`/qc-names/${id}`);
+  },
 };
+
+export interface QcName {
+  id: string;
+  name: string;
+  createdAt?: string;
+}

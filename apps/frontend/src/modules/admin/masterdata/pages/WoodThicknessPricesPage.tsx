@@ -1,36 +1,74 @@
 import React, { useState, useEffect } from "react";
-import { masterDataApi, WoodType } from "../api/masterDataApi";
+import { masterDataApi, WoodType, Uom } from "../api/masterDataApi";
 
 export interface WoodThicknessPrice {
   id: string;
   woodType: string;
   thickness: string;
+  thicknessUom: string;
+  length: string;
+  lengthUom: string;
   ratePerCft: number;
   status: "active" | "inactive";
   createdAt: string;
 }
 
+const DEFAULT_THICKNESS_UOMS = [
+  { value: "inch", label: 'Inch (")' },
+  { value: "mm", label: "MM (mm)" },
+  { value: "cm", label: "CM (cm)" },
+  { value: "feet", label: "Feet (ft)" },
+];
+
+const DEFAULT_LENGTH_UOMS = [
+  { value: "feet", label: "Feet (ft)" },
+  { value: "inch", label: 'Inch (")' },
+  { value: "meter", label: "Meter (m)" },
+  { value: "mm", label: "MM (mm)" },
+  { value: "cm", label: "CM (cm)" },
+];
+
 const DEFAULT_WOOD_THICKNESS_PRICES: WoodThicknessPrice[] = [
-  { id: "wtp-1", woodType: "Sheesham", thickness: '0.75"', ratePerCft: 1350, status: "active", createdAt: "2026-10-01" },
-  { id: "wtp-2", woodType: "Sheesham", thickness: '1.0"', ratePerCft: 1450, status: "active", createdAt: "2026-10-01" },
-  { id: "wtp-3", woodType: "Sheesham", thickness: '1.5"', ratePerCft: 1600, status: "active", createdAt: "2026-10-01" },
-  { id: "wtp-4", woodType: "Mango", thickness: '0.75"', ratePerCft: 750, status: "active", createdAt: "2026-10-01" },
-  { id: "wtp-5", woodType: "Mango", thickness: '1.0"', ratePerCft: 850, status: "active", createdAt: "2026-10-01" },
-  { id: "wtp-6", woodType: "Acacia", thickness: '1.0"', ratePerCft: 1100, status: "active", createdAt: "2026-10-01" },
-  { id: "wtp-7", woodType: "Teak", thickness: '1.0"', ratePerCft: 3200, status: "active", createdAt: "2026-10-01" },
+  { id: "wtp-1", woodType: "Sheesham", thickness: "0.75", thicknessUom: "inch", length: "6.0", lengthUom: "feet", ratePerCft: 1350, status: "active", createdAt: "2026-10-01" },
+  { id: "wtp-2", woodType: "Sheesham", thickness: "1.0", thicknessUom: "inch", length: "6.0", lengthUom: "feet", ratePerCft: 1450, status: "active", createdAt: "2026-10-01" },
+  { id: "wtp-3", woodType: "Sheesham", thickness: "1.5", thicknessUom: "inch", length: "7.0", lengthUom: "feet", ratePerCft: 1600, status: "active", createdAt: "2026-10-01" },
+  { id: "wtp-4", woodType: "Mango", thickness: "0.75", thicknessUom: "inch", length: "5.0", lengthUom: "feet", ratePerCft: 750, status: "active", createdAt: "2026-10-01" },
+  { id: "wtp-5", woodType: "Mango", thickness: "1.0", thicknessUom: "inch", length: "6.0", lengthUom: "feet", ratePerCft: 850, status: "active", createdAt: "2026-10-01" },
+  { id: "wtp-6", woodType: "Acacia", thickness: "1.0", thicknessUom: "inch", length: "6.0", lengthUom: "feet", ratePerCft: 1100, status: "active", createdAt: "2026-10-01" },
+  { id: "wtp-7", woodType: "Teak", thickness: "1.0", thicknessUom: "inch", length: "8.0", lengthUom: "feet", ratePerCft: 3200, status: "active", createdAt: "2026-10-01" },
 ];
 
 const LOCAL_STORAGE_KEY = "nexus_wood_thickness_prices";
 
+function formatDimension(val?: string, uom?: string): string {
+  if (!val || val === "—") return "—";
+  const cleanedVal = val.trim();
+  if (cleanedVal.includes('"') || cleanedVal.includes("'") || cleanedVal.toLowerCase().includes("ft") || cleanedVal.toLowerCase().includes("mm")) {
+    return cleanedVal;
+  }
+  const u = (uom || "").toLowerCase();
+  if (u === "inch" || u === '"' || u === "in") return `${cleanedVal}"`;
+  if (u === "feet" || u === "'" || u === "ft") return `${cleanedVal} ft`;
+  if (u === "mm") return `${cleanedVal} mm`;
+  if (u === "cm") return `${cleanedVal} cm`;
+  if (u === "meter" || u === "m") return `${cleanedVal} m`;
+  return uom ? `${cleanedVal} ${uom}` : cleanedVal;
+}
+
 export default function WoodThicknessPricesPage() {
   const [prices, setPrices] = useState<WoodThicknessPrice[]>([]);
   const [woodTypes, setWoodTypes] = useState<WoodType[]>([]);
+  const [thicknessUomOptions, setThicknessUomOptions] = useState(DEFAULT_THICKNESS_UOMS);
+  const [lengthUomOptions, setLengthUomOptions] = useState(DEFAULT_LENGTH_UOMS);
   const [loading, setLoading] = useState(true);
 
   // Form State
   const [selectedWoodType, setSelectedWoodType] = useState("Sheesham");
   const [customWoodType, setCustomWoodType] = useState("");
-  const [thickness, setThickness] = useState('1.0"');
+  const [thickness, setThickness] = useState("1.0");
+  const [thicknessUom, setThicknessUom] = useState("inch");
+  const [length, setLength] = useState("6.0");
+  const [lengthUom, setLengthUom] = useState("feet");
   const [ratePerCft, setRatePerCft] = useState<number | "">(1200);
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -46,17 +84,42 @@ export default function WoodThicknessPricesPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load Wood Types from Master Data API
-      const wtList = await masterDataApi.getWoodTypes().catch(() => []);
+      // Load Wood Types & UOMs from Master Data API
+      const [wtList, uomList] = await Promise.all([
+        masterDataApi.getWoodTypes().catch(() => []),
+        masterDataApi.getUoms().catch(() => []),
+      ]);
+
       setWoodTypes(wtList || []);
       if (wtList.length > 0) {
         setSelectedWoodType(wtList[0].name);
       }
 
+      // Merge master data UOMs if any exist
+      if (uomList && uomList.length > 0) {
+        const extraThick = uomList
+          .filter((u: Uom) => !DEFAULT_THICKNESS_UOMS.some((d) => d.value.toLowerCase() === u.name.toLowerCase()))
+          .map((u: Uom) => ({ value: u.name.toLowerCase(), label: u.name }));
+        setThicknessUomOptions([...DEFAULT_THICKNESS_UOMS, ...extraThick]);
+
+        const extraLen = uomList
+          .filter((u: Uom) => !DEFAULT_LENGTH_UOMS.some((d) => d.value.toLowerCase() === u.name.toLowerCase()))
+          .map((u: Uom) => ({ value: u.name.toLowerCase(), label: u.name }));
+        setLengthUomOptions([...DEFAULT_LENGTH_UOMS, ...extraLen]);
+      }
+
       // Load Wood Thickness Prices from LocalStorage
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
-        setPrices(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        const migrated: WoodThicknessPrice[] = parsed.map((item: any) => ({
+          ...item,
+          thickness: (item.thickness ?? "1.0").replace(/["\s]/g, "") || item.thickness || "1.0",
+          thicknessUom: item.thicknessUom || (item.thickness?.includes("mm") ? "mm" : item.thickness?.includes("cm") ? "cm" : "inch"),
+          length: item.length ?? "6.0",
+          lengthUom: item.lengthUom || "feet",
+        }));
+        setPrices(migrated);
       } else {
         setPrices(DEFAULT_WOOD_THICKNESS_PRICES);
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_WOOD_THICKNESS_PRICES));
@@ -85,35 +148,47 @@ export default function WoodThicknessPricesPage() {
       alert("Please enter thickness");
       return;
     }
+    if (!length.trim()) {
+      alert("Please enter length");
+      return;
+    }
     const rate = Number(ratePerCft) || 0;
 
     if (editingId) {
       const updated = prices.map((item) =>
         item.id === editingId
-          ? { ...item, woodType: finalWoodType, thickness, ratePerCft: rate, status }
+          ? {
+              ...item,
+              woodType: finalWoodType,
+              thickness: thickness.trim(),
+              thicknessUom,
+              length: length.trim(),
+              lengthUom,
+              ratePerCft: rate,
+              status,
+            }
           : item
       );
       savePricesToStorage(updated);
-      alert("Wood thickness price updated successfully!");
+      alert("Wood thickness price rate updated successfully!");
     } else {
       const newItem: WoodThicknessPrice = {
         id: `wtp-${Date.now()}`,
         woodType: finalWoodType,
-        thickness,
+        thickness: thickness.trim(),
+        thicknessUom,
+        length: length.trim(),
+        lengthUom,
         ratePerCft: rate,
         status,
         createdAt: new Date().toISOString().split("T")[0],
       };
       savePricesToStorage([newItem, ...prices]);
-      alert("Wood thickness price added successfully!");
+      alert("Wood thickness price rate added successfully!");
     }
 
     // Reset Form
-    setEditingId(null);
-    setThickness('1.0"');
-    setRatePerCft(1200);
-    setCustomWoodType("");
-    setStatus("active");
+    handleCancelEdit();
   };
 
   const handleEdit = (item: WoodThicknessPrice) => {
@@ -126,7 +201,10 @@ export default function WoodThicknessPricesPage() {
       setSelectedWoodType("Other");
       setCustomWoodType(item.woodType);
     }
-    setThickness(item.thickness);
+    setThickness(item.thickness.replace(/["\s]/g, "") || item.thickness);
+    setThicknessUom(item.thicknessUom || "inch");
+    setLength(item.length || "6.0");
+    setLengthUom(item.lengthUom || "feet");
     setRatePerCft(item.ratePerCft);
     setStatus(item.status);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -140,7 +218,10 @@ export default function WoodThicknessPricesPage() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setThickness('1.0"');
+    setThickness("1.0");
+    setThicknessUom("inch");
+    setLength("6.0");
+    setLengthUom("feet");
     setRatePerCft(1200);
     setCustomWoodType("");
     setStatus("active");
@@ -152,6 +233,7 @@ export default function WoodThicknessPricesPage() {
     const matchesSearch =
       item.woodType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.thickness.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.length && item.length.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.ratePerCft.toString().includes(searchTerm);
     return matchesWood && matchesSearch;
   });
@@ -163,27 +245,39 @@ export default function WoodThicknessPricesPage() {
   }
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 1100, margin: "0 auto" }}>
+    <div style={{ padding: "32px 40px", maxWidth: 1150, margin: "0 auto" }}>
+      {/* CSS to remove high-low spinner stepper buttons from number inputs */}
+      <style>{`
+        .no-spin-arrows::-webkit-inner-spin-button,
+        .no-spin-arrows::-webkit-outer-spin-button {
+          -webkit-appearance: none !important;
+          margin: 0 !important;
+        }
+        .no-spin-arrows {
+          -moz-appearance: textfield !important;
+        }
+      `}</style>
+
       {/* Page Header */}
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>
-          Wood Thickness Prices
+          Wood Thickness & Size Prices
         </h1>
         <p style={{ color: "#64748b", fontSize: 15, margin: 0 }}>
-          Manage standard pricing rates per CFT for various wood types and thickness specifications.
+          Manage standard pricing rates per CFT for various wood types, length, and thickness specifications with custom UOM selection.
         </p>
       </div>
 
       {/* Form Card */}
       <div style={{ background: "#ffffff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24, marginBottom: 32, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", margin: "0 0 20px 0" }}>
-          {editingId ? "Edit Wood Thickness Price Rate" : "Add New Wood Thickness Price Rate"}
+          {editingId ? "Edit Wood Thickness & Size Price Rate" : "Add New Wood Thickness & Size Price Rate"}
         </h2>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", width: "100%" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", width: "100%", alignItems: "flex-start" }}>
             {/* Wood Type Selection */}
-            <div style={{ flex: "1 1 220px" }}>
+            <div style={{ flex: "1 1 200px" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                 Wood Type *
               </label>
@@ -217,7 +311,7 @@ export default function WoodThicknessPricesPage() {
 
             {/* Custom Wood Type if selected */}
             {selectedWoodType === "Other" && (
-              <div style={{ flex: "1 1 200px" }}>
+              <div style={{ flex: "1 1 180px" }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                   Custom Wood Type Name *
                 </label>
@@ -232,39 +326,114 @@ export default function WoodThicknessPricesPage() {
               </div>
             )}
 
-            {/* Thickness */}
-            <div style={{ flex: "1 1 180px" }}>
+            {/* Thickness with UOM selector */}
+            <div style={{ flex: "1 1 210px" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                 Thickness *
               </label>
-              <input
-                type="text"
-                required
-                placeholder='e.g. 0.75", 1.0", 1.5", 2.0"'
-                value={thickness}
-                onChange={(e) => setThickness(e.target.value)}
-                style={{ width: "100%", height: "42px", boxSizing: "border-box", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14 }}
-              />
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  type="text"
+                  required
+                  placeholder='e.g. 1.0, 0.75'
+                  value={thickness}
+                  onChange={(e) => setThickness(e.target.value)}
+                  style={{ flex: 1, minWidth: 0, height: "42px", boxSizing: "border-box", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14 }}
+                />
+                <select
+                  value={thicknessUom}
+                  onChange={(e) => setThicknessUom(e.target.value)}
+                  title="Select Thickness UOM"
+                  style={{
+                    width: "100px",
+                    height: "42px",
+                    padding: "8px 8px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    backgroundColor: "#f8fafc",
+                    color: "#1e293b",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  {thicknessUomOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {/* Rate per CFT */}
-            <div style={{ flex: "1 1 180px" }}>
+            {/* Length with UOM selector */}
+            <div style={{ flex: "1 1 210px" }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                Length *
+              </label>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  type="text"
+                  required
+                  placeholder='e.g. 6.0, 72'
+                  value={length}
+                  onChange={(e) => setLength(e.target.value)}
+                  style={{ flex: 1, minWidth: 0, height: "42px", boxSizing: "border-box", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14 }}
+                />
+                <select
+                  value={lengthUom}
+                  onChange={(e) => setLengthUom(e.target.value)}
+                  title="Select Length UOM"
+                  style={{
+                    width: "100px",
+                    height: "42px",
+                    padding: "8px 8px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    backgroundColor: "#f8fafc",
+                    color: "#1e293b",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  {lengthUomOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Rate per CFT (without high-low spin bar) */}
+            <div style={{ flex: "1 1 170px" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                 Rate per CFT (₹) *
               </label>
               <input
                 type="number"
-                step="1"
+                step="any"
                 required
                 placeholder="Rate in ₹"
                 value={ratePerCft}
+                className="no-spin-arrows"
                 onChange={(e) => setRatePerCft(e.target.value ? Number(e.target.value) : "")}
-                style={{ width: "100%", height: "42px", boxSizing: "border-box", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14, fontWeight: 600 }}
+                style={{
+                  width: "100%",
+                  height: "42px",
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
               />
             </div>
 
             {/* Status */}
-            <div style={{ flex: "1 1 150px" }}>
+            <div style={{ flex: "1 1 130px" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                 Status
               </label>
@@ -331,7 +500,7 @@ export default function WoodThicknessPricesPage() {
         {/* Filter Controls */}
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", margin: 0 }}>
-            Configured Thickness Rates List ({filteredPrices.length})
+            Configured Rates List ({filteredPrices.length})
           </h3>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -350,76 +519,84 @@ export default function WoodThicknessPricesPage() {
 
             <input
               type="text"
-              placeholder="Search thickness or rate..."
+              placeholder="Search wood, size, rate..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13, width: "200px" }}
+              style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13, width: "220px" }}
             />
           </div>
         </div>
 
         {/* Data Table */}
-        <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-          <thead>
-            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-              <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Wood Type</th>
-              <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Thickness</th>
-              <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Rate per CFT (₹)</th>
-              <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Status</th>
-              <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569", width: "140px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPrices.map((item) => (
-              <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                <td style={{ padding: "12px 16px", fontWeight: 600, color: "#0f172a" }}>{item.woodType}</td>
-                <td style={{ padding: "12px 16px", fontWeight: 600, color: "#2563eb" }}>{item.thickness}</td>
-                <td style={{ padding: "12px 16px", fontWeight: 700, color: "#059669" }}>
-                  ₹{item.ratePerCft.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <span
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      background: item.status === "active" ? "#dcfce7" : "#fee2e2",
-                      color: item.status === "active" ? "#166534" : "#991b1b",
-                    }}
-                  >
-                    {item.status}
-                  </span>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(item)}
-                      style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(item.id)}
-                      style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
+        <div style={{ overflowX: "auto" }}>
+          <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Wood Type</th>
+                <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Thickness</th>
+                <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Length</th>
+                <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Rate per CFT (₹)</th>
+                <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Status</th>
+                <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#475569", width: "140px" }}>Actions</th>
               </tr>
-            ))}
-            {filteredPrices.length === 0 && (
-              <tr>
-                <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>
-                  No wood thickness prices found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredPrices.map((item) => (
+                <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "12px 16px", fontWeight: 600, color: "#0f172a" }}>{item.woodType}</td>
+                  <td style={{ padding: "12px 16px", fontWeight: 600, color: "#2563eb" }}>
+                    {formatDimension(item.thickness, item.thicknessUom)}
+                  </td>
+                  <td style={{ padding: "12px 16px", fontWeight: 600, color: "#7c3aed" }}>
+                    {formatDimension(item.length, item.lengthUom)}
+                  </td>
+                  <td style={{ padding: "12px 16px", fontWeight: 700, color: "#059669", whiteSpace: "nowrap" }}>
+                    ₹{Number(item.ratePerCft).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <span
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: item.status === "active" ? "#dcfce7" : "#fee2e2",
+                        color: item.status === "active" ? "#166534" : "#991b1b",
+                      }}
+                    >
+                      {item.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
+                        style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredPrices.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>
+                    No wood thickness & size prices found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -50,6 +50,12 @@ router.post("/hods", asyncHandler(controller.createHod.bind(controller)));
 router.put("/hods/:id", asyncHandler(controller.updateHod.bind(controller)));
 router.delete("/hods/:id", asyncHandler(controller.deleteHod.bind(controller)));
 
+// QC Names
+router.get("/qc-names", asyncHandler(controller.getQcNames.bind(controller)));
+router.post("/qc-names", asyncHandler(controller.createQcName.bind(controller)));
+router.put("/qc-names/:id", asyncHandler(controller.updateQcName.bind(controller)));
+router.delete("/qc-names/:id", asyncHandler(controller.deleteQcName.bind(controller)));
+
 // Merchants
 router.get("/merchants", asyncHandler(controller.getMerchants.bind(controller)));
 router.post("/merchants", asyncHandler(controller.createMerchant.bind(controller)));

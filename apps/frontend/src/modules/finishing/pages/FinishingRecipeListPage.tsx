@@ -94,6 +94,7 @@ export default function FinishingRecipeListPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #cbd5e1", background: "#f8fafc" }}>
+                  <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600", width: "70px" }}>Swatch</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Finish Code / Name</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Filled By (User)</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Actions</th>
@@ -102,13 +103,26 @@ export default function FinishingRecipeListPage() {
               <tbody>
                 {recipes.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ padding: "28px", fontStyle: "italic", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+                    <td colSpan={4} style={{ padding: "28px", fontStyle: "italic", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
                       No recipes submitted yet.
                     </td>
                   </tr>
                 ) : (
                   recipes.map((r) => (
                     <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "8px 12px" }}>
+                        {r.swatch_image ? (
+                          <img
+                            src={r.swatch_image}
+                            alt={r.finish_code}
+                            style={{ width: "38px", height: "38px", objectFit: "cover", borderRadius: "4px", border: "1px solid #cbd5e1" }}
+                          />
+                        ) : (
+                          <div style={{ width: "38px", height: "38px", background: "#f1f5f9", borderRadius: "4px", border: "1px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", color: "#94a3b8" }}>
+                            🖼️
+                          </div>
+                        )}
+                      </td>
                       <td style={{ padding: "10px 12px", fontWeight: "600", fontSize: "14px", color: "#0f172a" }}>
                         {r.finish_code}
                       </td>
