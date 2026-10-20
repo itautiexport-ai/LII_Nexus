@@ -220,7 +220,17 @@ export const AiHelperWidget: React.FC = () => {
   };
 
   return (
-    <div className="milo-widget-wrapper" style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 99999, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div
+      className={`milo-widget-wrapper ${isOpen ? "is-open" : ""}`}
+      style={{
+        position: "fixed",
+        bottom: "20px",
+        left: "calc(50% + 124px)",
+        transform: "translateX(-50%)",
+        zIndex: 99999,
+        fontFamily: "system-ui, -apple-system, sans-serif"
+      }}
+    >
       {/* Floating Toggle Button */}
       {!isOpen && (
         <button
@@ -554,10 +564,30 @@ export const AiHelperWidget: React.FC = () => {
           100% { opacity: 1; }
         }
 
+        .milo-launcher-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 28px -4px rgba(79, 70, 229, 0.5) !important;
+        }
+
+        @media (max-width: 860px) {
+          .milo-widget-wrapper {
+            left: 50% !important;
+          }
+        }
+
         @media (max-width: 768px) {
           .milo-widget-wrapper {
             bottom: 14px !important;
-            right: 14px !important;
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
+          }
+          .milo-widget-wrapper.is-open {
+            transform: none !important;
+            left: 0 !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
           }
           .milo-launcher-btn {
             padding: 0 !important;
