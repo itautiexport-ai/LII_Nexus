@@ -1,4 +1,4 @@
-import { useAuthStore } from "./useAuthStore";
+import { useAuthStore, CurrentUser } from "./useAuthStore";
 
 /**
  * Returns true ONLY if the current user is a System Admin / Super Admin.
@@ -7,41 +7,115 @@ import { useAuthStore } from "./useAuthStore";
 export function useIsSystemAdmin(): boolean {
   const user = useAuthStore((s) => s.user);
   if (!user) return false;
-  const isEmailAdmin = user.email?.toLowerCase() === "admin" || user.email?.toLowerCase() === "admin@liinexus.com";
-  const isSystemAdminRole = user.roles?.some((r) => {
-    const lower = r.toLowerCase();
-    return lower === "system admin" || lower === "system administrator" || lower === "system_admin" || lower === "super admin" || lower === "super_admin";
-  }) ?? false;
-  return isEmailAdmin || isSystemAdminRole;
+  const email = (user.email || "").trim().toLowerCase();
+  if (email === "admin" || email === "admin@liinexus.com") {
+    return true;
+  }
+  const isSystemAdminRole = (user.roles || []).some((r) => {
+    const lower = r.toLowerCase().trim();
+    return (
+      lower === "system admin" ||
+      lower === "system administrator" ||
+      lower === "system_admin" ||
+      lower === "super admin" ||
+      lower === "super_admin"
+    );
+  });
+  return isSystemAdminRole;
 }
 
 /**
- * Returns true if the user has any Admin / Management designation or role (or is System Admin).
- * Allows viewing all records, adding, and editing, BUT CANNOT DELETE (unless they are System Admin).
+ * Returns true if the user's DESIGNATION is strictly Admin or Management.
+ * (Or if the user is the System Administrator account).
+ *
+ * ALLOWED:
+ * 1. System admin by email ("admin", "admin@liinexus.com") or exact system role ("System Admin", "Super Admin")
+ * 2. Exact Admin designations ("Admin", "System Admin", "Administrator")
+ * 3. Exact Management designations ("Management", "Top Management", "Director", "Managing Director", "MD", "Chief Executive Officer", "CEO")
+ *
+ * STRICTLY DISALLOWED for all other designations, including:
+ * - Executive (e.g. Executive, Merchant Executive, Sales Executive, etc.)
+ * - Merchant
+ * - Supervisor
+ * - Employee / Worker
+ * - HOD / Head of Department
+ * - Manager (departmental managers like HR Manager, PPIC Manager, etc.)
+ * - Any user without designation (unless System Admin)
+ * - Any menu role matching (e.g. "Menu: Order Management" or "Menu: Task Center -> List FMS Manager" NEVER grant admin/management rights!)
  */
-export function useIsAdminOrManagement(): boolean {
-  const user = useAuthStore((s) => s.user);
+export function isUserAdminOrManagement(user: CurrentUser | null | undefined): boolean {
   if (!user) return false;
 
-  const desig = (user.designation || "").trim().toLowerCase();
+  // 1. System admin by email
+  const email = (user.email || "").trim().toLowerCase();
+  if (email === "admin" || email === "admin@liinexus.com") {
+    return true;
+  }
 
-  // Executives are NEVER Admin or Management!
-  if (desig.includes("executive")) {
+  // 2. Exact System Admin role (NOT menu permission roles)
+  const exactSystemRoles = ["system admin", "super admin", "system administrator"];
+  const userRoles = (user.roles || []).map((r) => r.trim().toLowerCase());
+  if (userRoles.some((r) => exactSystemRoles.includes(r))) {
+    return true;
+  }
+
+  // 3. Designation check - must be present
+  const desig = (user.designation || "").trim().toLowerCase();
+  if (!desig) {
     return false;
   }
 
-  if (useIsSystemAdmin()) return true;
+  // Executive Management: CEO, Director, MD
+  if (
+    desig === "chief executive officer" ||
+    desig === "ceo" ||
+    desig === "director" ||
+    desig === "managing director" ||
+    desig === "md"
+  ) {
+    return true;
+  }
 
-  const email = (user.email || "").toLowerCase().trim();
-  if (email === "admin" || email === "admin@liinexus.com") return true;
+  // Strictly block any non-management/non-admin designation:
+  if (
+    desig.includes("executive") ||
+    desig.includes("merchant") ||
+    desig.includes("supervisor") ||
+    desig.includes("employee") ||
+    desig === "hod" ||
+    desig === "head of department"
+  ) {
+    return false;
+  }
 
-  const exactAdminDesigs = ["admin", "system admin", "administrator", "management", "director", "ceo", "chief executive officer"];
-  if (exactAdminDesigs.includes(desig)) return true;
+  // Admin designations
+  if (
+    desig === "admin" ||
+    desig === "system admin" ||
+    desig === "administrator" ||
+    desig.endsWith(" admin")
+  ) {
+    return true;
+  }
 
-  const exactAdminRoles = ["system admin", "super admin", "admin", "administrator", "management", "director", "ceo"];
-  const isRoleMatch = user.roles?.some((r) => exactAdminRoles.includes(r.toLowerCase().trim())) ?? false;
+  // Management designations
+  if (
+    desig === "management" ||
+    desig === "top management" ||
+    desig.split(/\s+/).includes("management")
+  ) {
+    return true;
+  }
 
-  return isRoleMatch;
+  return false;
+}
+
+/**
+ * Returns true if the user has Admin or Management designation.
+ */
+export function useIsAdminOrManagement(): boolean {
+  const user = useAuthStore((s) => s.user);
+  return isUserAdminOrManagement(user);
 }
 
 export function useIsAdmin(): boolean {
@@ -50,76 +124,20 @@ export function useIsAdmin(): boolean {
 
 /**
  * Hook to check if current user can transfer / reassign leads.
- * STRICTLY RESTRICTED:
- * Allowed ONLY for:
- * 1. Admin (System Admin, Super Admin, email "admin" / "admin@liinexus.com", or designation/role containing "Admin")
- * 2. Management (designation/role containing "Management", "Manager", "Director", "CEO", "MD")
- *
- * STRICTLY DISALLOWED for:
- * - Any user whose designation contains "executive" (e.g. Executive, Merchant Executive, Sales Executive, etc.)
- * - Merchant HOD, regular merchants, supervisors, regular employees, or HODs of other departments.
+ * Allowed ONLY for users whose designation is Admin or Management.
  */
 export function useCanTransferLead(): boolean {
-  return useCanEditLead();
+  const user = useAuthStore((s) => s.user);
+  return isUserAdminOrManagement(user);
 }
 
 /**
  * Hook to check if current user can edit a lead.
- * STRICTLY RESTRICTED:
- * Allowed ONLY for:
- * 1. Admin (System Admin, Super Admin, email "admin" / "admin@liinexus.com", or designation/role containing "Admin")
- * 2. Management (designation/role containing "Management", "Manager", "Director", "CEO", "MD")
- *
- * STRICTLY DISALLOWED for:
- * - Any user whose designation contains "executive" (e.g. Executive, Merchant Executive, Sales Executive, etc.)
- * - Regular merchants, supervisors, regular employees, or HODs.
+ * Allowed ONLY for users whose designation is Admin or Management.
  */
 export function useCanEditLead(): boolean {
   const user = useAuthStore((s) => s.user);
-  if (!user) return false;
-
-  const desig = (user.designation || "").trim().toLowerCase();
-
-  // 1. If designation contains "executive", strictly NO edit option!
-  if (desig.includes("executive")) {
-    return false;
-  }
-
-  // 2. Admin email
-  const email = (user.email || "").trim().toLowerCase();
-  if (email === "admin" || email === "admin@liinexus.com") {
-    return true;
-  }
-
-  // 3. Roles check
-  const roleNames = (user.roles || []).map((r) => r.trim().toLowerCase());
-  const adminOrMgmtRoles = [
-    "system admin",
-    "super admin",
-    "system administrator",
-    "admin",
-    "administrator",
-    "management",
-    "manager",
-    "director",
-    "ceo",
-  ];
-  if (roleNames.some((r) => adminOrMgmtRoles.some((role) => r.includes(role)))) {
-    return true;
-  }
-
-  // 4. Designation check (Admin, Administrator, Management, Manager, Director, CEO, MD)
-  if (
-    desig.includes("admin") ||
-    desig.includes("manage") ||
-    desig.includes("director") ||
-    desig.includes("ceo") ||
-    desig === "md"
-  ) {
-    return true;
-  }
-
-  return false;
+  return isUserAdminOrManagement(user);
 }
 
 /**
@@ -154,4 +172,5 @@ export function useHasPermission(permissionKey: string): boolean {
 
   return permissions.includes(permissionKey);
 }
+
 

@@ -33,7 +33,26 @@ export class LeadService {
    * 3. Merchant HOD: Designation has HOD and Department is CRM / Merchant / Sales, or designation is Merchant HOD.
    * All other users (Executives, Merchants, other departments) can ONLY see leads assigned to them.
    */
-  async canActorViewAllLeads(actorUserId: string): Promise<boolean> {
+  /**
+   * Determine whether an actor has Admin or Management designation.
+   * Strictly checked:
+   * 1. System Admin by email or exact System Admin role
+   * 2. Designation: Admin, Management, Director, CEO, MD, Chief Executive Officer
+   * Strictly denied for: Executive, Merchant, Supervisor, Employee, HOD, and department managers.
+   */
+  async isActorAdminOrManagement(actorUserId: string): Promise<boolean> {
+    // 1. Admin by email
+    const [userRows] = await pool.query<any[]>(`
+      SELECT email FROM users WHERE id = ? LIMIT 1
+    `, [actorUserId]);
+    if (userRows.length > 0) {
+      const email = (userRows[0].email || "").toLowerCase().trim();
+      if (email === "admin" || email === "admin@liinexus.com") {
+        return true;
+      }
+    }
+
+    // 2. Exact System Admin role (NOT menu permission roles)
     const [roleRows] = await pool.query<any[]>(`
       SELECT r.name 
       FROM roles r
@@ -41,15 +60,72 @@ export class LeadService {
       WHERE ur.user_id = ?
     `, [actorUserId]);
     const roleNames = roleRows.map((r: any) => (r.name || "").toLowerCase().trim());
-
-    // Check Admin / Director / Super Admin roles
     if (roleNames.some((r: string) => 
-      ["admin", "system admin", "super admin", "director", "ceo", "management", "management executive"].includes(r)
+      ["system admin", "super admin", "system administrator"].includes(r)
     )) {
       return true;
     }
 
-    // Check Employee designation & department
+    // 3. Check Employee designation
+    const [empRows] = await pool.query<any[]>(`
+      SELECT e.id, desig.title as designation_title
+      FROM employees e
+      LEFT JOIN designations desig ON desig.id = e.designation_id
+      WHERE (e.user_id = ? OR e.id = ?) AND e.deleted_at IS NULL
+      LIMIT 1
+    `, [actorUserId, actorUserId]);
+
+    if (empRows.length > 0) {
+      const desig = (empRows[0].designation_title || "").toLowerCase().trim();
+      if (!desig) return false;
+
+      // CEO, Director, MD (Executive Management)
+      if (
+        desig === "chief executive officer" ||
+        desig === "ceo" ||
+        desig === "director" ||
+        desig === "managing director" ||
+        desig === "md"
+      ) {
+        return true;
+      }
+
+      // Non-management designations are strictly DENIED
+      if (
+        desig.includes("executive") ||
+        desig.includes("merchant") ||
+        desig.includes("supervisor") ||
+        desig.includes("employee") ||
+        desig === "hod" ||
+        desig === "head of department"
+      ) {
+        return false;
+      }
+
+      // Admin designation
+      if (desig === "admin" || desig === "system admin" || desig === "administrator" || desig.endsWith(" admin")) {
+        return true;
+      }
+
+      // Management designation
+      if (desig === "management" || desig === "top management" || desig.split(/\s+/).includes("management")) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Determine whether the actor can view all leads across all merchants.
+   * Admin, Management, and Merchant HOD can view all leads.
+   */
+  async canActorViewAllLeads(actorUserId: string): Promise<boolean> {
+    if (await this.isActorAdminOrManagement(actorUserId)) {
+      return true;
+    }
+
+    // Check if Merchant HOD
     const [empRows] = await pool.query<any[]>(`
       SELECT e.id, d.name as dept_name, desig.title as designation_title
       FROM employees e
@@ -63,12 +139,6 @@ export class LeadService {
       const desig = (empRows[0].designation_title || "").toLowerCase().trim();
       const dept = (empRows[0].dept_name || "").toLowerCase().trim();
 
-      // Admin / Director / CEO / Management designation
-      if (["admin", "system admin", "director", "ceo", "chief executive officer", "management", "management executive"].includes(desig)) {
-        return true;
-      }
-
-      // ONLY Merchant HOD: Designation has HOD and Department has CRM / Merchant / Sales
       const isHod = desig.includes("hod") || desig.includes("head of department");
       const isMerchantDept = dept.includes("crm") || dept.includes("merchant") || dept.includes("sales");
       if (isHod && isMerchantDept) {
@@ -84,69 +154,15 @@ export class LeadService {
 
   /**
    * Determine whether the actor can transfer / reassign leads.
-   * STRICT REQUIREMENT: Only Admin, Management (Director, CEO, Management), and Merchant HOD.
+   * STRICT REQUIREMENT: Only users whose designation is Admin or Management.
    * Regular executives / merchants CANNOT transfer leads.
    */
   async canActorTransferLead(actorUserId: string): Promise<boolean> {
-    const [empRows] = await pool.query<any[]>(`
-      SELECT e.id, desig.title as designation_title, d.name as dept_name
-      FROM employees e
-      LEFT JOIN designations desig ON desig.id = e.designation_id
-      LEFT JOIN departments d ON d.id = e.department_id
-      WHERE (e.user_id = ? OR e.id = ?) AND e.deleted_at IS NULL
-      LIMIT 1
-    `, [actorUserId, actorUserId]);
+    return this.isActorAdminOrManagement(actorUserId);
+  }
 
-    const desig = empRows.length > 0 ? (empRows[0].designation_title || "").toLowerCase().trim() : "";
-    const dept = empRows.length > 0 ? (empRows[0].dept_name || "").toLowerCase().trim() : "";
-
-    // 1. Any designation containing "executive" is strictly DENIED
-    if (desig.includes("executive")) {
-      return false;
-    }
-
-    // 2. Admin by email
-    const [userRows] = await pool.query<any[]>(`
-      SELECT email FROM users WHERE id = ? LIMIT 1
-    `, [actorUserId]);
-    if (userRows.length > 0) {
-      const email = (userRows[0].email || "").toLowerCase().trim();
-      if (email === "admin" || email === "admin@liinexus.com") {
-        return true;
-      }
-    }
-
-    const [roleRows] = await pool.query<any[]>(`
-      SELECT r.name 
-      FROM roles r
-      JOIN user_roles ur ON ur.role_id = r.id
-      WHERE ur.user_id = ?
-    `, [actorUserId]);
-    const roleNames = roleRows.map((r: any) => (r.name || "").toLowerCase().trim());
-
-    // 3. Admin roles / designations
-    if (roleNames.some((r: string) => ["admin", "system admin", "super admin", "administrator"].includes(r))) {
-      return true;
-    }
-    if (["admin", "system admin", "administrator"].includes(desig)) {
-      return true;
-    }
-
-    // 4. Management (Director, CEO, Management, Manager)
-    if (roleNames.some((r: string) => ["director", "ceo", "management", "manager"].includes(r))) {
-      return true;
-    }
-    if (
-      desig.includes("admin") ||
-      desig.includes("manage") ||
-      desig.includes("director") ||
-      desig.includes("ceo") ||
-      desig === "md"
-    ) {
-      return true;
-    }
-
-    return false;
+  async canActorEditLead(actorUserId: string): Promise<boolean> {
+    return this.isActorAdminOrManagement(actorUserId);
   }
 
   /**
@@ -271,6 +287,13 @@ export class LeadService {
     if (!existing) throw new NotFoundError("Lead not found.");
     await this.assertCanAccessLead(existing.assignedMerchantId, actorUserId, hasUpdateOverride);
 
+    if (changes.assignedMerchantId !== undefined && changes.assignedMerchantId !== existing.assignedMerchantId) {
+      const canTransfer = await this.canActorTransferLead(actorUserId);
+      if (!canTransfer) {
+        throw new ForbiddenError("Only Admin and Management can transfer or reassign leads.");
+      }
+    }
+
     const syncedStatus = changes.salesStage ? STAGE_STATUS_SYNC[changes.salesStage] : undefined;
     const updatedBy = await this.resolveActorEmployeeId(actorUserId);
     const finalChanges: UpdateLeadData = { ...changes, updatedBy: updatedBy ?? undefined };
@@ -291,7 +314,7 @@ export class LeadService {
   async assign(id: string, merchantId: string | null, actorUserId: string) {
     const canTransfer = await this.canActorTransferLead(actorUserId);
     if (!canTransfer) {
-      throw new ForbiddenError("Only Admin, Management, and Merchant HOD can transfer or reassign leads.");
+      throw new ForbiddenError("Only Admin and Management can transfer or reassign leads.");
     }
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("Lead not found.");

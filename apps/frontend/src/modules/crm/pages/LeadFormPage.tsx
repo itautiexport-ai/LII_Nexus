@@ -484,8 +484,8 @@ export default function LeadFormPage() {
             <input value={form.paymentTerms} onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })} style={inputStyle} placeholder="e.g. 30 Days Advance, LC" />
           </div>
 
-          {/* Assigned Merchant (Restricted to Admin, Management, or Merchant HOD) */}
-          {(canTransfer || isEdit) && (
+          {/* Assigned Merchant (Restricted to Admin and Management only) */}
+          {canTransfer && (
             <div style={fieldGroupStyle}>
               <label style={labelStyle}>Assigned Merchant</label>
               <select style={inputStyle} value={form.assignedMerchantId} onChange={(e) => setForm({ ...form, assignedMerchantId: e.target.value })}>
