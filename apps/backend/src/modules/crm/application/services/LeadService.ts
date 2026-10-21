@@ -132,19 +132,17 @@ export class LeadService {
       return true;
     }
 
-    // 4. Management (Director, CEO, Management)
-    if (roleNames.some((r: string) => ["director", "ceo", "management"].includes(r))) {
+    // 4. Management (Director, CEO, Management, Manager)
+    if (roleNames.some((r: string) => ["director", "ceo", "management", "manager"].includes(r))) {
       return true;
     }
-    if (["director", "ceo", "chief executive officer", "management"].includes(desig)) {
-      return true;
-    }
-
-    // 5. Merchant HOD (designation is HOD/Head of Department and department is CRM/Merchant/Sales)
-    if ((desig === "hod" || desig === "head of department") && (dept.includes("crm") || dept.includes("merchant") || dept.includes("sales"))) {
-      return true;
-    }
-    if (desig === "merchant hod" || desig === "crm hod" || roleNames.includes("merchant hod") || roleNames.includes("crm hod")) {
+    if (
+      desig.includes("admin") ||
+      desig.includes("manage") ||
+      desig.includes("director") ||
+      desig.includes("ceo") ||
+      desig === "md"
+    ) {
       return true;
     }
 

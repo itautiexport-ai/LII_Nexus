@@ -52,74 +52,15 @@ export function useIsAdmin(): boolean {
  * Hook to check if current user can transfer / reassign leads.
  * STRICTLY RESTRICTED:
  * Allowed ONLY for:
- * 1. Admin (System Admin, Super Admin, email "admin" / "admin@liinexus.com", or designation/role "Admin")
- * 2. Management (designation/role "Management", "Director", "CEO" / "Chief Executive Officer")
- * 3. Merchant HOD (designation is "HOD" / "Head of Department" AND department is CRM / Merchant / Sales, or designation/role is "Merchant HOD")
+ * 1. Admin (System Admin, Super Admin, email "admin" / "admin@liinexus.com", or designation/role containing "Admin")
+ * 2. Management (designation/role containing "Management", "Manager", "Director", "CEO", "MD")
  *
- * ABSOLUTELY DISALLOWED for:
- * - Any user with designation containing "executive" (e.g. Executive, Merchant Executive, Sales Executive, etc.)
- * - Regular merchants, supervisors, regular employees, or HODs of other departments.
+ * STRICTLY DISALLOWED for:
+ * - Any user whose designation contains "executive" (e.g. Executive, Merchant Executive, Sales Executive, etc.)
+ * - Merchant HOD, regular merchants, supervisors, regular employees, or HODs of other departments.
  */
 export function useCanTransferLead(): boolean {
-  const user = useAuthStore((s) => s.user);
-  if (!user) return false;
-
-  const desig = (user.designation || "").trim().toLowerCase();
-
-  // 1. If designation contains "executive", strictly NO transfer option!
-  if (desig.includes("executive")) {
-    return false;
-  }
-
-  // 2. Admin email
-  const email = (user.email || "").trim().toLowerCase();
-  if (email === "admin" || email === "admin@liinexus.com") {
-    return true;
-  }
-
-  // 3. Roles check
-  const roleNames = (user.roles || []).map((r) => r.trim().toLowerCase());
-  const adminOrMgmtRoles = [
-    "system admin",
-    "super admin",
-    "system administrator",
-    "admin",
-    "administrator",
-    "management",
-    "manager",
-    "director",
-    "ceo",
-  ];
-  if (roleNames.some((r) => adminOrMgmtRoles.some((role) => r.includes(role)))) {
-    return true;
-  }
-
-  // 4. Designation check (Admin or Management)
-  if (
-    desig.includes("admin") ||
-    desig.includes("manage") ||
-    desig.includes("director") ||
-    desig.includes("ceo") ||
-    desig === "md"
-  ) {
-    return true;
-  }
-
-  // 5. Merchant HOD (only HOD of CRM/Merchant/Sales)
-  const dept = (user.department || "").trim().toLowerCase();
-  const isMerchantHodDesig =
-    (desig === "hod" || desig === "head of department") &&
-    (dept.includes("crm") || dept.includes("merchant") || dept.includes("sales"));
-
-  if (isMerchantHodDesig || desig === "merchant hod" || desig === "crm hod") {
-    return true;
-  }
-  if (roleNames.some((r) => r === "merchant hod" || r === "crm hod")) {
-    return true;
-  }
-
-  // Everyone else: NO TRANSFER
-  return false;
+  return useCanEditLead();
 }
 
 /**
