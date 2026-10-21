@@ -173,4 +173,32 @@ export function useHasPermission(permissionKey: string): boolean {
   return permissions.includes(permissionKey);
 }
 
+/**
+ * Helper to check whether a user is Admin, Management, or HOD.
+ * Allowed to view all leads across the whole organization.
+ */
+export function isUserAdminManagementOrHod(user: CurrentUser | null | undefined): boolean {
+  if (!user) return false;
+  if (isUserAdminOrManagement(user)) return true;
+
+  const desig = (user.designation || "").trim().toLowerCase();
+  if (desig.includes("executive") || desig.includes("merchant")) {
+    return false;
+  }
+  if (desig.includes("hod") || desig.includes("head of department")) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Hook to check if current user can view all leads across all merchants.
+ * True for Admin, Management, and HOD designations/roles.
+ */
+export function useCanViewAllLeads(): boolean {
+  const user = useAuthStore((s) => s.user);
+  return isUserAdminManagementOrHod(user);
+}
+
 

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { crmApi, LeadRecord } from "../api/crmApi";
 import { merchantsApi, MerchantRecord } from "../../admin/masterdata/api/merchantsApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
-import { useCanTransferLead, useCanEditLead } from "../../auth/hooks/usePermissions";
+import { useCanTransferLead, useCanEditLead, useCanViewAllLeads } from "../../auth/hooks/usePermissions";
 
 const statusColors: Record<string, string> = { active: "#4a4a4a", won: "#1a7f37", lost: "#c0392b", dead: "#999", dormant: "#b8860b" };
 const priorityColors: Record<string, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
@@ -12,6 +12,7 @@ export default function LeadsListPage() {
   const navigate = useNavigate();
   const canTransfer = useCanTransferLead();
   const canEdit = useCanEditLead();
+  const canViewAll = useCanViewAllLeads();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<LeadRecord[]>([]);
   const [total, setTotal] = useState(0);
@@ -20,6 +21,7 @@ export default function LeadsListPage() {
   const [status, setStatus] = useState("");
   const [leadSource, setLeadSource] = useState("");
   const [leadCategory, setLeadCategory] = useState("");
+  const [filterMerchantId, setFilterMerchantId] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [merchants, setMerchants] = useState<MerchantRecord[]>([]);
@@ -32,12 +34,13 @@ export default function LeadsListPage() {
       page: String(page), pageSize: String(pageSize), search: search || undefined,
       status: status || undefined, leadSource: leadSource || undefined, leadCategory: leadCategory || undefined,
       overdueOnly: overdueOnly || undefined,
+      assignedMerchantId: (canViewAll && filterMerchantId) ? filterMerchantId : undefined,
     });
     setItems(res.items);
     setTotal(res.totalItems);
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- re-runs on filter/page changes only, `load` itself is stable
-  useEffect(() => { load(); }, [page, search, status, leadSource, leadCategory, overdueOnly]);
+  useEffect(() => { load(); }, [page, search, status, leadSource, leadCategory, overdueOnly, filterMerchantId]);
 
   useEffect(() => {
     merchantsApi.list().then(setMerchants).catch(console.error);
@@ -114,6 +117,14 @@ export default function LeadsListPage() {
           <option value="hotel_restaurant_project">Hotel/Restaurant/Project</option>
           <option value="buyer_agent">Buyer Agent</option><option value="repeat_customer">Repeat Customer</option>
         </select>
+        {canViewAll && (
+          <select value={filterMerchantId} onChange={(e) => { setFilterMerchantId(e.target.value); setPage(1); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
+            <option value="">All Merchants</option>
+            {merchants.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        )}
         <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
           <input type="checkbox" checked={overdueOnly} onChange={(e) => { setOverdueOnly(e.target.checked); setPage(1); }} /> Overdue only
         </label>

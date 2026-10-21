@@ -32,6 +32,7 @@ export const LeadController = {
       leadCategory: req.query.leadCategory as LeadCategory | undefined,
       priority: req.query.priority as LeadPriority | undefined,
       overdueOnly: req.query.overdueOnly === "true",
+      assignedMerchantId: req.query.assignedMerchantId as string | undefined,
     }, req.user!.sub);
     return ok(res, items, { page, pageSize, totalItems: total });
   },

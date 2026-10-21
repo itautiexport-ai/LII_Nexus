@@ -125,11 +125,10 @@ export class LeadService {
       return true;
     }
 
-    // Check if Merchant HOD
+    // Check if user has HOD designation
     const [empRows] = await pool.query<any[]>(`
-      SELECT e.id, d.name as dept_name, desig.title as designation_title
+      SELECT e.id, desig.title as designation_title
       FROM employees e
-      LEFT JOIN departments d ON d.id = e.department_id
       LEFT JOIN designations desig ON desig.id = e.designation_id
       WHERE (e.user_id = ? OR e.id = ?) AND e.deleted_at IS NULL
       LIMIT 1
@@ -137,14 +136,10 @@ export class LeadService {
 
     if (empRows.length > 0) {
       const desig = (empRows[0].designation_title || "").toLowerCase().trim();
-      const dept = (empRows[0].dept_name || "").toLowerCase().trim();
-
-      const isHod = desig.includes("hod") || desig.includes("head of department");
-      const isMerchantDept = dept.includes("crm") || dept.includes("merchant") || dept.includes("sales");
-      if (isHod && isMerchantDept) {
-        return true;
+      if (desig.includes("executive") || desig.includes("merchant")) {
+        return false;
       }
-      if (desig.includes("merchant hod")) {
+      if (desig.includes("hod") || desig.includes("head of department")) {
         return true;
       }
     }
@@ -286,13 +281,6 @@ export class LeadService {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("Lead not found.");
     await this.assertCanAccessLead(existing.assignedMerchantId, actorUserId, hasUpdateOverride);
-
-    if (changes.assignedMerchantId !== undefined && changes.assignedMerchantId !== existing.assignedMerchantId) {
-      const canTransfer = await this.canActorTransferLead(actorUserId);
-      if (!canTransfer) {
-        throw new ForbiddenError("Only Admin and Management can transfer or reassign leads.");
-      }
-    }
 
     const syncedStatus = changes.salesStage ? STAGE_STATUS_SYNC[changes.salesStage] : undefined;
     const updatedBy = await this.resolveActorEmployeeId(actorUserId);
