@@ -19,9 +19,9 @@ const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
     subCategory: "Dining Table",
     collectionName: "Muddo Collection",
     material: "Mango Wood / Solid Oak",
-    woodFinish: "Natural",
+    woodFinish: "Natural Matte",
     metalFinish: "Powder Coated Brass",
-    sizeCm: "150X150X76",
+    sizeCm: "150 x 150 x 76",
     fobPriceUsd: 285.0,
     moq: 20,
     cbm: 0.706,
@@ -40,7 +40,7 @@ const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
     material: "Solid Teak Wood & Leather",
     woodFinish: "Walnut Stain",
     metalFinish: "Chrome Accent",
-    sizeCm: "60X62X95",
+    sizeCm: "60 x 62 x 95",
     fobPriceUsd: 110.0,
     moq: 50,
     cbm: 0.18,
@@ -59,7 +59,7 @@ const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
     material: "Natural Rattan & Teak Frame",
     woodFinish: "Honey Matte",
     metalFinish: "N/A",
-    sizeCm: "85X80X75",
+    sizeCm: "85 x 80 x 75",
     fobPriceUsd: 185.0,
     moq: 30,
     cbm: 0.42,
@@ -78,7 +78,7 @@ const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
     material: "Seasoned Mango Wood",
     woodFinish: "Distressed Antique",
     metalFinish: "Brushed Solid Brass",
-    sizeCm: "180X45X85",
+    sizeCm: "180 x 45 x 85",
     fobPriceUsd: 320.0,
     moq: 15,
     cbm: 0.58,
@@ -93,6 +93,7 @@ export default function SourcewizProductsPage() {
   const [products, setProducts] = useState<CatalogProductItem[]>(INITIAL_MOCK_PRODUCTS);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   // Selected products for presentation
   const [selectedIds, setSelectedIds] = useState<string[]>(["1", "4"]);
@@ -152,7 +153,7 @@ export default function SourcewizProductsPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === filteredProducts.length) {
+    if (selectedIds.length === filteredProducts.length && filteredProducts.length > 0) {
       setSelectedIds([]);
     } else {
       setSelectedIds(filteredProducts.map((p) => p.id));
@@ -186,21 +187,28 @@ export default function SourcewizProductsPage() {
   const currentTheme: DeckTheme = DECK_THEMES[selectedThemeId] || DECK_THEMES.obsidian;
 
   return (
-    <div className="sw-container" style={{ paddingBottom: "40px" }}>
-      {/* PROFESSIONAL EXECUTIVE HEADER (Clean, no Add Product button) */}
+    <div
+      className="sw-container"
+      style={{
+        paddingBottom: "40px",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Inter, Arial, sans-serif',
+      }}
+    >
+      {/* ENTERPRISE HEADER */}
       <div
         style={{
           background: "#ffffff",
-          borderRadius: "14px",
+          borderRadius: "12px",
           border: "1px solid #e2e8f0",
-          padding: "20px 24px",
-          marginBottom: "20px",
+          padding: "18px 24px",
+          marginBottom: "18px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
           gap: "12px",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
         }}
       >
         <div>
@@ -208,8 +216,8 @@ export default function SourcewizProductsPage() {
             <h1
               style={{
                 margin: 0,
-                fontSize: "1.55rem",
-                fontWeight: 800,
+                fontSize: "1.45rem",
+                fontWeight: 700,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
               }}
@@ -220,30 +228,85 @@ export default function SourcewizProductsPage() {
               style={{
                 background: "#f1f5f9",
                 color: "#475569",
-                fontSize: "0.75rem",
+                fontSize: "0.74rem",
                 fontWeight: 700,
-                padding: "3px 10px",
-                borderRadius: "20px",
+                padding: "2px 10px",
+                borderRadius: "16px",
                 border: "1px solid #e2e8f0",
+                fontVariantNumeric: "tabular-nums",
               }}
             >
-              {products.length} Products
+              {products.length} Items Recorded
             </span>
           </div>
-          <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-            Select products below to compose and export presentation-grade PowerPoint (.pptx) decks in tailored design themes.
+          <p style={{ margin: 0, fontSize: "0.82rem", color: "#64748b" }}>
+            Select items from the product master table to generate high-resolution, export-grade PowerPoint (.pptx) presentations for international buyer inquiries.
           </p>
+        </div>
+
+        {/* View Switcher: Table vs Grid */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div
+            style={{
+              background: "#f1f5f9",
+              borderRadius: "8px",
+              padding: "3px",
+              display: "flex",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <button
+              onClick={() => setViewMode("table")}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "6px",
+                border: "none",
+                background: viewMode === "table" ? "#ffffff" : "transparent",
+                color: viewMode === "table" ? "#0f172a" : "#64748b",
+                fontWeight: viewMode === "table" ? 700 : 500,
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span>☰</span> Table View
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "6px",
+                border: "none",
+                background: viewMode === "grid" ? "#ffffff" : "transparent",
+                color: viewMode === "grid" ? "#0f172a" : "#64748b",
+                fontWeight: viewMode === "grid" ? 700 : 500,
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                boxShadow: viewMode === "grid" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span>⊞</span> Grid View
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* FILTER & SEARCH BAR */}
+      {/* FILTER & SEARCH TOOLBAR */}
       <div
         style={{
           background: "#ffffff",
           borderRadius: "12px",
           border: "1px solid #e2e8f0",
           padding: "12px 18px",
-          marginBottom: "18px",
+          marginBottom: "16px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -258,23 +321,30 @@ export default function SourcewizProductsPage() {
             onClick={handleSelectAll}
             style={{
               padding: "6px 12px",
-              borderRadius: "8px",
+              borderRadius: "6px",
               border: "1px solid #cbd5e1",
-              background: selectedIds.length === filteredProducts.length && filteredProducts.length > 0 ? "#f8fafc" : "#ffffff",
+              background:
+                selectedIds.length === filteredProducts.length && filteredProducts.length > 0
+                  ? "#f1f5f9"
+                  : "#ffffff",
               color: "#334155",
               fontWeight: 600,
-              fontSize: "0.80rem",
+              fontSize: "0.78rem",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               gap: "6px",
             }}
           >
-            <span>{selectedIds.length === filteredProducts.length && filteredProducts.length > 0 ? "✓" : "☐"}</span>
-            {selectedIds.length === filteredProducts.length && filteredProducts.length > 0 ? "Deselect All" : "Select All"}
+            <span>
+              {selectedIds.length === filteredProducts.length && filteredProducts.length > 0 ? "✓" : "☐"}
+            </span>
+            {selectedIds.length === filteredProducts.length && filteredProducts.length > 0
+              ? "Deselect All"
+              : "Select All"}
           </button>
 
-          <div style={{ width: "1px", height: "22px", background: "#e2e8f0", margin: "0 4px" }} />
+          <div style={{ width: "1px", height: "20px", background: "#e2e8f0", margin: "0 4px" }} />
 
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
             {categories.map((cat) => {
@@ -286,12 +356,12 @@ export default function SourcewizProductsPage() {
                   onClick={() => setCategoryFilter(cat)}
                   style={{
                     padding: "6px 12px",
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     border: isActive ? "1px solid #0f172a" : "1px solid #e2e8f0",
                     background: isActive ? "#0f172a" : "#f8fafc",
                     color: isActive ? "#ffffff" : "#475569",
                     fontWeight: 600,
-                    fontSize: "0.80rem",
+                    fontSize: "0.78rem",
                     cursor: "pointer",
                     transition: "all 0.15s ease",
                   }}
@@ -313,15 +383,24 @@ export default function SourcewizProductsPage() {
             style={{
               width: "100%",
               padding: "7px 12px 7px 32px",
-              borderRadius: "8px",
+              borderRadius: "6px",
               border: "1px solid #cbd5e1",
-              fontSize: "0.84rem",
+              fontSize: "0.82rem",
               outline: "none",
               color: "#1e293b",
               background: "#ffffff",
             }}
           />
-          <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.80rem" }}>
+          <span
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#94a3b8",
+              fontSize: "0.80rem",
+            }}
+          >
             🔍
           </span>
           {searchQuery && (
@@ -345,19 +424,19 @@ export default function SourcewizProductsPage() {
         </div>
       </div>
 
-      {/* INLINE THEME & PPT ACTION BAR (Cleanly nested inside container, perfectly responsive) */}
+      {/* INLINE THEME & PPT PRESENTATION DOCK */}
       {selectedIds.length > 0 && (
         <div
           style={{
             background: "#0f172a",
             color: "#ffffff",
-            padding: "14px 20px",
-            borderRadius: "12px",
-            marginBottom: "20px",
+            padding: "12px 18px",
+            borderRadius: "10px",
+            marginBottom: "16px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            boxShadow: "0 4px 14px rgba(15, 23, 42, 0.18)",
+            boxShadow: "0 4px 14px rgba(15, 23, 42, 0.15)",
             flexWrap: "wrap",
             gap: "12px",
             border: "1px solid #1e293b",
@@ -365,25 +444,26 @@ export default function SourcewizProductsPage() {
         >
           {/* Left: Counter & Theme Selector */}
           <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span
                 style={{
-                  background: "#334155",
-                  width: "26px",
-                  height: "26px",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  width: "24px",
+                  height: "24px",
                   borderRadius: "50%",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontWeight: 800,
-                  fontSize: "0.75rem",
+                  fontSize: "0.74rem",
                 }}
               >
                 {selectedIds.length}
               </span>
               <div>
-                <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>
-                  {selectedIds.length} Product{selectedIds.length > 1 ? "s" : ""} Selected
+                <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>
+                  {selectedIds.length} Item{selectedIds.length > 1 ? "s" : ""} Selected
                 </div>
                 <button
                   onClick={handleClearSelection}
@@ -392,7 +472,7 @@ export default function SourcewizProductsPage() {
                     border: "none",
                     padding: 0,
                     color: "#94a3b8",
-                    fontSize: "0.72rem",
+                    fontSize: "0.70rem",
                     cursor: "pointer",
                     textDecoration: "underline",
                   }}
@@ -402,11 +482,11 @@ export default function SourcewizProductsPage() {
               </div>
             </div>
 
-            <div style={{ width: "1px", height: "24px", background: "rgba(255,255,255,0.15)" }} />
+            <div style={{ width: "1px", height: "22px", background: "rgba(255,255,255,0.15)" }} />
 
             {/* Quick Theme Selector Dropdown */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "0.80rem", color: "#94a3b8", fontWeight: 600 }}>Theme:</span>
+              <span style={{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600 }}>Theme:</span>
               <select
                 value={selectedThemeId}
                 onChange={(e) => setSelectedThemeId(e.target.value as ThemeId)}
@@ -414,9 +494,9 @@ export default function SourcewizProductsPage() {
                   background: "#1e293b",
                   color: "#ffffff",
                   border: "1px solid #334155",
-                  borderRadius: "8px",
-                  padding: "6px 12px",
-                  fontSize: "0.82rem",
+                  borderRadius: "6px",
+                  padding: "6px 10px",
+                  fontSize: "0.80rem",
                   fontWeight: 600,
                   cursor: "pointer",
                   outline: "none",
@@ -439,10 +519,10 @@ export default function SourcewizProductsPage() {
                 background: "rgba(255, 255, 255, 0.1)",
                 color: "#ffffff",
                 border: "1px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: "8px",
-                padding: "8px 14px",
+                borderRadius: "6px",
+                padding: "7px 14px",
                 fontWeight: 600,
-                fontSize: "0.80rem",
+                fontSize: "0.78rem",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -459,14 +539,14 @@ export default function SourcewizProductsPage() {
                 background: isExportingPpt ? "#64748b" : "#2563eb",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "8px",
-                padding: "8px 18px",
+                borderRadius: "6px",
+                padding: "7px 18px",
                 fontWeight: 700,
-                fontSize: "0.82rem",
+                fontSize: "0.80rem",
                 cursor: isExportingPpt ? "wait" : "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "6px",
                 boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
               }}
             >
@@ -481,27 +561,263 @@ export default function SourcewizProductsPage() {
         </div>
       )}
 
-      {/* PRODUCTS GRID */}
-      {filteredProducts.length === 0 ? (
+      {/* PRIMARY VIEW 1: ENTERPRISE DATA TABLE */}
+      {viewMode === "table" ? (
         <div
           style={{
             background: "#ffffff",
-            borderRadius: "14px",
-            border: "1px dashed #cbd5e1",
-            padding: "48px 24px",
-            textAlign: "center",
-            color: "#64748b",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            overflow: "hidden",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
           }}
         >
-          <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📦</div>
-          <div style={{ fontWeight: 700, fontSize: "1rem", color: "#0f172a", marginBottom: "4px" }}>
-            No products match your criteria
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                textAlign: "left",
+                fontSize: "0.82rem",
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    background: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    color: "#475569",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  <th style={{ padding: "12px 14px", width: "40px", textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedIds.length === filteredProducts.length && filteredProducts.length > 0
+                      }
+                      onChange={handleSelectAll}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </th>
+                  <th style={{ padding: "12px 14px", width: "60px" }}>Image</th>
+                  <th style={{ padding: "12px 14px" }}>Product Name & Category</th>
+                  <th style={{ padding: "12px 14px" }}>SKU & Collection</th>
+                  <th style={{ padding: "12px 14px" }}>Materials & Finish</th>
+                  <th style={{ padding: "12px 14px" }}>Size & Assembly</th>
+                  <th style={{ padding: "12px 14px" }}>CBM / 40'ft GP</th>
+                  <th style={{ padding: "12px 14px" }}>FOB Price & MOQ</th>
+                  <th style={{ padding: "12px 14px" }}>Status</th>
+                  <th style={{ padding: "12px 14px", textAlign: "right" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} style={{ padding: "36px", textAlign: "center", color: "#64748b" }}>
+                      No products found matching your search.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map((product) => {
+                    const isSelected = selectedIds.includes(product.id);
+                    return (
+                      <tr
+                        key={product.id}
+                        onClick={() => handleSelectProduct(product.id)}
+                        style={{
+                          borderBottom: "1px solid #f1f5f9",
+                          background: isSelected ? "#f8fafc" : "#ffffff",
+                          cursor: "pointer",
+                          transition: "background 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = "#fcfdfd";
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = "#ffffff";
+                        }}
+                      >
+                        {/* Checkbox */}
+                        <td
+                          style={{ padding: "12px 14px", textAlign: "center" }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectProduct(product.id)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        </td>
+
+                        {/* Image Thumbnail */}
+                        <td style={{ padding: "10px 14px" }}>
+                          <div
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              borderRadius: "6px",
+                              overflow: "hidden",
+                              border: "1px solid #e2e8f0",
+                              background: "#f8fafc",
+                            }}
+                          >
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = FALLBACK_IMG;
+                              }}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          </div>
+                        </td>
+
+                        {/* Name & Category */}
+                        <td style={{ padding: "12px 14px" }}>
+                          <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem", marginBottom: "2px" }}>
+                            {product.name}
+                          </div>
+                          <div style={{ fontSize: "0.72rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                            {product.category} • {product.subCategory}
+                          </div>
+                        </td>
+
+                        {/* SKU & Collection */}
+                        <td style={{ padding: "12px 14px" }}>
+                          <div
+                            style={{
+                              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              color: "#334155",
+                              background: "#f1f5f9",
+                              display: "inline-block",
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                              marginBottom: "3px",
+                            }}
+                          >
+                            {product.sku}
+                          </div>
+                          <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                            {product.collectionName}
+                          </div>
+                        </td>
+
+                        {/* Materials & Finish */}
+                        <td style={{ padding: "12px 14px" }}>
+                          <div style={{ color: "#1e293b", fontWeight: 600 }}>{product.material}</div>
+                          <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                            Finish: {product.woodFinish} {product.metalFinish !== "N/A" ? `• ${product.metalFinish}` : ""}
+                          </div>
+                        </td>
+
+                        {/* Size & Assembly */}
+                        <td style={{ padding: "12px 14px" }}>
+                          <div style={{ color: "#1e293b", fontVariantNumeric: "tabular-nums" }}>
+                            {product.sizeCm} cm
+                          </div>
+                          <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                            Assembly: <strong>{product.assembledKd}</strong>
+                          </div>
+                        </td>
+
+                        {/* CBM / 40'ft */}
+                        <td style={{ padding: "12px 14px" }}>
+                          <div style={{ color: "#0f172a", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                            {product.cbm} m³
+                          </div>
+                          <div style={{ fontSize: "0.72rem", color: "#64748b", fontVariantNumeric: "tabular-nums" }}>
+                            40'ft: {product.gp40ft} pcs
+                          </div>
+                        </td>
+
+                        {/* Price & MOQ */}
+                        <td style={{ padding: "12px 14px" }}>
+                          <div style={{ color: "#0f172a", fontWeight: 800, fontSize: "0.92rem", fontVariantNumeric: "tabular-nums" }}>
+                            ${product.fobPriceUsd.toFixed(2)}
+                            <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>
+                              FOB
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "0.70rem", color: "#64748b" }}>
+                            MOQ: {product.moq} pcs
+                          </div>
+                        </td>
+
+                        {/* Stock Status */}
+                        <td style={{ padding: "12px 14px" }}>
+                          <span
+                            style={{
+                              fontSize: "0.70rem",
+                              fontWeight: 700,
+                              padding: "3px 8px",
+                              borderRadius: "4px",
+                              background:
+                                product.stockStatus === "In Stock"
+                                  ? "#f0fdf4"
+                                  : product.stockStatus === "Sample Ready"
+                                  ? "#eff6ff"
+                                  : "#fef3c7",
+                              color:
+                                product.stockStatus === "In Stock"
+                                  ? "#15803d"
+                                  : product.stockStatus === "Sample Ready"
+                                  ? "#1d4ed8"
+                                  : "#b45309",
+                              border: `1px solid ${
+                                product.stockStatus === "In Stock"
+                                  ? "#bbf7d0"
+                                  : product.stockStatus === "Sample Ready"
+                                  ? "#bfdbfe"
+                                  : "#fde68a"
+                              }`,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {product.stockStatus}
+                          </span>
+                        </td>
+
+                        {/* Action */}
+                        <td style={{ padding: "12px 14px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => {
+                              if (!selectedIds.includes(product.id)) {
+                                setSelectedIds([...selectedIds, product.id]);
+                              }
+                              setIsPptModalOpen(true);
+                            }}
+                            style={{
+                              padding: "5px 10px",
+                              fontSize: "0.72rem",
+                              fontWeight: 600,
+                              borderRadius: "6px",
+                              border: "1px solid #cbd5e1",
+                              background: "#ffffff",
+                              color: "#334155",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Preview Slide →
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-          <p style={{ margin: 0, fontSize: "0.85rem" }}>
-            Try adjusting your search query or category filters.
-          </p>
         </div>
       ) : (
+        /* VIEW 2: COMPACT CLEAN GRID */
         <div
           style={{
             display: "grid",
@@ -516,17 +832,16 @@ export default function SourcewizProductsPage() {
                 key={product.id}
                 style={{
                   background: "#ffffff",
-                  borderRadius: "12px",
+                  borderRadius: "10px",
                   border: isSelected ? "2px solid #0f172a" : "1px solid #e2e8f0",
                   overflow: "hidden",
-                  boxShadow: isSelected ? "0 6px 16px -2px rgba(15, 23, 42, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.04)",
-                  transition: "all 0.2s ease",
+                  boxShadow: isSelected ? "0 4px 14px rgba(15, 23, 42, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.04)",
+                  transition: "all 0.15s ease",
                   display: "flex",
                   flexDirection: "column",
                   position: "relative",
                 }}
               >
-                {/* Image Container with Top Badges */}
                 <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 10", background: "#f8fafc", overflow: "hidden" }}>
                   <img
                     src={product.image}
@@ -537,98 +852,73 @@ export default function SourcewizProductsPage() {
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
 
-                  {/* Top-Left Selection Checkbox Pill */}
                   <div
                     onClick={() => handleSelectProduct(product.id)}
                     style={{
                       position: "absolute",
-                      top: "10px",
-                      left: "10px",
+                      top: "8px",
+                      left: "8px",
                       zIndex: 3,
                       background: isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.95)",
                       color: isSelected ? "#ffffff" : "#1e293b",
-                      borderRadius: "6px",
-                      padding: "4px 9px",
+                      borderRadius: "5px",
+                      padding: "3px 8px",
                       fontWeight: 700,
-                      fontSize: "0.72rem",
+                      fontSize: "0.70rem",
                       cursor: "pointer",
-                      boxShadow: "0 2px 5px rgba(0,0,0,0.12)",
                       display: "flex",
                       alignItems: "center",
-                      gap: "5px",
-                      userSelect: "none",
+                      gap: "4px",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.12)",
                     }}
                   >
                     <span>{isSelected ? "✓" : "+"}</span>
                     <span>{isSelected ? "Selected" : "Select for PPT"}</span>
                   </div>
 
-                  {/* Top-Right Status Pill */}
                   <div
                     style={{
                       position: "absolute",
-                      top: "10px",
-                      right: "10px",
+                      top: "8px",
+                      right: "8px",
                       zIndex: 3,
-                      fontSize: "0.70rem",
+                      fontSize: "0.68rem",
                       fontWeight: 700,
-                      padding: "3px 8px",
-                      borderRadius: "6px",
+                      padding: "2px 7px",
+                      borderRadius: "4px",
                       background:
                         product.stockStatus === "In Stock"
-                          ? "rgba(240, 253, 244, 0.95)"
+                          ? "#f0fdf4"
                           : product.stockStatus === "Sample Ready"
-                          ? "rgba(239, 246, 255, 0.95)"
-                          : "rgba(254, 243, 199, 0.95)",
+                          ? "#eff6ff"
+                          : "#fef3c7",
                       color:
                         product.stockStatus === "In Stock"
                           ? "#15803d"
                           : product.stockStatus === "Sample Ready"
                           ? "#1d4ed8"
                           : "#b45309",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
                     }}
                   >
                     {product.stockStatus}
                   </div>
                 </div>
 
-                {/* Card Information */}
-                <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
-                  {/* Category & Collection */}
-                  <div
-                    style={{
-                      fontSize: "0.68rem",
-                      fontWeight: 700,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      marginBottom: "4px",
-                    }}
-                  >
+                <div style={{ padding: "14px", display: "flex", flexDirection: "column", flex: 1 }}>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "3px" }}>
                     {product.category} • {product.collectionName}
                   </div>
 
-                  {/* Product Title */}
-                  <h3
-                    style={{
-                      margin: "0 0 6px 0",
-                      fontSize: "0.96rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      lineHeight: 1.3,
-                    }}
-                  >
+                  <h3 style={{ margin: "0 0 6px 0", fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
                     {product.name}
                   </h3>
 
-                  {/* SKU Pill */}
-                  <div style={{ marginBottom: "12px" }}>
+                  <div style={{ marginBottom: "10px" }}>
                     <span
                       style={{
                         fontSize: "0.72rem",
                         fontWeight: 600,
-                        color: "#475569",
+                        color: "#334155",
                         background: "#f1f5f9",
                         padding: "2px 6px",
                         borderRadius: "4px",
@@ -639,67 +929,34 @@ export default function SourcewizProductsPage() {
                     </span>
                   </div>
 
-                  {/* Specification Details 2x3 Grid */}
                   <div
                     style={{
                       background: "#f8fafc",
-                      borderRadius: "8px",
-                      padding: "10px",
-                      fontSize: "0.74rem",
+                      borderRadius: "6px",
+                      padding: "8px 10px",
+                      fontSize: "0.72rem",
                       color: "#334155",
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
-                      gap: "6px",
-                      marginBottom: "14px",
+                      gap: "4px",
+                      marginBottom: "12px",
                     }}
                   >
-                    <div>
-                      <span style={{ color: "#64748b" }}>Material: </span>
-                      <strong>{product.material}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Finish: </span>
-                      <strong>{product.woodFinish}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Size: </span>
-                      <strong>{product.sizeCm} cm</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Assembly: </span>
-                      <strong>{product.assembledKd}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>Unit CBM: </span>
-                      <strong style={{ color: "#0f172a" }}>{product.cbm} m³</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: "#64748b" }}>40'ft GP: </span>
-                      <strong style={{ color: "#0f172a" }}>{product.gp40ft} pcs</strong>
-                    </div>
+                    <div><span style={{ color: "#64748b" }}>Material: </span><strong>{product.material}</strong></div>
+                    <div><span style={{ color: "#64748b" }}>Finish: </span><strong>{product.woodFinish}</strong></div>
+                    <div><span style={{ color: "#64748b" }}>Size: </span><strong>{product.sizeCm} cm</strong></div>
+                    <div><span style={{ color: "#64748b" }}>Assembly: </span><strong>{product.assembledKd}</strong></div>
+                    <div><span style={{ color: "#64748b" }}>CBM: </span><strong>{product.cbm} m³</strong></div>
+                    <div><span style={{ color: "#64748b" }}>40'ft: </span><strong>{product.gp40ft} pcs</strong></div>
                   </div>
 
-                  {/* Bottom Price & Quick Preview */}
-                  <div
-                    style={{
-                      marginTop: "auto",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      paddingTop: "10px",
-                      borderTop: "1px solid #f1f5f9",
-                    }}
-                  >
+                  <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid #f1f5f9" }}>
                     <div>
-                      <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>
+                      <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
                         ${product.fobPriceUsd.toFixed(2)}
-                        <span style={{ fontSize: "0.70rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>
-                          FOB
-                        </span>
+                        <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>FOB</span>
                       </div>
-                      <div style={{ fontSize: "0.68rem", color: "#64748b" }}>
-                        MOQ: {product.moq} Pcs
-                      </div>
+                      <div style={{ fontSize: "0.68rem", color: "#64748b" }}>MOQ: {product.moq} Pcs</div>
                     </div>
 
                     <button
@@ -710,8 +967,8 @@ export default function SourcewizProductsPage() {
                         setIsPptModalOpen(true);
                       }}
                       style={{
-                        padding: "5px 12px",
-                        fontSize: "0.74rem",
+                        padding: "5px 10px",
+                        fontSize: "0.72rem",
                         fontWeight: 600,
                         borderRadius: "6px",
                         border: "1px solid #cbd5e1",
@@ -764,7 +1021,7 @@ export default function SourcewizProductsPage() {
             {/* Modal Header */}
             <div
               style={{
-                padding: "18px 24px",
+                padding: "16px 24px",
                 background: "#0f172a",
                 color: "#ffffff",
                 borderRadius: "16px 16px 0 0",
@@ -774,11 +1031,11 @@ export default function SourcewizProductsPage() {
               }}
             >
               <div>
-                <h2 style={{ margin: 0, fontSize: "1.20rem", fontWeight: 800 }}>
+                <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
                   PowerPoint Presentation Studio
                 </h2>
-                <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#94a3b8" }}>
-                  Select design theme, configure buyer metadata, and export 16:9 presentation deck (.pptx)
+                <p style={{ margin: "2px 0 0 0", fontSize: "0.76rem", color: "#94a3b8" }}>
+                  Select design theme, configure client metadata, and download 16:9 presentation deck (.pptx)
                 </p>
               </div>
               <button
@@ -796,11 +1053,20 @@ export default function SourcewizProductsPage() {
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: "20px 24px", background: "#f8fafc", flex: 1 }}>
+            <div style={{ padding: "18px 24px", background: "#f8fafc", flex: 1 }}>
               {/* THEME SELECTOR SECTION */}
-              <div style={{ marginBottom: "20px" }}>
-                <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>
-                  1. Choose Presentation Theme ({Object.keys(DECK_THEMES).length} Available)
+              <div style={{ marginBottom: "18px" }}>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: "#475569",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: "10px",
+                  }}
+                >
+                  1. Choose Presentation Theme ({Object.keys(DECK_THEMES).length} Executive Themes)
                 </div>
 
                 <div
@@ -818,7 +1084,7 @@ export default function SourcewizProductsPage() {
                         onClick={() => setSelectedThemeId(th.id)}
                         style={{
                           background: "#ffffff",
-                          borderRadius: "10px",
+                          borderRadius: "8px",
                           padding: "12px",
                           border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
                           boxShadow: isSelected ? "0 4px 12px rgba(37, 99, 235, 0.15)" : "none",
@@ -827,12 +1093,11 @@ export default function SourcewizProductsPage() {
                           position: "relative",
                         }}
                       >
-                        {/* Swatch Header */}
                         <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "8px" }}>
                           <span
                             style={{
-                              width: "18px",
-                              height: "18px",
+                              width: "16px",
+                              height: "16px",
                               borderRadius: "50%",
                               background: th.swatch.primary,
                               border: "1px solid rgba(0,0,0,0.1)",
@@ -841,8 +1106,8 @@ export default function SourcewizProductsPage() {
                           />
                           <span
                             style={{
-                              width: "18px",
-                              height: "18px",
+                              width: "16px",
+                              height: "16px",
                               borderRadius: "50%",
                               background: th.swatch.accent,
                               border: "1px solid rgba(0,0,0,0.1)",
@@ -851,8 +1116,8 @@ export default function SourcewizProductsPage() {
                           />
                           <span
                             style={{
-                              width: "18px",
-                              height: "18px",
+                              width: "16px",
+                              height: "16px",
                               borderRadius: "50%",
                               background: th.swatch.card,
                               border: "1px solid rgba(0,0,0,0.1)",
@@ -861,7 +1126,7 @@ export default function SourcewizProductsPage() {
                           />
                         </div>
 
-                        <div style={{ fontWeight: 800, fontSize: "0.82rem", color: "#0f172a", marginBottom: "2px" }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a", marginBottom: "2px" }}>
                           {th.name}
                         </div>
                         <div style={{ fontSize: "0.70rem", color: "#64748b", lineHeight: 1.3 }}>
@@ -899,10 +1164,10 @@ export default function SourcewizProductsPage() {
               <div
                 style={{
                   background: "#ffffff",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                   border: "1px solid #e2e8f0",
                   padding: "14px 18px",
-                  marginBottom: "20px",
+                  marginBottom: "18px",
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                   gap: "14px",
@@ -974,7 +1239,7 @@ export default function SourcewizProductsPage() {
               {/* LIVE SLIDE PREVIEW SECTION */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <div style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     2. Live 16:9 Slide Canvas ({currentTheme.name} Theme)
                   </div>
                   <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
@@ -1263,8 +1528,8 @@ export default function SourcewizProductsPage() {
                                     <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.woodFinish}</span>
                                   </div>
                                   <div>
-                                    <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Size (CM): </span>
-                                    <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.sizeCm}</span>
+                                    <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Size: </span>
+                                    <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.sizeCm} cm</span>
                                   </div>
                                   <div>
                                     <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Assembly: </span>
@@ -1321,7 +1586,7 @@ export default function SourcewizProductsPage() {
             {/* Modal Footer Controls */}
             <div
               style={{
-                padding: "16px 24px",
+                padding: "14px 24px",
                 background: "#ffffff",
                 borderTop: "1px solid #e2e8f0",
                 borderRadius: "0 0 16px 16px",
@@ -1343,10 +1608,10 @@ export default function SourcewizProductsPage() {
                     background: "#f1f5f9",
                     color: "#334155",
                     border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    padding: "7px 16px",
                     fontWeight: 600,
-                    fontSize: "0.82rem",
+                    fontSize: "0.80rem",
                     cursor: "pointer",
                   }}
                 >
@@ -1359,10 +1624,10 @@ export default function SourcewizProductsPage() {
                     background: isExportingPpt ? "#64748b" : "#2563eb",
                     color: "#ffffff",
                     border: "none",
-                    borderRadius: "8px",
-                    padding: "8px 20px",
+                    borderRadius: "6px",
+                    padding: "7px 20px",
                     fontWeight: 700,
-                    fontSize: "0.82rem",
+                    fontSize: "0.80rem",
                     cursor: isExportingPpt ? "wait" : "pointer",
                     display: "flex",
                     alignItems: "center",
