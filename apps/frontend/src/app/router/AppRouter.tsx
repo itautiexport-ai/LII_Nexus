@@ -163,6 +163,7 @@ import SourcewizProductsPage from "../../modules/sourcewiz/pages/SourcewizProduc
 import SourcewizDashboardPage from "../../modules/sourcewiz/pages/SourcewizDashboardPage";
 import SourcewizQuotationsPage from "../../modules/sourcewiz/pages/SourcewizQuotationsPage";
 import SourcewizRfqsPage from "../../modules/sourcewiz/pages/SourcewizRfqsPage";
+import SharedDeckViewerPage from "../../modules/sourcewiz/pages/SharedDeckViewerPage";
 import NoticesPage from "../../modules/hr/pages/NoticesPage";
 import WeeklyPayrollPage from "../../modules/hr/pages/WeeklyPayrollPage";
 import MonthlySalarySheetPage from "../../modules/hr/pages/MonthlySalarySheetPage";
@@ -204,6 +205,7 @@ export default function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/view-deck/:token" element={<SharedDeckViewerPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<AdminLayout />}>

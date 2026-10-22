@@ -7,6 +7,8 @@ import {
   DeckTheme,
   CatalogProductItem,
 } from "../utils/pptxExport";
+import { exportProductsToExcel } from "../utils/excelExport";
+import { catalogueShareApi, SharedDeckData } from "../api/catalogueShareApi";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
 
@@ -112,6 +114,17 @@ export default function SourcewizProductsPage() {
   const [isExportingPpt, setIsExportingPpt] = useState(false);
   const [exportProgressMsg, setExportProgressMsg] = useState("");
 
+  // Excel & Share Link State
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [generatedDeck, setGeneratedDeck] = useState<SharedDeckData | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Deck History State
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [sharedDecksHistory, setSharedDecksHistory] = useState<SharedDeckData[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   useEffect(() => {
     try {
       const saved =
@@ -181,6 +194,59 @@ export default function SourcewizProductsPage() {
     } finally {
       setIsExportingPpt(false);
       setExportProgressMsg("");
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (selectedProducts.length === 0) return;
+    exportProductsToExcel(selectedProducts, {
+      deckTitle: deckTitle || "LII_Product_Catalogue",
+      customerName: customerName || "",
+      includePricing,
+    });
+  };
+
+  const handleGenerateShareLink = async () => {
+    if (selectedProducts.length === 0) return;
+    setIsGeneratingLink(true);
+    try {
+      const result = await catalogueShareApi.createSharedDeck({
+        title: deckTitle || "Curated Product Presentation Deck",
+        customerName: customerName || "",
+        themeId: selectedThemeId,
+        includePricing,
+        products: selectedProducts,
+      });
+      setGeneratedDeck(result);
+      setCopySuccess(false);
+      setShareModalOpen(true);
+    } catch (err: any) {
+      console.error("Failed to generate share link:", err);
+      alert("Failed to create shared presentation link: " + (err?.response?.data?.error?.message || err?.message));
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!generatedDeck) return;
+    const fullUrl = `${window.location.origin}/view-deck/${generatedDeck.token}`;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 3000);
+    });
+  };
+
+  const loadSharedDecksHistory = async () => {
+    setLoadingHistory(true);
+    setHistoryModalOpen(true);
+    try {
+      const data = await catalogueShareApi.getMySharedDecks();
+      setSharedDecksHistory(data);
+    } catch (err) {
+      console.error("Failed to load shared decks history:", err);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -296,6 +362,29 @@ export default function SourcewizProductsPage() {
               <span>⊞</span> Grid View
             </button>
           </div>
+
+          <button
+            onClick={loadSharedDecksHistory}
+            style={{
+              padding: "7px 14px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              background: "#ffffff",
+              color: "#334155",
+              fontWeight: 600,
+              fontSize: "0.78rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              transition: "all 0.15s ease",
+            }}
+            title="View shared presentation links and buyer view activity"
+          >
+            <span>🔗</span>
+            <span>Shared Links Activity</span>
+          </button>
         </div>
       </div>
 
@@ -512,7 +601,7 @@ export default function SourcewizProductsPage() {
           </div>
 
           {/* Right: Actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             <button
               onClick={() => setIsPptModalOpen(true)}
               style={{
@@ -520,7 +609,7 @@ export default function SourcewizProductsPage() {
                 color: "#ffffff",
                 border: "1px solid rgba(255, 255, 255, 0.2)",
                 borderRadius: "6px",
-                padding: "7px 14px",
+                padding: "7px 12px",
                 fontWeight: 600,
                 fontSize: "0.78rem",
                 cursor: "pointer",
@@ -532,6 +621,54 @@ export default function SourcewizProductsPage() {
               🎨 Themes & Preview
             </button>
 
+            {/* Option: Export Excel */}
+            <button
+              onClick={handleExportExcel}
+              style={{
+                background: "rgba(16, 185, 129, 0.2)",
+                color: "#34d399",
+                border: "1px solid rgba(16, 185, 129, 0.35)",
+                borderRadius: "6px",
+                padding: "7px 13px",
+                fontWeight: 600,
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.15s ease",
+              }}
+              title="Export product details and specs to Excel (.xlsx)"
+            >
+              <span>📊</span>
+              <span>Export Excel</span>
+            </button>
+
+            {/* Option: Share Link with Buyer */}
+            <button
+              onClick={handleGenerateShareLink}
+              disabled={isGeneratingLink}
+              style={{
+                background: isGeneratingLink ? "#475569" : "rgba(168, 85, 247, 0.22)",
+                color: "#c084fc",
+                border: "1px solid rgba(168, 85, 247, 0.4)",
+                borderRadius: "6px",
+                padding: "7px 13px",
+                fontWeight: 600,
+                fontSize: "0.78rem",
+                cursor: isGeneratingLink ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.15s ease",
+              }}
+              title="Generate web presentation link with real-time open notifications"
+            >
+              <span>{isGeneratingLink ? "⏳" : "🔗"}</span>
+              <span>{isGeneratingLink ? "Creating Link..." : "Share Link with Buyer"}</span>
+            </button>
+
+            {/* Option: Download PowerPoint */}
             <button
               onClick={() => handleDownloadPptx()}
               disabled={isExportingPpt}
@@ -540,7 +677,7 @@ export default function SourcewizProductsPage() {
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "6px",
-                padding: "7px 18px",
+                padding: "7px 16px",
                 fontWeight: 700,
                 fontSize: "0.80rem",
                 cursor: isExportingPpt ? "wait" : "pointer",
@@ -549,12 +686,13 @@ export default function SourcewizProductsPage() {
                 gap: "6px",
                 boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
               }}
+              title="Download PowerPoint presentation deck (.pptx)"
             >
-              <span>{isExportingPpt ? "⏳" : "📊"}</span>
+              <span>{isExportingPpt ? "⏳" : "📥"}</span>
               <span>
                 {isExportingPpt
                   ? exportProgressMsg || "Generating PPT..."
-                  : `Create PPT (${selectedIds.length})`}
+                  : `Download PPT (${selectedIds.length})`}
               </span>
             </button>
           </div>
@@ -1601,7 +1739,7 @@ export default function SourcewizProductsPage() {
                 Active Theme: <strong>{currentTheme.name}</strong> • Format: 16:9 Widescreen (.pptx)
               </div>
 
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                 <button
                   onClick={() => setIsPptModalOpen(false)}
                   style={{
@@ -1609,7 +1747,7 @@ export default function SourcewizProductsPage() {
                     color: "#334155",
                     border: "1px solid #cbd5e1",
                     borderRadius: "6px",
-                    padding: "7px 16px",
+                    padding: "7px 14px",
                     fontWeight: 600,
                     fontSize: "0.80rem",
                     cursor: "pointer",
@@ -1617,6 +1755,50 @@ export default function SourcewizProductsPage() {
                 >
                   Close
                 </button>
+
+                <button
+                  onClick={handleExportExcel}
+                  style={{
+                    background: "rgba(16, 185, 129, 0.12)",
+                    color: "#059669",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    borderRadius: "6px",
+                    padding: "7px 14px",
+                    fontWeight: 600,
+                    fontSize: "0.80rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                  title="Download complete specs in Excel"
+                >
+                  <span>📊</span>
+                  <span>Export Excel</span>
+                </button>
+
+                <button
+                  onClick={handleGenerateShareLink}
+                  disabled={isGeneratingLink}
+                  style={{
+                    background: isGeneratingLink ? "#f1f5f9" : "rgba(168, 85, 247, 0.12)",
+                    color: "#7e22ce",
+                    border: "1px solid rgba(168, 85, 247, 0.3)",
+                    borderRadius: "6px",
+                    padding: "7px 14px",
+                    fontWeight: 600,
+                    fontSize: "0.80rem",
+                    cursor: isGeneratingLink ? "wait" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                  title="Generate shareable link for buyer"
+                >
+                  <span>{isGeneratingLink ? "⏳" : "🔗"}</span>
+                  <span>{isGeneratingLink ? "Creating Link..." : "Share Link with Buyer"}</span>
+                </button>
+
                 <button
                   onClick={() => handleDownloadPptx()}
                   disabled={isExportingPpt}
@@ -1625,7 +1807,7 @@ export default function SourcewizProductsPage() {
                     color: "#ffffff",
                     border: "none",
                     borderRadius: "6px",
-                    padding: "7px 20px",
+                    padding: "7px 18px",
                     fontWeight: 700,
                     fontSize: "0.80rem",
                     cursor: isExportingPpt ? "wait" : "pointer",
@@ -1643,6 +1825,498 @@ export default function SourcewizProductsPage() {
                   </span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SHARE PRESENTATION LINK MODAL */}
+      {shareModalOpen && generatedDeck && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              width: "100%",
+              maxWidth: "560px",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              overflow: "hidden",
+              border: "1px solid #e2e8f0",
+              animation: "fadeIn 0.2s ease-out",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "18px 24px",
+                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                color: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: "rgba(168, 85, 247, 0.2)",
+                    color: "#c084fc",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "18px",
+                  }}
+                >
+                  🔗
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>
+                    Share Presentation with Buyer
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>
+                    Public presentation link with real-time open alerts
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShareModalOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "20px",
+                  cursor: "pointer",
+                  padding: "4px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: "22px 24px" }}>
+              {/* Real-time Tracking Alert Banner */}
+              <div
+                style={{
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: "10px",
+                  padding: "12px 14px",
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "flex-start",
+                  marginBottom: "18px",
+                }}
+              >
+                <div style={{ fontSize: "20px", lineHeight: 1 }}>🔔</div>
+                <div>
+                  <strong style={{ fontSize: "0.82rem", color: "#166534", display: "block", marginBottom: "2px" }}>
+                    Real-Time Buyer Open Notification Active
+                  </strong>
+                  <p style={{ margin: 0, fontSize: "0.76rem", color: "#15803d", lineHeight: 1.45 }}>
+                    As soon as the buyer opens this presentation link on their phone or browser, you will immediately receive an alert in your top bell icon.
+                  </p>
+                </div>
+              </div>
+
+              {/* Deck Info Box */}
+              <div
+                style={{
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "10px",
+                  padding: "12px 16px",
+                  marginBottom: "18px",
+                }}
+              >
+                <div style={{ fontSize: "0.74rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600, marginBottom: "3px" }}>
+                  Presentation Deck
+                </div>
+                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a", marginBottom: "8px" }}>
+                  {generatedDeck.title}
+                </div>
+                <div style={{ display: "flex", gap: "12px", fontSize: "0.76rem", color: "#475569", flexWrap: "wrap" }}>
+                  <div>
+                    Recipient: <strong style={{ color: "#1e293b" }}>{generatedDeck.customerName || "International Buyer"}</strong>
+                  </div>
+                  <div>•</div>
+                  <div>
+                    Items: <strong style={{ color: "#1e293b" }}>{generatedDeck.products?.length || selectedProducts.length} items</strong>
+                  </div>
+                  <div>•</div>
+                  <div>
+                    Theme: <strong style={{ color: "#1e293b", textTransform: "capitalize" }}>{generatedDeck.themeId}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* URL Display & Copy */}
+              <div style={{ marginBottom: "18px" }}>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
+                  Shareable Presentation URL
+                </label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/view-deck/${generatedDeck.token}`}
+                    style={{
+                      flex: 1,
+                      padding: "9px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      background: "#f8fafc",
+                      fontSize: "0.80rem",
+                      color: "#1e293b",
+                      fontFamily: "monospace",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    style={{
+                      padding: "9px 18px",
+                      background: copySuccess ? "#10b981" : "#2563eb",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontWeight: 600,
+                      fontSize: "0.80rem",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.2s ease",
+                      minWidth: "105px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span>{copySuccess ? "✓" : "📋"}</span>
+                    <span>{copySuccess ? "Copied!" : "Copy Link"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `Hello ${generatedDeck.customerName ? generatedDeck.customerName : "Partner"},\n\nPlease review our curated product presentation deck:\n${window.location.origin}/view-deck/${generatedDeck.token}\n\nLakshya International`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    padding: "9px 14px",
+                    background: "#25d366",
+                    color: "#fff",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    fontSize: "0.80rem",
+                  }}
+                >
+                  <span>💬</span> Share on WhatsApp
+                </a>
+
+                <a
+                  href={`mailto:?subject=${encodeURIComponent(
+                    `Product Presentation: ${generatedDeck.title}`
+                  )}&body=${encodeURIComponent(
+                    `Dear ${generatedDeck.customerName || "Buyer"},\n\nPlease review our curated export presentation deck at the link below:\n\n${window.location.origin}/view-deck/${generatedDeck.token}\n\nKind regards,\nLakshya International`
+                  )}`}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    padding: "9px 14px",
+                    background: "#f1f5f9",
+                    color: "#334155",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    fontSize: "0.80rem",
+                  }}
+                >
+                  <span>✉️</span> Share via Email
+                </a>
+
+                <a
+                  href={`/view-deck/${generatedDeck.token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "5px",
+                    padding: "9px 14px",
+                    background: "#ffffff",
+                    color: "#475569",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    fontSize: "0.80rem",
+                  }}
+                >
+                  <span>↗</span> Buyer Preview
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SHARED DECKS HISTORY MODAL */}
+      {historyModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              width: "100%",
+              maxWidth: "800px",
+              maxHeight: "85vh",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "18px 24px",
+                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                color: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700 }}>
+                  Shared Presentation Links & Buyer Tracking
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.76rem", color: "#94a3b8" }}>
+                  Monitor links shared with buyers and real-time open status
+                </p>
+              </div>
+              <button
+                onClick={() => setHistoryModalOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "20px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Table */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "18px 24px" }}>
+              {loadingHistory ? (
+                <div style={{ textAlign: "center", padding: "40px 0", color: "#64748b" }}>
+                  Loading shared links activity...
+                </div>
+              ) : sharedDecksHistory.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 0", color: "#64748b" }}>
+                  <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔗</div>
+                  <h4 style={{ margin: "0 0 6px 0", color: "#334155" }}>No Shared Links Generated Yet</h4>
+                  <p style={{ margin: 0, fontSize: "0.80rem" }}>
+                    Select products from the table above and click "Share Link with Buyer" to generate your first link.
+                  </p>
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.80rem" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                      <th style={{ padding: "10px 12px", color: "#475569", fontWeight: 700 }}>Title / Buyer</th>
+                      <th style={{ padding: "10px 12px", color: "#475569", fontWeight: 700 }}>Theme</th>
+                      <th style={{ padding: "10px 12px", color: "#475569", fontWeight: 700 }}>Buyer Views</th>
+                      <th style={{ padding: "10px 12px", color: "#475569", fontWeight: 700 }}>Last Viewed</th>
+                      <th style={{ padding: "10px 12px", color: "#475569", fontWeight: 700, textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sharedDecksHistory.map((deck) => (
+                      <tr key={deck.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "12px" }}>
+                          <div style={{ fontWeight: 700, color: "#0f172a" }}>{deck.title}</div>
+                          <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                            For: <strong>{deck.customerName || "International Buyer"}</strong> • Created {new Date(deck.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <span
+                            style={{
+                              background: "#f1f5f9",
+                              color: "#334155",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              fontSize: "0.72rem",
+                              fontWeight: 600,
+                              textTransform: "capitalize",
+                            }}
+                          >
+                            {deck.themeId}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          {deck.viewCount > 0 ? (
+                            <span
+                              style={{
+                                background: "rgba(16, 185, 129, 0.12)",
+                                color: "#059669",
+                                padding: "3px 10px",
+                                borderRadius: "12px",
+                                fontSize: "0.74rem",
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              <span>👀</span>
+                              <span>{deck.viewCount} view{deck.viewCount > 1 ? "s" : ""}</span>
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                background: "#f1f5f9",
+                                color: "#64748b",
+                                padding: "3px 10px",
+                                borderRadius: "12px",
+                                fontSize: "0.74rem",
+                                fontWeight: 600,
+                              }}
+                            >
+                              Not opened yet
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: "12px", color: "#64748b", fontSize: "0.74rem" }}>
+                          {deck.lastViewedAt
+                            ? new Date(deck.lastViewedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })
+                            : "—"}
+                        </td>
+                        <td style={{ padding: "12px", textAlign: "right" }}>
+                          <div style={{ display: "inline-flex", gap: "6px" }}>
+                            <button
+                              onClick={() => {
+                                const url = `${window.location.origin}/view-deck/${deck.token}`;
+                                navigator.clipboard.writeText(url);
+                                alert("Link copied to clipboard:\n" + url);
+                              }}
+                              style={{
+                                padding: "5px 10px",
+                                background: "#f8fafc",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "6px",
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                color: "#334155",
+                                cursor: "pointer",
+                              }}
+                              title="Copy presentation link"
+                            >
+                              📋 Copy
+                            </button>
+                            <a
+                              href={`/view-deck/${deck.token}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                padding: "5px 10px",
+                                background: "#2563eb",
+                                color: "#fff",
+                                borderRadius: "6px",
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                textDecoration: "none",
+                              }}
+                            >
+                              Open ↗
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: "14px 24px",
+                borderTop: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={() => setHistoryModalOpen(false)}
+                style={{
+                  padding: "7px 18px",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "6px",
+                  fontSize: "0.80rem",
+                  fontWeight: 600,
+                  color: "#334155",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
