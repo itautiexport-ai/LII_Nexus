@@ -20,7 +20,308 @@ export interface CatalogProductItem {
   stockStatus: string;
 }
 
+export type ThemeId = "obsidian" | "studio" | "earth" | "teal" | "navy";
+
+export interface DeckTheme {
+  id: ThemeId;
+  name: string;
+  tagline: string;
+  badge: string;
+  swatch: {
+    primary: string;
+    accent: string;
+    card: string;
+    isDark: boolean;
+  };
+  cover: {
+    bg: string;
+    titleColor: string;
+    subtitleColor: string;
+    accentColor: string;
+    badgeBg: string;
+    badgeText: string;
+    cardBg: string;
+    cardBorder: string;
+    cardText: string;
+    footerText: string;
+  };
+  product: {
+    bg: string;
+    titleColor: string;
+    categoryColor: string;
+    skuColor: string;
+    priceColor: string;
+    priceCardBg: string;
+    priceCardBorder: string;
+    tableBg: string;
+    tableBorder: string;
+    tableLabelColor: string;
+    tableValColor: string;
+    tableHighlightColor: string;
+    imgBorderColor: string;
+    footerLineColor: string;
+    footerTextColor: string;
+  };
+  closing: {
+    bg: string;
+    titleColor: string;
+    subtitleColor: string;
+    cardBg: string;
+    cardBorder: string;
+    cardText: string;
+  };
+}
+
+export const DECK_THEMES: Record<ThemeId, DeckTheme> = {
+  obsidian: {
+    id: "obsidian",
+    name: "Executive Obsidian",
+    tagline: "Luxury Midnight Slate & Amber Gold",
+    badge: "LUXURY EXPORT",
+    swatch: {
+      primary: "#0f172a",
+      accent: "#f59e0b",
+      card: "#1e293b",
+      isDark: true,
+    },
+    cover: {
+      bg: "0F172A",
+      titleColor: "FFFFFF",
+      subtitleColor: "CBD5E1",
+      accentColor: "F59E0B",
+      badgeBg: "D97706",
+      badgeText: "FFFFFF",
+      cardBg: "1E293B",
+      cardBorder: "334155",
+      cardText: "94A3B8",
+      footerText: "64748B",
+    },
+    product: {
+      bg: "0F172A",
+      titleColor: "FFFFFF",
+      categoryColor: "F59E0B",
+      skuColor: "94A3B8",
+      priceColor: "F59E0B",
+      priceCardBg: "1E293B",
+      priceCardBorder: "334155",
+      tableBg: "1E293B",
+      tableBorder: "334155",
+      tableLabelColor: "94A3B8",
+      tableValColor: "F1F5F9",
+      tableHighlightColor: "F59E0B",
+      imgBorderColor: "334155",
+      footerLineColor: "334155",
+      footerTextColor: "64748B",
+    },
+    closing: {
+      bg: "0F172A",
+      titleColor: "FFFFFF",
+      subtitleColor: "CBD5E1",
+      cardBg: "1E293B",
+      cardBorder: "334155",
+      cardText: "E2E8F0",
+    },
+  },
+  studio: {
+    id: "studio",
+    name: "Studio Minimalist",
+    tagline: "Clean Editorial White & Charcoal",
+    badge: "NORDIC CLEAN",
+    swatch: {
+      primary: "#ffffff",
+      accent: "#18181b",
+      card: "#f4f4f5",
+      isDark: false,
+    },
+    cover: {
+      bg: "FFFFFF",
+      titleColor: "09090B",
+      subtitleColor: "52525B",
+      accentColor: "18181B",
+      badgeBg: "18181B",
+      badgeText: "FFFFFF",
+      cardBg: "F4F4F5",
+      cardBorder: "E4E4E7",
+      cardText: "52525B",
+      footerText: "71717A",
+    },
+    product: {
+      bg: "FFFFFF",
+      titleColor: "09090B",
+      categoryColor: "18181B",
+      skuColor: "71717A",
+      priceColor: "09090B",
+      priceCardBg: "F4F4F5",
+      priceCardBorder: "E4E4E7",
+      tableBg: "FAFAFA",
+      tableBorder: "E4E4E7",
+      tableLabelColor: "52525B",
+      tableValColor: "09090B",
+      tableHighlightColor: "18181B",
+      imgBorderColor: "E4E4E7",
+      footerLineColor: "E4E4E7",
+      footerTextColor: "71717A",
+    },
+    closing: {
+      bg: "FFFFFF",
+      titleColor: "09090B",
+      subtitleColor: "52525B",
+      cardBg: "F4F4F5",
+      cardBorder: "E4E4E7",
+      cardText: "27272A",
+    },
+  },
+  earth: {
+    id: "earth",
+    name: "Heritage Teak",
+    tagline: "Warm Artisan Wood, Taupe & Espresso",
+    badge: "HANDCRAFTED",
+    swatch: {
+      primary: "#291811",
+      accent: "#b45309",
+      card: "#fbf7f0",
+      isDark: false,
+    },
+    cover: {
+      bg: "1C120C",
+      titleColor: "FFFBEB",
+      subtitleColor: "D6C7B2",
+      accentColor: "D97706",
+      badgeBg: "B45309",
+      badgeText: "FFFFFF",
+      cardBg: "2E1D14",
+      cardBorder: "452B1E",
+      cardText: "D6C7B2",
+      footerText: "8C7262",
+    },
+    product: {
+      bg: "FFFDF9",
+      titleColor: "291811",
+      categoryColor: "B45309",
+      skuColor: "785A48",
+      priceColor: "B45309",
+      priceCardBg: "FBF7F0",
+      priceCardBorder: "EADBC8",
+      tableBg: "FBF7F0",
+      tableBorder: "EADBC8",
+      tableLabelColor: "785A48",
+      tableValColor: "291811",
+      tableHighlightColor: "B45309",
+      imgBorderColor: "EADBC8",
+      footerLineColor: "EADBC8",
+      footerTextColor: "8C7262",
+    },
+    closing: {
+      bg: "1C120C",
+      titleColor: "FFFBEB",
+      subtitleColor: "D6C7B2",
+      cardBg: "2E1D14",
+      cardBorder: "452B1E",
+      cardText: "FFFBEB",
+    },
+  },
+  teal: {
+    id: "teal",
+    name: "Architectural Teal",
+    tagline: "Modern Industrial Slate & Vibrant Teal",
+    badge: "FACTORY SPEC",
+    swatch: {
+      primary: "#0f172a",
+      accent: "#0d9488",
+      card: "#f0fdfa",
+      isDark: false,
+    },
+    cover: {
+      bg: "0F172A",
+      titleColor: "FFFFFF",
+      subtitleColor: "CBD5E1",
+      accentColor: "0D9488",
+      badgeBg: "0D9488",
+      badgeText: "FFFFFF",
+      cardBg: "132338",
+      cardBorder: "1E3A5F",
+      cardText: "94A3B8",
+      footerText: "64748B",
+    },
+    product: {
+      bg: "FFFFFF",
+      titleColor: "0F172A",
+      categoryColor: "0D9488",
+      skuColor: "64748B",
+      priceColor: "0D9488",
+      priceCardBg: "F0FDFA",
+      priceCardBorder: "CCFBF1",
+      tableBg: "F8FAFC",
+      tableBorder: "E2E8F0",
+      tableLabelColor: "475569",
+      tableValColor: "0F172A",
+      tableHighlightColor: "0D9488",
+      imgBorderColor: "E2E8F0",
+      footerLineColor: "E2E8F0",
+      footerTextColor: "94A3B8",
+    },
+    closing: {
+      bg: "0F172A",
+      titleColor: "FFFFFF",
+      subtitleColor: "CBD5E1",
+      cardBg: "132338",
+      cardBorder: "1E3A5F",
+      cardText: "E2E8F0",
+    },
+  },
+  navy: {
+    id: "navy",
+    name: "Corporate Royal",
+    tagline: "Classic Navy & Sapphire Global Procurement",
+    badge: "GLOBAL PROCUREMENT",
+    swatch: {
+      primary: "#0a192f",
+      accent: "#1d4ed8",
+      card: "#eff6ff",
+      isDark: false,
+    },
+    cover: {
+      bg: "0A192F",
+      titleColor: "FFFFFF",
+      subtitleColor: "94A3B8",
+      accentColor: "38BDF8",
+      badgeBg: "2563EB",
+      badgeText: "FFFFFF",
+      cardBg: "112240",
+      cardBorder: "233554",
+      cardText: "94A3B8",
+      footerText: "64748B",
+    },
+    product: {
+      bg: "FFFFFF",
+      titleColor: "0A192F",
+      categoryColor: "1D4ED8",
+      skuColor: "475569",
+      priceColor: "1D4ED8",
+      priceCardBg: "EFF6FF",
+      priceCardBorder: "DBEAFE",
+      tableBg: "F8FAFC",
+      tableBorder: "E2E8F0",
+      tableLabelColor: "475569",
+      tableValColor: "0A192F",
+      tableHighlightColor: "1D4ED8",
+      imgBorderColor: "E2E8F0",
+      footerLineColor: "E2E8F0",
+      footerTextColor: "94A3B8",
+    },
+    closing: {
+      bg: "0A192F",
+      titleColor: "FFFFFF",
+      subtitleColor: "94A3B8",
+      cardBg: "112240",
+      cardBorder: "233554",
+      cardText: "E2E8F0",
+    },
+  },
+};
+
 export interface PptExportOptions {
+  themeId?: ThemeId;
   customerName?: string;
   deckTitle?: string;
   includePricing?: boolean;
@@ -84,30 +385,34 @@ async function toBase64DataUrl(url: string): Promise<string | null> {
 
 /**
  * Generates and downloads a presentation-ready 16:9 B2B PowerPoint (.pptx) deck
+ * with dynamic executive theme customization.
  */
 export async function generateProductPptx(
   products: CatalogProductItem[],
   options: PptExportOptions = {}
 ): Promise<void> {
   const {
-    customerName = "Valued Global Sourcing Partner",
+    themeId = "obsidian",
+    customerName = "Global Sourcing Partner",
     deckTitle = "Curated Product Presentation Deck",
     includePricing = true,
     onProgress,
   } = options;
 
+  const theme = DECK_THEMES[themeId] || DECK_THEMES.obsidian;
+
   if (!products || products.length === 0) {
     throw new Error("No products selected to generate PowerPoint presentation.");
   }
 
-  onProgress?.(0, products.length + 2, "Initializing PowerPoint deck engine...");
+  onProgress?.(0, products.length + 2, `Initializing ${theme.name} theme...`);
 
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_16x9";
   pptx.author = "LII Performance Nexus";
   pptx.company = "LII Exports";
   pptx.title = `LII Exports - ${deckTitle}`;
-  pptx.subject = "Curated B2B Product Catalogue Presentation Deck";
+  pptx.subject = `B2B Product Catalogue Deck (${theme.name})`;
 
   const totalCbm = products.reduce((acc, p) => acc + (Number(p.cbm) || 0), 0);
 
@@ -116,7 +421,7 @@ export async function generateProductPptx(
   // -------------------------------------------------------------
   onProgress?.(1, products.length + 2, "Creating Cover Slide...");
   const coverSlide = pptx.addSlide();
-  coverSlide.background = { color: "0F172A" }; // Deep slate dark
+  coverSlide.background = { color: theme.cover.bg };
 
   // Header Subtitle & Badge
   coverSlide.addText("LII EXPORTS • B2B EXPORT CATALOGUE", {
@@ -126,19 +431,19 @@ export async function generateProductPptx(
     h: 0.4,
     fontSize: 11,
     bold: true,
-    color: "818CF8",
+    color: theme.cover.accentColor,
   });
 
-  coverSlide.addText("2026 OFFICIAL COLLECTION", {
+  coverSlide.addText(theme.badge, {
     x: 7.2,
     y: 0.75,
     w: 2.2,
     h: 0.35,
     fontSize: 9,
     bold: true,
-    color: "FFFFFF",
+    color: theme.cover.badgeText,
     align: "center",
-    fill: { color: "0D9488" },
+    fill: { color: theme.cover.badgeBg },
     shape: pptx.ShapeType.roundRect,
   });
 
@@ -150,7 +455,7 @@ export async function generateProductPptx(
     h: 1.1,
     fontSize: 32,
     bold: true,
-    color: "FFFFFF",
+    color: theme.cover.titleColor,
     lineSpacing: 38,
   });
 
@@ -161,7 +466,7 @@ export async function generateProductPptx(
     w: 8.6,
     h: 0.45,
     fontSize: 13,
-    color: "C7D2FE",
+    color: theme.cover.subtitleColor,
   });
 
   // Summary Metrics Card
@@ -170,8 +475,8 @@ export async function generateProductPptx(
     y: 3.3,
     w: 8.4,
     h: 1.1,
-    fill: { color: "1E293B" },
-    line: { color: "334155", width: 1 },
+    fill: { color: theme.cover.cardBg },
+    line: { color: theme.cover.cardBorder, width: 1 },
   });
 
   const pricingNote = includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions (Pricing Confidential)";
@@ -184,7 +489,7 @@ export async function generateProductPptx(
       w: 8.0,
       h: 0.8,
       fontSize: 11,
-      color: "94A3B8",
+      color: theme.cover.cardText,
       align: "center",
       valign: "middle",
     }
@@ -197,7 +502,7 @@ export async function generateProductPptx(
     w: 8.4,
     h: 0.3,
     fontSize: 9,
-    color: "64748B",
+    color: theme.cover.footerText,
   });
 
   // -------------------------------------------------------------
@@ -208,7 +513,7 @@ export async function generateProductPptx(
     onProgress?.(idx + 2, products.length + 2, `Building Slide ${idx + 2} (${p.sku})...`);
 
     const pSlide = pptx.addSlide();
-    pSlide.background = { color: "FFFFFF" };
+    pSlide.background = { color: theme.product.bg };
 
     // 1. Category / Subcategory Tag
     pSlide.addText(`${(p.category || "FURNITURE").toUpperCase()} • ${(p.subCategory || "GENERAL").toUpperCase()}`, {
@@ -218,7 +523,7 @@ export async function generateProductPptx(
       h: 0.25,
       fontSize: 10,
       bold: true,
-      color: "0D9488",
+      color: theme.product.categoryColor,
     });
 
     // 2. Product Name
@@ -229,7 +534,7 @@ export async function generateProductPptx(
       h: 0.65,
       fontSize: 17,
       bold: true,
-      color: "0F172A",
+      color: theme.product.titleColor,
       valign: "top",
     });
 
@@ -239,8 +544,8 @@ export async function generateProductPptx(
       y: 1.35,
       w: 4.2,
       h: 0.65,
-      fill: { color: "F8FAFC" },
-      line: { color: "E2E8F0", width: 1 },
+      fill: { color: theme.product.priceCardBg },
+      line: { color: theme.product.priceCardBorder, width: 1 },
     });
 
     if (includePricing) {
@@ -251,7 +556,7 @@ export async function generateProductPptx(
         h: 0.35,
         fontSize: 14,
         bold: true,
-        color: "0D9488",
+        color: theme.product.priceColor,
       });
       pSlide.addText(`MOQ: ${p.moq || 10} Pcs`, {
         x: 5.45,
@@ -259,7 +564,7 @@ export async function generateProductPptx(
         w: 2.2,
         h: 0.22,
         fontSize: 8.5,
-        color: "64748B",
+        color: theme.product.skuColor,
       });
     } else {
       pSlide.addText("Wholesale Export Specification", {
@@ -269,7 +574,7 @@ export async function generateProductPptx(
         h: 0.45,
         fontSize: 11,
         bold: true,
-        color: "0D9488",
+        color: theme.product.priceColor,
       });
     }
 
@@ -280,43 +585,43 @@ export async function generateProductPptx(
       h: 0.55,
       fontSize: 9,
       bold: true,
-      color: "475569",
+      color: theme.product.skuColor,
       align: "right",
     });
 
     // 4. Specifications Table
     const tableRows = [
       [
-        { text: "Collection", options: { bold: true, color: "475569" } },
-        { text: p.collectionName || "Factory Collection", options: { color: "1E293B", bold: true } },
+        { text: "Collection", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: p.collectionName || "Factory Collection", options: { color: theme.product.tableValColor, bold: true } },
       ],
       [
-        { text: "Material", options: { bold: true, color: "475569" } },
-        { text: p.material || "Wood / Metal", options: { color: "1E293B" } },
+        { text: "Material", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: p.material || "Wood / Metal", options: { color: theme.product.tableValColor } },
       ],
       [
-        { text: "Wood Finish", options: { bold: true, color: "475569" } },
-        { text: p.woodFinish || "Natural", options: { color: "1E293B" } },
+        { text: "Wood Finish", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: p.woodFinish || "Natural", options: { color: theme.product.tableValColor } },
       ],
       [
-        { text: "Metal Finish", options: { bold: true, color: "475569" } },
-        { text: p.metalFinish || "N/A", options: { color: "1E293B" } },
+        { text: "Metal Finish", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: p.metalFinish || "N/A", options: { color: theme.product.tableValColor } },
       ],
       [
-        { text: "Dimensions (CM)", options: { bold: true, color: "475569" } },
-        { text: `${p.sizeCm || "N/A"} CM`, options: { color: "1E293B" } },
+        { text: "Dimensions (CM)", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: `${p.sizeCm || "N/A"} CM`, options: { color: theme.product.tableValColor } },
       ],
       [
-        { text: "Assembly", options: { bold: true, color: "475569" } },
-        { text: p.assembledKd || "KD", options: { color: "1E293B" } },
+        { text: "Assembly", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: p.assembledKd || "KD", options: { color: theme.product.tableValColor } },
       ],
       [
-        { text: "Unit CBM", options: { bold: true, color: "475569" } },
-        { text: `${Number(p.cbm || 0).toFixed(3)} m³`, options: { color: "0D9488", bold: true } },
+        { text: "Unit CBM", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: `${Number(p.cbm || 0).toFixed(3)} m³`, options: { color: theme.product.tableHighlightColor, bold: true } },
       ],
       [
-        { text: "40ft GP Qty", options: { bold: true, color: "475569" } },
-        { text: `${p.gp40ft || 0} Pcs`, options: { color: "0D9488", bold: true } },
+        { text: "40ft GP Qty", options: { bold: true, color: theme.product.tableLabelColor } },
+        { text: `${p.gp40ft || 0} Pcs`, options: { color: theme.product.tableHighlightColor, bold: true } },
       ],
     ];
 
@@ -326,8 +631,8 @@ export async function generateProductPptx(
       w: 4.2,
       h: 2.6,
       fontSize: 9,
-      fill: { color: "F8FAFC" },
-      border: { type: "solid", pt: 1, color: "E2E8F0" },
+      fill: { color: theme.product.tableBg },
+      border: { type: "solid", pt: 1, color: theme.product.tableBorder },
       margin: [3, 5, 3, 5],
       colW: [1.4, 2.8],
     });
@@ -346,14 +651,13 @@ export async function generateProductPptx(
         });
       } catch (err) {
         console.warn(`Could not add image for ${p.sku}, using fallback box:`, err);
-        // Fallback placeholder box
         pSlide.addShape(pptx.ShapeType.roundRect, {
           x: 0.6,
           y: 0.5,
           w: 4.4,
           h: 4.3,
-          fill: { color: "F1F5F9" },
-          line: { color: "CBD5E1", width: 1 },
+          fill: { color: theme.product.tableBg },
+          line: { color: theme.product.imgBorderColor, width: 1 },
         });
         pSlide.addText(`📸 ${p.name}\n[${p.sku}]`, {
           x: 0.8,
@@ -362,19 +666,18 @@ export async function generateProductPptx(
           h: 1.0,
           fontSize: 12,
           bold: true,
-          color: "64748B",
+          color: theme.product.skuColor,
           align: "center",
         });
       }
     } else {
-      // Placeholder box
       pSlide.addShape(pptx.ShapeType.roundRect, {
         x: 0.6,
         y: 0.5,
         w: 4.4,
         h: 4.3,
-        fill: { color: "F1F5F9" },
-        line: { color: "CBD5E1", width: 1 },
+        fill: { color: theme.product.tableBg },
+        line: { color: theme.product.imgBorderColor, width: 1 },
       });
       pSlide.addText(`📸 ${p.name}\n[${p.sku}]`, {
         x: 0.8,
@@ -383,7 +686,7 @@ export async function generateProductPptx(
         h: 1.0,
         fontSize: 12,
         bold: true,
-        color: "64748B",
+        color: theme.product.skuColor,
         align: "center",
       });
     }
@@ -394,7 +697,7 @@ export async function generateProductPptx(
       y: 4.95,
       w: 8.8,
       h: 0,
-      line: { color: "E2E8F0", width: 1 },
+      line: { color: theme.product.footerLineColor, width: 1 },
     });
 
     pSlide.addText("LII Exports • B2B Product Catalogue Presentation Deck", {
@@ -403,7 +706,7 @@ export async function generateProductPptx(
       w: 5.0,
       h: 0.3,
       fontSize: 8,
-      color: "94A3B8",
+      color: theme.product.footerTextColor,
     });
 
     pSlide.addText(`Slide ${idx + 2} of ${products.length + 2}`, {
@@ -412,7 +715,7 @@ export async function generateProductPptx(
       w: 2.0,
       h: 0.3,
       fontSize: 8,
-      color: "94A3B8",
+      color: theme.product.footerTextColor,
       align: "right",
     });
   }
@@ -422,7 +725,7 @@ export async function generateProductPptx(
   // -------------------------------------------------------------
   onProgress?.(products.length + 2, products.length + 2, "Adding Closing Slide...");
   const closingSlide = pptx.addSlide();
-  closingSlide.background = { color: "0F172A" };
+  closingSlide.background = { color: theme.closing.bg };
 
   closingSlide.addText("Thank You for Exploring LII Exports", {
     x: 0.8,
@@ -431,7 +734,7 @@ export async function generateProductPptx(
     h: 0.8,
     fontSize: 28,
     bold: true,
-    color: "FFFFFF",
+    color: theme.closing.titleColor,
     align: "center",
   });
 
@@ -443,7 +746,7 @@ export async function generateProductPptx(
       w: 8.4,
       h: 0.4,
       fontSize: 13,
-      color: "C7D2FE",
+      color: theme.closing.subtitleColor,
       align: "center",
     }
   );
@@ -453,8 +756,8 @@ export async function generateProductPptx(
     y: 3.0,
     w: 7.0,
     h: 1.5,
-    fill: { color: "1E293B" },
-    line: { color: "334155", width: 1 },
+    fill: { color: theme.closing.cardBg },
+    line: { color: theme.closing.cardBorder, width: 1 },
   });
 
   closingSlide.addText(
@@ -465,7 +768,7 @@ export async function generateProductPptx(
       w: 6.6,
       h: 1.2,
       fontSize: 11,
-      color: "E2E8F0",
+      color: theme.closing.cardText,
       align: "center",
       lineSpacing: 20,
     }
@@ -473,6 +776,6 @@ export async function generateProductPptx(
 
   onProgress?.(products.length + 2, products.length + 2, "Downloading PowerPoint presentation (.pptx)...");
 
-  const sanitizedFileName = `LII_Product_Catalogue_Deck_${new Date().toISOString().slice(0, 10)}.pptx`;
+  const sanitizedFileName = `LII_${theme.name.replace(/\s+/g, "_")}_Catalogue_Deck_${new Date().toISOString().slice(0, 10)}.pptx`;
   await pptx.writeFile({ fileName: sanitizedFileName });
 }
