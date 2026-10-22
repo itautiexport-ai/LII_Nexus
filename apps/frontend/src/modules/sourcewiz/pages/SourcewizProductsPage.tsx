@@ -93,6 +93,147 @@ const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
   },
 ];
 
+/* ==========================================================================
+   Executive SVG Icons (Lucide-grade vector icons)
+   ========================================================================== */
+function IconSearch({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+function IconSliders({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="21" x2="4" y2="14" />
+      <line x1="4" y1="10" x2="4" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12" y2="3" />
+      <line x1="20" y1="21" x2="20" y2="16" />
+      <line x1="20" y1="12" x2="20" y2="3" />
+      <line x1="1" y1="14" x2="7" y2="14" />
+      <line x1="9" y1="8" x2="15" y2="8" />
+      <line x1="17" y1="16" x2="23" y2="16" />
+    </svg>
+  );
+}
+
+function IconPalette({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="13.5" cy="6.5" r=".5" fill={color} />
+      <circle cx="17.5" cy="10.5" r=".5" fill={color} />
+      <circle cx="8.5" cy="7.5" r=".5" fill={color} />
+      <circle cx="6.5" cy="12.5" r=".5" fill={color} />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.4-4.5-8-10-8z" />
+    </svg>
+  );
+}
+
+function IconFileSpreadsheet({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <path d="M8 13h2" />
+      <path d="M14 13h2" />
+      <path d="M8 17h2" />
+      <path d="M14 17h2" />
+    </svg>
+  );
+}
+
+function IconShare({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  );
+}
+
+function IconDownload({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function IconTable({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M3 9h18" />
+      <path d="M3 15h18" />
+      <path d="M9 3v18" />
+    </svg>
+  );
+}
+
+function IconGrid({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="7" height="7" x="3" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="14" rx="1" />
+      <rect width="7" height="7" x="3" y="14" rx="1" />
+    </svg>
+  );
+}
+
+function IconLinkActivity({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function IconClose({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function IconEye({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function IconSquare({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+    </svg>
+  );
+}
+
+function IconCheckSquare({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
 export default function SourcewizProductsPage() {
   const [products, setProducts] = useState<CatalogProductItem[]>(INITIAL_MOCK_PRODUCTS);
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -112,6 +253,19 @@ export default function SourcewizProductsPage() {
   const [customerName, setCustomerName] = useState("West Elm Global Sourcing");
   const [deckTitle, setDeckTitle] = useState("Curated Product Presentation Deck");
   const [fieldsConfig, setFieldsConfig] = useState<PresentationFieldsConfig>(DEFAULT_PRESENTATION_FIELDS);
+
+  // Sorting State
+  const [sortField, setSortField] = useState<"name" | "sku" | "fobPriceUsd" | "cbm" | "stockStatus" | null>(null);
+  const [sortAsc, setSortAsc] = useState<boolean>(true);
+
+  const handleSort = (field: "name" | "sku" | "fobPriceUsd" | "cbm" | "stockStatus") => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  };
 
   // Field customization toggles & presets
   const toggleField = (key: keyof PresentationFieldsConfig) => {
@@ -220,6 +374,18 @@ export default function SourcewizProductsPage() {
     return matchesCat && matchesSearch;
   });
 
+  const displayedProducts = React.useMemo(() => {
+    if (!sortField) return filteredProducts;
+    return [...filteredProducts].sort((a, b) => {
+      const aVal: any = a[sortField];
+      const bVal: any = b[sortField];
+      if (typeof aVal === "string") {
+        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortAsc ? (Number(aVal) || 0) - (Number(bVal) || 0) : (Number(bVal) || 0) - (Number(aVal) || 0);
+    });
+  }, [filteredProducts, sortField, sortAsc]);
+
   const selectedProducts = products.filter((p) => selectedIds.includes(p.id));
 
   const handleSelectProduct = (id: string) => {
@@ -229,10 +395,10 @@ export default function SourcewizProductsPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === filteredProducts.length && filteredProducts.length > 0) {
+    if (selectedIds.length === displayedProducts.length && displayedProducts.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredProducts.map((p) => p.id));
+      setSelectedIds(displayedProducts.map((p) => p.id));
     }
   };
 
@@ -319,207 +485,91 @@ export default function SourcewizProductsPage() {
   const currentTheme: DeckTheme = DECK_THEMES[selectedThemeId] || DECK_THEMES.obsidian;
 
   return (
-    <div
-      className="sw-container"
-      style={{
-        paddingBottom: "40px",
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Inter, Arial, sans-serif',
-      }}
-    >
-      {/* ENTERPRISE HEADER */}
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: "12px",
-          border: "1px solid #e2e8f0",
-          padding: "18px 24px",
-          marginBottom: "18px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "12px",
-          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
-        }}
-      >
+    <div className="sw-container">
+      {/* EXECUTIVE ENTERPRISE HEADER */}
+      <div className="sw-page-header">
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "1.45rem",
-                fontWeight: 700,
-                color: "#0f172a",
-                letterSpacing: "-0.02em",
-              }}
-            >
+          <div className="sw-header-title-group">
+            <h1 className="sw-page-title">
               Product Catalogue
             </h1>
-            <span
-              style={{
-                background: "#f1f5f9",
-                color: "#475569",
-                fontSize: "0.74rem",
-                fontWeight: 700,
-                padding: "2px 10px",
-                borderRadius: "16px",
-                border: "1px solid #e2e8f0",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {products.length} Items Recorded
+            <span className="sw-count-badge">
+              {products.length} Products Recorded
             </span>
           </div>
-          <p style={{ margin: 0, fontSize: "0.82rem", color: "#64748b" }}>
-            Select items from the product master table to generate high-resolution, export-grade PowerPoint (.pptx) presentations for international buyer inquiries.
+          <p className="sw-page-subtitle">
+            Curate export-grade product selections to generate high-resolution PowerPoint (.pptx) presentations, structured Excel spec sheets, and trackable interactive buyer decks.
           </p>
         </div>
 
-        {/* View Switcher: Table vs Grid */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <div
-            style={{
-              background: "#f1f5f9",
-              borderRadius: "8px",
-              padding: "3px",
-              display: "flex",
-              border: "1px solid #e2e8f0",
-            }}
-          >
+        {/* Header Actions: View Switcher & Shared Links */}
+        <div className="sw-header-actions">
+          <div className="sw-view-switcher">
             <button
+              type="button"
               onClick={() => setViewMode("table")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                border: "none",
-                background: viewMode === "table" ? "#ffffff" : "transparent",
-                color: viewMode === "table" ? "#0f172a" : "#64748b",
-                fontWeight: viewMode === "table" ? 700 : 500,
-                fontSize: "0.78rem",
-                cursor: "pointer",
-                boxShadow: viewMode === "table" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-                transition: "all 0.15s ease",
-              }}
+              className={`sw-view-btn ${viewMode === "table" ? "active" : ""}`}
             >
-              <span>☰</span> Table View
+              <IconTable size={14} />
+              <span>Table View</span>
             </button>
             <button
+              type="button"
               onClick={() => setViewMode("grid")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                border: "none",
-                background: viewMode === "grid" ? "#ffffff" : "transparent",
-                color: viewMode === "grid" ? "#0f172a" : "#64748b",
-                fontWeight: viewMode === "grid" ? 700 : 500,
-                fontSize: "0.78rem",
-                cursor: "pointer",
-                boxShadow: viewMode === "grid" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-                transition: "all 0.15s ease",
-              }}
+              className={`sw-view-btn ${viewMode === "grid" ? "active" : ""}`}
             >
-              <span>⊞</span> Grid View
+              <IconGrid size={14} />
+              <span>Grid View</span>
             </button>
           </div>
 
           <button
+            type="button"
             onClick={loadSharedDecksHistory}
-            style={{
-              padding: "7px 14px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              background: "#ffffff",
-              color: "#334155",
-              fontWeight: 600,
-              fontSize: "0.78rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-              transition: "all 0.15s ease",
-            }}
+            className="sw-btn-link-activity"
             title="View shared presentation links and buyer view activity"
           >
-            <span>🔗</span>
+            <IconLinkActivity size={14} color="#475569" />
             <span>Shared Links Activity</span>
           </button>
         </div>
       </div>
 
-      {/* FILTER & SEARCH TOOLBAR */}
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: "12px",
-          border: "1px solid #e2e8f0",
-          padding: "12px 18px",
-          marginBottom: "16px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "12px",
-          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
-        }}
-      >
-        {/* Category Filter Pills & Select All */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+      {/* UNIFIED FILTER & SEARCH TOOLBAR */}
+      <div className="sw-toolbar">
+        {/* Left: Select All & Category Pills */}
+        <div className="sw-toolbar-left">
           <button
+            type="button"
             onClick={handleSelectAll}
-            style={{
-              padding: "6px 12px",
-              borderRadius: "6px",
-              border: "1px solid #cbd5e1",
-              background:
-                selectedIds.length === filteredProducts.length && filteredProducts.length > 0
-                  ? "#f1f5f9"
-                  : "#ffffff",
-              color: "#334155",
-              fontWeight: 600,
-              fontSize: "0.78rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
+            className={`sw-select-all-btn ${
+              selectedIds.length === displayedProducts.length && displayedProducts.length > 0 ? "active" : ""
+            }`}
           >
+            {selectedIds.length === displayedProducts.length && displayedProducts.length > 0 ? (
+              <IconCheckSquare size={15} color="#2563eb" />
+            ) : (
+              <IconSquare size={15} color="#64748b" />
+            )}
             <span>
-              {selectedIds.length === filteredProducts.length && filteredProducts.length > 0 ? "✓" : "☐"}
+              {selectedIds.length === displayedProducts.length && displayedProducts.length > 0
+                ? "Deselect All"
+                : "Select All"}
             </span>
-            {selectedIds.length === filteredProducts.length && filteredProducts.length > 0
-              ? "Deselect All"
-              : "Select All"}
           </button>
 
-          <div style={{ width: "1px", height: "20px", background: "#e2e8f0", margin: "0 4px" }} />
+          <div className="sw-toolbar-divider" />
 
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          <div className="sw-category-pills">
             {categories.map((cat) => {
               const count = cat === "All" ? products.length : products.filter((p) => p.category === cat).length;
               const isActive = categoryFilter === cat;
               return (
                 <button
                   key={cat}
+                  type="button"
                   onClick={() => setCategoryFilter(cat)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "6px",
-                    border: isActive ? "1px solid #0f172a" : "1px solid #e2e8f0",
-                    background: isActive ? "#0f172a" : "#f8fafc",
-                    color: isActive ? "#ffffff" : "#475569",
-                    fontWeight: 600,
-                    fontSize: "0.78rem",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
+                  className={`sw-category-pill ${isActive ? "active" : ""}`}
                 >
                   {cat} ({count})
                 </button>
@@ -528,134 +578,63 @@ export default function SourcewizProductsPage() {
           </div>
         </div>
 
-        {/* Search Input */}
-        <div style={{ position: "relative", minWidth: "260px" }}>
+        {/* Right: Unified Search Input */}
+        <div className="sw-search-wrapper">
+          <span className="sw-search-icon">
+            <IconSearch size={15} />
+          </span>
           <input
             type="text"
-            placeholder="Search SKU, name, material..."
+            placeholder="Search SKU, product name, material..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "7px 12px 7px 32px",
-              borderRadius: "6px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.82rem",
-              outline: "none",
-              color: "#1e293b",
-              background: "#ffffff",
-            }}
+            className="sw-search-input"
           />
-          <span
-            style={{
-              position: "absolute",
-              left: "10px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#94a3b8",
-              fontSize: "0.80rem",
-            }}
-          >
-            🔍
-          </span>
           {searchQuery && (
             <button
+              type="button"
               onClick={() => setSearchQuery("")}
-              style={{
-                position: "absolute",
-                right: "8px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                color: "#94a3b8",
-                cursor: "pointer",
-                fontSize: "0.75rem",
-              }}
+              className="sw-search-clear"
+              title="Clear search"
             >
-              ✕
+              <IconClose size={14} />
             </button>
           )}
         </div>
       </div>
 
-      {/* INLINE THEME & PPT PRESENTATION DOCK */}
+      {/* EXECUTIVE OBSIDIAN FLOATING ACTION DOCK ("X Items Selected") */}
       {selectedIds.length > 0 && (
-        <div
-          style={{
-            background: "#0f172a",
-            color: "#ffffff",
-            padding: "12px 18px",
-            borderRadius: "10px",
-            marginBottom: "16px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            boxShadow: "0 4px 14px rgba(15, 23, 42, 0.15)",
-            flexWrap: "wrap",
-            gap: "12px",
-            border: "1px solid #1e293b",
-          }}
-        >
-          {/* Left: Counter & Theme Selector */}
-          <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span
-                style={{
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  fontSize: "0.74rem",
-                }}
-              >
+        <div className="sw-action-dock">
+          {/* Left: Selection Counter & Theme Selector */}
+          <div className="sw-dock-left">
+            <div className="sw-dock-count-group">
+              <span className="sw-dock-badge">
                 {selectedIds.length}
               </span>
               <div>
-                <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>
+                <div className="sw-dock-label">
                   {selectedIds.length} Item{selectedIds.length > 1 ? "s" : ""} Selected
                 </div>
                 <button
+                  type="button"
                   onClick={handleClearSelection}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    color: "#94a3b8",
-                    fontSize: "0.70rem",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
+                  className="sw-dock-clear-link"
                 >
                   Clear Selection
                 </button>
               </div>
             </div>
 
-            <div style={{ width: "1px", height: "22px", background: "rgba(255,255,255,0.15)" }} />
+            <div className="sw-dock-divider" />
 
             {/* Quick Theme Selector Dropdown */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600 }}>Theme:</span>
+            <div className="sw-theme-selector-group">
+              <span className="sw-theme-label">Presentation Theme:</span>
               <select
                 value={selectedThemeId}
                 onChange={(e) => setSelectedThemeId(e.target.value as ThemeId)}
-                style={{
-                  background: "#1e293b",
-                  color: "#ffffff",
-                  border: "1px solid #334155",
-                  borderRadius: "6px",
-                  padding: "6px 10px",
-                  fontSize: "0.80rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  outline: "none",
-                }}
+                className="sw-theme-select"
               >
                 {Object.values(DECK_THEMES).map((th) => (
                   <option key={th.id} value={th.id}>
@@ -666,118 +645,62 @@ export default function SourcewizProductsPage() {
             </div>
           </div>
 
-          {/* Right: Actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          {/* Right: Refined Executive Actions with crisp SVG icons */}
+          <div className="sw-dock-right">
             {/* Field Selection / Details Option Button */}
             <button
+              type="button"
               onClick={() => setIsFieldsModalOpen(true)}
-              style={{
-                background: "rgba(59, 130, 246, 0.2)",
-                color: "#93c5fd",
-                border: "1px solid rgba(59, 130, 246, 0.45)",
-                borderRadius: "6px",
-                padding: "7px 13px",
-                fontWeight: 700,
-                fontSize: "0.78rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                transition: "all 0.15s ease",
-              }}
+              className="sw-btn-dock sw-btn-dock-config"
               title="Select which product details to include or exclude (Pricing, Specs, MOQ, Logistics, Slides)"
             >
-              <span>⚙</span>
+              <IconSliders size={14} color="#93c5fd" />
               <span>Details to Include ({activeFieldsCount}/15)</span>
             </button>
 
+            {/* Themes & Live Slide Preview */}
             <button
+              type="button"
               onClick={() => setIsPptModalOpen(true)}
-              style={{
-                background: "rgba(255, 255, 255, 0.1)",
-                color: "#ffffff",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: "6px",
-                padding: "7px 12px",
-                fontWeight: 600,
-                fontSize: "0.78rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
+              className="sw-btn-dock sw-btn-dock-ghost"
+              title="Open full interactive presentation studio and visual slide preview"
             >
-              🎨 Themes & Preview
+              <IconPalette size={14} color="#cbd5e1" />
+              <span>Themes & Preview</span>
             </button>
 
-            {/* Option: Export Excel */}
+            {/* Export Excel (.xlsx) */}
             <button
+              type="button"
               onClick={handleExportExcel}
-              style={{
-                background: "rgba(16, 185, 129, 0.2)",
-                color: "#34d399",
-                border: "1px solid rgba(16, 185, 129, 0.35)",
-                borderRadius: "6px",
-                padding: "7px 13px",
-                fontWeight: 600,
-                fontSize: "0.78rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                transition: "all 0.15s ease",
-              }}
-              title="Export product details and specs to Excel (.xlsx)"
+              className="sw-btn-dock sw-btn-dock-excel"
+              title="Export product specifications and commercial details to Excel (.xlsx)"
             >
-              <span>📊</span>
+              <IconFileSpreadsheet size={14} color="#6ee7b7" />
               <span>Export Excel</span>
             </button>
 
-            {/* Option: Share Link with Buyer */}
+            {/* Share Web Link with Buyer */}
             <button
+              type="button"
               onClick={handleGenerateShareLink}
               disabled={isGeneratingLink}
-              style={{
-                background: isGeneratingLink ? "#475569" : "rgba(168, 85, 247, 0.22)",
-                color: "#c084fc",
-                border: "1px solid rgba(168, 85, 247, 0.4)",
-                borderRadius: "6px",
-                padding: "7px 13px",
-                fontWeight: 600,
-                fontSize: "0.78rem",
-                cursor: isGeneratingLink ? "wait" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                transition: "all 0.15s ease",
-              }}
-              title="Generate web presentation link with real-time open notifications"
+              className="sw-btn-dock sw-btn-dock-share"
+              title="Generate interactive presentation link with real-time buyer view notifications"
             >
-              <span>{isGeneratingLink ? "⏳" : "🔗"}</span>
+              <IconShare size={14} color="#d8b4fe" />
               <span>{isGeneratingLink ? "Creating Link..." : "Share Link with Buyer"}</span>
             </button>
 
-            {/* Option: Download PowerPoint */}
+            {/* Download PowerPoint (.pptx) */}
             <button
+              type="button"
               onClick={() => handleDownloadPptx()}
               disabled={isExportingPpt}
-              style={{
-                background: isExportingPpt ? "#64748b" : "#2563eb",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "6px",
-                padding: "7px 16px",
-                fontWeight: 700,
-                fontSize: "0.80rem",
-                cursor: isExportingPpt ? "wait" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
-              }}
-              title="Download PowerPoint presentation deck (.pptx)"
+              className="sw-btn-dock sw-btn-dock-primary"
+              title="Download high-resolution PowerPoint presentation deck (.pptx)"
             >
-              <span>{isExportingPpt ? "⏳" : "📥"}</span>
+              <IconDownload size={14} color="#ffffff" />
               <span>
                 {isExportingPpt
                   ? exportProgressMsg || "Generating PPT..."
@@ -790,87 +713,81 @@ export default function SourcewizProductsPage() {
 
       {/* PRIMARY VIEW 1: ENTERPRISE DATA TABLE */}
       {viewMode === "table" ? (
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: "12px",
-            border: "1px solid #e2e8f0",
-            overflow: "hidden",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
-          }}
-        >
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                textAlign: "left",
-                fontSize: "0.82rem",
-              }}
-            >
+        <div className="sw-table-card">
+          <div className="sw-table-wrapper">
+            <table className="sw-enterprise-table sw-table" data-no-enhance="true">
               <thead>
-                <tr
-                  style={{
-                    background: "#f8fafc",
-                    borderBottom: "1px solid #e2e8f0",
-                    color: "#475569",
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  <th style={{ padding: "12px 14px", width: "40px", textAlign: "center" }}>
+                <tr>
+                  <th style={{ width: "44px", textAlign: "center" }}>
                     <input
                       type="checkbox"
                       checked={
-                        selectedIds.length === filteredProducts.length && filteredProducts.length > 0
+                        selectedIds.length === displayedProducts.length && displayedProducts.length > 0
                       }
                       onChange={handleSelectAll}
                       style={{ cursor: "pointer" }}
                     />
                   </th>
-                  <th style={{ padding: "12px 14px", width: "60px" }}>Image</th>
-                  <th style={{ padding: "12px 14px" }}>Product Name & Category</th>
-                  <th style={{ padding: "12px 14px" }}>SKU & Collection</th>
-                  <th style={{ padding: "12px 14px" }}>Materials & Finish</th>
-                  <th style={{ padding: "12px 14px" }}>Size & Assembly</th>
-                  <th style={{ padding: "12px 14px" }}>CBM / 40'ft GP</th>
-                  <th style={{ padding: "12px 14px" }}>FOB Price & MOQ</th>
-                  <th style={{ padding: "12px 14px" }}>Status</th>
-                  <th style={{ padding: "12px 14px", textAlign: "right" }}>Action</th>
+                  <th style={{ width: "64px" }}>Image</th>
+                  <th
+                    onClick={() => handleSort("name")}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    title="Sort by Name"
+                  >
+                    Product Name & Category {sortField === "name" ? (sortAsc ? "▲" : "▼") : ""}
+                  </th>
+                  <th
+                    onClick={() => handleSort("sku")}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    title="Sort by SKU"
+                  >
+                    SKU & Collection {sortField === "sku" ? (sortAsc ? "▲" : "▼") : ""}
+                  </th>
+                  <th>Materials & Finish</th>
+                  <th>Dimensions & Assembly</th>
+                  <th
+                    onClick={() => handleSort("cbm")}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    title="Sort by CBM"
+                  >
+                    CBM / 40'ft GP {sortField === "cbm" ? (sortAsc ? "▲" : "▼") : ""}
+                  </th>
+                  <th
+                    onClick={() => handleSort("fobPriceUsd")}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    title="Sort by FOB Price"
+                  >
+                    FOB Price & MOQ {sortField === "fobPriceUsd" ? (sortAsc ? "▲" : "▼") : ""}
+                  </th>
+                  <th
+                    onClick={() => handleSort("stockStatus")}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    title="Sort by Status"
+                  >
+                    Status {sortField === "stockStatus" ? (sortAsc ? "▲" : "▼") : ""}
+                  </th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.length === 0 ? (
+                {displayedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} style={{ padding: "36px", textAlign: "center", color: "#64748b" }}>
-                      No products found matching your search.
+                    <td colSpan={10} style={{ padding: "48px 24px", textAlign: "center", color: "#64748b" }}>
+                      No products found matching your search criteria.
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map((product) => {
+                  displayedProducts.map((product) => {
                     const isSelected = selectedIds.includes(product.id);
                     return (
                       <tr
                         key={product.id}
                         onClick={() => handleSelectProduct(product.id)}
-                        style={{
-                          borderBottom: "1px solid #f1f5f9",
-                          background: isSelected ? "#f8fafc" : "#ffffff",
-                          cursor: "pointer",
-                          transition: "background 0.15s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = "#fcfdfd";
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = "#ffffff";
-                        }}
+                        className={isSelected ? "sw-row-active" : ""}
                       >
                         {/* Checkbox */}
                         <td
-                          style={{ padding: "12px 14px", textAlign: "center" }}
+                          style={{ textAlign: "center" }}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
@@ -882,138 +799,106 @@ export default function SourcewizProductsPage() {
                         </td>
 
                         {/* Image Thumbnail */}
-                        <td style={{ padding: "10px 14px" }}>
-                          <div
-                            style={{
-                              width: "48px",
-                              height: "48px",
-                              borderRadius: "6px",
-                              overflow: "hidden",
-                              border: "1px solid #e2e8f0",
-                              background: "#f8fafc",
-                            }}
-                          >
+                        <td>
+                          <div className="sw-thumb-box">
                             <img
                               src={product.image}
                               alt={product.name}
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = FALLBACK_IMG;
                               }}
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              className="sw-thumb-img"
                             />
                           </div>
                         </td>
 
                         {/* Name & Category */}
-                        <td style={{ padding: "12px 14px" }}>
-                          <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem", marginBottom: "2px" }}>
+                        <td>
+                          <div className="sw-product-title-text">
                             {product.name}
                           </div>
-                          <div style={{ fontSize: "0.72rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          <div className="sw-product-category-text">
                             {product.category} • {product.subCategory}
                           </div>
                         </td>
 
                         {/* SKU & Collection */}
-                        <td style={{ padding: "12px 14px" }}>
-                          <div
-                            style={{
-                              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              color: "#334155",
-                              background: "#f1f5f9",
-                              display: "inline-block",
-                              padding: "2px 6px",
-                              borderRadius: "4px",
-                              marginBottom: "3px",
-                            }}
-                          >
+                        <td>
+                          <span className="sw-sku-code">
                             {product.sku}
-                          </div>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                          </span>
+                          <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "3px" }}>
                             {product.collectionName}
                           </div>
                         </td>
 
                         {/* Materials & Finish */}
-                        <td style={{ padding: "12px 14px" }}>
-                          <div style={{ color: "#1e293b", fontWeight: 600 }}>{product.material}</div>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
-                            Finish: {product.woodFinish} {product.metalFinish !== "N/A" ? `• ${product.metalFinish}` : ""}
+                        <td>
+                          <div style={{ color: "#1e293b", fontWeight: 600, fontSize: "0.80rem" }}>
+                            {product.material}
+                          </div>
+                          <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
+                            {product.woodFinish} {product.metalFinish && product.metalFinish !== "N/A" ? `• ${product.metalFinish}` : ""}
                           </div>
                         </td>
 
                         {/* Size & Assembly */}
-                        <td style={{ padding: "12px 14px" }}>
-                          <div style={{ color: "#1e293b", fontVariantNumeric: "tabular-nums" }}>
+                        <td>
+                          <div style={{ color: "#1e293b", fontWeight: 600, fontSize: "0.80rem", fontVariantNumeric: "tabular-nums" }}>
                             {product.sizeCm} cm
                           </div>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                          <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
                             Assembly: <strong>{product.assembledKd}</strong>
                           </div>
                         </td>
 
                         {/* CBM / 40'ft */}
-                        <td style={{ padding: "12px 14px" }}>
-                          <div style={{ color: "#0f172a", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                        <td>
+                          <div style={{ color: "#0f172a", fontWeight: 700, fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>
                             {product.cbm} m³
                           </div>
-                          <div style={{ fontSize: "0.72rem", color: "#64748b", fontVariantNumeric: "tabular-nums" }}>
-                            40'ft: {product.gp40ft} pcs
+                          <div style={{ fontSize: "0.72rem", color: "#64748b", fontVariantNumeric: "tabular-nums", marginTop: "2px" }}>
+                            40'GP: {product.gp40ft} pcs
                           </div>
                         </td>
 
                         {/* Price & MOQ */}
-                        <td style={{ padding: "12px 14px" }}>
+                        <td>
                           <div style={{ color: "#0f172a", fontWeight: 800, fontSize: "0.92rem", fontVariantNumeric: "tabular-nums" }}>
                             ${product.fobPriceUsd.toFixed(2)}
                             <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>
                               FOB
                             </span>
                           </div>
-                          <div style={{ fontSize: "0.70rem", color: "#64748b" }}>
+                          <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "2px" }}>
                             MOQ: {product.moq} pcs
                           </div>
                         </td>
 
-                        {/* Stock Status */}
-                        <td style={{ padding: "12px 14px" }}>
-                          <span
-                            style={{
-                              fontSize: "0.70rem",
-                              fontWeight: 700,
-                              padding: "3px 8px",
-                              borderRadius: "4px",
-                              background:
-                                product.stockStatus === "In Stock"
-                                  ? "#f0fdf4"
-                                  : product.stockStatus === "Sample Ready"
-                                  ? "#eff6ff"
-                                  : "#fef3c7",
-                              color:
-                                product.stockStatus === "In Stock"
-                                  ? "#15803d"
-                                  : product.stockStatus === "Sample Ready"
-                                  ? "#1d4ed8"
-                                  : "#b45309",
-                              border: `1px solid ${
-                                product.stockStatus === "In Stock"
-                                  ? "#bbf7d0"
-                                  : product.stockStatus === "Sample Ready"
-                                  ? "#bfdbfe"
-                                  : "#fde68a"
-                              }`,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {product.stockStatus}
-                          </span>
+                        {/* Stock Status Pill Badge */}
+                        <td>
+                          {product.stockStatus === "In Stock" ? (
+                            <span className="sw-status-pill sw-status-pill-instock">
+                              <span className="sw-dot" />
+                              <span>In Stock</span>
+                            </span>
+                          ) : product.stockStatus === "Sample Ready" ? (
+                            <span className="sw-status-pill sw-status-pill-sample">
+                              <span className="sw-dot" />
+                              <span>Sample Ready</span>
+                            </span>
+                          ) : (
+                            <span className="sw-status-pill sw-status-pill-mto">
+                              <span className="sw-dot" />
+                              <span>Made to Order</span>
+                            </span>
+                          )}
                         </td>
 
                         {/* Action */}
-                        <td style={{ padding: "12px 14px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                        <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                           <button
+                            type="button"
                             onClick={() => {
                               if (!selectedIds.includes(product.id)) {
                                 setSelectedIds([...selectedIds, product.id]);
@@ -1021,8 +906,8 @@ export default function SourcewizProductsPage() {
                               setIsPptModalOpen(true);
                             }}
                             style={{
-                              padding: "5px 10px",
-                              fontSize: "0.72rem",
+                              padding: "6px 12px",
+                              fontSize: "0.74rem",
                               fontWeight: 600,
                               borderRadius: "6px",
                               border: "1px solid #cbd5e1",
@@ -1030,9 +915,22 @@ export default function SourcewizProductsPage() {
                               color: "#334155",
                               cursor: "pointer",
                               whiteSpace: "nowrap",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = "#94a3b8";
+                              e.currentTarget.style.background = "#f8fafc";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "#cbd5e1";
+                              e.currentTarget.style.background = "#ffffff";
                             }}
                           >
-                            Preview Slide →
+                            <IconEye size={13} color="#64748b" />
+                            <span>Preview</span>
                           </button>
                         </td>
                       </tr>
@@ -1052,7 +950,7 @@ export default function SourcewizProductsPage() {
             gap: "20px",
           }}
         >
-          {filteredProducts.map((product) => {
+          {displayedProducts.map((product) => {
             const isSelected = selectedIds.includes(product.id);
             return (
               <div
@@ -1060,9 +958,9 @@ export default function SourcewizProductsPage() {
                 style={{
                   background: "#ffffff",
                   borderRadius: "10px",
-                  border: isSelected ? "2px solid #0f172a" : "1px solid #e2e8f0",
+                  border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
                   overflow: "hidden",
-                  boxShadow: isSelected ? "0 4px 14px rgba(15, 23, 42, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.04)",
+                  boxShadow: isSelected ? "0 4px 14px rgba(37, 99, 235, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.04)",
                   transition: "all 0.15s ease",
                   display: "flex",
                   flexDirection: "column",
@@ -1088,19 +986,19 @@ export default function SourcewizProductsPage() {
                       zIndex: 3,
                       background: isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.95)",
                       color: isSelected ? "#ffffff" : "#1e293b",
-                      borderRadius: "5px",
-                      padding: "3px 8px",
+                      borderRadius: "6px",
+                      padding: "4px 9px",
                       fontWeight: 700,
-                      fontSize: "0.70rem",
+                      fontSize: "0.72rem",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: "4px",
+                      gap: "5px",
                       boxShadow: "0 2px 4px rgba(0,0,0,0.12)",
                     }}
                   >
-                    <span>{isSelected ? "✓" : "+"}</span>
-                    <span>{isSelected ? "Selected" : "Select for PPT"}</span>
+                    {isSelected ? <IconCheckSquare size={13} color="#60a5fa" /> : <IconSquare size={13} color="#64748b" />}
+                    <span>{isSelected ? "Selected" : "Select"}</span>
                   </div>
 
                   <div
@@ -1109,25 +1007,24 @@ export default function SourcewizProductsPage() {
                       top: "8px",
                       right: "8px",
                       zIndex: 3,
-                      fontSize: "0.68rem",
-                      fontWeight: 700,
-                      padding: "2px 7px",
-                      borderRadius: "4px",
-                      background:
-                        product.stockStatus === "In Stock"
-                          ? "#f0fdf4"
-                          : product.stockStatus === "Sample Ready"
-                          ? "#eff6ff"
-                          : "#fef3c7",
-                      color:
-                        product.stockStatus === "In Stock"
-                          ? "#15803d"
-                          : product.stockStatus === "Sample Ready"
-                          ? "#1d4ed8"
-                          : "#b45309",
                     }}
                   >
-                    {product.stockStatus}
+                    {product.stockStatus === "In Stock" ? (
+                      <span className="sw-status-pill sw-status-pill-instock" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+                        <span className="sw-dot" />
+                        <span>In Stock</span>
+                      </span>
+                    ) : product.stockStatus === "Sample Ready" ? (
+                      <span className="sw-status-pill sw-status-pill-sample" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+                        <span className="sw-dot" />
+                        <span>Sample Ready</span>
+                      </span>
+                    ) : (
+                      <span className="sw-status-pill sw-status-pill-mto" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+                        <span className="sw-dot" />
+                        <span>Made to Order</span>
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1141,17 +1038,7 @@ export default function SourcewizProductsPage() {
                   </h3>
 
                   <div style={{ marginBottom: "10px" }}>
-                    <span
-                      style={{
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
-                        color: "#334155",
-                        background: "#f1f5f9",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        fontFamily: "monospace",
-                      }}
-                    >
+                    <span className="sw-sku-code">
                       SKU: {product.sku}
                     </span>
                   </div>
@@ -1187,6 +1074,7 @@ export default function SourcewizProductsPage() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => {
                         if (!selectedIds.includes(product.id)) {
                           setSelectedIds([...selectedIds, product.id]);
@@ -1194,17 +1082,21 @@ export default function SourcewizProductsPage() {
                         setIsPptModalOpen(true);
                       }}
                       style={{
-                        padding: "5px 10px",
-                        fontSize: "0.72rem",
+                        padding: "6px 12px",
+                        fontSize: "0.74rem",
                         fontWeight: 600,
                         borderRadius: "6px",
                         border: "1px solid #cbd5e1",
                         background: "#ffffff",
                         color: "#334155",
                         cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
                       }}
                     >
-                      Preview Slide →
+                      <IconEye size={13} color="#64748b" />
+                      <span>Preview</span>
                     </button>
                   </div>
                 </div>
@@ -2163,11 +2055,12 @@ export default function SourcewizProductsPage() {
                   }}
                   title="Download complete specs in Excel"
                 >
-                  <span>📊</span>
+                  <IconFileSpreadsheet size={15} color="#059669" />
                   <span>Export Excel</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleGenerateShareLink}
                   disabled={isGeneratingLink}
                   style={{
@@ -2185,11 +2078,12 @@ export default function SourcewizProductsPage() {
                   }}
                   title="Generate shareable link for buyer"
                 >
-                  <span>{isGeneratingLink ? "⏳" : "🔗"}</span>
+                  <IconShare size={15} color="#7e22ce" />
                   <span>{isGeneratingLink ? "Creating Link..." : "Share Link with Buyer"}</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => handleDownloadPptx()}
                   disabled={isExportingPpt}
                   style={{
@@ -2207,7 +2101,7 @@ export default function SourcewizProductsPage() {
                     boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)",
                   }}
                 >
-                  <span>{isExportingPpt ? "⏳" : "📥"}</span>
+                  <IconDownload size={15} color="#ffffff" />
                   <span>
                     {isExportingPpt
                       ? exportProgressMsg || "Generating PowerPoint..."
@@ -2757,7 +2651,7 @@ export default function SourcewizProductsPage() {
             >
               <div>
                 <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>⚙</span>
+                  <IconSliders size={18} color="#93c5fd" />
                   <span>Presentation Details & Content Options</span>
                 </h3>
                 <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#94a3b8" }}>
@@ -3137,7 +3031,7 @@ export default function SourcewizProductsPage() {
                     gap: "6px",
                   }}
                 >
-                  <span>📊</span>
+                  <IconFileSpreadsheet size={15} color="#059669" />
                   <span>Export Excel</span>
                 </button>
 
@@ -3162,7 +3056,7 @@ export default function SourcewizProductsPage() {
                     gap: "6px",
                   }}
                 >
-                  <span>🔗</span>
+                  <IconShare size={15} color="#7e22ce" />
                   <span>Share Link</span>
                 </button>
 
@@ -3188,7 +3082,7 @@ export default function SourcewizProductsPage() {
                     boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
                   }}
                 >
-                  <span>📥</span>
+                  <IconDownload size={15} color="#ffffff" />
                   <span>Download PPT ({selectedIds.length})</span>
                 </button>
               </div>
