@@ -331,6 +331,8 @@ export default function AppRouter() {
           <Route path="order-management/:id" element={<OrderInHandFormPage />} />
           <Route path="crm/leads" element={<LeadsListPage />} />
           <Route path="crm/leads/new" element={<LeadFormPage />} />
+          <Route path="crm/leads/edit/:id" element={<LeadFormPage />} />
+          <Route path="crm/leads/:id/edit" element={<LeadFormPage />} />
           <Route path="crm/leads/:id" element={<LeadDetailPage />} />
           <Route path="crm/dashboards" element={<CrmDashboardsPage />} />
           <Route path="user-dashboard/delegation" element={<UserDelegationPage />} />

@@ -78,7 +78,17 @@ export class MySqlCrmRepository implements ICrmRepository {
       conditions.push("(cl.contact_name LIKE ? OR cl.company_name LIKE ? OR cl.lead_code LIKE ? OR cl.email LIKE ?)");
       values.push(`%${params.search}%`, `%${params.search}%`, `%${params.search}%`, `%${params.search}%`);
     }
-    if (params.assignedMerchantId) { conditions.push("cl.assigned_merchant_id = ?"); values.push(params.assignedMerchantId); }
+    if (params.assignedMerchantIds) {
+      if (params.assignedMerchantIds.length > 0) {
+        conditions.push("cl.assigned_merchant_id IN (?)");
+        values.push(params.assignedMerchantIds);
+      } else {
+        conditions.push("1 = 0");
+      }
+    } else if (params.assignedMerchantId) {
+      conditions.push("cl.assigned_merchant_id = ?");
+      values.push(params.assignedMerchantId);
+    }
     if (params.status) { conditions.push("cl.status = ?"); values.push(params.status); }
     if (params.salesStage) { conditions.push("cl.sales_stage = ?"); values.push(params.salesStage); }
     if (params.leadSource) { conditions.push("cl.lead_source = ?"); values.push(params.leadSource); }

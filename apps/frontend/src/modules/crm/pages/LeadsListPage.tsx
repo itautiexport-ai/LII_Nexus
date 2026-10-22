@@ -3,12 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { crmApi, LeadRecord } from "../api/crmApi";
 import { merchantsApi, MerchantRecord } from "../../admin/masterdata/api/merchantsApi";
 import PermissionGate from "../../../shared/guards/PermissionGate";
+import { useCanTransferLead, useCanEditLead, useCanViewAllLeads } from "../../auth/hooks/usePermissions";
 
 const statusColors: Record<string, string> = { active: "#4a4a4a", won: "#1a7f37", lost: "#c0392b", dead: "#999", dormant: "#b8860b" };
 const priorityColors: Record<string, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
 
 export default function LeadsListPage() {
   const navigate = useNavigate();
+  const canTransfer = useCanTransferLead();
+  const canEdit = useCanEditLead();
+  const canViewAll = useCanViewAllLeads();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<LeadRecord[]>([]);
   const [total, setTotal] = useState(0);
@@ -17,6 +21,7 @@ export default function LeadsListPage() {
   const [status, setStatus] = useState("");
   const [leadSource, setLeadSource] = useState("");
   const [leadCategory, setLeadCategory] = useState("");
+  const [filterMerchantId, setFilterMerchantId] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [merchants, setMerchants] = useState<MerchantRecord[]>([]);
@@ -29,12 +34,13 @@ export default function LeadsListPage() {
       page: String(page), pageSize: String(pageSize), search: search || undefined,
       status: status || undefined, leadSource: leadSource || undefined, leadCategory: leadCategory || undefined,
       overdueOnly: overdueOnly || undefined,
+      assignedMerchantId: (canViewAll && filterMerchantId) ? filterMerchantId : undefined,
     });
     setItems(res.items);
     setTotal(res.totalItems);
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- re-runs on filter/page changes only, `load` itself is stable
-  useEffect(() => { load(); }, [page, search, status, leadSource, leadCategory, overdueOnly]);
+  useEffect(() => { load(); }, [page, search, status, leadSource, leadCategory, overdueOnly, filterMerchantId]);
 
   useEffect(() => {
     merchantsApi.list().then(setMerchants).catch(console.error);
@@ -111,6 +117,14 @@ export default function LeadsListPage() {
           <option value="hotel_restaurant_project">Hotel/Restaurant/Project</option>
           <option value="buyer_agent">Buyer Agent</option><option value="repeat_customer">Repeat Customer</option>
         </select>
+        {canViewAll && (
+          <select value={filterMerchantId} onChange={(e) => { setFilterMerchantId(e.target.value); setPage(1); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
+            <option value="">All Merchants</option>
+            {merchants.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        )}
         <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
           <input type="checkbox" checked={overdueOnly} onChange={(e) => { setOverdueOnly(e.target.checked); setPage(1); }} /> Overdue only
         </label>
@@ -132,6 +146,7 @@ export default function LeadsListPage() {
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Priority</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Notes</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Status</th>
+              {canEdit && <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap", textAlign: "center" }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -140,6 +155,21 @@ export default function LeadsListPage() {
                 <td style={{ padding: 10, fontSize: 13, fontFamily: "monospace" }}>{lead.leadCode}<br /><span style={{ color: "#888", fontSize: 11 }}>{lead.inquiryDate}</span></td>
                 <td style={{ padding: 10, fontSize: 13, whiteSpace: "nowrap" }}>
                   <div style={{ fontWeight: 600, color: "#333", fontSize: 13 }}>{lead.contactName}</div>
+                  {(() => {
+                    let contactCount = 0;
+                    try {
+                      const parsed = JSON.parse(lead.contactPersons || "[]");
+                      if (Array.isArray(parsed)) contactCount = parsed.length;
+                    } catch {}
+                    if (contactCount > 0) {
+                      return (
+                        <div style={{ fontSize: 11, color: "#166534", marginTop: 2, fontWeight: 500 }}>
+                          📇 +{contactCount} visiting {contactCount === 1 ? "card" : "cards"}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </td>
                 <td style={{ padding: 10, fontSize: 13 }}>{lead.companyName ?? "—"}</td>
                 <td style={{ padding: 10, fontSize: 12, color: "#666" }}>
@@ -168,7 +198,7 @@ export default function LeadsListPage() {
                 <td style={{ padding: 10, fontSize: 12 }}>
                   <div>{lead.salesStage.replace(/_/g, " ")}</div>
                   <div style={{ color: "#888", fontSize: 11 }}>{lead.merchantName ?? "Unassigned"}</div>
-                  {['active', 'dormant'].includes(lead.status) && (
+                  {canTransfer && ['active', 'dormant'].includes(lead.status) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setTransferLeadId(lead.id); setSelectedMerchantId(lead.assignedMerchantId || ""); }}
                       style={{ marginTop: 4, padding: "2px 6px", fontSize: 10, borderRadius: 3, border: "1px solid #ccc", background: "#f0f0f0", cursor: "pointer" }}
@@ -198,9 +228,37 @@ export default function LeadsListPage() {
                     <option value="dormant">Dormant</option>
                   </select>
                 </td>
+                {canEdit && (
+                  <td style={{ padding: 10, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/admin/crm/leads/edit/${lead.id}`);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "5px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: "1px solid #bfdbfe",
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                      title="Edit lead details (Admin & Management only)"
+                    >
+                      ✏️ Edit
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
-            {items.length === 0 && <tr><td colSpan={12} style={{ padding: 20, textAlign: "center", color: "#999" }}>No leads found.</td></tr>}
+            {items.length === 0 && <tr><td colSpan={canEdit ? 13 : 12} style={{ padding: 20, textAlign: "center", color: "#999" }}>No leads found.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -214,7 +272,7 @@ export default function LeadsListPage() {
         </div>
       </div>
 
-      {transferLeadId && (
+      {canTransfer && transferLeadId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setTransferLeadId(null)}>
           <div style={{ background: "#fff", padding: 24, borderRadius: 8, minWidth: 300 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Transfer Lead</h3>

@@ -21,7 +21,6 @@ async function hasPermission(userId: string, key: string): Promise<boolean> {
 
 export const LeadController = {
   async list(req: AuthenticatedRequest, res: Response) {
-    const override = await hasPermission(req.user!.sub, "crm.lead.view");
     const page = parseInt((req.query.page as string) ?? "1", 10);
     const pageSize = parseInt((req.query.pageSize as string) ?? "20", 10);
     const { items, total } = await service.list({
@@ -33,13 +32,13 @@ export const LeadController = {
       leadCategory: req.query.leadCategory as LeadCategory | undefined,
       priority: req.query.priority as LeadPriority | undefined,
       overdueOnly: req.query.overdueOnly === "true",
-    }, req.user!.sub, override);
+      assignedMerchantId: req.query.assignedMerchantId as string | undefined,
+    }, req.user!.sub);
     return ok(res, items, { page, pageSize, totalItems: total });
   },
 
   async getById(req: AuthenticatedRequest, res: Response) {
-    const override = await hasPermission(req.user!.sub, "crm.lead.view");
-    return ok(res, await service.getById(req.params.id, req.user!.sub, override));
+    return ok(res, await service.getById(req.params.id, req.user!.sub));
   },
 
   async create(req: AuthenticatedRequest, res: Response) {
@@ -72,8 +71,7 @@ export const LeadController = {
   },
 
   async exportExcel(req: AuthenticatedRequest, res: Response) {
-    const override = await hasPermission(req.user!.sub, "crm.lead.view");
-    const { items } = await service.list({ page: 1, pageSize: 10000 }, req.user!.sub, override);
+    const { items } = await service.list({ page: 1, pageSize: 10000 }, req.user!.sub);
     const buffer = excelService.exportLeads(items);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=crm-leads-export.xlsx");
