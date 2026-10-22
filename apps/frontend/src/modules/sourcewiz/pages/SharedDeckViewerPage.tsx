@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { catalogueShareApi, SharedDeckData } from "../api/catalogueShareApi";
-import { DECK_THEMES, ThemeId, DeckTheme, generateProductPptx } from "../utils/pptxExport";
+import {
+  DECK_THEMES,
+  ThemeId,
+  DeckTheme,
+  generateProductPptx,
+  PresentationFieldsConfig,
+  DEFAULT_PRESENTATION_FIELDS,
+  CatalogProductItem,
+} from "../utils/pptxExport";
 import { exportProductsToExcel } from "../utils/excelExport";
+
+export type SlideItem =
+  | { type: "cover" }
+  | { type: "product"; product: CatalogProductItem; index: number }
+  | { type: "closing" };
 
 export default function SharedDeckViewerPage() {
   const { token } = useParams<{ token: string }>();
@@ -50,6 +63,40 @@ export default function SharedDeckViewerPage() {
     loadDeck();
   }, [token]);
 
+  const activeTheme: DeckTheme = useMemo(() => {
+    const tid = (deck?.themeId as ThemeId) || "obsidian";
+    return DECK_THEMES[tid] || DECK_THEMES.obsidian;
+  }, [deck?.themeId]);
+
+  const products = deck?.products || [];
+
+  const fields: PresentationFieldsConfig = useMemo(() => {
+    return {
+      ...DEFAULT_PRESENTATION_FIELDS,
+      ...(deck?.includePricing !== undefined ? { includePricing: deck.includePricing } : {}),
+      ...(deck?.fieldsConfig || {}),
+    };
+  }, [deck]);
+
+  const slides: SlideItem[] = useMemo(() => {
+    const list: SlideItem[] = [];
+    if (fields.includeCoverSlide) {
+      list.push({ type: "cover" });
+    }
+    products.forEach((p, idx) => {
+      list.push({ type: "product", product: p, index: idx });
+    });
+    if (fields.includeClosingSlide) {
+      list.push({ type: "closing" });
+    }
+    if (list.length === 0 && products.length > 0) {
+      products.forEach((p, idx) => list.push({ type: "product", product: p, index: idx }));
+    }
+    return list;
+  }, [fields, products]);
+
+  const totalSlides = slides.length > 0 ? slides.length : 1;
+
   // Keyboard navigation (Arrow keys)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -67,16 +114,7 @@ export default function SharedDeckViewerPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentSlideIndex, deck, isGridMode]);
-
-  const activeTheme: DeckTheme = useMemo(() => {
-    const tid = (deck?.themeId as ThemeId) || "obsidian";
-    return DECK_THEMES[tid] || DECK_THEMES.obsidian;
-  }, [deck?.themeId]);
-
-  const products = deck?.products || [];
-  // Slides: 0: Cover, 1 to products.length: Product slides, products.length + 1: Closing slide
-  const totalSlides = products.length > 0 ? products.length + 2 : 1;
+  }, [currentSlideIndex, deck, isGridMode, totalSlides]);
 
   function handleNext() {
     setCurrentSlideIndex((prev) => Math.min(prev + 1, totalSlides - 1));
@@ -94,7 +132,8 @@ export default function SharedDeckViewerPage() {
         themeId: (deck.themeId as ThemeId) || "obsidian",
         deckTitle: deck.title,
         customerName: deck.customerName,
-        includePricing: deck.includePricing,
+        includePricing: fields.includePricing,
+        fields,
       });
     } catch (err) {
       console.error("Failed to download PPT:", err);
@@ -109,7 +148,8 @@ export default function SharedDeckViewerPage() {
     exportProductsToExcel(products, {
       deckTitle: deck.title,
       customerName: deck.customerName,
-      includePricing: deck.includePricing,
+      includePricing: fields.includePricing,
+      fields,
     });
   }
 
@@ -330,122 +370,138 @@ export default function SharedDeckViewerPage() {
               padding: "16px 0",
             }}
           >
-            {/* Cover slide preview */}
-            <div
-              onClick={() => {
-                setCurrentSlideIndex(0);
-                setIsGridMode(false);
-              }}
-              style={{
-                aspectRatio: "16/9",
-                background: `#${activeTheme.cover.bg}`,
-                color: `#${activeTheme.cover.titleColor}`,
-                borderRadius: 10,
-                border: currentSlideIndex === 0 ? `2px solid ${accentHex}` : "1px solid rgba(255,255,255,0.15)",
-                padding: 16,
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-              }}
-            >
-              <span style={{ fontSize: 10, letterSpacing: 2, color: accentHex, fontWeight: 700, textTransform: "uppercase" }}>
-                Cover Slide
-              </span>
-              <h4 style={{ fontSize: 14, fontWeight: 700, margin: "8px 0" }}>{deck.title}</h4>
-              <p style={{ fontSize: 11, color: `#${activeTheme.cover.subtitleColor}` }}>
-                {deck.customerName ? `For: ${deck.customerName}` : "LAKSHYA INTERNATIONAL"}
-              </p>
-            </div>
-
-            {/* Product slides preview */}
-            {products.map((item, idx) => (
-              <div
-                key={item.id}
-                onClick={() => {
-                  setCurrentSlideIndex(idx + 1);
-                  setIsGridMode(false);
-                }}
-                style={{
-                  aspectRatio: "16/9",
-                  background: `#${activeTheme.product.tableBg}`,
-                  borderRadius: 10,
-                  border: currentSlideIndex === idx + 1 ? `2px solid ${accentHex}` : "1px solid rgba(255,255,255,0.12)",
-                  overflow: "hidden",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-                }}
-              >
-                <div style={{ flex: 1, position: "relative", background: "#111" }}>
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
-                    }}
-                  />
+            {slides.map((s, slideIdx) => {
+              if (s.type === "cover") {
+                return (
                   <div
+                    key="cover-preview"
+                    onClick={() => {
+                      setCurrentSlideIndex(slideIdx);
+                      setIsGridMode(false);
+                    }}
                     style={{
-                      position: "absolute",
-                      top: 6,
-                      left: 6,
-                      background: "rgba(0,0,0,0.75)",
-                      color: "#fff",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                      fontFamily: "monospace",
+                      aspectRatio: "16/9",
+                      background: `#${activeTheme.cover.bg}`,
+                      color: `#${activeTheme.cover.titleColor}`,
+                      borderRadius: 10,
+                      border: currentSlideIndex === slideIdx ? `2px solid ${accentHex}` : "1px solid rgba(255,255,255,0.15)",
+                      padding: 16,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      textAlign: "center",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
                     }}
                   >
-                    {item.sku}
+                    <span style={{ fontSize: 10, letterSpacing: 2, color: accentHex, fontWeight: 700, textTransform: "uppercase" }}>
+                      Cover Slide
+                    </span>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, margin: "8px 0" }}>{deck.title}</h4>
+                    <p style={{ fontSize: 11, color: `#${activeTheme.cover.subtitleColor}` }}>
+                      {deck.customerName ? `For: ${deck.customerName}` : "LAKSHYA INTERNATIONAL"}
+                    </p>
                   </div>
-                </div>
-                <div style={{ padding: "8px 12px", background: `#${activeTheme.product.bg}`, color: `#${activeTheme.product.titleColor}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {item.name}
-                  </div>
-                  <div style={{ fontSize: 11, color: accentHex, fontWeight: 600 }}>
-                    {deck.includePricing ? `$${item.fobPriceUsd.toFixed(2)} FOB` : item.category}
-                  </div>
-                </div>
-              </div>
-            ))}
+                );
+              }
 
-            {/* Closing slide preview */}
-            <div
-              onClick={() => {
-                setCurrentSlideIndex(totalSlides - 1);
-                setIsGridMode(false);
-              }}
-              style={{
-                aspectRatio: "16/9",
-                background: `#${activeTheme.closing.bg}`,
-                color: `#${activeTheme.closing.titleColor}`,
-                borderRadius: 10,
-                border: currentSlideIndex === totalSlides - 1 ? `2px solid ${accentHex}` : "1px solid rgba(255,255,255,0.15)",
-                padding: 16,
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <span style={{ fontSize: 10, letterSpacing: 2, color: accentHex, fontWeight: 700 }}>
-                Closing Slide
-              </span>
-              <h4 style={{ fontSize: 14, fontWeight: 700, margin: "8px 0" }}>Thank You</h4>
-              <p style={{ fontSize: 11, color: `#${activeTheme.closing.subtitleColor}` }}>Order & Inquiry Contact</p>
-            </div>
+              if (s.type === "closing") {
+                return (
+                  <div
+                    key="closing-preview"
+                    onClick={() => {
+                      setCurrentSlideIndex(slideIdx);
+                      setIsGridMode(false);
+                    }}
+                    style={{
+                      aspectRatio: "16/9",
+                      background: `#${activeTheme.closing.bg}`,
+                      color: `#${activeTheme.closing.titleColor}`,
+                      borderRadius: 10,
+                      border: currentSlideIndex === slideIdx ? `2px solid ${accentHex}` : "1px solid rgba(255,255,255,0.15)",
+                      padding: 16,
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      textAlign: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: 10, letterSpacing: 2, color: accentHex, fontWeight: 700 }}>
+                      Closing Slide
+                    </span>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, margin: "8px 0" }}>Thank You</h4>
+                    <p style={{ fontSize: 11, color: `#${activeTheme.closing.subtitleColor}` }}>Order & Inquiry Contact</p>
+                  </div>
+                );
+              }
+
+              const item = s.product;
+              return (
+                <div
+                  key={item.id || item.sku || slideIdx}
+                  onClick={() => {
+                    setCurrentSlideIndex(slideIdx);
+                    setIsGridMode(false);
+                  }}
+                  style={{
+                    aspectRatio: "16/9",
+                    background: `#${activeTheme.product.tableBg}`,
+                    borderRadius: 10,
+                    border: currentSlideIndex === slideIdx ? `2px solid ${accentHex}` : "1px solid rgba(255,255,255,0.12)",
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  <div style={{ flex: 1, position: "relative", background: "#111" }}>
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
+                      }}
+                    />
+                    {fields.includeSku && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          left: 6,
+                          background: "rgba(0,0,0,0.75)",
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {item.sku}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: "8px 12px", background: `#${activeTheme.product.bg}`, color: `#${activeTheme.product.titleColor}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {item.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: accentHex, fontWeight: 600 }}>
+                      {fields.includePricing
+                        ? `$${Number(item.fobPriceUsd || 0).toFixed(2)} FOB`
+                        : fields.includeCategory
+                        ? item.category
+                        : item.collectionName || "Catalogue Item"}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           /* Presentation Slide Container (16:9 widescreen ratio) */
@@ -454,11 +510,12 @@ export default function SharedDeckViewerPage() {
               width: "100%",
               maxWidth: 1180,
               aspectRatio: "16/9",
-              background: currentSlideIndex === 0
-                ? `#${activeTheme.cover.bg}`
-                : currentSlideIndex === totalSlides - 1
-                ? `#${activeTheme.closing.bg}`
-                : `#${activeTheme.product.bg}`,
+              background:
+                slides[currentSlideIndex]?.type === "cover"
+                  ? `#${activeTheme.cover.bg}`
+                  : slides[currentSlideIndex]?.type === "closing"
+                  ? `#${activeTheme.closing.bg}`
+                  : `#${activeTheme.product.bg}`,
               borderRadius: 16,
               border: `1px solid #${activeTheme.product.tableBorder}`,
               boxShadow: "0 25px 60px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)",
@@ -469,8 +526,8 @@ export default function SharedDeckViewerPage() {
               transition: "all 0.25s ease",
             }}
           >
-            {/* SLIDE 0: COVER SLIDE */}
-            {currentSlideIndex === 0 && (
+            {/* COVER SLIDE */}
+            {slides[currentSlideIndex]?.type === "cover" && (
               <div
                 style={{
                   height: "100%",
@@ -569,9 +626,17 @@ export default function SharedDeckViewerPage() {
               </div>
             )}
 
-            {/* SLIDE 1 to N: PRODUCT SLIDES */}
-            {currentSlideIndex > 0 && currentSlideIndex <= products.length && (() => {
-              const item = products[currentSlideIndex - 1];
+            {/* PRODUCT SLIDE */}
+            {slides[currentSlideIndex]?.type === "product" && (() => {
+              const item = (slides[currentSlideIndex] as { product: CatalogProductItem }).product;
+              const hasAnySpecs =
+                fields.includeCollection ||
+                fields.includeMaterial ||
+                fields.includeWoodFinish ||
+                fields.includeMetalFinish ||
+                fields.includeDimensions ||
+                fields.includeAssembly;
+
               return (
                 <div
                   style={{
@@ -622,24 +687,26 @@ export default function SharedDeckViewerPage() {
                             "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
                         }}
                       />
-                      <div
-                        style={{
-                          position: "absolute",
-                          bottom: 14,
-                          left: 14,
-                          background: "rgba(0,0,0,0.8)",
-                          backdropFilter: "blur(6px)",
-                          padding: "4px 10px",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: "#cbd5e1",
-                          fontFamily: "monospace",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                        }}
-                      >
-                        {item.sku}
-                      </div>
+                      {fields.includeSku && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            bottom: 14,
+                            left: 14,
+                            background: "rgba(0,0,0,0.8)",
+                            backdropFilter: "blur(6px)",
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "#cbd5e1",
+                            fontFamily: "monospace",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                          }}
+                        >
+                          {item.sku}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -654,19 +721,21 @@ export default function SharedDeckViewerPage() {
                     }}
                   >
                     {/* Category Pill */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: 1.5,
-                          color: `#${activeTheme.product.categoryColor}`,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {item.category} • {item.subCategory}
-                      </span>
-                    </div>
+                    {fields.includeCategory && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: 1.5,
+                            color: `#${activeTheme.product.categoryColor}`,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {item.category || "FURNITURE"} • {item.subCategory || "GENERAL"}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Product Name */}
                     <h2
@@ -682,66 +751,89 @@ export default function SharedDeckViewerPage() {
                     </h2>
 
                     {/* Specifications Grid */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "10px 14px",
-                        background: `#${activeTheme.product.tableBg}`,
-                        border: `1px solid #${activeTheme.product.tableBorder}`,
-                        borderRadius: 10,
-                        padding: "14px 16px",
-                        marginBottom: 16,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
-                          Collection
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
-                          {item.collectionName || "-"}
-                        </div>
-                      </div>
+                    {hasAnySpecs && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "10px 14px",
+                          background: `#${activeTheme.product.tableBg}`,
+                          border: `1px solid #${activeTheme.product.tableBorder}`,
+                          borderRadius: 10,
+                          padding: "14px 16px",
+                          marginBottom: 16,
+                        }}
+                      >
+                        {fields.includeCollection && (
+                          <div>
+                            <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
+                              Collection
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
+                              {item.collectionName || "-"}
+                            </div>
+                          </div>
+                        )}
 
-                      <div>
-                        <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
-                          Material
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
-                          {item.material || "-"}
-                        </div>
-                      </div>
+                        {fields.includeMaterial && (
+                          <div>
+                            <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
+                              Material
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
+                              {item.material || "-"}
+                            </div>
+                          </div>
+                        )}
 
-                      <div>
-                        <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
-                          Wood Finish
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
-                          {item.woodFinish || "-"}
-                        </div>
-                      </div>
+                        {fields.includeWoodFinish && (
+                          <div>
+                            <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
+                              Wood Finish
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
+                              {item.woodFinish || "-"}
+                            </div>
+                          </div>
+                        )}
 
-                      <div>
-                        <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
-                          Metal Finish
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
-                          {item.metalFinish || "-"}
-                        </div>
-                      </div>
+                        {fields.includeMetalFinish && (
+                          <div>
+                            <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
+                              Metal Finish
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
+                              {item.metalFinish || "-"}
+                            </div>
+                          </div>
+                        )}
 
-                      <div style={{ gridColumn: "span 2" }}>
-                        <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
-                          Dimensions (L x W x H)
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}`, fontFamily: "monospace" }}>
-                          {item.sizeCm} cm
-                        </div>
+                        {fields.includeAssembly && (
+                          <div>
+                            <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
+                              Assembly
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}` }}>
+                              {item.assembledKd || "KD"}
+                            </div>
+                          </div>
+                        )}
+
+                        {fields.includeDimensions && (
+                          <div style={{ gridColumn: "span 2" }}>
+                            <div style={{ fontSize: 10, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>
+                              Dimensions (L x W x H)
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: `#${activeTheme.product.tableValColor}`, fontFamily: "monospace" }}>
+                              {item.sizeCm} cm
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
 
                     {/* Pricing Block */}
-                    {deck.includePricing && (
+                    {(fields.includePricing || fields.includeStockStatus) && (
                       <div
                         style={{
                           background: `#${activeTheme.product.priceCardBg}`,
@@ -754,67 +846,80 @@ export default function SharedDeckViewerPage() {
                           justifyContent: "space-between",
                         }}
                       >
-                        <div>
-                          <div style={{ fontSize: 10, color: accentHex, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
-                            FOB Price (USD)
+                        {fields.includePricing ? (
+                          <div>
+                            <div style={{ fontSize: 10, color: accentHex, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                              FOB Price (USD)
+                            </div>
+                            <div style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 800, color: `#${activeTheme.product.priceColor}`, fontFamily: "monospace" }}>
+                              ${Number(item.fobPriceUsd || 0).toFixed(2)}
+                              <span style={{ fontSize: 12, fontWeight: 500, color: `#${activeTheme.product.tableLabelColor}`, marginLeft: 6 }}>/ Pc</span>
+                            </div>
                           </div>
-                          <div style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 800, color: `#${activeTheme.product.priceColor}`, fontFamily: "monospace" }}>
-                            ${item.fobPriceUsd.toFixed(2)}
-                            <span style={{ fontSize: 12, fontWeight: 500, color: `#${activeTheme.product.tableLabelColor}`, marginLeft: 6 }}>/ Pc</span>
+                        ) : <div />}
+
+                        {fields.includeStockStatus && (
+                          <div style={{ textAlign: "right" }}>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "4px 8px",
+                                borderRadius: 4,
+                                background: item.stockStatus === "In Stock" ? "rgba(16,185,129,0.2)" : "rgba(59,130,246,0.2)",
+                                color: item.stockStatus === "In Stock" ? "#34d399" : "#60a5fa",
+                              }}
+                            >
+                              {item.stockStatus || "Active"}
+                            </span>
                           </div>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              padding: "4px 8px",
-                              borderRadius: 4,
-                              background: item.stockStatus === "In Stock" ? "rgba(16,185,129,0.2)" : "rgba(59,130,246,0.2)",
-                              color: item.stockStatus === "In Stock" ? "#34d399" : "#60a5fa",
-                            }}
-                          >
-                            {item.stockStatus}
-                          </span>
-                        </div>
+                        )}
                       </div>
                     )}
 
                     {/* Logistics Metrics */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gap: 8,
-                        textAlign: "center",
-                      }}
-                    >
-                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "8px 6px" }}>
-                        <div style={{ fontSize: 9, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>MOQ</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: `#${activeTheme.product.titleColor}`, fontFamily: "monospace" }}>
-                          {item.moq} pcs
-                        </div>
+                    {(fields.includeMoq || fields.includeCbm || fields.includeContainerQty) && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: `repeat(${[fields.includeMoq, fields.includeCbm, fields.includeContainerQty].filter(Boolean).length || 1}, 1fr)`,
+                          gap: 8,
+                          textAlign: "center",
+                        }}
+                      >
+                        {fields.includeMoq && (
+                          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "8px 6px" }}>
+                            <div style={{ fontSize: 9, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>MOQ</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: `#${activeTheme.product.titleColor}`, fontFamily: "monospace" }}>
+                              {item.moq} pcs
+                            </div>
+                          </div>
+                        )}
+                        {fields.includeCbm && (
+                          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "8px 6px" }}>
+                            <div style={{ fontSize: 9, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>Unit CBM</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: `#${activeTheme.product.titleColor}`, fontFamily: "monospace" }}>
+                              {Number(item.cbm || 0).toFixed(3)}
+                            </div>
+                          </div>
+                        )}
+                        {fields.includeContainerQty && (
+                          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "8px 6px" }}>
+                            <div style={{ fontSize: 9, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>40' HQ Qty</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: `#${activeTheme.product.titleColor}`, fontFamily: "monospace" }}>
+                              {item.gp40ft} pcs
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "8px 6px" }}>
-                        <div style={{ fontSize: 9, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>Unit CBM</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: `#${activeTheme.product.titleColor}`, fontFamily: "monospace" }}>
-                          {item.cbm.toFixed(3)}
-                        </div>
-                      </div>
-                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "8px 6px" }}>
-                        <div style={{ fontSize: 9, color: `#${activeTheme.product.tableLabelColor}`, textTransform: "uppercase", fontWeight: 600 }}>40' HQ Qty</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: `#${activeTheme.product.titleColor}`, fontFamily: "monospace" }}>
-                          {item.gp40ft} pcs
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               );
             })()}
 
-            {/* SLIDE N+1: CLOSING / CONTACT SLIDE */}
-            {currentSlideIndex === totalSlides - 1 && products.length > 0 && (
+            {/* CLOSING / CONTACT SLIDE */}
+            {slides[currentSlideIndex]?.type === "closing" && (
               <div
                 style={{
                   height: "100%",
@@ -861,7 +966,7 @@ export default function SharedDeckViewerPage() {
                   }}
                 >
                   <a
-                    href="mailto:exports@lakshyainternational.com"
+                    href="mailto:exports@liinexus.com"
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -875,7 +980,7 @@ export default function SharedDeckViewerPage() {
                       fontWeight: 600,
                     }}
                   >
-                    <span>✉</span> Email Us: exports@lakshyainternational.com
+                    <span>✉</span> Email Us: exports@liinexus.com
                   </a>
 
                   <button
@@ -899,7 +1004,7 @@ export default function SharedDeckViewerPage() {
                 </div>
 
                 <div style={{ fontSize: 12, color: `#${activeTheme.closing.subtitleColor}` }}>
-                  Lakshya International • Jodhpur, Rajasthan, India
+                  LII Exports • Jodhpur, Rajasthan, India
                 </div>
               </div>
             )}

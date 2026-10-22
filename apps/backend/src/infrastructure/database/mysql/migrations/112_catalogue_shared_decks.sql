@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS catalogue_shared_decks (
   customer_name VARCHAR(255) NOT NULL DEFAULT '',
   theme_id VARCHAR(50) NOT NULL DEFAULT 'obsidian',
   include_pricing TINYINT(1) NOT NULL DEFAULT 1,
+  fields_config_json TEXT NULL,
   products_json LONGTEXT NOT NULL,
   created_by_user_id CHAR(36) NOT NULL,
   created_by_name VARCHAR(255) NOT NULL DEFAULT '',

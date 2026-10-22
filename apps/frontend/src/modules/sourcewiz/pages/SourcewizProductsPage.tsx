@@ -6,6 +6,8 @@ import {
   ThemeId,
   DeckTheme,
   CatalogProductItem,
+  PresentationFieldsConfig,
+  DEFAULT_PRESENTATION_FIELDS,
 } from "../utils/pptxExport";
 import { exportProductsToExcel } from "../utils/excelExport";
 import { catalogueShareApi, SharedDeckData } from "../api/catalogueShareApi";
@@ -102,13 +104,74 @@ export default function SourcewizProductsPage() {
 
   // Modal & Presentation Studio State
   const [isPptModalOpen, setIsPptModalOpen] = useState(false);
+  const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Deck Options & Theme
   const [selectedThemeId, setSelectedThemeId] = useState<ThemeId>("obsidian");
   const [customerName, setCustomerName] = useState("West Elm Global Sourcing");
   const [deckTitle, setDeckTitle] = useState("Curated Product Presentation Deck");
-  const [includePricing, setIncludePricing] = useState(true);
+  const [fieldsConfig, setFieldsConfig] = useState<PresentationFieldsConfig>(DEFAULT_PRESENTATION_FIELDS);
+
+  // Field customization toggles & presets
+  const toggleField = (key: keyof PresentationFieldsConfig) => {
+    setFieldsConfig((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const applyPreset = (preset: "all" | "hidePricing" | "specsOnly" | "minimal") => {
+    if (preset === "all") {
+      setFieldsConfig({
+        includeCoverSlide: true,
+        includeClosingSlide: true,
+        includePricing: true,
+        includeMoq: true,
+        includeStockStatus: true,
+        includeSku: true,
+        includeCategory: true,
+        includeCollection: true,
+        includeMaterial: true,
+        includeWoodFinish: true,
+        includeMetalFinish: true,
+        includeDimensions: true,
+        includeAssembly: true,
+        includeCbm: true,
+        includeContainerQty: true,
+      });
+    } else if (preset === "hidePricing") {
+      setFieldsConfig({
+        ...DEFAULT_PRESENTATION_FIELDS,
+        includePricing: false,
+        includeMoq: false,
+      });
+    } else if (preset === "specsOnly") {
+      setFieldsConfig({
+        ...DEFAULT_PRESENTATION_FIELDS,
+        includePricing: false,
+        includeMoq: false,
+        includeStockStatus: false,
+      });
+    } else if (preset === "minimal") {
+      setFieldsConfig({
+        includeCoverSlide: true,
+        includeClosingSlide: true,
+        includePricing: false,
+        includeMoq: false,
+        includeStockStatus: false,
+        includeSku: true,
+        includeCategory: false,
+        includeCollection: false,
+        includeMaterial: true,
+        includeWoodFinish: true,
+        includeMetalFinish: false,
+        includeDimensions: true,
+        includeAssembly: false,
+        includeCbm: false,
+        includeContainerQty: false,
+      });
+    }
+  };
+
+  const activeFieldsCount = Object.values(fieldsConfig).filter(Boolean).length;
 
   // Export progress
   const [isExportingPpt, setIsExportingPpt] = useState(false);
@@ -185,7 +248,8 @@ export default function SourcewizProductsPage() {
         themeId: themeOverride || selectedThemeId,
         customerName: customerName || "Global Sourcing Partner",
         deckTitle: deckTitle || "Curated Product Presentation Deck",
-        includePricing,
+        includePricing: fieldsConfig.includePricing,
+        fields: fieldsConfig,
         onProgress: (_curr, _tot, msg) => setExportProgressMsg(msg),
       });
     } catch (err: any) {
@@ -202,7 +266,8 @@ export default function SourcewizProductsPage() {
     exportProductsToExcel(selectedProducts, {
       deckTitle: deckTitle || "LII_Product_Catalogue",
       customerName: customerName || "",
-      includePricing,
+      includePricing: fieldsConfig.includePricing,
+      fields: fieldsConfig,
     });
   };
 
@@ -214,7 +279,8 @@ export default function SourcewizProductsPage() {
         title: deckTitle || "Curated Product Presentation Deck",
         customerName: customerName || "",
         themeId: selectedThemeId,
-        includePricing,
+        includePricing: fieldsConfig.includePricing,
+        fieldsConfig,
         products: selectedProducts,
       });
       setGeneratedDeck(result);
@@ -602,6 +668,29 @@ export default function SourcewizProductsPage() {
 
           {/* Right: Actions */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            {/* Field Selection / Details Option Button */}
+            <button
+              onClick={() => setIsFieldsModalOpen(true)}
+              style={{
+                background: "rgba(59, 130, 246, 0.2)",
+                color: "#93c5fd",
+                border: "1px solid rgba(59, 130, 246, 0.45)",
+                borderRadius: "6px",
+                padding: "7px 13px",
+                fontWeight: 700,
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.15s ease",
+              }}
+              title="Select which product details to include or exclude (Pricing, Specs, MOQ, Logistics, Slides)"
+            >
+              <span>⚙</span>
+              <span>Details to Include ({activeFieldsCount}/15)</span>
+            </button>
+
             <button
               onClick={() => setIsPptModalOpen(true)}
               style={{
@@ -1350,27 +1439,275 @@ export default function SourcewizProductsPage() {
                   />
                 </div>
 
-                <div>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      color: "#1e293b",
-                      cursor: "pointer",
-                      marginTop: "14px",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={includePricing}
-                      onChange={(e) => setIncludePricing(e.target.checked)}
-                      style={{ cursor: "pointer" }}
-                    />
-                    Include Wholesale FOB Prices & MOQ in Deck
-                  </label>
+              </div>
+
+              {/* DETAILS TO INCLUDE / CUSTOM FIELDS SECTION */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "8px",
+                  border: "1px solid #e2e8f0",
+                  padding: "16px 20px",
+                  marginBottom: "18px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                  <div>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      2. Presentation Details & Field Inclusions ({activeFieldsCount} / 15 Enabled)
+                    </span>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "0.72rem", color: "#64748b" }}>
+                      Choose which specifications, pricing details, and slides to include or exclude in your presentation deck.
+                    </p>
+                  </div>
+
+                  {/* Preset Pills */}
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset("all")}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.70rem",
+                        fontWeight: 600,
+                        background: activeFieldsCount === 15 ? "#2563eb" : "#f1f5f9",
+                        color: activeFieldsCount === 15 ? "#ffffff" : "#334155",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "14px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✓ Select All (15)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset("hidePricing")}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.70rem",
+                        fontWeight: 600,
+                        background: !fieldsConfig.includePricing && !fieldsConfig.includeMoq ? "#2563eb" : "#f1f5f9",
+                        color: !fieldsConfig.includePricing && !fieldsConfig.includeMoq ? "#ffffff" : "#334155",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "14px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Hide Pricing Only
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset("specsOnly")}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.70rem",
+                        fontWeight: 600,
+                        background: !fieldsConfig.includePricing && !fieldsConfig.includeMoq && !fieldsConfig.includeStockStatus ? "#2563eb" : "#f1f5f9",
+                        color: !fieldsConfig.includePricing && !fieldsConfig.includeMoq && !fieldsConfig.includeStockStatus ? "#ffffff" : "#334155",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "14px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Specs Only (Buyer Safe)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset("minimal")}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.70rem",
+                        fontWeight: 600,
+                        background: activeFieldsCount <= 7 ? "#2563eb" : "#f1f5f9",
+                        color: activeFieldsCount <= 7 ? "#ffffff" : "#334155",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "14px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Minimal
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Categorized Columns */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                    gap: "12px",
+                  }}
+                >
+                  {/* Category 1: Commercials & Pricing */}
+                  <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#1e293b", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>💰</span> Commercial & Pricing
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includePricing}
+                          onChange={() => toggleField("includePricing")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>FOB Price ($ USD)</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeMoq}
+                          onChange={() => toggleField("includeMoq")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Minimum Order Qty (MOQ)</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeStockStatus}
+                          onChange={() => toggleField("includeStockStatus")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Stock / Production Status</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Category 2: Product Identification */}
+                  <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#1e293b", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>🏷️</span> Classification & SKU
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeSku}
+                          onChange={() => toggleField("includeSku")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>SKU Code Badge</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeCategory}
+                          onChange={() => toggleField("includeCategory")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Category & Subcategory</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeCollection}
+                          onChange={() => toggleField("includeCollection")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Collection Name</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Category 3: Materials & Specs */}
+                  <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#1e293b", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>🪵</span> Materials & Finishes
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeMaterial}
+                          onChange={() => toggleField("includeMaterial")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Material Composition</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeWoodFinish}
+                          onChange={() => toggleField("includeWoodFinish")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Wood Finish</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeMetalFinish}
+                          onChange={() => toggleField("includeMetalFinish")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Metal Finish</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeDimensions}
+                          onChange={() => toggleField("includeDimensions")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Dimensions (L x W x H cm)</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeAssembly}
+                          onChange={() => toggleField("includeAssembly")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Assembly Type (KD / Assembled)</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Category 4: Logistics & Slides Structure */}
+                  <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#1e293b", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>🚢</span> Logistics & Slides
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeCbm}
+                          onChange={() => toggleField("includeCbm")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Unit CBM (m³)</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeContainerQty}
+                          onChange={() => toggleField("includeContainerQty")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>40' HQ Container Capacity</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeCoverSlide}
+                          onChange={() => toggleField("includeCoverSlide")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Deck Cover Slide</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.75rem", cursor: "pointer", color: "#334155" }}>
+                        <input
+                          type="checkbox"
+                          checked={fieldsConfig.includeClosingSlide}
+                          onChange={() => toggleField("includeClosingSlide")}
+                          style={{ accentColor: "#2563eb" }}
+                        />
+                        <span>Closing & Contact Slide</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1378,7 +1715,7 @@ export default function SourcewizProductsPage() {
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                   <div style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    2. Live 16:9 Slide Canvas ({currentTheme.name} Theme)
+                    3. Live 16:9 Slide Canvas ({currentTheme.name} Theme)
                   </div>
                   <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
                     Showing slide {activeSlide + 1} of {selectedProducts.length + 2}
@@ -1545,9 +1882,11 @@ export default function SourcewizProductsPage() {
                             justifyContent: "space-between",
                           }}
                         >
-                          <span>Total Volume: {selectedProducts.reduce((acc, p) => acc + (p.cbm || 0), 0).toFixed(2)} CBM</span>
+                          {fieldsConfig.includeCbm && (
+                            <span>Total Volume: {selectedProducts.reduce((acc, p) => acc + (p.cbm || 0), 0).toFixed(2)} CBM</span>
+                          )}
                           <span>FOB Mundra / Pipavav, India</span>
-                          <span>{includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions Deck"}</span>
+                          <span>{fieldsConfig.includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions Deck"}</span>
                         </div>
                       </div>
                     ) : activeSlide === selectedProducts.length + 1 ? (
@@ -1598,22 +1937,26 @@ export default function SourcewizProductsPage() {
                               }}
                             >
                               <div>
-                                <span style={{ fontSize: "0.68rem", fontWeight: 800, color: `#${currentTheme.product.categoryColor}`, textTransform: "uppercase" }}>
-                                  {product.category} • {product.subCategory}
-                                </span>
+                                {fieldsConfig.includeCategory && (
+                                  <span style={{ fontSize: "0.68rem", fontWeight: 800, color: `#${currentTheme.product.categoryColor}`, textTransform: "uppercase" }}>
+                                    {product.category} • {product.subCategory}
+                                  </span>
+                                )}
                                 <h3 style={{ fontSize: "1.15rem", fontWeight: 800, margin: "2px 0 0 0", color: `#${currentTheme.product.titleColor}` }}>
                                   {product.name}
                                 </h3>
                               </div>
                               <div style={{ textAlign: "right" }}>
-                                {includePricing && (
+                                {fieldsConfig.includePricing && (
                                   <span style={{ fontSize: "1.05rem", fontWeight: 800, color: `#${currentTheme.product.priceColor}`, display: "block" }}>
                                     ${product.fobPriceUsd.toFixed(2)} USD
                                   </span>
                                 )}
-                                <span style={{ fontSize: "0.68rem", color: `#${currentTheme.product.skuColor}` }}>
-                                  SKU: {product.sku}
-                                </span>
+                                {fieldsConfig.includeSku && (
+                                  <span style={{ fontSize: "0.68rem", color: `#${currentTheme.product.skuColor}` }}>
+                                    SKU: {product.sku}
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -1625,6 +1968,7 @@ export default function SourcewizProductsPage() {
                                   overflow: "hidden",
                                   border: `1px solid #${currentTheme.product.imgBorderColor}`,
                                   background: `#${currentTheme.product.tableBg}`,
+                                  position: "relative",
                                 }}
                               >
                                 <img
@@ -1635,6 +1979,23 @@ export default function SourcewizProductsPage() {
                                   }}
                                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                 />
+                                {fieldsConfig.includeStockStatus && (
+                                  <span
+                                    style={{
+                                      position: "absolute",
+                                      top: 6,
+                                      left: 6,
+                                      background: "rgba(0,0,0,0.75)",
+                                      color: "#34d399",
+                                      padding: "2px 6px",
+                                      borderRadius: 4,
+                                      fontSize: "0.65rem",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {product.stockStatus || "Active"}
+                                  </span>
+                                )}
                               </div>
 
                               <div
@@ -1653,48 +2014,77 @@ export default function SourcewizProductsPage() {
                                   <div style={{ fontWeight: 700, color: `#${currentTheme.product.titleColor}`, marginBottom: "2px" }}>
                                     Technical Specifications
                                   </div>
-                                  <div>
-                                    <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Collection: </span>
-                                    <strong style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.collectionName}</strong>
-                                  </div>
-                                  <div>
-                                    <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Material: </span>
-                                    <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.material}</span>
-                                  </div>
-                                  <div>
-                                    <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Finish: </span>
-                                    <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.woodFinish}</span>
-                                  </div>
-                                  <div>
-                                    <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Size: </span>
-                                    <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.sizeCm} cm</span>
-                                  </div>
-                                  <div>
-                                    <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Assembly: </span>
-                                    <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.assembledKd}</span>
-                                  </div>
+                                  {fieldsConfig.includeCollection && (
+                                    <div>
+                                      <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Collection: </span>
+                                      <strong style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.collectionName}</strong>
+                                    </div>
+                                  )}
+                                  {fieldsConfig.includeMaterial && (
+                                    <div>
+                                      <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Material: </span>
+                                      <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.material}</span>
+                                    </div>
+                                  )}
+                                  {fieldsConfig.includeWoodFinish && (
+                                    <div>
+                                      <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Wood Finish: </span>
+                                      <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.woodFinish}</span>
+                                    </div>
+                                  )}
+                                  {fieldsConfig.includeMetalFinish && (
+                                    <div>
+                                      <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Metal Finish: </span>
+                                      <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.metalFinish}</span>
+                                    </div>
+                                  )}
+                                  {fieldsConfig.includeDimensions && (
+                                    <div>
+                                      <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Size: </span>
+                                      <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.sizeCm} cm</span>
+                                    </div>
+                                  )}
+                                  {fieldsConfig.includeAssembly && (
+                                    <div>
+                                      <span style={{ color: `#${currentTheme.product.tableLabelColor}` }}>Assembly: </span>
+                                      <span style={{ color: `#${currentTheme.product.tableValColor}` }}>{product.assembledKd}</span>
+                                    </div>
+                                  )}
                                 </div>
 
-                                <div
-                                  style={{
-                                    background: `#${currentTheme.product.priceCardBg}`,
-                                    border: `1px solid #${currentTheme.product.priceCardBorder}`,
-                                    borderRadius: "5px",
-                                    padding: "5px 7px",
-                                    display: "grid",
-                                    gridTemplateColumns: "1fr 1fr",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  <div>
-                                    <span style={{ fontSize: "0.62rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>Unit CBM</span>
-                                    <strong style={{ color: `#${currentTheme.product.tableHighlightColor}` }}>{product.cbm} m³</strong>
+                                {(fieldsConfig.includeMoq || fieldsConfig.includeCbm || fieldsConfig.includeContainerQty) && (
+                                  <div
+                                    style={{
+                                      background: `#${currentTheme.product.priceCardBg}`,
+                                      border: `1px solid #${currentTheme.product.priceCardBorder}`,
+                                      borderRadius: "5px",
+                                      padding: "5px 7px",
+                                      display: "grid",
+                                      gridTemplateColumns: `repeat(${[fieldsConfig.includeMoq, fieldsConfig.includeCbm, fieldsConfig.includeContainerQty].filter(Boolean).length || 1}, 1fr)`,
+                                      textAlign: "center",
+                                      gap: "4px",
+                                    }}
+                                  >
+                                    {fieldsConfig.includeMoq && (
+                                      <div>
+                                        <span style={{ fontSize: "0.60rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>MOQ</span>
+                                        <strong style={{ color: `#${currentTheme.product.tableHighlightColor}` }}>{product.moq} pcs</strong>
+                                      </div>
+                                    )}
+                                    {fieldsConfig.includeCbm && (
+                                      <div>
+                                        <span style={{ fontSize: "0.60rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>Unit CBM</span>
+                                        <strong style={{ color: `#${currentTheme.product.tableHighlightColor}` }}>{product.cbm} m³</strong>
+                                      </div>
+                                    )}
+                                    {fieldsConfig.includeContainerQty && (
+                                      <div>
+                                        <span style={{ fontSize: "0.60rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>40'ft Container</span>
+                                        <strong style={{ color: `#${currentTheme.product.tableHighlightColor}` }}>{product.gp40ft} pcs</strong>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div>
-                                    <span style={{ fontSize: "0.62rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>40'ft Container</span>
-                                    <strong style={{ color: `#${currentTheme.product.tableHighlightColor}` }}>{product.gp40ft} pcs</strong>
-                                  </div>
-                                </div>
+                                )}
                               </div>
                             </div>
 
@@ -2317,6 +2707,491 @@ export default function SourcewizProductsPage() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED PRESENTATION FIELDS CUSTOMIZATION MODAL */}
+      {isFieldsModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.8)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              maxWidth: "860px",
+              width: "100%",
+              maxHeight: "92vh",
+              overflowY: "auto",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "18px 24px",
+                background: "#0f172a",
+                color: "#ffffff",
+                borderRadius: "16px 16px 0 0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span>⚙</span>
+                  <span>Presentation Details & Content Options</span>
+                </h3>
+                <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#94a3b8" }}>
+                  Select exactly what details to include or exclude before generating your PPT, Excel file, or Buyer Link.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsFieldsModalOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "1.4rem",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Presets Bar */}
+            <div
+              style={{
+                padding: "12px 24px",
+                background: "#f1f5f9",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "8px",
+              }}
+            >
+              <span style={{ fontSize: "0.76rem", color: "#475569", fontWeight: 700 }}>
+                Quick Presets:
+              </span>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("all")}
+                  style={{
+                    padding: "5px 12px",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: activeFieldsCount === 15 ? "#2563eb" : "#ffffff",
+                    color: activeFieldsCount === 15 ? "#ffffff" : "#334155",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "16px",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✓ Select All Fields (15)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("hidePricing")}
+                  style={{
+                    padding: "5px 12px",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: !fieldsConfig.includePricing && !fieldsConfig.includeMoq ? "#2563eb" : "#ffffff",
+                    color: !fieldsConfig.includePricing && !fieldsConfig.includeMoq ? "#ffffff" : "#334155",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "16px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Hide Pricing Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("specsOnly")}
+                  style={{
+                    padding: "5px 12px",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: !fieldsConfig.includePricing && !fieldsConfig.includeMoq && !fieldsConfig.includeStockStatus ? "#2563eb" : "#ffffff",
+                    color: !fieldsConfig.includePricing && !fieldsConfig.includeMoq && !fieldsConfig.includeStockStatus ? "#ffffff" : "#334155",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "16px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Specs Only (Buyer Safe)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("minimal")}
+                  style={{
+                    padding: "5px 12px",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    background: activeFieldsCount <= 7 ? "#2563eb" : "#ffffff",
+                    color: activeFieldsCount <= 7 ? "#ffffff" : "#334155",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "16px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Minimal (Images + Basic)
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: 4 Categories */}
+            <div style={{ padding: "20px 24px", flex: 1, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "16px" }}>
+              {/* Card 1: Commercial & Pricing */}
+              <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: "#0f172a", fontSize: "0.85rem", marginBottom: "12px", borderBottom: "1px solid #f1f5f9", paddingBottom: "8px" }}>
+                  <span>💰</span> Commercial & Pricing
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includePricing}
+                      onChange={() => toggleField("includePricing")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>FOB Price ($ USD)</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Shows unit FOB price in US Dollars per product</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeMoq}
+                      onChange={() => toggleField("includeMoq")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Minimum Order Qty (MOQ)</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Displays required minimum order quantity in pieces</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeStockStatus}
+                      onChange={() => toggleField("includeStockStatus")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Stock / Production Status</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>In Stock, Sample Ready, or Made-to-Order badge</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Card 2: Identification & Classification */}
+              <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: "#0f172a", fontSize: "0.85rem", marginBottom: "12px", borderBottom: "1px solid #f1f5f9", paddingBottom: "8px" }}>
+                  <span>🏷️</span> Classification & SKU
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeSku}
+                      onChange={() => toggleField("includeSku")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>SKU Code</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Unique product code identifier on slide and image</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeCategory}
+                      onChange={() => toggleField("includeCategory")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Category & Subcategory</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Header classification banner (e.g. FURNITURE • DINING TABLE)</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeCollection}
+                      onChange={() => toggleField("includeCollection")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Collection Name</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Design collection or factory line name</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Card 3: Materials & Technical Specs */}
+              <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: "#0f172a", fontSize: "0.85rem", marginBottom: "12px", borderBottom: "1px solid #f1f5f9", paddingBottom: "8px" }}>
+                  <span>🪵</span> Materials & Finishes
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeMaterial}
+                      onChange={() => toggleField("includeMaterial")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Material Composition</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Wood type, iron/brass gauge, natural cane, etc.</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeWoodFinish}
+                      onChange={() => toggleField("includeWoodFinish")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Wood Finish</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Natural matte, walnut stain, rustic distressed, etc.</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeMetalFinish}
+                      onChange={() => toggleField("includeMetalFinish")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Metal Finish</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Powder coated brass, black matte, chrome, etc.</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeDimensions}
+                      onChange={() => toggleField("includeDimensions")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Dimensions (CM)</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Length x Width x Height in centimeters</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeAssembly}
+                      onChange={() => toggleField("includeAssembly")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Assembly Type</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>KD (Knock Down Flat Pack) or Fully Assembled</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Card 4: Logistics & Slide Deck Structure */}
+              <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: "#0f172a", fontSize: "0.85rem", marginBottom: "12px", borderBottom: "1px solid #f1f5f9", paddingBottom: "8px" }}>
+                  <span>🚢</span> Logistics & Deck Slides
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeCbm}
+                      onChange={() => toggleField("includeCbm")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Unit CBM (m³)</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Packaged cubic meter volume per item</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeContainerQty}
+                      onChange={() => toggleField("includeContainerQty")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>40' HQ Container Capacity</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Estimated pieces fitting in a 40-foot container</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeCoverSlide}
+                      onChange={() => toggleField("includeCoverSlide")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Cover Slide</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>First title slide with client organization & summary</div>
+                    </div>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={fieldsConfig.includeClosingSlide}
+                      onChange={() => toggleField("includeClosingSlide")}
+                      style={{ marginTop: "3px", width: "16px", height: "16px", accentColor: "#2563eb" }}
+                    />
+                    <div>
+                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>Closing Slide</div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b" }}>Final contact slide with factory address & inquiry email</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div
+              style={{
+                padding: "16px 24px",
+                background: "#f8fafc",
+                borderTop: "1px solid #e2e8f0",
+                borderRadius: "0 0 16px 16px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "10px",
+              }}
+            >
+              <div style={{ fontSize: "0.80rem", color: "#475569" }}>
+                Active Selection: <strong style={{ color: "#2563eb" }}>{activeFieldsCount} of 15 fields enabled</strong>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setIsFieldsModalOpen(false)}
+                  style={{
+                    padding: "8px 14px",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    color: "#334155",
+                    fontSize: "0.80rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Done
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFieldsModalOpen(false);
+                    handleExportExcel();
+                  }}
+                  style={{
+                    padding: "8px 14px",
+                    background: "rgba(16, 185, 129, 0.15)",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    borderRadius: "6px",
+                    color: "#059669",
+                    fontSize: "0.80rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>📊</span>
+                  <span>Export Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFieldsModalOpen(false);
+                    handleGenerateShareLink();
+                  }}
+                  disabled={isGeneratingLink}
+                  style={{
+                    padding: "8px 14px",
+                    background: "rgba(168, 85, 247, 0.15)",
+                    border: "1px solid rgba(168, 85, 247, 0.35)",
+                    borderRadius: "6px",
+                    color: "#7e22ce",
+                    fontSize: "0.80rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>🔗</span>
+                  <span>Share Link</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFieldsModalOpen(false);
+                    handleDownloadPptx();
+                  }}
+                  disabled={isExportingPpt}
+                  style={{
+                    padding: "8px 18px",
+                    background: "#2563eb",
+                    border: "none",
+                    borderRadius: "6px",
+                    color: "#ffffff",
+                    fontSize: "0.80rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
+                  }}
+                >
+                  <span>📥</span>
+                  <span>Download PPT ({selectedIds.length})</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

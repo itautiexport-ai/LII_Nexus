@@ -320,11 +320,48 @@ export const DECK_THEMES: Record<ThemeId, DeckTheme> = {
   },
 };
 
+export interface PresentationFieldsConfig {
+  includeCoverSlide: boolean;
+  includeClosingSlide: boolean;
+  includePricing: boolean;
+  includeMoq: boolean;
+  includeSku: boolean;
+  includeCategory: boolean;
+  includeCollection: boolean;
+  includeMaterial: boolean;
+  includeWoodFinish: boolean;
+  includeMetalFinish: boolean;
+  includeDimensions: boolean;
+  includeAssembly: boolean;
+  includeCbm: boolean;
+  includeContainerQty: boolean;
+  includeStockStatus: boolean;
+}
+
+export const DEFAULT_PRESENTATION_FIELDS: PresentationFieldsConfig = {
+  includeCoverSlide: true,
+  includeClosingSlide: true,
+  includePricing: true,
+  includeMoq: true,
+  includeSku: true,
+  includeCategory: true,
+  includeCollection: true,
+  includeMaterial: true,
+  includeWoodFinish: true,
+  includeMetalFinish: true,
+  includeDimensions: true,
+  includeAssembly: true,
+  includeCbm: true,
+  includeContainerQty: true,
+  includeStockStatus: true,
+};
+
 export interface PptExportOptions {
   themeId?: ThemeId;
   customerName?: string;
   deckTitle?: string;
   includePricing?: boolean;
+  fields?: Partial<PresentationFieldsConfig>;
   onProgress?: (current: number, total: number, message: string) => void;
 }
 
@@ -399,13 +436,22 @@ export async function generateProductPptx(
     onProgress,
   } = options;
 
+  const fields: PresentationFieldsConfig = {
+    ...DEFAULT_PRESENTATION_FIELDS,
+    ...(options.includePricing !== undefined ? { includePricing: options.includePricing } : {}),
+    ...(options.fields || {}),
+  };
+
   const theme = DECK_THEMES[themeId] || DECK_THEMES.obsidian;
 
   if (!products || products.length === 0) {
     throw new Error("No products selected to generate PowerPoint presentation.");
   }
 
-  onProgress?.(0, products.length + 2, `Initializing ${theme.name} theme...`);
+  const totalDeckSlides = (fields.includeCoverSlide ? 1 : 0) + products.length + (fields.includeClosingSlide ? 1 : 0);
+  let slideNumber = 0;
+
+  onProgress?.(0, totalDeckSlides, `Initializing ${theme.name} theme...`);
 
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_16x9";
@@ -419,117 +465,123 @@ export async function generateProductPptx(
   // -------------------------------------------------------------
   // SLIDE 1: COVER SLIDE
   // -------------------------------------------------------------
-  onProgress?.(1, products.length + 2, "Creating Cover Slide...");
-  const coverSlide = pptx.addSlide();
-  coverSlide.background = { color: theme.cover.bg };
+  if (fields.includeCoverSlide) {
+    slideNumber++;
+    onProgress?.(slideNumber, totalDeckSlides, "Creating Cover Slide...");
+    const coverSlide = pptx.addSlide();
+    coverSlide.background = { color: theme.cover.bg };
 
-  // Header Subtitle & Badge
-  coverSlide.addText("LII EXPORTS • B2B EXPORT CATALOGUE", {
-    x: 0.8,
-    y: 0.8,
-    w: 6.0,
-    h: 0.4,
-    fontSize: 11,
-    bold: true,
-    color: theme.cover.accentColor,
-  });
-
-  coverSlide.addText(theme.badge, {
-    x: 7.2,
-    y: 0.75,
-    w: 2.2,
-    h: 0.35,
-    fontSize: 9,
-    bold: true,
-    color: theme.cover.badgeText,
-    align: "center",
-    fill: { color: theme.cover.badgeBg },
-    shape: pptx.ShapeType.roundRect,
-  });
-
-  // Main Deck Title
-  coverSlide.addText(deckTitle, {
-    x: 0.8,
-    y: 1.4,
-    w: 8.6,
-    h: 1.1,
-    fontSize: 32,
-    bold: true,
-    color: theme.cover.titleColor,
-    lineSpacing: 38,
-  });
-
-  // Customer sub-heading
-  coverSlide.addText(`Prepared for ${customerName} • ${products.length} Curated Product${products.length > 1 ? "s" : ""}`, {
-    x: 0.8,
-    y: 2.6,
-    w: 8.6,
-    h: 0.45,
-    fontSize: 13,
-    color: theme.cover.subtitleColor,
-  });
-
-  // Summary Metrics Card
-  coverSlide.addShape(pptx.ShapeType.roundRect, {
-    x: 0.8,
-    y: 3.3,
-    w: 8.4,
-    h: 1.1,
-    fill: { color: theme.cover.cardBg },
-    line: { color: theme.cover.cardBorder, width: 1 },
-  });
-
-  const pricingNote = includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions (Pricing Confidential)";
-
-  coverSlide.addText(
-    `Total Selected Volume: ${totalCbm.toFixed(2)} m³   |   Total Products: ${products.length} Items   |   Port: FOB Mundra/Pipavav, India\n${pricingNote}`,
-    {
-      x: 1.0,
-      y: 3.45,
-      w: 8.0,
-      h: 0.8,
+    // Header Subtitle & Badge
+    coverSlide.addText("LII EXPORTS • B2B EXPORT CATALOGUE", {
+      x: 0.8,
+      y: 0.8,
+      w: 6.0,
+      h: 0.4,
       fontSize: 11,
-      color: theme.cover.cardText,
-      align: "center",
-      valign: "middle",
-    }
-  );
+      bold: true,
+      color: theme.cover.accentColor,
+    });
 
-  // Footer
-  coverSlide.addText("Confidential B2B Presentation • LII Exports Jodhpur • All Rights Reserved", {
-    x: 0.8,
-    y: 4.9,
-    w: 8.4,
-    h: 0.3,
-    fontSize: 9,
-    color: theme.cover.footerText,
-  });
+    coverSlide.addText(theme.badge, {
+      x: 7.2,
+      y: 0.75,
+      w: 2.2,
+      h: 0.35,
+      fontSize: 9,
+      bold: true,
+      color: theme.cover.badgeText,
+      align: "center",
+      fill: { color: theme.cover.badgeBg },
+      shape: pptx.ShapeType.roundRect,
+    });
+
+    // Main Deck Title
+    coverSlide.addText(deckTitle, {
+      x: 0.8,
+      y: 1.4,
+      w: 8.6,
+      h: 1.1,
+      fontSize: 32,
+      bold: true,
+      color: theme.cover.titleColor,
+      lineSpacing: 38,
+    });
+
+    // Customer sub-heading
+    coverSlide.addText(`Prepared for ${customerName} • ${products.length} Curated Product${products.length > 1 ? "s" : ""}`, {
+      x: 0.8,
+      y: 2.6,
+      w: 8.6,
+      h: 0.45,
+      fontSize: 13,
+      color: theme.cover.subtitleColor,
+    });
+
+    // Summary Metrics Card
+    coverSlide.addShape(pptx.ShapeType.roundRect, {
+      x: 0.8,
+      y: 3.3,
+      w: 8.4,
+      h: 1.1,
+      fill: { color: theme.cover.cardBg },
+      line: { color: theme.cover.cardBorder, width: 1 },
+    });
+
+    const pricingNote = fields.includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions (Pricing Confidential)";
+
+    coverSlide.addText(
+      `Total Selected Volume: ${totalCbm.toFixed(2)} m³   |   Total Products: ${products.length} Items   |   Port: FOB Mundra/Pipavav, India\n${pricingNote}`,
+      {
+        x: 1.0,
+        y: 3.45,
+        w: 8.0,
+        h: 0.8,
+        fontSize: 11,
+        color: theme.cover.cardText,
+        align: "center",
+        valign: "middle",
+      }
+    );
+
+    // Footer
+    coverSlide.addText("Confidential B2B Presentation • LII Exports Jodhpur • All Rights Reserved", {
+      x: 0.8,
+      y: 4.9,
+      w: 8.4,
+      h: 0.3,
+      fontSize: 9,
+      color: theme.cover.footerText,
+    });
+  }
 
   // -------------------------------------------------------------
   // SLIDES 2..N: PRODUCT SLIDES
   // -------------------------------------------------------------
   for (let idx = 0; idx < products.length; idx++) {
     const p = products[idx];
-    onProgress?.(idx + 2, products.length + 2, `Building Slide ${idx + 2} (${p.sku})...`);
+    slideNumber++;
+    onProgress?.(slideNumber, totalDeckSlides, `Building Slide ${slideNumber} (${p.sku})...`);
 
     const pSlide = pptx.addSlide();
     pSlide.background = { color: theme.product.bg };
 
     // 1. Category / Subcategory Tag
-    pSlide.addText(`${(p.category || "FURNITURE").toUpperCase()} • ${(p.subCategory || "GENERAL").toUpperCase()}`, {
-      x: 5.3,
-      y: 0.4,
-      w: 4.2,
-      h: 0.25,
-      fontSize: 10,
-      bold: true,
-      color: theme.product.categoryColor,
-    });
+    if (fields.includeCategory) {
+      pSlide.addText(`${(p.category || "FURNITURE").toUpperCase()} • ${(p.subCategory || "GENERAL").toUpperCase()}`, {
+        x: 5.3,
+        y: 0.4,
+        w: 4.2,
+        h: 0.25,
+        fontSize: 10,
+        bold: true,
+        color: theme.product.categoryColor,
+      });
+    }
 
     // 2. Product Name
     pSlide.addText(p.name || "Product Item", {
       x: 5.3,
-      y: 0.65,
+      y: fields.includeCategory ? 0.65 : 0.45,
       w: 4.2,
       h: 0.65,
       fontSize: 17,
@@ -539,103 +591,135 @@ export async function generateProductPptx(
     });
 
     // 3. Price & SKU Card
-    pSlide.addShape(pptx.ShapeType.roundRect, {
-      x: 5.3,
-      y: 1.35,
-      w: 4.2,
-      h: 0.65,
-      fill: { color: theme.product.priceCardBg },
-      line: { color: theme.product.priceCardBorder, width: 1 },
-    });
+    const showCard = fields.includePricing || fields.includeMoq || fields.includeSku || fields.includeStockStatus;
+    const cardY = fields.includeCategory ? 1.35 : 1.15;
+    if (showCard) {
+      pSlide.addShape(pptx.ShapeType.roundRect, {
+        x: 5.3,
+        y: cardY,
+        w: 4.2,
+        h: 0.65,
+        fill: { color: theme.product.priceCardBg },
+        line: { color: theme.product.priceCardBorder, width: 1 },
+      });
 
-    if (includePricing) {
-      pSlide.addText(`$${Number(p.fobPriceUsd || 0).toFixed(2)} USD`, {
-        x: 5.45,
-        y: 1.4,
-        w: 2.2,
-        h: 0.35,
-        fontSize: 14,
-        bold: true,
-        color: theme.product.priceColor,
-      });
-      pSlide.addText(`MOQ: ${p.moq || 10} Pcs`, {
-        x: 5.45,
-        y: 1.72,
-        w: 2.2,
-        h: 0.22,
-        fontSize: 8.5,
-        color: theme.product.skuColor,
-      });
-    } else {
-      pSlide.addText("Wholesale Export Specification", {
-        x: 5.45,
-        y: 1.45,
-        w: 2.2,
-        h: 0.45,
-        fontSize: 11,
-        bold: true,
-        color: theme.product.priceColor,
-      });
+      if (fields.includePricing) {
+        pSlide.addText(`$${Number(p.fobPriceUsd || 0).toFixed(2)} USD`, {
+          x: 5.45,
+          y: cardY + 0.05,
+          w: 2.2,
+          h: 0.35,
+          fontSize: 14,
+          bold: true,
+          color: theme.product.priceColor,
+        });
+        if (fields.includeMoq) {
+          pSlide.addText(`MOQ: ${p.moq || 10} Pcs`, {
+            x: 5.45,
+            y: cardY + 0.37,
+            w: 2.2,
+            h: 0.22,
+            fontSize: 8.5,
+            color: theme.product.skuColor,
+          });
+        }
+      } else if (fields.includeMoq) {
+        pSlide.addText(`MOQ: ${p.moq || 10} Pcs`, {
+          x: 5.45,
+          y: cardY + 0.15,
+          w: 2.2,
+          h: 0.35,
+          fontSize: 12,
+          bold: true,
+          color: theme.product.priceColor,
+        });
+      }
+
+      const rightLines: string[] = [];
+      if (fields.includeSku) rightLines.push(`SKU: ${p.sku}`);
+      if (fields.includeStockStatus) rightLines.push(`Status: ${p.stockStatus || "Active"}`);
+
+      if (rightLines.length > 0) {
+        pSlide.addText(rightLines.join("\n"), {
+          x: 7.7,
+          y: cardY + 0.05,
+          w: 1.7,
+          h: 0.55,
+          fontSize: 9,
+          bold: true,
+          color: theme.product.skuColor,
+          align: "right",
+        });
+      }
     }
 
-    pSlide.addText(`SKU: ${p.sku}\nStatus: ${p.stockStatus || "Active"}`, {
-      x: 7.7,
-      y: 1.4,
-      w: 1.7,
-      h: 0.55,
-      fontSize: 9,
-      bold: true,
-      color: theme.product.skuColor,
-      align: "right",
-    });
-
-    // 4. Specifications Table
-    const tableRows = [
-      [
+    // 4. Specifications Table (Filter fields based on configuration)
+    const tableRows: Array<[any, any]> = [];
+    if (fields.includeCollection) {
+      tableRows.push([
         { text: "Collection", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: p.collectionName || "Factory Collection", options: { color: theme.product.tableValColor, bold: true } },
-      ],
-      [
+      ]);
+    }
+    if (fields.includeMaterial) {
+      tableRows.push([
         { text: "Material", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: p.material || "Wood / Metal", options: { color: theme.product.tableValColor } },
-      ],
-      [
+      ]);
+    }
+    if (fields.includeWoodFinish) {
+      tableRows.push([
         { text: "Wood Finish", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: p.woodFinish || "Natural", options: { color: theme.product.tableValColor } },
-      ],
-      [
+      ]);
+    }
+    if (fields.includeMetalFinish) {
+      tableRows.push([
         { text: "Metal Finish", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: p.metalFinish || "N/A", options: { color: theme.product.tableValColor } },
-      ],
-      [
+      ]);
+    }
+    if (fields.includeDimensions) {
+      tableRows.push([
         { text: "Dimensions (CM)", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: `${p.sizeCm || "N/A"} CM`, options: { color: theme.product.tableValColor } },
-      ],
-      [
+      ]);
+    }
+    if (fields.includeAssembly) {
+      tableRows.push([
         { text: "Assembly", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: p.assembledKd || "KD", options: { color: theme.product.tableValColor } },
-      ],
-      [
+      ]);
+    }
+    if (fields.includeCbm) {
+      tableRows.push([
         { text: "Unit CBM", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: `${Number(p.cbm || 0).toFixed(3)} m³`, options: { color: theme.product.tableHighlightColor, bold: true } },
-      ],
-      [
+      ]);
+    }
+    if (fields.includeContainerQty) {
+      tableRows.push([
         { text: "40ft GP Qty", options: { bold: true, color: theme.product.tableLabelColor } },
         { text: `${p.gp40ft || 0} Pcs`, options: { color: theme.product.tableHighlightColor, bold: true } },
-      ],
-    ];
+      ]);
+    }
 
-    pSlide.addTable(tableRows, {
-      x: 5.3,
-      y: 2.15,
-      w: 4.2,
-      h: 2.6,
-      fontSize: 9,
-      fill: { color: theme.product.tableBg },
-      border: { type: "solid", pt: 1, color: theme.product.tableBorder },
-      margin: [3, 5, 3, 5],
-      colW: [1.4, 2.8],
-    });
+    if (tableRows.length > 0) {
+      const tableY = showCard ? cardY + 0.8 : cardY;
+      const tableHeight = Math.min(2.7, Math.max(0.6, tableRows.length * 0.32));
+
+      pSlide.addTable(tableRows, {
+        x: 5.3,
+        y: tableY,
+        w: 4.2,
+        h: tableHeight,
+        fontSize: 9,
+        fill: { color: theme.product.tableBg },
+        border: { type: "solid", pt: 1, color: theme.product.tableBorder },
+        margin: [3, 5, 3, 5],
+        colW: [1.4, 2.8],
+      });
+    }
 
     // 5. Left Image Box
     const base64Img = await toBase64DataUrl(p.image);
@@ -709,7 +793,7 @@ export async function generateProductPptx(
       color: theme.product.footerTextColor,
     });
 
-    pSlide.addText(`Slide ${idx + 2} of ${products.length + 2}`, {
+    pSlide.addText(`Slide ${slideNumber} of ${totalDeckSlides}`, {
       x: 7.4,
       y: 5.0,
       w: 2.0,
@@ -723,58 +807,61 @@ export async function generateProductPptx(
   // -------------------------------------------------------------
   // SLIDE FINAL: CLOSING SLIDE
   // -------------------------------------------------------------
-  onProgress?.(products.length + 2, products.length + 2, "Adding Closing Slide...");
-  const closingSlide = pptx.addSlide();
-  closingSlide.background = { color: theme.closing.bg };
+  if (fields.includeClosingSlide) {
+    slideNumber++;
+    onProgress?.(slideNumber, totalDeckSlides, "Adding Closing Slide...");
+    const closingSlide = pptx.addSlide();
+    closingSlide.background = { color: theme.closing.bg };
 
-  closingSlide.addText("Thank You for Exploring LII Exports", {
-    x: 0.8,
-    y: 1.4,
-    w: 8.4,
-    h: 0.8,
-    fontSize: 28,
-    bold: true,
-    color: theme.closing.titleColor,
-    align: "center",
-  });
-
-  closingSlide.addText(
-    "For sample requests, customized finishes, FOB container quotations, or factory audit visits:",
-    {
+    closingSlide.addText("Thank You for Exploring LII Exports", {
       x: 0.8,
-      y: 2.3,
+      y: 1.4,
       w: 8.4,
-      h: 0.4,
-      fontSize: 13,
-      color: theme.closing.subtitleColor,
+      h: 0.8,
+      fontSize: 28,
+      bold: true,
+      color: theme.closing.titleColor,
       align: "center",
-    }
-  );
+    });
 
-  closingSlide.addShape(pptx.ShapeType.roundRect, {
-    x: 1.5,
-    y: 3.0,
-    w: 7.0,
-    h: 1.5,
-    fill: { color: theme.closing.cardBg },
-    line: { color: theme.closing.cardBorder, width: 1 },
-  });
+    closingSlide.addText(
+      "For sample requests, customized finishes, FOB container quotations, or factory audit visits:",
+      {
+        x: 0.8,
+        y: 2.3,
+        w: 8.4,
+        h: 0.4,
+        fontSize: 13,
+        color: theme.closing.subtitleColor,
+        align: "center",
+      }
+    );
 
-  closingSlide.addText(
-    "📧 Email: exports@liinexus.com   |   sales@liinexus.com\n🌐 Web: www.liiexports.com   |   Direct: +91 98290 00000\n📍 Factory: Export Promotion Industrial Park, Jodhpur, Rajasthan, India\n✨ Handcrafted Solid Wood, Natural Rattan & Architectural Metal Furniture",
-    {
-      x: 1.7,
-      y: 3.15,
-      w: 6.6,
-      h: 1.2,
-      fontSize: 11,
-      color: theme.closing.cardText,
-      align: "center",
-      lineSpacing: 20,
-    }
-  );
+    closingSlide.addShape(pptx.ShapeType.roundRect, {
+      x: 1.5,
+      y: 3.0,
+      w: 7.0,
+      h: 1.5,
+      fill: { color: theme.closing.cardBg },
+      line: { color: theme.closing.cardBorder, width: 1 },
+    });
 
-  onProgress?.(products.length + 2, products.length + 2, "Downloading PowerPoint presentation (.pptx)...");
+    closingSlide.addText(
+      "📧 Email: exports@liinexus.com   |   sales@liinexus.com\n🌐 Web: www.liiexports.com   |   Direct: +91 98290 00000\n📍 Factory: Export Promotion Industrial Park, Jodhpur, Rajasthan, India\n✨ Handcrafted Solid Wood, Natural Rattan & Architectural Metal Furniture",
+      {
+        x: 1.7,
+        y: 3.15,
+        w: 6.6,
+        h: 1.2,
+        fontSize: 11,
+        color: theme.closing.cardText,
+        align: "center",
+        lineSpacing: 20,
+      }
+    );
+  }
+
+  onProgress?.(totalDeckSlides, totalDeckSlides, "Downloading PowerPoint presentation (.pptx)...");
 
   const sanitizedFileName = `LII_${theme.name.replace(/\s+/g, "_")}_Catalogue_Deck_${new Date().toISOString().slice(0, 10)}.pptx`;
   await pptx.writeFile({ fileName: sanitizedFileName });

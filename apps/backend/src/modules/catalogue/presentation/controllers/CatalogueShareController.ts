@@ -24,6 +24,7 @@ export class CatalogueShareController {
       customerName = "",
       themeId = "obsidian",
       includePricing = true,
+      fieldsConfig = null,
       products = [],
     } = req.body;
 
@@ -47,8 +48,8 @@ export class CatalogueShareController {
 
     await pool.query(
       `INSERT INTO catalogue_shared_decks 
-       (id, token, title, customer_name, theme_id, include_pricing, products_json, created_by_user_id, created_by_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, token, title, customer_name, theme_id, include_pricing, fields_config_json, products_json, created_by_user_id, created_by_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         token,
@@ -56,6 +57,7 @@ export class CatalogueShareController {
         customerName.trim(),
         themeId,
         includePricing ? 1 : 0,
+        fieldsConfig ? JSON.stringify(fieldsConfig) : null,
         JSON.stringify(products),
         userId,
         creatorName,
@@ -71,6 +73,7 @@ export class CatalogueShareController {
         customerName: customerName.trim(),
         themeId,
         includePricing: Boolean(includePricing),
+        fieldsConfig,
         shareUrl: `/view-deck/${token}`,
         createdByName: creatorName,
         createdAt: new Date(),
@@ -85,7 +88,7 @@ export class CatalogueShareController {
     }
 
     const [rows] = await pool.query<any[]>(
-      `SELECT id, token, title, customer_name, theme_id, include_pricing, products_json, 
+      `SELECT id, token, title, customer_name, theme_id, include_pricing, fields_config_json, products_json, 
               created_by_user_id, created_by_name, view_count, last_viewed_at, created_at
        FROM catalogue_shared_decks 
        WHERE token = ?`,
@@ -104,6 +107,15 @@ export class CatalogueShareController {
       parsedProducts = [];
     }
 
+    let parsedFieldsConfig = null;
+    try {
+      if (deck.fields_config_json) {
+        parsedFieldsConfig = JSON.parse(deck.fields_config_json);
+      }
+    } catch {
+      parsedFieldsConfig = null;
+    }
+
     return res.json({
       success: true,
       data: {
@@ -113,6 +125,7 @@ export class CatalogueShareController {
         customerName: deck.customer_name,
         themeId: deck.theme_id,
         includePricing: Boolean(deck.include_pricing),
+        fieldsConfig: parsedFieldsConfig,
         products: parsedProducts,
         createdByName: deck.created_by_name,
         viewCount: deck.view_count,

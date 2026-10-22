@@ -1,13 +1,14 @@
 import axios from "axios";
 import { axiosInstance } from "../../../services/api/axiosInstance";
 import { env } from "../../../config/env";
-import { CatalogProductItem } from "../utils/pptxExport";
+import { CatalogProductItem, PresentationFieldsConfig } from "../utils/pptxExport";
 
 export interface CreateDeckPayload {
   title: string;
   customerName?: string;
   themeId: string;
   includePricing: boolean;
+  fieldsConfig?: Partial<PresentationFieldsConfig>;
   products: CatalogProductItem[];
 }
 
@@ -18,6 +19,7 @@ export interface SharedDeckData {
   customerName: string;
   themeId: string;
   includePricing: boolean;
+  fieldsConfig?: PresentationFieldsConfig;
   products: CatalogProductItem[];
   createdByName?: string;
   viewCount: number;
