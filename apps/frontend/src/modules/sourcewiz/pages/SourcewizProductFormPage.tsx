@@ -156,8 +156,13 @@ export default function SourcewizProductFormPage() {
 
     // Save to localStorage
     try {
-      const existing = JSON.parse(localStorage.getItem("lii_product_catalog_items") || "[]");
+      const existing = JSON.parse(
+        localStorage.getItem("lii_product_catalogue_items") ||
+        localStorage.getItem("lii_product_catalog_items") ||
+        "[]"
+      );
       const updated = [newProduct, ...existing];
+      localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updated));
       localStorage.setItem("lii_product_catalog_items", JSON.stringify(updated));
     } catch (err) {
       console.error("Failed to save product to localStorage:", err);
@@ -294,7 +299,7 @@ export default function SourcewizProductFormPage() {
               alignItems: "center"
             }}
           >
-            <span>✅ Product Form entry saved successfully to Product Catalog!</span>
+            <span>✅ Product Form entry saved successfully to Product Catalogue!</span>
             <button
               type="button"
               onClick={() => navigate("/admin/sourcewiz/products")}
@@ -309,7 +314,7 @@ export default function SourcewizProductFormPage() {
                 fontSize: "0.85rem"
               }}
             >
-              View in Product Catalog →
+              View in Product Catalogue →
             </button>
           </div>
         )}
@@ -392,10 +397,10 @@ export default function SourcewizProductFormPage() {
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                   <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>
-                    Uploaded Angles & Catalog Photos ({images.length})
+                    Uploaded Angles & Catalogue Photos ({images.length})
                   </h4>
                   <span style={{ fontSize: "0.80rem", color: "#64748b" }}>
-                    Click "Set Main" to pick the primary catalog cover photo
+                    Click "Set Main" to pick the primary catalogue cover photo
                   </span>
                 </div>
 

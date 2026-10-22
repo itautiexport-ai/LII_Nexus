@@ -117,10 +117,10 @@ export const SECTIONS: NavSection[] = [
   },
   {
     key: "sourcewiz",
-    label: "Product Catalog 2.0",
+    label: "Product Catalogue 2.0",
     items: [
       { label: "Product Form", to: "/admin/sourcewiz/product-form" },
-      { label: "Product Catalog", to: "/admin/sourcewiz/products" },
+      { label: "Product Catalogue", to: "/admin/sourcewiz/products" },
     ],
   },
   {

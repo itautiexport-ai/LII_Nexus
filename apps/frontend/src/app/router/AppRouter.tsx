@@ -261,7 +261,7 @@ export default function AppRouter() {
           <Route path="standalone-checklist/add" element={<AddChecklistPage />} />
           <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
 
-          {/* Product Catalog 2.0 (Sourcewiz) Routes */}
+          {/* Product Catalogue 2.0 (Sourcewiz) Routes */}
           <Route path="sourcewiz" element={<SourcewizProductsPage />} />
           <Route path="sourcewiz/products" element={<SourcewizProductsPage />} />
           <Route path="sourcewiz/product-form" element={<SourcewizProductFormPage />} />

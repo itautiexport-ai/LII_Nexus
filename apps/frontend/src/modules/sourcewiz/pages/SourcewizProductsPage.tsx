@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../Sourcewiz.css";
+import { generateProductPptx } from "../utils/pptxExport";
 
 interface CatalogProduct {
   id: string;
@@ -110,7 +111,7 @@ export default function SourcewizProductsPage() {
 
   React.useEffect(() => {
     try {
-      const saved = localStorage.getItem("lii_product_catalog_items");
+      const saved = localStorage.getItem("lii_product_catalogue_items") || localStorage.getItem("lii_product_catalog_items");
       if (saved) {
         const parsed: CatalogProduct[] = JSON.parse(saved);
         if (parsed.length > 0) {
@@ -132,16 +133,39 @@ export default function SourcewizProductsPage() {
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
+  // PPT Export status
+  const [isExportingPpt, setIsExportingPpt] = useState(false);
+  const [exportProgressMsg, setExportProgressMsg] = useState("");
+
   // Email form state
   const [emailForm, setEmailForm] = useState({
     customerName: "West Elm Global Sourcing",
     customerEmail: "buyer@westelm.com",
-    subject: "LII Exports - Curated B2B Product Presentation & Catalog Deck",
+    subject: "LII Exports - Curated B2B Product Presentation & Catalogue Deck",
     includePricing: true,
     customMessage: "Dear Buyer Team,\n\nPlease find attached the official presentation deck for our latest collection. All specs, dimensions, container loading quantities, and FOB prices are included.",
   });
 
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
+
+  const handleDownloadPptx = async () => {
+    if (selectedProducts.length === 0) return;
+    setIsExportingPpt(true);
+    try {
+      await generateProductPptx(selectedProducts, {
+        customerName: emailForm.customerName || "Global Sourcing Partner",
+        deckTitle: "Curated Product Presentation Deck",
+        includePricing: emailForm.includePricing,
+        onProgress: (_curr, _tot, msg) => setExportProgressMsg(msg),
+      });
+    } catch (err: any) {
+      console.error("PowerPoint generation error:", err);
+      alert("Failed to create PowerPoint presentation: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsExportingPpt(false);
+      setExportProgressMsg("");
+    }
+  };
 
   const categories = ["All", "Furniture", "Outdoor", "Storage", "Decor"];
 
@@ -186,11 +210,11 @@ export default function SourcewizProductsPage() {
       <div className="sw-header-gradient" style={{ marginBottom: "24px" }}>
         <div>
           <h1 className="sw-title">
-            <span>📦 Product Catalog</span>
-            <span className="sw-badge-pro">CATALOG DECK & PPT ENGINE</span>
+            <span>📦 Product Catalogue</span>
+            <span className="sw-badge-pro">CATALOGUE DECK & PPT ENGINE</span>
           </h1>
           <p className="sw-subtitle">
-            Form-Recorded Product Master Catalog • Select Products, Create PPT Presentations & Email Directly to Buyers
+            Form-Recorded Product Master Catalogue • Select Products, Create PPT Presentations & Email Directly to Buyers
           </p>
         </div>
 
@@ -217,6 +241,8 @@ export default function SourcewizProductsPage() {
             justifyContent: "space-between",
             alignItems: "center",
             boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.3)",
+            flexWrap: "wrap",
+            gap: "14px",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -226,30 +252,55 @@ export default function SourcewizProductsPage() {
                 {selectedIds.length} Product{selectedIds.length > 1 ? "s" : ""} Selected
               </span>
               <span style={{ fontSize: "0.82rem", color: "#94a3b8", marginLeft: "12px" }}>
-                Ready to generate PPT Presentation deck or email buyer directly
+                Ready to generate PowerPoint (.pptx) deck or email buyer directly
               </span>
+              {isExportingPpt && (
+                <div style={{ fontSize: "0.80rem", color: "#38bdf8", marginTop: "4px", fontWeight: 600 }}>
+                  ⏳ {exportProgressMsg || "Generating PowerPoint deck (.pptx)..."}
+                </div>
+              )}
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
-              onClick={() => setIsPptModalOpen(true)}
+              onClick={handleDownloadPptx}
+              disabled={isExportingPpt}
               style={{
-                background: "#0d9488",
+                background: isExportingPpt ? "#64748b" : "#0d9488",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "8px",
-                padding: "10px 20px",
+                padding: "10px 18px",
                 fontWeight: 700,
                 fontSize: "0.88rem",
-                cursor: "pointer",
+                cursor: isExportingPpt ? "wait" : "pointer",
                 boxShadow: "0 2px 6px rgba(13, 148, 136, 0.3)",
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
               }}
+              title="Instantly download PowerPoint presentation (.pptx)"
             >
-              📊 Create PPT Presentation ({selectedIds.length})
+              📥 {isExportingPpt ? "Generating PPT..." : `Download PPT (${selectedIds.length})`}
+            </button>
+            <button
+              onClick={() => setIsPptModalOpen(true)}
+              style={{
+                background: "#334155",
+                color: "#ffffff",
+                border: "1px solid #475569",
+                borderRadius: "8px",
+                padding: "10px 18px",
+                fontWeight: 700,
+                fontSize: "0.88rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              👁️ Preview PPT Slides
             </button>
             <button
               onClick={() => setIsEmailModalOpen(true)}
@@ -258,7 +309,7 @@ export default function SourcewizProductsPage() {
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "8px",
-                padding: "10px 20px",
+                padding: "10px 18px",
                 fontWeight: 700,
                 fontSize: "0.88rem",
                 cursor: "pointer",
@@ -572,7 +623,7 @@ export default function SourcewizProductsPage() {
                   <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: "0.90rem", fontWeight: 800, letterSpacing: "0.1em", color: "#818cf8" }}>
-                        LII EXPORTS • B2B EXPORT CATALOG
+                        LII EXPORTS • B2B EXPORT CATALOGUE
                       </span>
                       <span style={{ background: "#0d9488", color: "#fff", padding: "4px 12px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: 800 }}>
                         2026 COLLECTION
@@ -685,12 +736,15 @@ export default function SourcewizProductsPage() {
                 </button>
                 <button
                   className="sw-btn sw-btn-primary"
-                  onClick={() => {
-                    alert(`PowerPoint presentation deck (.pptx) generated and downloaded for ${selectedProducts.length} products!`);
+                  onClick={handleDownloadPptx}
+                  disabled={isExportingPpt}
+                  style={{
+                    background: isExportingPpt ? "#64748b" : "#0d9488",
+                    color: "#fff",
+                    cursor: isExportingPpt ? "wait" : "pointer",
                   }}
-                  style={{ background: "#0d9488", color: "#fff" }}
                 >
-                  📥 Download PowerPoint (.pptx)
+                  {isExportingPpt ? "⏳ Generating PPT..." : "📥 Download PowerPoint (.pptx)"}
                 </button>
                 <button
                   className="sw-btn sw-btn-primary"
@@ -823,7 +877,7 @@ export default function SourcewizProductsPage() {
                 </div>
                 <div style={{ display: "flex", gap: "12px", fontSize: "0.80rem", color: "#475569" }}>
                   <span>📎 PowerPoint Deck (.pptx)</span>
-                  <span>📎 PDF Catalog Spec Sheet</span>
+                  <span>📎 PDF Catalogue Spec Sheet</span>
                 </div>
 
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", marginTop: "4px" }}>
