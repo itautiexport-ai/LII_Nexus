@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import "../Sourcewiz.css";
 import {
   generateProductPptx,
@@ -8,6 +7,8 @@ import {
   DeckTheme,
   CatalogProductItem,
 } from "../utils/pptxExport";
+
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
 
 const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
   {
@@ -45,7 +46,7 @@ const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
     cbm: 0.18,
     gp40ft: 148,
     assembledKd: "Assembled",
-    image: "https://images.unsplash.com/photo-1580481072645-022f9a6d83d0?w=600&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?w=600&auto=format&fit=crop&q=80",
     stockStatus: "Sample Ready",
   },
   {
@@ -89,8 +90,6 @@ const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
 ];
 
 export default function SourcewizProductsPage() {
-  const navigate = useNavigate();
-
   const [products, setProducts] = useState<CatalogProductItem[]>(INITIAL_MOCK_PRODUCTS);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -187,20 +186,20 @@ export default function SourcewizProductsPage() {
   const currentTheme: DeckTheme = DECK_THEMES[selectedThemeId] || DECK_THEMES.obsidian;
 
   return (
-    <div className="sw-container" style={{ paddingBottom: selectedIds.length > 0 ? "110px" : "40px" }}>
-      {/* PROFESSIONAL EXECUTIVE HEADER */}
+    <div className="sw-container" style={{ paddingBottom: "40px" }}>
+      {/* PROFESSIONAL EXECUTIVE HEADER (Clean, no Add Product button) */}
       <div
         style={{
           background: "#ffffff",
           borderRadius: "14px",
           border: "1px solid #e2e8f0",
-          padding: "24px 30px",
-          marginBottom: "24px",
+          padding: "20px 24px",
+          marginBottom: "20px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: "18px",
+          gap: "12px",
           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
         }}
       >
@@ -209,7 +208,7 @@ export default function SourcewizProductsPage() {
             <h1
               style={{
                 margin: 0,
-                fontSize: "1.65rem",
+                fontSize: "1.55rem",
                 fontWeight: 800,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
@@ -228,59 +227,37 @@ export default function SourcewizProductsPage() {
                 border: "1px solid #e2e8f0",
               }}
             >
-              {products.length} Items Available
+              {products.length} Products
             </span>
           </div>
-          <p style={{ margin: 0, fontSize: "0.88rem", color: "#64748b" }}>
-            Select products to compose and export presentation-grade PowerPoint (.pptx) decks in custom design themes for international buyers.
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
+            Select products below to compose and export presentation-grade PowerPoint (.pptx) decks in tailored design themes.
           </p>
-        </div>
-
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <button
-            onClick={() => navigate("/admin/sourcewiz/product-form")}
-            style={{
-              background: "#0f172a",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "10px 18px",
-              fontWeight: 600,
-              fontSize: "0.85rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span>+</span> Fill Product Form
-          </button>
         </div>
       </div>
 
-      {/* FILTER, SEARCH & CONTROLS BAR */}
+      {/* FILTER & SEARCH BAR */}
       <div
         style={{
           background: "#ffffff",
           borderRadius: "12px",
           border: "1px solid #e2e8f0",
-          padding: "14px 20px",
-          marginBottom: "24px",
+          padding: "12px 18px",
+          marginBottom: "18px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: "14px",
+          gap: "12px",
           boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
         }}
       >
         {/* Category Filter Pills & Select All */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           <button
             onClick={handleSelectAll}
             style={{
-              padding: "7px 14px",
+              padding: "6px 12px",
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
               background: selectedIds.length === filteredProducts.length && filteredProducts.length > 0 ? "#f8fafc" : "#ffffff",
@@ -297,7 +274,7 @@ export default function SourcewizProductsPage() {
             {selectedIds.length === filteredProducts.length && filteredProducts.length > 0 ? "Deselect All" : "Select All"}
           </button>
 
-          <div style={{ width: "1px", height: "24px", background: "#e2e8f0", margin: "0 4px" }} />
+          <div style={{ width: "1px", height: "22px", background: "#e2e8f0", margin: "0 4px" }} />
 
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
             {categories.map((cat) => {
@@ -308,7 +285,7 @@ export default function SourcewizProductsPage() {
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
                   style={{
-                    padding: "7px 14px",
+                    padding: "6px 12px",
                     borderRadius: "8px",
                     border: isActive ? "1px solid #0f172a" : "1px solid #e2e8f0",
                     background: isActive ? "#0f172a" : "#f8fafc",
@@ -327,7 +304,7 @@ export default function SourcewizProductsPage() {
         </div>
 
         {/* Search Input */}
-        <div style={{ position: "relative", minWidth: "280px" }}>
+        <div style={{ position: "relative", minWidth: "260px" }}>
           <input
             type="text"
             placeholder="Search SKU, name, material..."
@@ -335,16 +312,16 @@ export default function SourcewizProductsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: "100%",
-              padding: "8px 14px 8px 34px",
+              padding: "7px 12px 7px 32px",
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
-              fontSize: "0.85rem",
+              fontSize: "0.84rem",
               outline: "none",
               color: "#1e293b",
               background: "#ffffff",
             }}
           />
-          <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.85rem" }}>
+          <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.80rem" }}>
             🔍
           </span>
           {searchQuery && (
@@ -367,6 +344,142 @@ export default function SourcewizProductsPage() {
           )}
         </div>
       </div>
+
+      {/* INLINE THEME & PPT ACTION BAR (Cleanly nested inside container, perfectly responsive) */}
+      {selectedIds.length > 0 && (
+        <div
+          style={{
+            background: "#0f172a",
+            color: "#ffffff",
+            padding: "14px 20px",
+            borderRadius: "12px",
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: "0 4px 14px rgba(15, 23, 42, 0.18)",
+            flexWrap: "wrap",
+            gap: "12px",
+            border: "1px solid #1e293b",
+          }}
+        >
+          {/* Left: Counter & Theme Selector */}
+          <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span
+                style={{
+                  background: "#334155",
+                  width: "26px",
+                  height: "26px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 800,
+                  fontSize: "0.75rem",
+                }}
+              >
+                {selectedIds.length}
+              </span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>
+                  {selectedIds.length} Product{selectedIds.length > 1 ? "s" : ""} Selected
+                </div>
+                <button
+                  onClick={handleClearSelection}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: "#94a3b8",
+                    fontSize: "0.72rem",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+
+            <div style={{ width: "1px", height: "24px", background: "rgba(255,255,255,0.15)" }} />
+
+            {/* Quick Theme Selector Dropdown */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "0.80rem", color: "#94a3b8", fontWeight: 600 }}>Theme:</span>
+              <select
+                value={selectedThemeId}
+                onChange={(e) => setSelectedThemeId(e.target.value as ThemeId)}
+                style={{
+                  background: "#1e293b",
+                  color: "#ffffff",
+                  border: "1px solid #334155",
+                  borderRadius: "8px",
+                  padding: "6px 12px",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                {Object.values(DECK_THEMES).map((th) => (
+                  <option key={th.id} value={th.id}>
+                    {th.name} ({th.badge})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              onClick={() => setIsPptModalOpen(true)}
+              style={{
+                background: "rgba(255, 255, 255, 0.1)",
+                color: "#ffffff",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                borderRadius: "8px",
+                padding: "8px 14px",
+                fontWeight: 600,
+                fontSize: "0.80rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              🎨 Themes & Preview
+            </button>
+
+            <button
+              onClick={() => handleDownloadPptx()}
+              disabled={isExportingPpt}
+              style={{
+                background: isExportingPpt ? "#64748b" : "#2563eb",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "8px",
+                padding: "8px 18px",
+                fontWeight: 700,
+                fontSize: "0.82rem",
+                cursor: isExportingPpt ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
+              }}
+            >
+              <span>{isExportingPpt ? "⏳" : "📊"}</span>
+              <span>
+                {isExportingPpt
+                  ? exportProgressMsg || "Generating PPT..."
+                  : `Create PPT (${selectedIds.length})`}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* PRODUCTS GRID */}
       {filteredProducts.length === 0 ? (
@@ -393,7 +506,7 @@ export default function SourcewizProductsPage() {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-            gap: "22px",
+            gap: "20px",
           }}
         >
           {filteredProducts.map((product) => {
@@ -406,7 +519,7 @@ export default function SourcewizProductsPage() {
                   borderRadius: "12px",
                   border: isSelected ? "2px solid #0f172a" : "1px solid #e2e8f0",
                   overflow: "hidden",
-                  boxShadow: isSelected ? "0 8px 20px -4px rgba(15, 23, 42, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.04)",
+                  boxShadow: isSelected ? "0 6px 16px -2px rgba(15, 23, 42, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.04)",
                   transition: "all 0.2s ease",
                   display: "flex",
                   flexDirection: "column",
@@ -418,6 +531,9 @@ export default function SourcewizProductsPage() {
                   <img
                     src={product.image}
                     alt={product.name}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = FALLBACK_IMG;
+                    }}
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
 
@@ -497,7 +613,7 @@ export default function SourcewizProductsPage() {
                   <h3
                     style={{
                       margin: "0 0 6px 0",
-                      fontSize: "0.98rem",
+                      fontSize: "0.96rem",
                       fontWeight: 700,
                       color: "#0f172a",
                       lineHeight: 1.3,
@@ -575,7 +691,7 @@ export default function SourcewizProductsPage() {
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#0f172a" }}>
+                      <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>
                         ${product.fobPriceUsd.toFixed(2)}
                         <span style={{ fontSize: "0.70rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>
                           FOB
@@ -594,8 +710,8 @@ export default function SourcewizProductsPage() {
                         setIsPptModalOpen(true);
                       }}
                       style={{
-                        padding: "6px 12px",
-                        fontSize: "0.75rem",
+                        padding: "5px 12px",
+                        fontSize: "0.74rem",
                         fontWeight: 600,
                         borderRadius: "6px",
                         border: "1px solid #cbd5e1",
@@ -611,148 +727,6 @@ export default function SourcewizProductsPage() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* FLOATING SELECTION & PPT GENERATOR DOCK */}
-      {selectedIds.length > 0 && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "92%",
-            maxWidth: "960px",
-            zIndex: 100,
-            background: "#0f172a",
-            color: "#ffffff",
-            padding: "14px 24px",
-            borderRadius: "16px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            boxShadow: "0 20px 40px -10px rgba(15, 23, 42, 0.45)",
-            flexWrap: "wrap",
-            gap: "14px",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-          }}
-        >
-          {/* Left: Counter and Theme Selector */}
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span
-                style={{
-                  background: "#334155",
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  fontSize: "0.80rem",
-                }}
-              >
-                {selectedIds.length}
-              </span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: "0.90rem" }}>
-                  {selectedIds.length} Product{selectedIds.length > 1 ? "s" : ""} Selected
-                </div>
-                <button
-                  onClick={handleClearSelection}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    color: "#94a3b8",
-                    fontSize: "0.72rem",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
-                >
-                  Clear Selection
-                </button>
-              </div>
-            </div>
-
-            <div style={{ width: "1px", height: "26px", background: "rgba(255,255,255,0.15)" }} />
-
-            {/* Quick Theme Selector Dropdown */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Theme:</span>
-              <select
-                value={selectedThemeId}
-                onChange={(e) => setSelectedThemeId(e.target.value as ThemeId)}
-                style={{
-                  background: "#1e293b",
-                  color: "#ffffff",
-                  border: "1px solid #334155",
-                  borderRadius: "8px",
-                  padding: "6px 12px",
-                  fontSize: "0.80rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  outline: "none",
-                }}
-              >
-                {Object.values(DECK_THEMES).map((th) => (
-                  <option key={th.id} value={th.id}>
-                    {th.name} ({th.badge})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Right: Actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              onClick={() => setIsPptModalOpen(true)}
-              style={{
-                background: "rgba(255, 255, 255, 0.1)",
-                color: "#ffffff",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: "8px",
-                padding: "9px 16px",
-                fontWeight: 600,
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              🎨 Themes & Preview
-            </button>
-
-            <button
-              onClick={() => handleDownloadPptx()}
-              disabled={isExportingPpt}
-              style={{
-                background: isExportingPpt ? "#64748b" : "#2563eb",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "9px 20px",
-                fontWeight: 700,
-                fontSize: "0.84rem",
-                cursor: isExportingPpt ? "wait" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.35)",
-              }}
-            >
-              <span>{isExportingPpt ? "⏳" : "📊"}</span>
-              <span>
-                {isExportingPpt
-                  ? exportProgressMsg || "Generating PPT..."
-                  : `Create PPT (${selectedIds.length})`}
-              </span>
-            </button>
-          </div>
         </div>
       )}
 
@@ -778,7 +752,7 @@ export default function SourcewizProductsPage() {
             style={{
               background: "#ffffff",
               borderRadius: "16px",
-              maxWidth: "1100px",
+              maxWidth: "1060px",
               width: "100%",
               maxHeight: "94vh",
               overflowY: "auto",
@@ -790,7 +764,7 @@ export default function SourcewizProductsPage() {
             {/* Modal Header */}
             <div
               style={{
-                padding: "20px 28px",
+                padding: "18px 24px",
                 background: "#0f172a",
                 color: "#ffffff",
                 borderRadius: "16px 16px 0 0",
@@ -800,11 +774,11 @@ export default function SourcewizProductsPage() {
               }}
             >
               <div>
-                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800 }}>
+                <h2 style={{ margin: 0, fontSize: "1.20rem", fontWeight: 800 }}>
                   PowerPoint Presentation Studio
                 </h2>
-                <p style={{ margin: "4px 0 0 0", fontSize: "0.80rem", color: "#94a3b8" }}>
-                  Select presentation design theme, customize client metadata, and download PowerPoint deck (.pptx)
+                <p style={{ margin: "4px 0 0 0", fontSize: "0.78rem", color: "#94a3b8" }}>
+                  Select design theme, configure buyer metadata, and export 16:9 presentation deck (.pptx)
                 </p>
               </div>
               <button
@@ -813,7 +787,7 @@ export default function SourcewizProductsPage() {
                   background: "none",
                   border: "none",
                   color: "#94a3b8",
-                  fontSize: "1.5rem",
+                  fontSize: "1.4rem",
                   cursor: "pointer",
                 }}
               >
@@ -822,18 +796,18 @@ export default function SourcewizProductsPage() {
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: "24px 28px", background: "#f8fafc", flex: 1 }}>
+            <div style={{ padding: "20px 24px", background: "#f8fafc", flex: 1 }}>
               {/* THEME SELECTOR SECTION */}
-              <div style={{ marginBottom: "24px" }}>
-                <div style={{ fontSize: "0.80rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "12px" }}>
-                  1. Choose Presentation Theme ({Object.keys(DECK_THEMES).length} Executive Themes)
+              <div style={{ marginBottom: "20px" }}>
+                <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>
+                  1. Choose Presentation Theme ({Object.keys(DECK_THEMES).length} Available)
                 </div>
 
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-                    gap: "12px",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: "10px",
                   }}
                 >
                   {Object.values(DECK_THEMES).map((th) => {
@@ -845,7 +819,7 @@ export default function SourcewizProductsPage() {
                         style={{
                           background: "#ffffff",
                           borderRadius: "10px",
-                          padding: "14px",
+                          padding: "12px",
                           border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
                           boxShadow: isSelected ? "0 4px 12px rgba(37, 99, 235, 0.15)" : "none",
                           cursor: "pointer",
@@ -854,11 +828,11 @@ export default function SourcewizProductsPage() {
                         }}
                       >
                         {/* Swatch Header */}
-                        <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "10px" }}>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "8px" }}>
                           <span
                             style={{
-                              width: "20px",
-                              height: "20px",
+                              width: "18px",
+                              height: "18px",
                               borderRadius: "50%",
                               background: th.swatch.primary,
                               border: "1px solid rgba(0,0,0,0.1)",
@@ -867,8 +841,8 @@ export default function SourcewizProductsPage() {
                           />
                           <span
                             style={{
-                              width: "20px",
-                              height: "20px",
+                              width: "18px",
+                              height: "18px",
                               borderRadius: "50%",
                               background: th.swatch.accent,
                               border: "1px solid rgba(0,0,0,0.1)",
@@ -877,8 +851,8 @@ export default function SourcewizProductsPage() {
                           />
                           <span
                             style={{
-                              width: "20px",
-                              height: "20px",
+                              width: "18px",
+                              height: "18px",
                               borderRadius: "50%",
                               background: th.swatch.card,
                               border: "1px solid rgba(0,0,0,0.1)",
@@ -887,10 +861,10 @@ export default function SourcewizProductsPage() {
                           />
                         </div>
 
-                        <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#0f172a", marginBottom: "2px" }}>
+                        <div style={{ fontWeight: 800, fontSize: "0.82rem", color: "#0f172a", marginBottom: "2px" }}>
                           {th.name}
                         </div>
-                        <div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.3 }}>
+                        <div style={{ fontSize: "0.70rem", color: "#64748b", lineHeight: 1.3 }}>
                           {th.tagline}
                         </div>
 
@@ -903,12 +877,12 @@ export default function SourcewizProductsPage() {
                               background: "#2563eb",
                               color: "#fff",
                               borderRadius: "50%",
-                              width: "18px",
-                              height: "18px",
+                              width: "16px",
+                              height: "16px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontSize: "0.65rem",
+                              fontSize: "0.60rem",
                               fontWeight: 800,
                             }}
                           >
@@ -927,11 +901,11 @@ export default function SourcewizProductsPage() {
                   background: "#ffffff",
                   borderRadius: "10px",
                   border: "1px solid #e2e8f0",
-                  padding: "16px 20px",
-                  marginBottom: "24px",
+                  padding: "14px 18px",
+                  marginBottom: "20px",
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                  gap: "16px",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: "14px",
                   alignItems: "center",
                 }}
               >
@@ -946,10 +920,10 @@ export default function SourcewizProductsPage() {
                     placeholder="e.g. West Elm Global Sourcing"
                     style={{
                       width: "100%",
-                      padding: "7px 10px",
+                      padding: "6px 10px",
                       borderRadius: "6px",
                       border: "1px solid #cbd5e1",
-                      fontSize: "0.82rem",
+                      fontSize: "0.80rem",
                     }}
                   />
                 </div>
@@ -965,10 +939,10 @@ export default function SourcewizProductsPage() {
                     placeholder="e.g. Curated Collection 2026"
                     style={{
                       width: "100%",
-                      padding: "7px 10px",
+                      padding: "6px 10px",
                       borderRadius: "6px",
                       border: "1px solid #cbd5e1",
-                      fontSize: "0.82rem",
+                      fontSize: "0.80rem",
                     }}
                   />
                 </div>
@@ -979,11 +953,11 @@ export default function SourcewizProductsPage() {
                       display: "flex",
                       alignItems: "center",
                       gap: "8px",
-                      fontSize: "0.80rem",
+                      fontSize: "0.78rem",
                       fontWeight: 600,
                       color: "#1e293b",
                       cursor: "pointer",
-                      marginTop: "16px",
+                      marginTop: "14px",
                     }}
                   >
                     <input
@@ -999,11 +973,11 @@ export default function SourcewizProductsPage() {
 
               {/* LIVE SLIDE PREVIEW SECTION */}
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <div style={{ fontSize: "0.80rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     2. Live 16:9 Slide Canvas ({currentTheme.name} Theme)
                   </div>
-                  <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
                     Showing slide {activeSlide + 1} of {selectedProducts.length + 2}
                   </span>
                 </div>
@@ -1014,16 +988,16 @@ export default function SourcewizProductsPage() {
                     display: "flex",
                     gap: "6px",
                     overflowX: "auto",
-                    paddingBottom: "8px",
-                    marginBottom: "12px",
+                    paddingBottom: "6px",
+                    marginBottom: "10px",
                   }}
                 >
                   <button
                     onClick={() => setActiveSlide(0)}
                     style={{
-                      padding: "6px 12px",
+                      padding: "5px 12px",
                       borderRadius: "6px",
-                      fontSize: "0.76rem",
+                      fontSize: "0.74rem",
                       fontWeight: 700,
                       border: activeSlide === 0 ? "2px solid #2563eb" : "1px solid #cbd5e1",
                       background: activeSlide === 0 ? "#2563eb" : "#ffffff",
@@ -1040,9 +1014,9 @@ export default function SourcewizProductsPage() {
                       key={p.id}
                       onClick={() => setActiveSlide(idx + 1)}
                       style={{
-                        padding: "6px 12px",
+                        padding: "5px 12px",
                         borderRadius: "6px",
-                        fontSize: "0.76rem",
+                        fontSize: "0.74rem",
                         fontWeight: 700,
                         border: activeSlide === idx + 1 ? "2px solid #2563eb" : "1px solid #cbd5e1",
                         background: activeSlide === idx + 1 ? "#2563eb" : "#ffffff",
@@ -1058,9 +1032,9 @@ export default function SourcewizProductsPage() {
                   <button
                     onClick={() => setActiveSlide(selectedProducts.length + 1)}
                     style={{
-                      padding: "6px 12px",
+                      padding: "5px 12px",
                       borderRadius: "6px",
-                      fontSize: "0.76rem",
+                      fontSize: "0.74rem",
                       fontWeight: 700,
                       border: activeSlide === selectedProducts.length + 1 ? "2px solid #2563eb" : "1px solid #cbd5e1",
                       background: activeSlide === selectedProducts.length + 1 ? "#2563eb" : "#ffffff",
@@ -1077,8 +1051,8 @@ export default function SourcewizProductsPage() {
                 <div
                   style={{
                     background: "#090d16",
-                    padding: "24px",
-                    borderRadius: "12px",
+                    padding: "20px",
+                    borderRadius: "10px",
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
@@ -1087,7 +1061,7 @@ export default function SourcewizProductsPage() {
                   <div
                     style={{
                       width: "100%",
-                      maxWidth: "800px",
+                      maxWidth: "760px",
                       aspectRatio: "16 / 9",
                       background:
                         activeSlide === 0
@@ -1103,7 +1077,7 @@ export default function SourcewizProductsPage() {
                           : `#${currentTheme.product.titleColor}`,
                       borderRadius: "8px",
                       boxShadow: "0 15px 30px rgba(0,0,0,0.3)",
-                      padding: "28px",
+                      padding: "24px",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
@@ -1117,7 +1091,7 @@ export default function SourcewizProductsPage() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span
                             style={{
-                              fontSize: "0.80rem",
+                              fontSize: "0.76rem",
                               fontWeight: 800,
                               letterSpacing: "0.1em",
                               color: `#${currentTheme.cover.accentColor}`,
@@ -1129,9 +1103,9 @@ export default function SourcewizProductsPage() {
                             style={{
                               background: `#${currentTheme.cover.badgeBg}`,
                               color: `#${currentTheme.cover.badgeText}`,
-                              padding: "3px 10px",
-                              borderRadius: "12px",
-                              fontSize: "0.70rem",
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              fontSize: "0.68rem",
                               fontWeight: 800,
                             }}
                           >
@@ -1142,16 +1116,16 @@ export default function SourcewizProductsPage() {
                         <div>
                           <h1
                             style={{
-                              fontSize: "2.1rem",
+                              fontSize: "1.9rem",
                               fontWeight: 800,
-                              margin: "0 0 10px 0",
+                              margin: "0 0 8px 0",
                               lineHeight: 1.2,
                               color: `#${currentTheme.cover.titleColor}`,
                             }}
                           >
                             {deckTitle}
                           </h1>
-                          <p style={{ fontSize: "0.95rem", color: `#${currentTheme.cover.subtitleColor}`, margin: 0 }}>
+                          <p style={{ fontSize: "0.90rem", color: `#${currentTheme.cover.subtitleColor}`, margin: 0 }}>
                             Prepared for {customerName} • {selectedProducts.length} Premium Form-Recorded Items
                           </p>
                         </div>
@@ -1160,9 +1134,9 @@ export default function SourcewizProductsPage() {
                           style={{
                             background: `#${currentTheme.cover.cardBg}`,
                             border: `1px solid #${currentTheme.cover.cardBorder}`,
-                            borderRadius: "8px",
-                            padding: "10px 14px",
-                            fontSize: "0.78rem",
+                            borderRadius: "6px",
+                            padding: "8px 12px",
+                            fontSize: "0.74rem",
                             color: `#${currentTheme.cover.cardText}`,
                             display: "flex",
                             justifyContent: "space-between",
@@ -1176,14 +1150,14 @@ export default function SourcewizProductsPage() {
                     ) : activeSlide === selectedProducts.length + 1 ? (
                       /* CLOSING SLIDE LIVE PREVIEW */
                       <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", textAlign: "center" }}>
-                        <div style={{ fontSize: "0.80rem", fontWeight: 700, color: `#${currentTheme.closing.subtitleColor}` }}>
+                        <div style={{ fontSize: "0.76rem", fontWeight: 700, color: `#${currentTheme.closing.subtitleColor}` }}>
                           LII EXPORTS • GLOBAL MANUFACTURING PARTNER
                         </div>
                         <div>
-                          <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: `#${currentTheme.closing.titleColor}`, margin: "0 0 8px 0" }}>
+                          <h2 style={{ fontSize: "1.6rem", fontWeight: 800, color: `#${currentTheme.closing.titleColor}`, margin: "0 0 6px 0" }}>
                             Thank You for Exploring LII Exports
                           </h2>
-                          <p style={{ fontSize: "0.85rem", color: `#${currentTheme.closing.subtitleColor}`, margin: 0 }}>
+                          <p style={{ fontSize: "0.82rem", color: `#${currentTheme.closing.subtitleColor}`, margin: 0 }}>
                             For custom sampling, container bookings, and factory audits, our export merchants are at your service.
                           </p>
                         </div>
@@ -1191,9 +1165,9 @@ export default function SourcewizProductsPage() {
                           style={{
                             background: `#${currentTheme.closing.cardBg}`,
                             border: `1px solid #${currentTheme.closing.cardBorder}`,
-                            borderRadius: "8px",
-                            padding: "12px",
-                            fontSize: "0.78rem",
+                            borderRadius: "6px",
+                            padding: "10px",
+                            fontSize: "0.74rem",
                             color: `#${currentTheme.closing.cardText}`,
                             display: "flex",
                             justifyContent: "space-around",
@@ -1217,34 +1191,34 @@ export default function SourcewizProductsPage() {
                                 justifyContent: "space-between",
                                 alignItems: "flex-start",
                                 borderBottom: `2px solid #${currentTheme.product.categoryColor}`,
-                                paddingBottom: "8px",
+                                paddingBottom: "6px",
                               }}
                             >
                               <div>
-                                <span style={{ fontSize: "0.72rem", fontWeight: 800, color: `#${currentTheme.product.categoryColor}`, textTransform: "uppercase" }}>
+                                <span style={{ fontSize: "0.68rem", fontWeight: 800, color: `#${currentTheme.product.categoryColor}`, textTransform: "uppercase" }}>
                                   {product.category} • {product.subCategory}
                                 </span>
-                                <h3 style={{ fontSize: "1.25rem", fontWeight: 800, margin: "2px 0 0 0", color: `#${currentTheme.product.titleColor}` }}>
+                                <h3 style={{ fontSize: "1.15rem", fontWeight: 800, margin: "2px 0 0 0", color: `#${currentTheme.product.titleColor}` }}>
                                   {product.name}
                                 </h3>
                               </div>
                               <div style={{ textAlign: "right" }}>
                                 {includePricing && (
-                                  <span style={{ fontSize: "1.15rem", fontWeight: 800, color: `#${currentTheme.product.priceColor}`, display: "block" }}>
+                                  <span style={{ fontSize: "1.05rem", fontWeight: 800, color: `#${currentTheme.product.priceColor}`, display: "block" }}>
                                     ${product.fobPriceUsd.toFixed(2)} USD
                                   </span>
                                 )}
-                                <span style={{ fontSize: "0.72rem", color: `#${currentTheme.product.skuColor}` }}>
+                                <span style={{ fontSize: "0.68rem", color: `#${currentTheme.product.skuColor}` }}>
                                   SKU: {product.sku}
                                 </span>
                               </div>
                             </div>
 
                             {/* Content Grid */}
-                            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: "18px", margin: "12px 0", flex: 1 }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: "16px", margin: "10px 0", flex: 1 }}>
                               <div
                                 style={{
-                                  borderRadius: "8px",
+                                  borderRadius: "6px",
                                   overflow: "hidden",
                                   border: `1px solid #${currentTheme.product.imgBorderColor}`,
                                   background: `#${currentTheme.product.tableBg}`,
@@ -1253,6 +1227,9 @@ export default function SourcewizProductsPage() {
                                 <img
                                   src={product.image}
                                   alt={product.name}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = FALLBACK_IMG;
+                                  }}
                                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                 />
                               </div>
@@ -1260,17 +1237,17 @@ export default function SourcewizProductsPage() {
                               <div
                                 style={{
                                   background: `#${currentTheme.product.tableBg}`,
-                                  borderRadius: "8px",
-                                  padding: "12px",
+                                  borderRadius: "6px",
+                                  padding: "10px",
                                   border: `1px solid #${currentTheme.product.tableBorder}`,
-                                  fontSize: "0.75rem",
+                                  fontSize: "0.72rem",
                                   display: "flex",
                                   flexDirection: "column",
                                   justifyContent: "space-between",
                                 }}
                               >
-                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                  <div style={{ fontWeight: 700, color: `#${currentTheme.product.titleColor}`, marginBottom: "4px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                  <div style={{ fontWeight: 700, color: `#${currentTheme.product.titleColor}`, marginBottom: "2px" }}>
                                     Technical Specifications
                                   </div>
                                   <div>
@@ -1299,19 +1276,19 @@ export default function SourcewizProductsPage() {
                                   style={{
                                     background: `#${currentTheme.product.priceCardBg}`,
                                     border: `1px solid #${currentTheme.product.priceCardBorder}`,
-                                    borderRadius: "6px",
-                                    padding: "6px 8px",
+                                    borderRadius: "5px",
+                                    padding: "5px 7px",
                                     display: "grid",
                                     gridTemplateColumns: "1fr 1fr",
                                     textAlign: "center",
                                   }}
                                 >
                                   <div>
-                                    <span style={{ fontSize: "0.65rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>Unit CBM</span>
+                                    <span style={{ fontSize: "0.62rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>Unit CBM</span>
                                     <strong style={{ color: `#${currentTheme.product.tableHighlightColor}` }}>{product.cbm} m³</strong>
                                   </div>
                                   <div>
-                                    <span style={{ fontSize: "0.65rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>40'ft Container</span>
+                                    <span style={{ fontSize: "0.62rem", color: `#${currentTheme.product.skuColor}`, display: "block" }}>40'ft Container</span>
                                     <strong style={{ color: `#${currentTheme.product.tableHighlightColor}` }}>{product.gp40ft} pcs</strong>
                                   </div>
                                 </div>
@@ -1323,10 +1300,10 @@ export default function SourcewizProductsPage() {
                               style={{
                                 display: "flex",
                                 justifyContent: "space-between",
-                                fontSize: "0.70rem",
+                                fontSize: "0.68rem",
                                 color: `#${currentTheme.product.footerTextColor}`,
                                 borderTop: `1px solid #${currentTheme.product.footerLineColor}`,
-                                paddingTop: "6px",
+                                paddingTop: "5px",
                               }}
                             >
                               <span>LII Exports Presentation Deck</span>
@@ -1344,7 +1321,7 @@ export default function SourcewizProductsPage() {
             {/* Modal Footer Controls */}
             <div
               style={{
-                padding: "18px 28px",
+                padding: "16px 24px",
                 background: "#ffffff",
                 borderTop: "1px solid #e2e8f0",
                 borderRadius: "0 0 16px 16px",
@@ -1352,10 +1329,10 @@ export default function SourcewizProductsPage() {
                 justifyContent: "space-between",
                 alignItems: "center",
                 flexWrap: "wrap",
-                gap: "12px",
+                gap: "10px",
               }}
             >
-              <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+              <div style={{ fontSize: "0.80rem", color: "#64748b" }}>
                 Active Theme: <strong>{currentTheme.name}</strong> • Format: 16:9 Widescreen (.pptx)
               </div>
 
@@ -1367,9 +1344,9 @@ export default function SourcewizProductsPage() {
                     color: "#334155",
                     border: "1px solid #cbd5e1",
                     borderRadius: "8px",
-                    padding: "9px 16px",
+                    padding: "8px 16px",
                     fontWeight: 600,
-                    fontSize: "0.84rem",
+                    fontSize: "0.82rem",
                     cursor: "pointer",
                   }}
                 >
@@ -1383,9 +1360,9 @@ export default function SourcewizProductsPage() {
                     color: "#ffffff",
                     border: "none",
                     borderRadius: "8px",
-                    padding: "9px 22px",
+                    padding: "8px 20px",
                     fontWeight: 700,
-                    fontSize: "0.84rem",
+                    fontSize: "0.82rem",
                     cursor: isExportingPpt ? "wait" : "pointer",
                     display: "flex",
                     alignItems: "center",
