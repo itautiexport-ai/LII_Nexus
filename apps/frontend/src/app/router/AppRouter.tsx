@@ -24,6 +24,7 @@ import WoodTypesPage from "../../modules/admin/masterdata/pages/WoodTypesPage";
 import WoodThicknessPricesPage from "../../modules/admin/masterdata/pages/WoodThicknessPricesPage";
 import MetalPricesPage from "../../modules/admin/masterdata/pages/MetalPricesPage";
 import PrioritiesPage from "../../modules/admin/masterdata/pages/PrioritiesPage";
+import PptThemesMasterPage from "../../modules/admin/masterdata/pages/PptThemesMasterPage";
 import MachinesProductsPage from "../../modules/documents/pages/MachinesProductsPage";
 import MyProductionPage from "../../modules/factory/pages/MyProductionPage";
 import WorkflowListPage from "../../modules/workflow/pages/WorkflowListPage";
@@ -244,6 +245,7 @@ export default function AppRouter() {
           <Route path="hods" element={<HodsPage />} />
           <Route path="qc-names" element={<QcNamesPage />} />
           <Route path="merchants" element={<MerchantsPage />} />
+          <Route path="ppt-themes" element={<PptThemesMasterPage />} />
           <Route path="module-weights" element={<ModuleWeightsPage />} />
           <Route path="machine-targets" element={<MachineTargetsPage />} />
           <Route path="machines-products" element={<MachinesProductsPage />} />

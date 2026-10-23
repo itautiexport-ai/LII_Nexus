@@ -20,10 +20,10 @@ export interface CatalogProductItem {
   stockStatus: string;
 }
 
-export type ThemeId = "obsidian" | "studio" | "earth" | "teal" | "navy";
+export type ThemeId = "obsidian" | "studio" | "earth" | "teal" | "navy" | string;
 
 export interface DeckTheme {
-  id: ThemeId;
+  id: string;
   name: string;
   tagline: string;
   badge: string;
@@ -356,8 +356,71 @@ export const DEFAULT_PRESENTATION_FIELDS: PresentationFieldsConfig = {
   includeStockStatus: true,
 };
 
+export function convertMasterThemeToDeckTheme(mt: any): DeckTheme {
+  const cleanHex = (c: string) => (c || "").replace(/^#/, "").toUpperCase();
+  const isDark = Boolean(mt.is_dark);
+  const primary = cleanHex(mt.primary_color) || (isDark ? "0F172A" : "F8FAFC");
+  const accent = cleanHex(mt.accent_color) || "F59E0B";
+  const card = cleanHex(mt.card_bg) || (isDark ? "1E293B" : "FFFFFF");
+  const text = cleanHex(mt.text_color) || (isDark ? "FFFFFF" : "0F172A");
+
+  return {
+    id: mt.id || "custom",
+    name: mt.name,
+    tagline: mt.tagline || "",
+    badge: mt.badge || "CUSTOM MASTER",
+    swatch: {
+      primary: `#${primary}`,
+      accent: `#${accent}`,
+      card: `#${card}`,
+      isDark,
+    },
+    cover: {
+      bg: primary,
+      titleColor: text,
+      subtitleColor: isDark ? "CBD5E1" : "475569",
+      accentColor: accent,
+      badgeBg: accent,
+      badgeText: "FFFFFF",
+      cardBg: card,
+      cardBorder: isDark ? "334155" : "E2E8F0",
+      cardText: isDark ? "94A3B8" : "475569",
+      footerText: isDark ? "64748B" : "94A3B8",
+    },
+    product: {
+      bg: primary,
+      titleColor: text,
+      categoryColor: accent,
+      skuColor: isDark ? "94A3B8" : "64748B",
+      priceColor: accent,
+      priceCardBg: card,
+      priceCardBorder: accent,
+      tableBg: card,
+      tableBorder: isDark ? "334155" : "E2E8F0",
+      tableLabelColor: isDark ? "94A3B8" : "64748B",
+      tableValColor: text,
+      tableHighlightColor: accent,
+      imgBorderColor: isDark ? "334155" : "E2E8F0",
+      footerLineColor: isDark ? "334155" : "E2E8F0",
+      footerTextColor: isDark ? "64748B" : "94A3B8",
+    },
+    closing: {
+      bg: primary,
+      titleColor: text,
+      subtitleColor: isDark ? "CBD5E1" : "475569",
+      cardBg: card,
+      cardBorder: isDark ? "334155" : "E2E8F0",
+      cardText: isDark ? "94A3B8" : "475569",
+    },
+  };
+}
+
 export interface PptExportOptions {
   themeId?: ThemeId;
+  customTheme?: DeckTheme;
+  frontPageImageUrl?: string;
+  frontPageOverlayText?: boolean;
+  frontPageTextTheme?: "light" | "dark";
   customerName?: string;
   deckTitle?: string;
   includePricing?: boolean;
@@ -442,7 +505,7 @@ export async function generateProductPptx(
     ...(options.fields || {}),
   };
 
-  const theme = DECK_THEMES[themeId] || DECK_THEMES.obsidian;
+  const theme = options.customTheme || DECK_THEMES[themeId] || DECK_THEMES.obsidian;
 
   if (!products || products.length === 0) {
     throw new Error("No products selected to generate PowerPoint presentation.");
@@ -469,89 +532,216 @@ export async function generateProductPptx(
     slideNumber++;
     onProgress?.(slideNumber, totalDeckSlides, "Creating Cover Slide...");
     const coverSlide = pptx.addSlide();
-    coverSlide.background = { color: theme.cover.bg };
 
-    // Header Subtitle & Badge
-    coverSlide.addText("LII EXPORTS • B2B EXPORT CATALOGUE", {
-      x: 0.8,
-      y: 0.8,
-      w: 6.0,
-      h: 0.4,
-      fontSize: 11,
-      bold: true,
-      color: theme.cover.accentColor,
-    });
-
-    coverSlide.addText(theme.badge, {
-      x: 7.2,
-      y: 0.75,
-      w: 2.2,
-      h: 0.35,
-      fontSize: 9,
-      bold: true,
-      color: theme.cover.badgeText,
-      align: "center",
-      fill: { color: theme.cover.badgeBg },
-      shape: pptx.ShapeType.roundRect,
-    });
-
-    // Main Deck Title
-    coverSlide.addText(deckTitle, {
-      x: 0.8,
-      y: 1.4,
-      w: 8.6,
-      h: 1.1,
-      fontSize: 32,
-      bold: true,
-      color: theme.cover.titleColor,
-      lineSpacing: 38,
-    });
-
-    // Customer sub-heading
-    coverSlide.addText(`Prepared for ${customerName} • ${products.length} Curated Product${products.length > 1 ? "s" : ""}`, {
-      x: 0.8,
-      y: 2.6,
-      w: 8.6,
-      h: 0.45,
-      fontSize: 13,
-      color: theme.cover.subtitleColor,
-    });
-
-    // Summary Metrics Card
-    coverSlide.addShape(pptx.ShapeType.roundRect, {
-      x: 0.8,
-      y: 3.3,
-      w: 8.4,
-      h: 1.1,
-      fill: { color: theme.cover.cardBg },
-      line: { color: theme.cover.cardBorder, width: 1 },
-    });
-
-    const pricingNote = fields.includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions (Pricing Confidential)";
-
-    coverSlide.addText(
-      `Total Selected Volume: ${totalCbm.toFixed(2)} m³   |   Total Products: ${products.length} Items   |   Port: FOB Mundra/Pipavav, India\n${pricingNote}`,
-      {
-        x: 1.0,
-        y: 3.45,
-        w: 8.0,
-        h: 0.8,
-        fontSize: 11,
-        color: theme.cover.cardText,
-        align: "center",
-        valign: "middle",
+    if (options.frontPageImageUrl) {
+      const base64Cover = await toBase64DataUrl(options.frontPageImageUrl);
+      if (base64Cover) {
+        coverSlide.addImage({
+          data: base64Cover,
+          x: 0,
+          y: 0,
+          w: 10.0,
+          h: 5.625,
+          sizing: { type: "cover", w: 10.0, h: 5.625 },
+        });
+      } else {
+        try {
+          coverSlide.addImage({
+            path: options.frontPageImageUrl,
+            x: 0,
+            y: 0,
+            w: 10.0,
+            h: 5.625,
+          });
+        } catch {
+          coverSlide.background = { color: theme.cover.bg };
+        }
       }
-    );
 
-    // Footer
-    coverSlide.addText("Confidential B2B Presentation • LII Exports Jodhpur • All Rights Reserved", {
-      x: 0.8,
-      y: 4.9,
-      w: 8.4,
-      h: 0.3,
-      fontSize: 9,
-      color: theme.cover.footerText,
-    });
+      // If user chose NOT to overlay text, we keep the cover pure artwork
+      if (options.frontPageOverlayText !== false) {
+        const isWhiteText = options.frontPageTextTheme !== "dark";
+        const titleColor = isWhiteText ? "FFFFFF" : "0F172A";
+        const subtitleColor = isWhiteText ? "E2E8F0" : "334155";
+        const accentColor = theme.cover.accentColor;
+
+        // Semi-transparent scrim for legibility
+        coverSlide.addShape(pptx.ShapeType.rect, {
+          x: 0,
+          y: 0,
+          w: 10.0,
+          h: 5.625,
+          fill: { color: isWhiteText ? "000000" : "FFFFFF", transparency: 65 },
+        });
+
+        // Header Subtitle & Badge
+        coverSlide.addText("LII EXPORTS • B2B EXPORT CATALOGUE", {
+          x: 0.8,
+          y: 0.8,
+          w: 6.0,
+          h: 0.4,
+          fontSize: 11,
+          bold: true,
+          color: accentColor,
+        });
+
+        coverSlide.addText(theme.badge, {
+          x: 7.2,
+          y: 0.75,
+          w: 2.2,
+          h: 0.35,
+          fontSize: 9,
+          bold: true,
+          color: theme.cover.badgeText,
+          align: "center",
+          fill: { color: theme.cover.badgeBg },
+          shape: pptx.ShapeType.roundRect,
+        });
+
+        // Main Deck Title
+        coverSlide.addText(deckTitle, {
+          x: 0.8,
+          y: 1.4,
+          w: 8.6,
+          h: 1.1,
+          fontSize: 32,
+          bold: true,
+          color: titleColor,
+          lineSpacing: 38,
+        });
+
+        // Customer sub-heading
+        coverSlide.addText(`Prepared for ${customerName} • ${products.length} Curated Product${products.length > 1 ? "s" : ""}`, {
+          x: 0.8,
+          y: 2.6,
+          w: 8.6,
+          h: 0.45,
+          fontSize: 13,
+          color: subtitleColor,
+        });
+
+        // Summary Metrics Card
+        coverSlide.addShape(pptx.ShapeType.roundRect, {
+          x: 0.8,
+          y: 3.3,
+          w: 8.4,
+          h: 1.1,
+          fill: { color: isWhiteText ? "0F172A" : "FFFFFF", transparency: 20 },
+          line: { color: isWhiteText ? "334155" : "E2E8F0", width: 1 },
+        });
+
+        const pricingNote = fields.includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions (Pricing Confidential)";
+
+        coverSlide.addText(
+          `Total Selected Volume: ${totalCbm.toFixed(2)} m³   |   Total Products: ${products.length} Items   |   Port: FOB Mundra/Pipavav, India\n${pricingNote}`,
+          {
+            x: 1.0,
+            y: 3.45,
+            w: 8.0,
+            h: 0.8,
+            fontSize: 11,
+            color: isWhiteText ? "CBD5E1" : "334155",
+            align: "center",
+            valign: "middle",
+          }
+        );
+
+        // Footer
+        coverSlide.addText("Confidential B2B Presentation • LII Exports Jodhpur • All Rights Reserved", {
+          x: 0.8,
+          y: 4.9,
+          w: 8.4,
+          h: 0.3,
+          fontSize: 9,
+          color: isWhiteText ? "94A3B8" : "64748B",
+        });
+      }
+    } else {
+      // Standard themed vector cover
+      coverSlide.background = { color: theme.cover.bg };
+
+      // Header Subtitle & Badge
+      coverSlide.addText("LII EXPORTS • B2B EXPORT CATALOGUE", {
+        x: 0.8,
+        y: 0.8,
+        w: 6.0,
+        h: 0.4,
+        fontSize: 11,
+        bold: true,
+        color: theme.cover.accentColor,
+      });
+
+      coverSlide.addText(theme.badge, {
+        x: 7.2,
+        y: 0.75,
+        w: 2.2,
+        h: 0.35,
+        fontSize: 9,
+        bold: true,
+        color: theme.cover.badgeText,
+        align: "center",
+        fill: { color: theme.cover.badgeBg },
+        shape: pptx.ShapeType.roundRect,
+      });
+
+      // Main Deck Title
+      coverSlide.addText(deckTitle, {
+        x: 0.8,
+        y: 1.4,
+        w: 8.6,
+        h: 1.1,
+        fontSize: 32,
+        bold: true,
+        color: theme.cover.titleColor,
+        lineSpacing: 38,
+      });
+
+      // Customer sub-heading
+      coverSlide.addText(`Prepared for ${customerName} • ${products.length} Curated Product${products.length > 1 ? "s" : ""}`, {
+        x: 0.8,
+        y: 2.6,
+        w: 8.6,
+        h: 0.45,
+        fontSize: 13,
+        color: theme.cover.subtitleColor,
+      });
+
+      // Summary Metrics Card
+      coverSlide.addShape(pptx.ShapeType.roundRect, {
+        x: 0.8,
+        y: 3.3,
+        w: 8.4,
+        h: 1.1,
+        fill: { color: theme.cover.cardBg },
+        line: { color: theme.cover.cardBorder, width: 1 },
+      });
+
+      const pricingNote = fields.includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions (Pricing Confidential)";
+
+      coverSlide.addText(
+        `Total Selected Volume: ${totalCbm.toFixed(2)} m³   |   Total Products: ${products.length} Items   |   Port: FOB Mundra/Pipavav, India\n${pricingNote}`,
+        {
+          x: 1.0,
+          y: 3.45,
+          w: 8.0,
+          h: 0.8,
+          fontSize: 11,
+          color: theme.cover.cardText,
+          align: "center",
+          valign: "middle",
+        }
+      );
+
+      // Footer
+      coverSlide.addText("Confidential B2B Presentation • LII Exports Jodhpur • All Rights Reserved", {
+        x: 0.8,
+        y: 4.9,
+        w: 8.4,
+        h: 0.3,
+        fontSize: 9,
+        color: theme.cover.footerText,
+      });
+    }
   }
 
   // -------------------------------------------------------------

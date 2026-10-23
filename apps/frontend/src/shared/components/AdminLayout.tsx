@@ -51,6 +51,7 @@ export const SECTIONS: NavSection[] = [
           { label: "Finish Codes", to: "/admin/finish-codes" },
           { label: "QC Names", to: "/admin/qc-names" },
           { label: "Weights", to: "/admin/module-weights" },
+          { label: "PPT Themes & Front Pages", to: "/admin/ppt-themes" },
         ]
       }
     ],

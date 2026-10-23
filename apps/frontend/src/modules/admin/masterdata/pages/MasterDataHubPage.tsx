@@ -24,6 +24,7 @@ export function MasterDataHubPage() {
     { label: "Buyers", to: "/admin/buyers", desc: "Manage buyers" },
     { label: "Finish Codes", to: "/admin/finish-codes", desc: "Manage finish codes" },
     { label: "QC Names", to: "/admin/qc-names", desc: "Manage Quality Controller (QC) inspectors" },
+    { label: "PPT Themes & Front Pages", to: "/admin/ppt-themes", desc: "Manage PPT presentation themes and cover page templates" },
   ];
 
   const items = allItems.filter(item => {

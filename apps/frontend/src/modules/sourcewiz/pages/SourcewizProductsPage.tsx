@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import "../Sourcewiz.css";
 import {
   generateProductPptx,
@@ -8,9 +9,11 @@ import {
   CatalogProductItem,
   PresentationFieldsConfig,
   DEFAULT_PRESENTATION_FIELDS,
+  convertMasterThemeToDeckTheme,
 } from "../utils/pptxExport";
 import { exportProductsToExcel } from "../utils/excelExport";
 import { catalogueShareApi, SharedDeckData } from "../api/catalogueShareApi";
+import { pptMasterApi, PptMasterTheme, PptFrontPage } from "../../admin/masterdata/api/pptMasterApi";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
 
@@ -248,11 +251,31 @@ export default function SourcewizProductsPage() {
   const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Deck Options & Theme
+  // Deck Options, Theme & Front Page
   const [selectedThemeId, setSelectedThemeId] = useState<ThemeId>("obsidian");
+  const [selectedFrontPageId, setSelectedFrontPageId] = useState<string>("default");
+  const [customThemes, setCustomThemes] = useState<PptMasterTheme[]>([]);
+  const [customFrontPages, setCustomFrontPages] = useState<PptFrontPage[]>([]);
   const [customerName, setCustomerName] = useState("West Elm Global Sourcing");
   const [deckTitle, setDeckTitle] = useState("Curated Product Presentation Deck");
   const [fieldsConfig, setFieldsConfig] = useState<PresentationFieldsConfig>(DEFAULT_PRESENTATION_FIELDS);
+
+  // Load custom master themes & front pages
+  useEffect(() => {
+    pptMasterApi.getThemes().then((data) => setCustomThemes(data || [])).catch(console.error);
+    pptMasterApi.getFrontPages().then((data) => setCustomFrontPages(data || [])).catch(console.error);
+  }, []);
+
+  // Combined themes map (Built-ins + Custom Master Themes)
+  const allThemesMap = React.useMemo(() => {
+    const map: Record<string, DeckTheme> = { ...DECK_THEMES };
+    customThemes.forEach((ct) => {
+      map[ct.id] = convertMasterThemeToDeckTheme(ct);
+    });
+    return map;
+  }, [customThemes]);
+
+  const activeFrontPage = customFrontPages.find((fp) => fp.id === selectedFrontPageId);
 
   // Sorting State
   const [sortField, setSortField] = useState<"name" | "sku" | "fobPriceUsd" | "cbm" | "stockStatus" | null>(null);
@@ -410,8 +433,16 @@ export default function SourcewizProductsPage() {
     if (selectedProducts.length === 0) return;
     setIsExportingPpt(true);
     try {
+      const thId = themeOverride || selectedThemeId;
+      const thObj = allThemesMap[thId] || DECK_THEMES.obsidian;
+      const fpObj = customFrontPages.find((fp) => fp.id === selectedFrontPageId);
+
       await generateProductPptx(selectedProducts, {
-        themeId: themeOverride || selectedThemeId,
+        themeId: thId,
+        customTheme: thObj,
+        frontPageImageUrl: fpObj?.image_url,
+        frontPageOverlayText: fpObj ? Boolean(fpObj.overlay_text) : true,
+        frontPageTextTheme: fpObj?.text_theme || "light",
         customerName: customerName || "Global Sourcing Partner",
         deckTitle: deckTitle || "Curated Product Presentation Deck",
         includePricing: fieldsConfig.includePricing,
@@ -482,7 +513,7 @@ export default function SourcewizProductsPage() {
     }
   };
 
-  const currentTheme: DeckTheme = DECK_THEMES[selectedThemeId] || DECK_THEMES.obsidian;
+  const currentTheme: DeckTheme = allThemesMap[selectedThemeId] || DECK_THEMES.obsidian;
 
   return (
     <div className="sw-container">
@@ -497,9 +528,6 @@ export default function SourcewizProductsPage() {
               {products.length} Products Recorded
             </span>
           </div>
-          <p className="sw-page-subtitle">
-            Curate export-grade product selections to generate high-resolution PowerPoint (.pptx) presentations, structured Excel spec sheets, and trackable interactive buyer decks.
-          </p>
         </div>
 
         {/* Header Actions: View Switcher & Shared Links */}
@@ -636,13 +664,65 @@ export default function SourcewizProductsPage() {
                 onChange={(e) => setSelectedThemeId(e.target.value as ThemeId)}
                 className="sw-theme-select"
               >
-                {Object.values(DECK_THEMES).map((th) => (
-                  <option key={th.id} value={th.id}>
-                    {th.name} ({th.badge})
-                  </option>
-                ))}
+                <optgroup label="System Executive Themes">
+                  {Object.values(DECK_THEMES).map((th) => (
+                    <option key={th.id} value={th.id}>
+                      {th.name} ({th.badge})
+                    </option>
+                  ))}
+                </optgroup>
+                {customThemes.length > 0 && (
+                  <optgroup label="Custom Master Themes">
+                    {customThemes.map((ct) => (
+                      <option key={ct.id} value={ct.id}>
+                        {ct.name} ({ct.badge || "CUSTOM"})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
+
+            {/* Quick Front Page Selector Dropdown */}
+            <div className="sw-theme-selector-group">
+              <span className="sw-theme-label">Front Page:</span>
+              <select
+                value={selectedFrontPageId}
+                onChange={(e) => setSelectedFrontPageId(e.target.value)}
+                className="sw-theme-select"
+                title="Select front cover slide template"
+              >
+                <option value="default">Default Themed Cover</option>
+                {customFrontPages.length > 0 && (
+                  <optgroup label="Uploaded Master Front Pages">
+                    {customFrontPages.map((fp) => (
+                      <option key={fp.id} value={fp.id}>
+                        {fp.title} ({fp.overlay_text ? "Text Overlay" : "Artwork Only"})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+
+            <Link
+              to="/admin/ppt-themes"
+              title="Upload & configure themes and front pages in Master Data"
+              style={{
+                color: "#94a3b8",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: "0.72rem",
+                textDecoration: "none",
+                padding: "4px 8px",
+                borderRadius: "4px",
+                border: "1px dashed rgba(255,255,255,0.18)",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span>+ Masters</span>
+            </Link>
           </div>
 
           {/* Right: Refined Executive Actions with crisp SVG icons */}
@@ -1173,30 +1253,49 @@ export default function SourcewizProductsPage() {
 
             {/* Modal Body */}
             <div style={{ padding: "18px 24px", background: "#f8fafc", flex: 1 }}>
-              {/* THEME SELECTOR SECTION */}
-              <div style={{ marginBottom: "18px" }}>
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    color: "#475569",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    marginBottom: "10px",
-                  }}
-                >
-                  1. Choose Presentation Theme ({Object.keys(DECK_THEMES).length} Executive Themes)
+              {/* THEME & FRONT PAGE SELECTION SECTION */}
+              <div style={{ marginBottom: "22px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      color: "#475569",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    1. Choose Presentation Theme ({Object.keys(allThemesMap).length} Themes Available)
+                  </div>
+
+                  <Link
+                    to="/admin/ppt-themes"
+                    target="_blank"
+                    style={{
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                      color: "#2563eb",
+                      textDecoration: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    + Manage Themes & Upload Front Pages in Masters &rarr;
+                  </Link>
                 </div>
 
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
                     gap: "10px",
+                    marginBottom: "20px",
                   }}
                 >
-                  {Object.values(DECK_THEMES).map((th) => {
+                  {Object.values(allThemesMap).map((th) => {
                     const isSelected = selectedThemeId === th.id;
+                    const isCustom = !Object.keys(DECK_THEMES).includes(th.id);
                     return (
                       <div
                         key={th.id}
@@ -1212,37 +1311,52 @@ export default function SourcewizProductsPage() {
                           position: "relative",
                         }}
                       >
-                        <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "8px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            <span
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "50%",
+                                background: th.swatch.primary,
+                                border: "1px solid rgba(0,0,0,0.1)",
+                                display: "inline-block",
+                              }}
+                            />
+                            <span
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "50%",
+                                background: th.swatch.accent,
+                                border: "1px solid rgba(0,0,0,0.1)",
+                                display: "inline-block",
+                              }}
+                            />
+                            <span
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "50%",
+                                background: th.swatch.card,
+                                border: "1px solid rgba(0,0,0,0.1)",
+                                display: "inline-block",
+                              }}
+                            />
+                          </div>
+
                           <span
                             style={{
-                              width: "16px",
-                              height: "16px",
-                              borderRadius: "50%",
-                              background: th.swatch.primary,
-                              border: "1px solid rgba(0,0,0,0.1)",
-                              display: "inline-block",
+                              fontSize: "0.62rem",
+                              fontWeight: 800,
+                              padding: "1px 6px",
+                              borderRadius: "4px",
+                              background: isCustom ? "#ecfdf5" : "#f1f5f9",
+                              color: isCustom ? "#065f46" : "#64748b",
                             }}
-                          />
-                          <span
-                            style={{
-                              width: "16px",
-                              height: "16px",
-                              borderRadius: "50%",
-                              background: th.swatch.accent,
-                              border: "1px solid rgba(0,0,0,0.1)",
-                              display: "inline-block",
-                            }}
-                          />
-                          <span
-                            style={{
-                              width: "16px",
-                              height: "16px",
-                              borderRadius: "50%",
-                              background: th.swatch.card,
-                              border: "1px solid rgba(0,0,0,0.1)",
-                              display: "inline-block",
-                            }}
-                          />
+                          >
+                            {isCustom ? "MASTER" : "SYSTEM"}
+                          </span>
                         </div>
 
                         <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a", marginBottom: "2px" }}>
@@ -1276,6 +1390,124 @@ export default function SourcewizProductsPage() {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* 2. CHOOSE FRONT PAGE / COVER SLIDE TEMPLATE */}
+                <div style={{ marginBottom: "10px" }}>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      color: "#475569",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    2. Choose Front Page / Cover Template ({customFrontPages.length + 1} Options)
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                      gap: "10px",
+                    }}
+                  >
+                    {/* Default Themed Cover Option */}
+                    <div
+                      onClick={() => setSelectedFrontPageId("default")}
+                      style={{
+                        background: "#ffffff",
+                        borderRadius: "8px",
+                        padding: "10px",
+                        border: selectedFrontPageId === "default" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                        boxShadow: selectedFrontPageId === "default" ? "0 4px 12px rgba(37, 99, 235, 0.15)" : "none",
+                        cursor: "pointer",
+                        position: "relative",
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "56px",
+                          height: "36px",
+                          borderRadius: "4px",
+                          background: currentTheme.swatch.primary,
+                          border: `1px solid ${currentTheme.swatch.accent}55`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: currentTheme.swatch.accent,
+                          fontSize: "0.70rem",
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        THEME
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.80rem", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          Default Themed Cover
+                        </div>
+                        <div style={{ fontSize: "0.68rem", color: "#64748b" }}>
+                          Uses selected theme colorway
+                        </div>
+                      </div>
+                      {selectedFrontPageId === "default" && (
+                        <span style={{ color: "#2563eb", fontWeight: 800, fontSize: "0.85rem" }}>✓</span>
+                      )}
+                    </div>
+
+                    {/* Custom Uploaded Front Pages */}
+                    {customFrontPages.map((fp) => {
+                      const isSelected = selectedFrontPageId === fp.id;
+                      return (
+                        <div
+                          key={fp.id}
+                          onClick={() => setSelectedFrontPageId(fp.id)}
+                          style={{
+                            background: "#ffffff",
+                            borderRadius: "8px",
+                            padding: "10px",
+                            border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                            boxShadow: isSelected ? "0 4px 12px rgba(37, 99, 235, 0.15)" : "none",
+                            cursor: "pointer",
+                            position: "relative",
+                            display: "flex",
+                            gap: "10px",
+                            alignItems: "center",
+                          }}
+                        >
+                          <img
+                            src={fp.image_url}
+                            alt={fp.title}
+                            style={{
+                              width: "56px",
+                              height: "36px",
+                              borderRadius: "4px",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                              background: "#0f172a",
+                            }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: "0.80rem", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {fp.title}
+                            </div>
+                            <div style={{ fontSize: "0.68rem", color: "#64748b" }}>
+                              {fp.overlay_text ? "Text Overlay" : "Artwork Only"}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <span style={{ color: "#2563eb", fontWeight: 800, fontSize: "0.85rem" }}>✓</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -1697,13 +1929,17 @@ export default function SourcewizProductsPage() {
                       aspectRatio: "16 / 9",
                       background:
                         activeSlide === 0
-                          ? `#${currentTheme.cover.bg}`
+                          ? activeFrontPage
+                            ? `url(${activeFrontPage.image_url}) center/cover no-repeat`
+                            : `#${currentTheme.cover.bg}`
                           : activeSlide === selectedProducts.length + 1
                           ? `#${currentTheme.closing.bg}`
                           : `#${currentTheme.product.bg}`,
                       color:
                         activeSlide === 0
-                          ? `#${currentTheme.cover.titleColor}`
+                          ? activeFrontPage && activeFrontPage.text_theme === "dark"
+                            ? "#0f172a"
+                            : `#${currentTheme.cover.titleColor}`
                           : activeSlide === selectedProducts.length + 1
                           ? `#${currentTheme.closing.titleColor}`
                           : `#${currentTheme.product.titleColor}`,
@@ -1719,68 +1955,105 @@ export default function SourcewizProductsPage() {
                   >
                     {activeSlide === 0 ? (
                       /* COVER SLIDE LIVE PREVIEW */
-                      <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span
-                            style={{
-                              fontSize: "0.76rem",
-                              fontWeight: 800,
-                              letterSpacing: "0.1em",
-                              color: `#${currentTheme.cover.accentColor}`,
-                            }}
-                          >
-                            LII EXPORTS • B2B EXPORT CATALOGUE
-                          </span>
-                          <span
-                            style={{
-                              background: `#${currentTheme.cover.badgeBg}`,
-                              color: `#${currentTheme.cover.badgeText}`,
-                              padding: "2px 8px",
-                              borderRadius: "10px",
-                              fontSize: "0.68rem",
-                              fontWeight: 800,
-                            }}
-                          >
-                            {currentTheme.badge}
-                          </span>
-                        </div>
-
-                        <div>
-                          <h1
-                            style={{
-                              fontSize: "1.9rem",
-                              fontWeight: 800,
-                              margin: "0 0 8px 0",
-                              lineHeight: 1.2,
-                              color: `#${currentTheme.cover.titleColor}`,
-                            }}
-                          >
-                            {deckTitle}
-                          </h1>
-                          <p style={{ fontSize: "0.90rem", color: `#${currentTheme.cover.subtitleColor}`, margin: 0 }}>
-                            Prepared for {customerName} • {selectedProducts.length} Premium Form-Recorded Items
-                          </p>
-                        </div>
-
-                        <div
-                          style={{
-                            background: `#${currentTheme.cover.cardBg}`,
-                            border: `1px solid #${currentTheme.cover.cardBorder}`,
+                      activeFrontPage && !activeFrontPage.overlay_text ? (
+                        <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                          <div style={{
+                            alignSelf: "flex-start",
+                            padding: "4px 10px",
                             borderRadius: "6px",
-                            padding: "8px 12px",
-                            fontSize: "0.74rem",
-                            color: `#${currentTheme.cover.cardText}`,
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          {fieldsConfig.includeCbm && (
-                            <span>Total Volume: {selectedProducts.reduce((acc, p) => acc + (p.cbm || 0), 0).toFixed(2)} CBM</span>
-                          )}
-                          <span>FOB Mundra / Pipavav, India</span>
-                          <span>{fieldsConfig.includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions Deck"}</span>
+                            background: "rgba(15, 23, 42, 0.8)",
+                            color: "#ffffff",
+                            fontSize: "0.70rem",
+                            fontWeight: 800,
+                            letterSpacing: "0.06em",
+                            backdropFilter: "blur(4px)",
+                          }}>
+                            {activeFrontPage.title.toUpperCase()} • FULL BLEED ARTWORK (NO TEXT OVERLAY)
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div style={{
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          position: "relative",
+                          zIndex: 2,
+                          background: activeFrontPage
+                            ? activeFrontPage.text_theme === "dark"
+                              ? "rgba(255, 255, 255, 0.72)"
+                              : "rgba(0, 0, 0, 0.65)"
+                            : "transparent",
+                          margin: "-24px",
+                          padding: "24px",
+                          backdropFilter: activeFrontPage ? "blur(3px)" : "none",
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span
+                              style={{
+                                fontSize: "0.76rem",
+                                fontWeight: 800,
+                                letterSpacing: "0.1em",
+                                color: `#${currentTheme.cover.accentColor}`,
+                              }}
+                            >
+                              LII EXPORTS • B2B EXPORT CATALOGUE
+                            </span>
+                            <span
+                              style={{
+                                background: `#${currentTheme.cover.badgeBg}`,
+                                color: `#${currentTheme.cover.badgeText}`,
+                                padding: "2px 8px",
+                                borderRadius: "10px",
+                                fontSize: "0.68rem",
+                                fontWeight: 800,
+                              }}
+                            >
+                              {currentTheme.badge}
+                            </span>
+                          </div>
+
+                          <div>
+                            <h1
+                              style={{
+                                fontSize: "1.9rem",
+                                fontWeight: 800,
+                                margin: "0 0 8px 0",
+                                lineHeight: 1.2,
+                                color: activeFrontPage && activeFrontPage.text_theme === "dark" ? "#0f172a" : `#${currentTheme.cover.titleColor}`,
+                              }}
+                            >
+                              {deckTitle}
+                            </h1>
+                            <p style={{
+                              fontSize: "0.90rem",
+                              color: activeFrontPage && activeFrontPage.text_theme === "dark" ? "#334155" : `#${currentTheme.cover.subtitleColor}`,
+                              margin: 0
+                            }}>
+                              Prepared for {customerName} • {selectedProducts.length} Premium Form-Recorded Items
+                            </p>
+                          </div>
+
+                          <div
+                            style={{
+                              background: activeFrontPage && activeFrontPage.text_theme === "dark" ? "rgba(255,255,255,0.85)" : `#${currentTheme.cover.cardBg}`,
+                              border: `1px solid #${currentTheme.cover.cardBorder}`,
+                              borderRadius: "6px",
+                              padding: "8px 12px",
+                              fontSize: "0.74rem",
+                              color: activeFrontPage && activeFrontPage.text_theme === "dark" ? "#1e293b" : `#${currentTheme.cover.cardText}`,
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            {fieldsConfig.includeCbm && (
+                              <span>Total Volume: {selectedProducts.reduce((acc, p) => acc + (p.cbm || 0), 0).toFixed(2)} CBM</span>
+                            )}
+                            <span>FOB Mundra / Pipavav, India</span>
+                            <span>{fieldsConfig.includePricing ? "FOB Pricing & MOQ Included" : "Specs & Dimensions Deck"}</span>
+                          </div>
+                        </div>
+                      )
                     ) : activeSlide === selectedProducts.length + 1 ? (
                       /* CLOSING SLIDE LIVE PREVIEW */
                       <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", textAlign: "center" }}>
