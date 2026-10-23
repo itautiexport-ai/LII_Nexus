@@ -47,6 +47,7 @@ import maintenanceRoutes from "../../modules/maintenance/presentation/routes/mai
 import { orderInHandRoutes } from "../../modules/ordermanagement/presentation/routes/orderInHandRoutes";
 import cartonOrderRoutes from "../../modules/ordermanagement/presentation/routes/cartonOrder.routes";
 import taskCenterRoutes from "../../modules/taskcenter/presentation/routes/taskcenter.routes";
+import catalogueRoutes from "../../modules/catalogue/presentation/routes/catalogue.routes";
 const router = Router();
 
 router.use("/training", trainingRoutes);
@@ -60,6 +61,7 @@ router.use("/hr", attendanceRouter);
 router.use("/maintenance", maintenanceRoutes);
 
 router.use("/auth", authRoutes);
+router.use("/catalogue", catalogueRoutes);
 router.use("/users", userRoutes);
 router.use("/", masterDataRoutes); // exposes /wood-types, /priorities
 router.use("/", rbacRoutes); // exposes /roles, /permissions, /users/:userId/roles, /me/permissions

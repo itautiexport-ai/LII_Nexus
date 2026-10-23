@@ -175,7 +175,7 @@ export default function SourcewizImageCreatorPage() {
               fontSize: "0.88rem",
             }}
           >
-            ✅ 8K Photorealistic AI Lifestyle image attached to Product Catalog entry.
+            ✅ 8K Photorealistic AI Lifestyle image attached to Product Catalogue entry.
           </div>
         )}
 
@@ -626,7 +626,7 @@ export default function SourcewizImageCreatorPage() {
                   cursor: (!unifiedAiSceneUrl && !currentOriginalImg) ? "not-allowed" : "pointer",
                 }}
               >
-                Attach to Product Catalog
+                Attach to Product Catalogue
               </button>
             </div>
           </div>

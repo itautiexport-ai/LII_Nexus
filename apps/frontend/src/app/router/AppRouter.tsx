@@ -24,6 +24,7 @@ import WoodTypesPage from "../../modules/admin/masterdata/pages/WoodTypesPage";
 import WoodThicknessPricesPage from "../../modules/admin/masterdata/pages/WoodThicknessPricesPage";
 import MetalPricesPage from "../../modules/admin/masterdata/pages/MetalPricesPage";
 import PrioritiesPage from "../../modules/admin/masterdata/pages/PrioritiesPage";
+import PptThemesMasterPage from "../../modules/admin/masterdata/pages/PptThemesMasterPage";
 import MachinesProductsPage from "../../modules/documents/pages/MachinesProductsPage";
 import MyProductionPage from "../../modules/factory/pages/MyProductionPage";
 import WorkflowListPage from "../../modules/workflow/pages/WorkflowListPage";
@@ -162,6 +163,7 @@ import SourcewizProductsPage from "../../modules/sourcewiz/pages/SourcewizProduc
 import SourcewizDashboardPage from "../../modules/sourcewiz/pages/SourcewizDashboardPage";
 import SourcewizQuotationsPage from "../../modules/sourcewiz/pages/SourcewizQuotationsPage";
 import SourcewizRfqsPage from "../../modules/sourcewiz/pages/SourcewizRfqsPage";
+import SharedDeckViewerPage from "../../modules/sourcewiz/pages/SharedDeckViewerPage";
 import NoticesPage from "../../modules/hr/pages/NoticesPage";
 import WeeklyPayrollPage from "../../modules/hr/pages/WeeklyPayrollPage";
 import MonthlySalarySheetPage from "../../modules/hr/pages/MonthlySalarySheetPage";
@@ -203,6 +205,7 @@ export default function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/view-deck/:token" element={<SharedDeckViewerPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<AdminLayout />}>
@@ -241,6 +244,7 @@ export default function AppRouter() {
           <Route path="hods" element={<HodsPage />} />
           <Route path="qc-names" element={<QcNamesPage />} />
           <Route path="merchants" element={<MerchantsPage />} />
+          <Route path="ppt-themes" element={<PptThemesMasterPage />} />
           <Route path="module-weights" element={<ModuleWeightsPage />} />
           <Route path="machine-targets" element={<MachineTargetsPage />} />
           <Route path="machines-products" element={<MachinesProductsPage />} />
@@ -260,15 +264,17 @@ export default function AppRouter() {
           <Route path="standalone-checklist/add" element={<AddChecklistPage />} />
           <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
 
-          {/* Product Catalog 2.0 (Sourcewiz) Routes */}
+          {/* Product Catalogue 2.0 (Sourcewiz) Routes */}
           <Route path="sourcewiz" element={<SourcewizProductsPage />} />
           <Route path="sourcewiz/products" element={<SourcewizProductsPage />} />
           <Route path="sourcewiz/product-form" element={<SourcewizProductFormPage />} />
+          <Route path="sourcewiz/product-form/:id" element={<SourcewizProductFormPage />} />
           <Route path="sourcewiz/dashboard" element={<SourcewizDashboardPage />} />
           <Route path="sourcewiz/quotations" element={<SourcewizQuotationsPage />} />
           <Route path="sourcewiz/rfqs" element={<SourcewizRfqsPage />} />
 
           <Route path="product-form" element={<SourcewizProductFormPage />} />
+          <Route path="product-form/:id" element={<SourcewizProductFormPage />} />
           <Route path="products" element={<SourcewizProductsPage />} />
           <Route path="fms" element={<FmsHubPage />} />
           <Route path="fms/my-fms" element={<MyFmsPage />} />

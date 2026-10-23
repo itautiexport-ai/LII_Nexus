@@ -51,6 +51,7 @@ export const SECTIONS: NavSection[] = [
           { label: "Finish Codes", to: "/admin/finish-codes" },
           { label: "QC Names", to: "/admin/qc-names" },
           { label: "Weights", to: "/admin/module-weights" },
+          { label: "PPT Themes & Front Pages", to: "/admin/ppt-themes" },
         ]
       }
     ],
@@ -117,10 +118,10 @@ export const SECTIONS: NavSection[] = [
   },
   {
     key: "sourcewiz",
-    label: "Product Catalog 2.0",
+    label: "Product Catalogue 2.0",
     items: [
       { label: "Product Form", to: "/admin/sourcewiz/product-form" },
-      { label: "Product Catalog", to: "/admin/sourcewiz/products" },
+      { label: "Product Catalogue", to: "/admin/sourcewiz/products" },
     ],
   },
   {
@@ -719,11 +720,22 @@ export default function AdminLayout() {
 const SIDEBAR_STYLES = `
   * { box-sizing: border-box; }
 
+  body, .admin-shell {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, .sidebar-header h2 {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
   .admin-shell {
     display: flex;
     height: 100vh;
     overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
   .admin-sidebar {
@@ -972,11 +984,11 @@ const SIDEBAR_STYLES = `
     }
   }
 
-  /* Professional Darker Table Styles */
-  table {
+  /* Professional Darker Table Styles for default tables */
+  table:not(.sw-table) {
     border-collapse: collapse !important;
   }
-  table th, table td {
+  table:not(.sw-table) th, table:not(.sw-table) td {
     border: 1px solid #94a3b8 !important; /* Professional Slate border color */
     padding: 12px 14px !important;
   }
@@ -986,12 +998,12 @@ const SIDEBAR_STYLES = `
       font-size: 13px !important;
     }
   }
-  table th {
+  table:not(.sw-table) th {
     background-color: #e2e8f0 !important; /* Slightly darker slate header */
     color: #0f172a !important; /* Bold text color */
     font-weight: 700 !important;
   }
-  table tr:hover td {
+  table:not(.sw-table) tr:hover td {
     background-color: #f1f5f9 !important; /* Hover highlight row */
   }
   
@@ -1001,5 +1013,37 @@ const SIDEBAR_STYLES = `
   }
   .table-search-input, .table-column-filter, .table-page-size-select, .table-filter-reset-btn {
     border: 1px solid #94a3b8 !important;
+  }
+
+  /* Ultra-Clean Enterprise Styling for sw-table */
+  table.sw-table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border: none !important;
+    width: 100% !important;
+  }
+  table.sw-table th {
+    background-color: #f8fafc !important;
+    color: #475569 !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 12px 16px !important;
+  }
+  table.sw-table td {
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding: 13px 16px !important;
+    color: #1e293b !important;
+    background: #ffffff !important;
+  }
+  table.sw-table tr:hover td {
+    background-color: #f8fafc !important;
+  }
+  table.sw-table tr.sw-row-selected td {
+    background-color: #f1f5f9 !important;
   }
 `;

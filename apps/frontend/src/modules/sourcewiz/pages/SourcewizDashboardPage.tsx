@@ -6,7 +6,7 @@ export default function SourcewizDashboardPage() {
   const navigate = useNavigate();
 
   const metrics = [
-    { label: "Digital Catalog Items", val: "148", icon: "📦", bg: "#eef2ff", color: "#4f46e5" },
+    { label: "Digital Catalogue Items", val: "148", icon: "📦", bg: "#eef2ff", color: "#4f46e5" },
     { label: "Active Quotations", val: "32", icon: "📄", bg: "#f0fdf4", color: "#16a34a" },
     { label: "Pending Buyer RFQs", val: "12", icon: "📥", bg: "#fef3c7", color: "#d97706" },
     { label: "Total Pipeline Value", val: "$485,200", icon: "💵", bg: "#faf5ff", color: "#9333ea" },
@@ -19,7 +19,7 @@ export default function SourcewizDashboardPage() {
     { id: "QT-2026-086", buyer: "Maaison Du Monde", country: "🇫🇷 France", total: "$64,200", date: "2026-07-29", status: "Sent" },
   ];
 
-  const featuredCatalog = [
+  const featuredCatalogue = [
     { name: "Nordic Solid Oak Dining Table", sku: "SW-LII-DT-01", price: "$245.00", moq: "50 Pcs", cbm: "0.35 CBM", category: "Furniture" },
     { name: "Minimalist Ergonomic Office Chair", sku: "SW-LII-OC-04", price: "$110.00", moq: "100 Pcs", cbm: "0.18 CBM", category: "Office" },
     { name: "Handcrafted Rattan Lounge Armchair", sku: "SW-LII-AC-09", price: "$185.00", moq: "30 Pcs", cbm: "0.42 CBM", category: "Outdoor" },
@@ -31,7 +31,7 @@ export default function SourcewizDashboardPage() {
       <div className="sw-header-gradient">
         <div>
           <h1 className="sw-title">
-            <span>✨ Product Catalog 2.0</span>
+            <span>✨ Product Catalogue 2.0</span>
             <span className="sw-badge-pro">PRO ENTERPRISE</span>
           </h1>
           <p className="sw-subtitle">
@@ -56,7 +56,7 @@ export default function SourcewizDashboardPage() {
             className="sw-btn sw-btn-secondary"
             onClick={() => navigate("/admin/sourcewiz/products")}
           >
-            📦 Product Catalog
+            📦 Product Catalogue
           </button>
         </div>
       </div>
@@ -159,7 +159,7 @@ export default function SourcewizDashboardPage() {
 
             <div style={{ marginTop: "16px", padding: "16px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
               <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e293b", marginBottom: "4px" }}>
-                💡 Product Catalog 2.0 Integration Status
+                💡 Product Catalogue 2.0 Integration Status
               </div>
               <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
                 Connected to LII Factory ERP & Buyer Order Pipeline. Container CBM math active.

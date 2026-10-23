@@ -46,7 +46,7 @@ export default function SourcewizQuotationsPage() {
       {/* Header */}
       <div className="sw-header-gradient" style={{ marginBottom: "24px" }}>
         <div>
-          <h1 className="sw-title">📊 Product Catalog 2.0 B2B Quotation Builder</h1>
+          <h1 className="sw-title">📊 Product Catalogue 2.0 B2B Quotation Builder</h1>
           <p className="sw-subtitle">Container Load & Multicurrency Export Quotation Generator</p>
         </div>
 
