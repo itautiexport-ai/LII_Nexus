@@ -759,26 +759,6 @@ export default function SourcewizProductFormPage() {
                     />
                   </div>
 
-                  {/* Color */}
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "6px" }}>
-                      Color
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.color}
-                      onChange={(e) => handleInputChange("color", e.target.value)}
-                      placeholder="e.g. Natural Oak"
-                      style={{
-                        width: "100%",
-                        padding: "12px 14px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "0.92rem",
-                      }}
-                    />
-                  </div>
-
                   {/* Production Technique */}
                   <div>
                     <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "6px" }}>
