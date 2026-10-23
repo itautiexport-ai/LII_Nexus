@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { documentApi } from "../../documents/api/documentApi";
 import "../Sourcewiz.css";
 
@@ -13,6 +13,11 @@ interface ProductImage {
 
 export default function SourcewizProductFormPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const [searchParams] = useSearchParams();
+  const editId = id || searchParams.get("editId");
+  const isEditMode = Boolean(editId);
+  const [editingOriginal, setEditingOriginal] = useState<any | null>(null);
 
   // Active top-level tab ("Images" or "Details")
   const [activeTab, setActiveTab] = useState<"Images" | "Details">("Details");
@@ -81,6 +86,64 @@ export default function SourcewizProductFormPage() {
 
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Load existing product details if editing
+  useEffect(() => {
+    if (!editId) return;
+
+    try {
+      const saved =
+        localStorage.getItem("lii_product_catalogue_items") ||
+        localStorage.getItem("lii_product_catalog_items");
+      let allProducts: any[] = [];
+      if (saved) {
+        allProducts = JSON.parse(saved);
+      }
+      let item = allProducts.find((p) => String(p.id) === String(editId));
+
+      if (item) {
+        setEditingOriginal(item);
+        if (item.fullDetails) {
+          setFormData({ ...item.fullDetails });
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            category: item.category || "",
+            subCategory: item.subCategory || "",
+            productId: item.sku || "",
+            productName: item.name || "",
+            collectionName: item.collectionName || "",
+            material: item.material || "",
+            woodFinish: item.woodFinish || "",
+            metalFinish: item.metalFinish || "",
+            sizeCm: item.sizeCm || "",
+            assembledKd: item.assembledKd || "KD",
+            sellingPriceVal: item.fobPriceUsd != null ? String(item.fobPriceUsd) : "",
+            costPriceVal: item.costPriceVal || (item.fobPriceUsd != null ? String(item.fobPriceUsd) : ""),
+            moq: item.moq != null ? String(item.moq) : "",
+            cbm: item.cbm != null ? String(item.cbm) : "",
+            gp40ft: item.gp40ft != null ? String(item.gp40ft) : "",
+          }));
+        }
+
+        if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+          setImages(item.images);
+        } else if (item.image) {
+          setImages([
+            {
+              id: "img-main-" + item.id,
+              label: "Front View (Main Cover)",
+              url: item.image,
+              previewUrl: item.image,
+              isMain: true,
+            },
+          ]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load product for editing:", err);
+    }
+  }, [editId]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -118,7 +181,13 @@ export default function SourcewizProductFormPage() {
   };
 
   const handleRemoveImage = (id: string) => {
-    setImages((prev) => prev.filter((img) => img.id !== id));
+    setImages((prev) => {
+      const filtered = prev.filter((img) => img.id !== id);
+      if (filtered.length > 0 && !filtered.some((img) => img.isMain)) {
+        filtered[0].isMain = true;
+      }
+      return filtered;
+    });
   };
 
   const handleSetMainCover = (id: string) => {
@@ -130,47 +199,63 @@ export default function SourcewizProductFormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const mainImg = images.find((img) => img.isMain)?.previewUrl || images[0]?.previewUrl || "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?w=600&auto=format&fit=crop&q=80";
+    const mainImg =
+      images.find((img) => img.isMain)?.previewUrl ||
+      images[0]?.previewUrl ||
+      editingOriginal?.image ||
+      "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?w=600&auto=format&fit=crop&q=80";
 
-    const newProduct = {
-      id: "PF-" + Date.now(),
-      sku: formData.productId || `SW-LII-PF-${Math.floor(10000 + Math.random() * 90000)}`,
-      name: formData.productName || "New Product Entry",
-      category: formData.category || "Furniture",
-      subCategory: formData.subCategory || "General",
-      collectionName: formData.collectionName || "Custom Collection",
-      material: formData.material || "Wood & Metal",
-      woodFinish: formData.woodFinish || "Natural",
-      metalFinish: formData.metalFinish || "Standard",
-      sizeCm: formData.sizeCm || "100X50X75",
-      fobPriceUsd: parseFloat(formData.sellingPriceVal || formData.costPriceVal || "150") || 150,
-      moq: parseInt(formData.moq || "10", 10) || 10,
-      cbm: parseFloat(formData.cbm || "0.35") || 0.35,
-      gp40ft: parseInt(formData.gp40ft || "50", 10) || 50,
-      assembledKd: formData.assembledKd || "KD",
+    const productPayload = {
+      id: editId || "PF-" + Date.now(),
+      sku: formData.productId || editingOriginal?.sku || `SW-LII-PF-${Math.floor(10000 + Math.random() * 90000)}`,
+      name: formData.productName || editingOriginal?.name || "Product Entry",
+      category: formData.category || editingOriginal?.category || "Furniture",
+      subCategory: formData.subCategory || editingOriginal?.subCategory || "General",
+      collectionName: formData.collectionName || editingOriginal?.collectionName || "Custom Collection",
+      material: formData.material || editingOriginal?.material || "Wood & Metal",
+      woodFinish: formData.woodFinish || editingOriginal?.woodFinish || "Natural",
+      metalFinish: formData.metalFinish || editingOriginal?.metalFinish || "Standard",
+      sizeCm: formData.sizeCm || editingOriginal?.sizeCm || "100X50X75",
+      fobPriceUsd: parseFloat(formData.sellingPriceVal || formData.costPriceVal || String(editingOriginal?.fobPriceUsd || "150")) || 150,
+      moq: parseInt(formData.moq || String(editingOriginal?.moq || "10"), 10) || 10,
+      cbm: parseFloat(formData.cbm || String(editingOriginal?.cbm || "0.35")) || 0.35,
+      gp40ft: parseInt(formData.gp40ft || String(editingOriginal?.gp40ft || "50"), 10) || 50,
+      assembledKd: formData.assembledKd || editingOriginal?.assembledKd || "KD",
       image: mainImg,
-      stockStatus: "Sample Ready" as const,
+      stockStatus: (editingOriginal?.stockStatus || "Sample Ready") as "In Stock" | "Sample Ready" | "Made to Order",
       fullDetails: formData,
       images: images,
     };
 
     // Save to localStorage
     try {
-      const existing = JSON.parse(
+      const saved =
         localStorage.getItem("lii_product_catalogue_items") ||
         localStorage.getItem("lii_product_catalog_items") ||
-        "[]"
-      );
-      const updated = [newProduct, ...existing];
-      localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updated));
-      localStorage.setItem("lii_product_catalog_items", JSON.stringify(updated));
+        "[]";
+      let existing: any[] = JSON.parse(saved);
+
+      let updatedList: any[] = [];
+      if (editId) {
+        const found = existing.some((p: any) => String(p.id) === String(editId));
+        if (found) {
+          updatedList = existing.map((p: any) => (String(p.id) === String(editId) ? productPayload : p));
+        } else {
+          updatedList = [productPayload, ...existing];
+        }
+      } else {
+        updatedList = [productPayload, ...existing];
+      }
+
+      localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updatedList));
+      localStorage.setItem("lii_product_catalog_items", JSON.stringify(updatedList));
     } catch (err) {
       console.error("Failed to save product to localStorage:", err);
     }
 
     // Try saving to backend database API
     try {
-      await documentApi.createProduct(newProduct.name, newProduct.sku).catch(() => null);
+      await documentApi.createProduct(productPayload.name, productPayload.sku).catch(() => null);
     } catch (e) {
       // Non-blocking fallback
     }
@@ -178,7 +263,7 @@ export default function SourcewizProductFormPage() {
     setSaveSuccess(true);
     setTimeout(() => {
       navigate("/admin/sourcewiz/products");
-    }, 1500);
+    }, 1200);
   };
 
   return (
@@ -212,16 +297,23 @@ export default function SourcewizProductFormPage() {
             >
               ←
             </button>
-            <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "#0f172a" }}>
-              Add Product
-            </h1>
+            <div>
+              <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 700, color: "#0f172a" }}>
+                {isEditMode ? "Edit Product" : "Add Product"}
+              </h1>
+              {isEditMode && editingOriginal && (
+                <div style={{ fontSize: "0.80rem", color: "#64748b", marginTop: "2px" }}>
+                  SKU: {editingOriginal.sku || editingOriginal.id} • {editingOriginal.name}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: "10px", marginLeft: "auto" }}>
             <button
               onClick={handleSubmit}
               style={{
-                background: "#0d9488",
+                background: isEditMode ? "#0284c7" : "#0d9488",
                 color: "#ffffff",
                 border: "none",
                 borderRadius: "8px",
@@ -229,10 +321,12 @@ export default function SourcewizProductFormPage() {
                 fontWeight: 600,
                 fontSize: "0.90rem",
                 cursor: "pointer",
-                boxShadow: "0 2px 4px rgba(13, 148, 136, 0.2)",
+                boxShadow: isEditMode
+                  ? "0 2px 4px rgba(2, 132, 199, 0.2)"
+                  : "0 2px 4px rgba(13, 148, 136, 0.2)",
               }}
             >
-              Save Product
+              {isEditMode ? "Update Product" : "Save Product"}
             </button>
           </div>
         </div>
@@ -299,7 +393,7 @@ export default function SourcewizProductFormPage() {
               alignItems: "center"
             }}
           >
-            <span>✅ Product Form entry saved successfully to Product Catalogue!</span>
+            <span>✅ Product entry {isEditMode ? "updated" : "saved"} successfully to Product Catalogue!</span>
             <button
               type="button"
               onClick={() => navigate("/admin/sourcewiz/products")}

@@ -269,11 +269,13 @@ export default function AppRouter() {
           <Route path="sourcewiz" element={<SourcewizProductsPage />} />
           <Route path="sourcewiz/products" element={<SourcewizProductsPage />} />
           <Route path="sourcewiz/product-form" element={<SourcewizProductFormPage />} />
+          <Route path="sourcewiz/product-form/:id" element={<SourcewizProductFormPage />} />
           <Route path="sourcewiz/dashboard" element={<SourcewizDashboardPage />} />
           <Route path="sourcewiz/quotations" element={<SourcewizQuotationsPage />} />
           <Route path="sourcewiz/rfqs" element={<SourcewizRfqsPage />} />
 
           <Route path="product-form" element={<SourcewizProductFormPage />} />
+          <Route path="product-form/:id" element={<SourcewizProductFormPage />} />
           <Route path="products" element={<SourcewizProductsPage />} />
           <Route path="fms" element={<FmsHubPage />} />
           <Route path="fms/my-fms" element={<MyFmsPage />} />

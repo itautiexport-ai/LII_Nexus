@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../Sourcewiz.css";
 import {
   generateProductPptx,
@@ -14,87 +14,12 @@ import {
 import { exportProductsToExcel } from "../utils/excelExport";
 import { catalogueShareApi, SharedDeckData } from "../api/catalogueShareApi";
 import { pptMasterApi, PptMasterTheme, PptFrontPage } from "../../admin/masterdata/api/pptMasterApi";
+import { useAuthStore } from "../../auth/hooks/useAuthStore";
+import { useIsSystemAdmin } from "../../auth/hooks/usePermissions";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
 
-const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [
-  {
-    id: "1",
-    sku: "SW-LII-DT-12557",
-    name: "Muddo Solid Oak Dining Table",
-    category: "Furniture",
-    subCategory: "Dining Table",
-    collectionName: "Muddo Collection",
-    material: "Mango Wood / Solid Oak",
-    woodFinish: "Natural Matte",
-    metalFinish: "Powder Coated Brass",
-    sizeCm: "150 x 150 x 76",
-    fobPriceUsd: 285.0,
-    moq: 20,
-    cbm: 0.706,
-    gp40ft: 72,
-    assembledKd: "KD",
-    image: "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?w=600&auto=format&fit=crop&q=80",
-    stockStatus: "In Stock",
-  },
-  {
-    id: "2",
-    sku: "SW-LII-OC-04",
-    name: "Minimalist Ergonomic Executive Chair",
-    category: "Furniture",
-    subCategory: "Dining Chair",
-    collectionName: "Nordic Office Series",
-    material: "Solid Teak Wood & Leather",
-    woodFinish: "Walnut Stain",
-    metalFinish: "Chrome Accent",
-    sizeCm: "60 x 62 x 95",
-    fobPriceUsd: 110.0,
-    moq: 50,
-    cbm: 0.18,
-    gp40ft: 148,
-    assembledKd: "Assembled",
-    image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?w=600&auto=format&fit=crop&q=80",
-    stockStatus: "Sample Ready",
-  },
-  {
-    id: "3",
-    sku: "SW-LII-AC-09",
-    name: "Handcrafted Rattan Lounge Armchair",
-    category: "Outdoor",
-    subCategory: "Lounge Chair",
-    collectionName: "Balinesia Rattan Line",
-    material: "Natural Rattan & Teak Frame",
-    woodFinish: "Honey Matte",
-    metalFinish: "N/A",
-    sizeCm: "85 x 80 x 75",
-    fobPriceUsd: 185.0,
-    moq: 30,
-    cbm: 0.42,
-    gp40ft: 96,
-    assembledKd: "Assembled",
-    image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&auto=format&fit=crop&q=80",
-    stockStatus: "Made to Order",
-  },
-  {
-    id: "4",
-    sku: "SW-LII-SB-12",
-    name: "Industrial Brass & Mango Wood Sideboard",
-    category: "Storage",
-    subCategory: "Cabinet",
-    collectionName: "Heritage Brass Line",
-    material: "Seasoned Mango Wood",
-    woodFinish: "Distressed Antique",
-    metalFinish: "Brushed Solid Brass",
-    sizeCm: "180 x 45 x 85",
-    fobPriceUsd: 320.0,
-    moq: 15,
-    cbm: 0.58,
-    gp40ft: 64,
-    assembledKd: "Semi KD",
-    image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80",
-    stockStatus: "In Stock",
-  },
-];
+const INITIAL_MOCK_PRODUCTS: CatalogProductItem[] = [];
 
 /* ==========================================================================
    Executive SVG Icons (Lucide-grade vector icons)
@@ -237,14 +162,91 @@ function IconCheckSquare({ size = 14, color = "currentColor" }: { size?: number;
   );
 }
 
+function IconEdit({ size = 13, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="m15 5 4 4" />
+    </svg>
+  );
+}
+
+function IconTrash({ size = 13, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
+function IconAlertTriangle({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
 export default function SourcewizProductsPage() {
-  const [products, setProducts] = useState<CatalogProductItem[]>(INITIAL_MOCK_PRODUCTS);
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const isSysAdmin = useIsSystemAdmin();
+  const isAdmin =
+    isSysAdmin ||
+    (user?.email || "").toLowerCase().trim() === "admin@liinexus.com" ||
+    (user?.email || "").toLowerCase().trim() === "admin" ||
+    (user?.roles || []).some((r) => r.toLowerCase().includes("admin"));
+
+  const [products, setProducts] = useState<CatalogProductItem[]>([]);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
-  // Selected products for presentation
-  const [selectedIds, setSelectedIds] = useState<string[]>(["1", "4"]);
+  // Delete modal confirmation states
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string; name: string } | null>(null);
+  const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState(false);
+
+  const handleEditProduct = (productId: string) => {
+    navigate(`/admin/sourcewiz/product-form?editId=${productId}`);
+  };
+
+  const handleDeleteProduct = (productId: string, productName: string) => {
+    if (!isAdmin) {
+      alert("Permission denied. Deletion is strictly reserved for the Administrator account.");
+      return;
+    }
+    setDeleteConfirmation({ id: productId, name: productName });
+  };
+
+  const confirmDeleteProduct = () => {
+    if (!deleteConfirmation) return;
+    const { id } = deleteConfirmation;
+    const updated = products.filter((p) => String(p.id) !== String(id));
+    setProducts(updated);
+    setSelectedIds((prev) => prev.filter((i) => String(i) !== String(id)));
+    localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updated));
+    localStorage.setItem("lii_product_catalog_items", JSON.stringify(updated));
+    setDeleteConfirmation(null);
+  };
+
+  const confirmBulkDelete = () => {
+    if (!isAdmin) return;
+    const updated = products.filter((p) => !selectedIds.includes(String(p.id)));
+    setProducts(updated);
+    setSelectedIds([]);
+    localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updated));
+    localStorage.setItem("lii_product_catalog_items", JSON.stringify(updated));
+    setBulkDeleteConfirmation(false);
+  };
+
+  // Selected products for presentation (default empty)
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modal & Presentation Studio State
   const [isPptModalOpen, setIsPptModalOpen] = useState(false);
@@ -372,14 +374,23 @@ export default function SourcewizProductsPage() {
         localStorage.getItem("lii_product_catalog_items");
       if (saved) {
         const parsed: CatalogProductItem[] = JSON.parse(saved);
-        if (parsed.length > 0) {
-          const defaultIds = new Set(INITIAL_MOCK_PRODUCTS.map((p) => p.id));
-          const filteredCustom = parsed.filter((p) => !defaultIds.has(p.id));
-          setProducts([...filteredCustom, ...INITIAL_MOCK_PRODUCTS]);
+        if (Array.isArray(parsed)) {
+          // Purge default dummy mock items from user's storage
+          const mockIds = new Set(["1", "2", "3", "4"]);
+          const mockSkus = new Set(["SW-LII-DT-12557", "SW-LII-OC-04", "SW-LII-AC-09", "SW-LII-SB-12"]);
+          const realUserProducts = parsed.filter(
+            (p) => !mockIds.has(String(p.id)) && !mockSkus.has(String(p.sku))
+          );
+          setProducts(realUserProducts);
+          localStorage.setItem("lii_product_catalogue_items", JSON.stringify(realUserProducts));
+          localStorage.setItem("lii_product_catalog_items", JSON.stringify(realUserProducts));
+          return;
         }
       }
+      setProducts([]);
     } catch (e) {
       console.error("Failed to load products from localStorage:", e);
+      setProducts([]);
     }
   }, []);
 
@@ -787,6 +798,28 @@ export default function SourcewizProductsPage() {
                   : `Download PPT (${selectedIds.length})`}
               </span>
             </button>
+
+            {/* Delete Selected (Admin Only) */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirmation(true)}
+                className="sw-btn-dock"
+                style={{
+                  background: "rgba(225, 29, 72, 0.16)",
+                  color: "#fecdd3",
+                  border: "1px solid rgba(225, 29, 72, 0.4)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  cursor: "pointer",
+                }}
+                title="Delete all selected products from catalogue (Admin only)"
+              >
+                <IconTrash size={14} color="#fecdd3" />
+                <span>Delete Selected ({selectedIds.length})</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -852,8 +885,46 @@ export default function SourcewizProductsPage() {
               <tbody>
                 {displayedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} style={{ padding: "48px 24px", textAlign: "center", color: "#64748b" }}>
-                      No products found matching your search criteria.
+                    <td colSpan={10} style={{ padding: "64px 24px", textAlign: "center", color: "#64748b" }}>
+                      <div style={{ maxWidth: "420px", margin: "0 auto", textAlign: "center" }}>
+                        <div style={{
+                          width: "56px",
+                          height: "56px",
+                          borderRadius: "50%",
+                          background: "#f1f5f9",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 16px auto",
+                          color: "#94a3b8"
+                        }}>
+                          <IconSliders size={26} color="#94a3b8" />
+                        </div>
+                        <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>
+                          No Products in Catalogue
+                        </h3>
+                        <p style={{ margin: "0 0 18px 0", fontSize: "0.85rem", color: "#64748b" }}>
+                          No products have been added yet. Use the Product Form to create your first product.
+                        </p>
+                        <Link
+                          to="/admin/sourcewiz/product-form"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "9px 20px",
+                            background: "#0d9488",
+                            color: "#ffffff",
+                            borderRadius: "8px",
+                            fontWeight: 600,
+                            fontSize: "0.86rem",
+                            textDecoration: "none",
+                            boxShadow: "0 2px 4px rgba(13, 148, 136, 0.2)",
+                          }}
+                        >
+                          + Add Product Form
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -975,43 +1046,115 @@ export default function SourcewizProductsPage() {
                           )}
                         </td>
 
-                        {/* Action */}
+                        {/* Actions: Preview, Edit (All Users), Delete (Admin Only) */}
                         <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!selectedIds.includes(product.id)) {
-                                setSelectedIds([...selectedIds, product.id]);
-                              }
-                              setIsPptModalOpen(true);
-                            }}
-                            style={{
-                              padding: "6px 12px",
-                              fontSize: "0.74rem",
-                              fontWeight: 600,
-                              borderRadius: "6px",
-                              border: "1px solid #cbd5e1",
-                              background: "#ffffff",
-                              color: "#334155",
-                              cursor: "pointer",
-                              whiteSpace: "nowrap",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "5px",
-                              transition: "all 0.15s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = "#94a3b8";
-                              e.currentTarget.style.background = "#f8fafc";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = "#cbd5e1";
-                              e.currentTarget.style.background = "#ffffff";
-                            }}
-                          >
-                            <IconEye size={13} color="#64748b" />
-                            <span>Preview</span>
-                          </button>
+                          <div style={{ display: "inline-flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
+                            {/* Preview */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!selectedIds.includes(product.id)) {
+                                  setSelectedIds([...selectedIds, product.id]);
+                                }
+                                setIsPptModalOpen(true);
+                              }}
+                              style={{
+                                padding: "6px 10px",
+                                fontSize: "0.74rem",
+                                fontWeight: 600,
+                                borderRadius: "6px",
+                                border: "1px solid #cbd5e1",
+                                background: "#ffffff",
+                                color: "#334155",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                transition: "all 0.15s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = "#94a3b8";
+                                e.currentTarget.style.background = "#f8fafc";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = "#cbd5e1";
+                                e.currentTarget.style.background = "#ffffff";
+                              }}
+                              title="Preview in presentation deck"
+                            >
+                              <IconEye size={13} color="#64748b" />
+                              <span>Preview</span>
+                            </button>
+
+                            {/* Edit Button - AVAILABLE TO ALL USERS */}
+                            <button
+                              type="button"
+                              onClick={() => handleEditProduct(product.id)}
+                              style={{
+                                padding: "6px 10px",
+                                fontSize: "0.74rem",
+                                fontWeight: 600,
+                                borderRadius: "6px",
+                                border: "1px solid #bae6fd",
+                                background: "#f0f9ff",
+                                color: "#0284c7",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                transition: "all 0.15s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = "#38bdf8";
+                                e.currentTarget.style.background = "#e0f2fe";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = "#bae6fd";
+                                e.currentTarget.style.background = "#f0f9ff";
+                              }}
+                              title="Edit product details"
+                            >
+                              <IconEdit size={13} color="#0284c7" />
+                              <span>Edit</span>
+                            </button>
+
+                            {/* Delete Button - STRICTLY ADMIN ONLY */}
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProduct(product.id, product.name)}
+                                style={{
+                                  padding: "6px 10px",
+                                  fontSize: "0.74rem",
+                                  fontWeight: 600,
+                                  borderRadius: "6px",
+                                  border: "1px solid #fecdd3",
+                                  background: "#fff1f2",
+                                  color: "#e11d48",
+                                  cursor: "pointer",
+                                  whiteSpace: "nowrap",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  transition: "all 0.15s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.borderColor = "#fb7185";
+                                  e.currentTarget.style.background = "#ffe4e6";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.borderColor = "#fecdd3";
+                                  e.currentTarget.style.background = "#fff1f2";
+                                }}
+                                title="Delete product (Admin only)"
+                              >
+                                <IconTrash size={13} color="#e11d48" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1030,7 +1173,57 @@ export default function SourcewizProductsPage() {
             gap: "20px",
           }}
         >
-          {displayedProducts.map((product) => {
+          {displayedProducts.length === 0 ? (
+            <div style={{
+              gridColumn: "1 / -1",
+              background: "#ffffff",
+              borderRadius: "12px",
+              border: "1px dashed #cbd5e1",
+              padding: "64px 24px",
+              textAlign: "center",
+            }}>
+              <div style={{ maxWidth: "420px", margin: "0 auto", textAlign: "center" }}>
+                <div style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "50%",
+                  background: "#f1f5f9",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px auto",
+                  color: "#94a3b8"
+                }}>
+                  <IconSliders size={26} color="#94a3b8" />
+                </div>
+                <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>
+                  No Products in Catalogue
+                </h3>
+                <p style={{ margin: "0 0 18px 0", fontSize: "0.85rem", color: "#64748b" }}>
+                  No products have been added yet. Use the Product Form to create your first product.
+                </p>
+                <Link
+                  to="/admin/sourcewiz/product-form"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "9px 20px",
+                    background: "#0d9488",
+                    color: "#ffffff",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    fontSize: "0.86rem",
+                    textDecoration: "none",
+                    boxShadow: "0 2px 4px rgba(13, 148, 136, 0.2)",
+                  }}
+                >
+                  + Add Product Form
+                </Link>
+              </div>
+            </div>
+          ) : (
+            displayedProducts.map((product) => {
             const isSelected = selectedIds.includes(product.id);
             return (
               <div
@@ -1153,36 +1346,91 @@ export default function SourcewizProductsPage() {
                       <div style={{ fontSize: "0.68rem", color: "#64748b" }}>MOQ: {product.moq} Pcs</div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!selectedIds.includes(product.id)) {
-                          setSelectedIds([...selectedIds, product.id]);
-                        }
-                        setIsPptModalOpen(true);
-                      }}
-                      style={{
-                        padding: "6px 12px",
-                        fontSize: "0.74rem",
-                        fontWeight: 600,
-                        borderRadius: "6px",
-                        border: "1px solid #cbd5e1",
-                        background: "#ffffff",
-                        color: "#334155",
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "5px",
-                      }}
-                    >
-                      <IconEye size={13} color="#64748b" />
-                      <span>Preview</span>
-                    </button>
+                    <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedIds.includes(product.id)) {
+                            setSelectedIds([...selectedIds, product.id]);
+                          }
+                          setIsPptModalOpen(true);
+                        }}
+                        style={{
+                          padding: "6px 9px",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          background: "#ffffff",
+                          color: "#334155",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          transition: "all 0.15s ease",
+                        }}
+                        title="Preview in presentation deck"
+                      >
+                        <IconEye size={12} color="#64748b" />
+                        <span>Preview</span>
+                      </button>
+
+                      {/* Edit Button - AVAILABLE TO ALL USERS */}
+                      <button
+                        type="button"
+                        onClick={() => handleEditProduct(product.id)}
+                        style={{
+                          padding: "6px 9px",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          borderRadius: "6px",
+                          border: "1px solid #bae6fd",
+                          background: "#f0f9ff",
+                          color: "#0284c7",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          transition: "all 0.15s ease",
+                        }}
+                        title="Edit product details"
+                      >
+                        <IconEdit size={12} color="#0284c7" />
+                        <span>Edit</span>
+                      </button>
+
+                      {/* Delete Button - STRICTLY ADMIN ONLY */}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProduct(product.id, product.name)}
+                          style={{
+                            padding: "6px 9px",
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            borderRadius: "6px",
+                            border: "1px solid #fecdd3",
+                            background: "#fff1f2",
+                            color: "#e11d48",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            transition: "all 0.15s ease",
+                          }}
+                          title="Delete product (Admin only)"
+                        >
+                          <IconTrash size={12} color="#e11d48" />
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             );
-          })}
+          })
+        )}
         </div>
       )}
 
@@ -3359,6 +3607,194 @@ export default function SourcewizProductsPage() {
                   <span>Download PPT ({selectedIds.length})</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE SINGLE PRODUCT CONFIRMATION MODAL (ADMIN ONLY) */}
+      {deleteConfirmation && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setDeleteConfirmation(null)}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "14px",
+              padding: "26px 28px",
+              maxWidth: "440px",
+              width: "100%",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08)",
+              textAlign: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                background: "#fee2e2",
+                color: "#dc2626",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px auto",
+              }}
+            >
+              <IconAlertTriangle size={24} color="#dc2626" />
+            </div>
+
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.2rem", fontWeight: 700, color: "#0f172a" }}>
+              Delete Product?
+            </h3>
+
+            <p style={{ margin: "0 0 20px 0", fontSize: "0.88rem", color: "#64748b", lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete <strong style={{ color: "#0f172a" }}>"{deleteConfirmation.name}"</strong>? This will remove it from the catalogue.
+            </p>
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmation(null)}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: "0.88rem",
+                  fontWeight: 600,
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  color: "#475569",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteProduct}
+                style={{
+                  padding: "10px 22px",
+                  fontSize: "0.88rem",
+                  fontWeight: 700,
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#e11d48",
+                  color: "#ffffff",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(225, 29, 72, 0.3)",
+                }}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK DELETE CONFIRMATION MODAL (ADMIN ONLY) */}
+      {bulkDeleteConfirmation && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setBulkDeleteConfirmation(false)}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "14px",
+              padding: "26px 28px",
+              maxWidth: "440px",
+              width: "100%",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08)",
+              textAlign: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                background: "#fee2e2",
+                color: "#dc2626",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px auto",
+              }}
+            >
+              <IconAlertTriangle size={24} color="#dc2626" />
+            </div>
+
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.2rem", fontWeight: 700, color: "#0f172a" }}>
+              Delete Selected Products?
+            </h3>
+
+            <p style={{ margin: "0 0 20px 0", fontSize: "0.88rem", color: "#64748b", lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete all <strong style={{ color: "#0f172a" }}>{selectedIds.length}</strong> selected products from the catalogue?
+            </p>
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirmation(false)}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: "0.88rem",
+                  fontWeight: 600,
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  color: "#475569",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmBulkDelete}
+                style={{
+                  padding: "10px 22px",
+                  fontSize: "0.88rem",
+                  fontWeight: 700,
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#e11d48",
+                  color: "#ffffff",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(225, 29, 72, 0.3)",
+                }}
+              >
+                Yes, Delete All
+              </button>
             </div>
           </div>
         </div>
