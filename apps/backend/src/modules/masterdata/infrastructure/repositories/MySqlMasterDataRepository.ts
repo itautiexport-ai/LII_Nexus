@@ -66,15 +66,21 @@ export class MySqlMasterDataRepository {
     return rows;
   }
 
-  async createBuyer(name: string) {
+  async createBuyer(name: string, buyerCode?: string | null, aliasName?: string | null) {
     const id = uuid();
-    await pool.query("INSERT INTO master_data_buyers (id, name) VALUES (?, ?)", [id, name]);
+    await pool.query(
+      "INSERT INTO master_data_buyers (id, name, buyer_code, alias_name) VALUES (?, ?, ?, ?)",
+      [id, name, buyerCode || null, aliasName || null]
+    );
     const [rows]: any = await pool.query("SELECT * FROM master_data_buyers WHERE id = ?", [id]);
     return rows[0];
   }
 
-  async updateBuyer(id: string, name: string) {
-    await pool.query("UPDATE master_data_buyers SET name = ? WHERE id = ?", [name, id]);
+  async updateBuyer(id: string, name: string, buyerCode?: string | null, aliasName?: string | null) {
+    await pool.query(
+      "UPDATE master_data_buyers SET name = ?, buyer_code = ?, alias_name = ? WHERE id = ?",
+      [name, buyerCode || null, aliasName || null, id]
+    );
     const [rows]: any = await pool.query("SELECT * FROM master_data_buyers WHERE id = ?", [id]);
     return rows[0];
   }

@@ -54,12 +54,18 @@ export class MasterDataController {
   }
 
   async createBuyer(req: Request, res: Response) {
-    const data = await this.service.createBuyer(req.body.name);
+    const name = req.body.name;
+    const buyerCode = req.body.buyer_code || req.body.buyerCode || null;
+    const aliasName = req.body.alias_name || req.body.aliasName || null;
+    const data = await this.service.createBuyer(name, buyerCode, aliasName);
     res.json({ success: true, data });
   }
 
   async updateBuyer(req: Request, res: Response) {
-    const data = await this.service.updateBuyer(req.params.id, req.body.name);
+    const name = req.body.name;
+    const buyerCode = req.body.buyer_code !== undefined ? req.body.buyer_code : (req.body.buyerCode !== undefined ? req.body.buyerCode : null);
+    const aliasName = req.body.alias_name !== undefined ? req.body.alias_name : (req.body.aliasName !== undefined ? req.body.aliasName : null);
+    const data = await this.service.updateBuyer(req.params.id, name, buyerCode, aliasName);
     res.json({ success: true, data });
   }
 
@@ -81,9 +87,11 @@ export class MasterDataController {
 
     let count = 0;
     for (const row of data as any[]) {
-      const name = row["Name"] || row["name"] || row["Buyer Name"];
+      const name = row["Name"] || row["name"] || row["Buyer Name"] || row["buyer_name"];
+      const buyerCode = row["Buyer Code"] || row["buyer_code"] || row["Code"] || row["code"] || null;
+      const aliasName = row["Alias Name"] || row["alias_name"] || row["Alias"] || row["alias"] || null;
       if (name) {
-        await this.service.createBuyer(name);
+        await this.service.createBuyer(name, buyerCode, aliasName);
         count++;
       }
     }

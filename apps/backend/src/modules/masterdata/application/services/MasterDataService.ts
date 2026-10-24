@@ -46,14 +46,14 @@ export class MasterDataService {
     return await this.repo.getBuyers();
   }
 
-  async createBuyer(name: string) {
+  async createBuyer(name: string, buyerCode?: string | null, aliasName?: string | null) {
     if (!name) throw new Error("Name is required");
-    return await this.repo.createBuyer(name);
+    return await this.repo.createBuyer(name, buyerCode, aliasName);
   }
 
-  async updateBuyer(id: string, name: string) {
+  async updateBuyer(id: string, name: string, buyerCode?: string | null, aliasName?: string | null) {
     if (!name) throw new Error("Name is required");
-    return await this.repo.updateBuyer(id, name);
+    return await this.repo.updateBuyer(id, name, buyerCode, aliasName);
   }
 
   async deleteBuyer(id: string) {
