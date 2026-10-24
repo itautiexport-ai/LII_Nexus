@@ -429,23 +429,6 @@ export default function LeadReportPage() {
             >
               🖨️ Print Report
             </button>
-            <Link
-              to="/admin/crm/leads/new"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 16px",
-                background: "#2563eb",
-                borderRadius: 8,
-                color: "#ffffff",
-                fontWeight: 600,
-                fontSize: 13,
-                textDecoration: "none",
-              }}
-            >
-              ➕ Add Lead
-            </Link>
           </div>
         </div>
 
