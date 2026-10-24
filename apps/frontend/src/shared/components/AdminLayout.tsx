@@ -337,13 +337,16 @@ export const SECTIONS: NavSection[] = [
     label: "Reports",
     allowedRoles: ["System Admin", "CEO", "HOD", "Supervisor", "HR", "Merchant", "Admin"],
     items: [
-      { label: "Lead Report", to: "/admin/reports/lead-report" },
       {
-        label: "Production Report",
-        to: "/admin/reports/production-hub",
-        hideChildrenInSidebar: true,
+        label: "Sales & CRM Report",
         items: [
-          { label: "Daily Production Report", to: "/admin/reports/daily-production" },
+          { label: "Lead Report", to: "/admin/reports/lead-report" },
+        ]
+      },
+      {
+        label: "Production",
+        items: [
+          { label: "Production Report", to: "/admin/reports/daily-production" },
           { label: "Detailed DPR", to: "/admin/reports/detailed-production" },
         ]
       },
