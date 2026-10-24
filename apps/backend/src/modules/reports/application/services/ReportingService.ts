@@ -395,6 +395,8 @@ export class ReportingService {
 
     const [rows] = await pool.query<any[]>(
       `SELECT
+        de.id as dpr_entry_id,
+        di.id as dpr_item_id,
         de.entry_date,
         fd.name as dept,
         MAX(sup.full_name) as supervisor,
@@ -419,7 +421,7 @@ export class ReportingService {
        LEFT JOIN master_hods h ON h.id = de.hod_id
        LEFT JOIN shifts sh ON sh.id = de.shift_id
        WHERE ${conditions.join(" AND ")}
-       GROUP BY de.entry_date, fd.name, de.shift_id, sh.name, de.uom,
+       GROUP BY de.id, di.id, de.entry_date, fd.name, de.shift_id, sh.name, de.uom,
                 di.product_code, di.alias_name, di.wood_type, di.order_qty, di.ok_qty, di.rework_qty, di.qty_as_per_uom
        ORDER BY de.entry_date DESC, fd.name ASC, di.product_code ASC
        LIMIT 2000`,
@@ -443,7 +445,8 @@ export class ReportingService {
         "Date", "Department", "Shift", "Supervisor", "HOD",
         "Total Manpower",
         "Alias Name", "Product Code", "Wood Type",
-        "Order Quantity", "OK Quantity", "UOM", "Qty as per UOM", "Re-work"
+        "Order Quantity", "OK Quantity", "UOM", "Qty as per UOM", "Re-work",
+        "_dpr_entry_id", "_dpr_item_id"
       ],
       rows: rows.map((r) => [
         r.entry_date,
@@ -460,6 +463,8 @@ export class ReportingService {
         r.uom || "\u2014",
         r.qty_as_per_uom !== null ? Number(r.qty_as_per_uom) : "\u2014",
         Number(r.item_rework_qty) || 0,
+        r.dpr_entry_id,
+        r.dpr_item_id,
       ]),
       chartSeries,
     };

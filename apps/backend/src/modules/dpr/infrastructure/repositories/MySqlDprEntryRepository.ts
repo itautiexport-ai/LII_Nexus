@@ -251,4 +251,83 @@ export class MySqlDprEntryRepository implements IDprEntryRepository {
   async softDelete(id: string): Promise<void> {
     await pool.query("UPDATE dpr_entries SET deleted_at = NOW() WHERE id = ?", [id]);
   }
+
+  async updateItem(dprEntryId: string, itemId: string, data: any): Promise<void> {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const itemFields: string[] = [];
+      const itemVals: any[] = [];
+      if (data.aliasName !== undefined) { itemFields.push("alias_name = ?"); itemVals.push(data.aliasName); }
+      if (data.productCode !== undefined) { itemFields.push("product_code = ?"); itemVals.push(data.productCode); }
+      if (data.woodType !== undefined) { itemFields.push("wood_type = ?"); itemVals.push(data.woodType); }
+      if (data.orderQty !== undefined) { itemFields.push("order_qty = ?"); itemVals.push(Number(data.orderQty) || 0); }
+      if (data.okQty !== undefined) { itemFields.push("ok_qty = ?"); itemVals.push(Number(data.okQty) || 0); }
+      if (data.reworkQty !== undefined) { itemFields.push("rework_qty = ?"); itemVals.push(Number(data.reworkQty) || 0); }
+      if (data.uom !== undefined) { itemFields.push("uom = ?"); itemVals.push(data.uom); }
+      if (data.qtyAsPerUom !== undefined) { itemFields.push("qty_as_per_uom = ?"); itemVals.push(data.qtyAsPerUom !== null ? Number(data.qtyAsPerUom) : null); }
+
+      if (itemFields.length > 0) {
+        itemVals.push(itemId, dprEntryId);
+        await conn.query(`UPDATE dpr_entry_items SET ${itemFields.join(", ")} WHERE id = ? AND dpr_entry_id = ?`, itemVals);
+      }
+
+      // If header fields updated
+      const headerFields: string[] = [];
+      const headerVals: any[] = [];
+      if (data.entryDate !== undefined) { headerFields.push("entry_date = ?"); headerVals.push(data.entryDate); }
+      if (data.shiftId !== undefined) { headerFields.push("shift_id = ?"); headerVals.push(data.shiftId); }
+      if (data.supervisorId !== undefined) { headerFields.push("supervisor_id = ?"); headerVals.push(data.supervisorId); }
+      if (data.hodId !== undefined) { headerFields.push("hod_id = ?"); headerVals.push(data.hodId); }
+
+      if (headerFields.length > 0) {
+        headerVals.push(dprEntryId);
+        await conn.query(`UPDATE dpr_entries SET ${headerFields.join(", ")} WHERE id = ?`, headerVals);
+      }
+
+      // Recalculate totals for dpr_entries
+      await conn.query(`
+        UPDATE dpr_entries de
+        SET
+          total_achievement = (SELECT COALESCE(SUM(qty_as_per_uom), 0) FROM dpr_entry_items WHERE dpr_entry_id = de.id),
+          total_rework = (SELECT COALESCE(SUM(rework_qty), 0) FROM dpr_entry_items WHERE dpr_entry_id = de.id)
+        WHERE de.id = ?
+      `, [dprEntryId]);
+
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+
+  async deleteItem(dprEntryId: string, itemId: string): Promise<void> {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query("DELETE FROM dpr_entry_items WHERE id = ? AND dpr_entry_id = ?", [itemId, dprEntryId]);
+
+      const [rows] = await conn.query<any[]>("SELECT COUNT(*) as cnt FROM dpr_entry_items WHERE dpr_entry_id = ?", [dprEntryId]);
+      if (rows[0]?.cnt === 0) {
+        await conn.query("UPDATE dpr_entries SET deleted_at = NOW() WHERE id = ?", [dprEntryId]);
+      } else {
+        await conn.query(`
+          UPDATE dpr_entries de
+          SET
+            total_achievement = (SELECT COALESCE(SUM(qty_as_per_uom), 0) FROM dpr_entry_items WHERE dpr_entry_id = de.id),
+            total_rework = (SELECT COALESCE(SUM(rework_qty), 0) FROM dpr_entry_items WHERE dpr_entry_id = de.id)
+          WHERE de.id = ?
+        `, [dprEntryId]);
+      }
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
 }

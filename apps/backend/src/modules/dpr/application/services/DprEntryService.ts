@@ -168,4 +168,28 @@ export class DprEntryService {
       entityId: id,
     });
   }
+
+  async updateItem(dprEntryId: string, itemId: string, data: any, actorId: string) {
+    if (this.repo.updateItem) {
+      await this.repo.updateItem(dprEntryId, itemId, data);
+    }
+    await AuditService.record({
+      actorUserId: actorId,
+      action: "DPR_ITEM_UPDATED",
+      entityType: "dpr_entry_item",
+      entityId: itemId,
+    });
+  }
+
+  async removeItem(dprEntryId: string, itemId: string, actorId: string) {
+    if (this.repo.deleteItem) {
+      await this.repo.deleteItem(dprEntryId, itemId);
+    }
+    await AuditService.record({
+      actorUserId: actorId,
+      action: "DPR_ITEM_DELETED",
+      entityType: "dpr_entry_item",
+      entityId: itemId,
+    });
+  }
 }

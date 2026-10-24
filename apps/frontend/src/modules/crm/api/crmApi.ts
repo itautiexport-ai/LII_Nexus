@@ -84,6 +84,9 @@ export const crmApi = {
   async remove(id: string) {
     await axiosInstance.delete(`/crm/leads/${id}`);
   },
+  async delete(id: string) {
+    await axiosInstance.delete(`/crm/leads/${id}`);
+  },
   async logFollowup(id: string, dueDate: string, remarks?: string, nextAction?: string) {
     const res = await axiosInstance.post(`/crm/leads/${id}/followups`, { dueDate, remarks, nextAction });
     return res.data.data;

@@ -49,8 +49,8 @@ export class ReportExportService {
 
     rowCursor += 1;
 
-    // Filter out internal _id column
-    const visibleCols = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => col !== "_id");
+    // Filter out internal underscore columns (e.g. _id, _dpr_entry_id, _dpr_item_id)
+    const visibleCols = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => !col.startsWith("_"));
     const headers = visibleCols.map(({ col }) => col);
     
     // Header Row
@@ -76,8 +76,8 @@ export class ReportExportService {
   }
 
   toCsvBuffer(report: ReportResult): Buffer {
-    // Filter out internal _id column
-    const visibleIdxs = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => col !== "_id");
+    // Filter out internal underscore columns
+    const visibleIdxs = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => !col.startsWith("_"));
     const lines = [visibleIdxs.map(({ col }) => col).join(",")];
     for (const row of report.rows) {
       lines.push(visibleIdxs.map(({ i }) => {
@@ -116,8 +116,8 @@ export class ReportExportService {
 
       doc.fontSize(12).text("Data");
       doc.fontSize(8);
-      // Filter out internal _id column for PDF
-      const visiblePdfCols = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => col !== "_id");
+      // Filter out internal underscore columns for PDF
+      const visiblePdfCols = report.columns.map((c, i) => ({ col: c, i })).filter(({ col }) => !col.startsWith("_"));
       const colWidth = Math.floor(500 / Math.max(1, visiblePdfCols.length));
       const startX = doc.x;
       let y = doc.y;

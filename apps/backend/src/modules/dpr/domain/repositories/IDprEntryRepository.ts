@@ -61,4 +61,6 @@ export interface IDprEntryRepository {
   create(data: CreateDprEntryData): Promise<DprEntry>;
   update(id: string, changes: UpdateDprEntryData): Promise<DprEntry>;
   softDelete(id: string): Promise<void>;
+  updateItem?(dprEntryId: string, itemId: string, data: any): Promise<void>;
+  deleteItem?(dprEntryId: string, itemId: string): Promise<void>;
 }
