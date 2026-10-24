@@ -183,7 +183,8 @@ export const SECTIONS: NavSection[] = [
           { label: "List Complaints", to: "/admin/crm/complaints" },
         ]
       },
-      { label: "Create Buyer", to: "/admin/crm/buyers" }
+      { label: "Create Buyer", to: "/admin/crm/buyers/new" },
+      { label: "Buyer Directory", to: "/admin/crm/buyer-directory" }
     ],
   },
   {
