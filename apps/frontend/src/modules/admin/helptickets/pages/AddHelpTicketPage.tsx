@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { helpTicketsApi, CreateHelpTicketPayload } from "../api/helpTicketsApi";
 import { employeesApi, EmployeeRecord } from "../../../admin/organization/employees/api/employeesApi";
+import { useIsSystemAdmin } from "../../../auth/hooks/usePermissions";
+import { axiosInstance } from "../../../../services/api/axiosInstance";
 
 export default function AddHelpTicketPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const isEdit = !!id;
+  const isAdmin = useIsSystemAdmin();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
@@ -22,8 +27,34 @@ export default function AddHelpTicketPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    employeesApi.listForDropdown("").then(setEmployees).catch(() => {});
-  }, []);
+    let mounted = true;
+    Promise.all([
+      employeesApi.listForDropdown(""),
+      isEdit && id ? helpTicketsApi.getById(id) : Promise.resolve(null),
+    ])
+      .then(([emps, ticket]) => {
+        if (!mounted) return;
+        setEmployees(emps);
+        if (ticket) {
+          setForm({
+            subject: ticket.subject,
+            problemSolverId: ticket.problemSolverId,
+            problem: ticket.problem,
+            priority: ticket.priority,
+            plannedDate: ticket.plannedDate || "",
+            attachmentMandatory: !!ticket.attachmentMandatory,
+            mediaUrl: ticket.mediaUrl || null,
+          });
+        }
+      })
+      .catch(() => {
+        if (mounted) setError("Failed to load required data.");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [id, isEdit]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -56,24 +87,72 @@ export default function AddHelpTicketPage() {
     setSubmitting(true);
     setError(null);
     try {
+      let uploadedMediaUrl = form.mediaUrl;
+      if (mediaFile) {
+        try {
+          const uploadFormData = new FormData();
+          uploadFormData.append("file", mediaFile);
+          const uploadRes = await axiosInstance.post("/upload", uploadFormData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          uploadedMediaUrl = uploadRes.data?.data?.fileUrl || uploadRes.data?.fileUrl || mediaFile.name;
+        } catch (uploadErr) {
+          console.error("Attachment upload failed, using file name:", uploadErr);
+          uploadedMediaUrl = mediaFile.name;
+        }
+      }
+
       const payload: CreateHelpTicketPayload = {
         ...form,
         plannedDate: form.plannedDate || null,
-        mediaUrl: mediaFile ? mediaFile.name : null,
+        mediaUrl: uploadedMediaUrl,
       };
-      await helpTicketsApi.create(payload);
+      if (isEdit && id) {
+        await helpTicketsApi.update(id, payload);
+      } else {
+        await helpTicketsApi.create(payload);
+      }
       navigate("/admin/help-tickets/all");
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Failed to create ticket.");
+      setError(err?.response?.data?.error || `Failed to ${isEdit ? "update" : "create"} ticket.`);
     } finally {
       setSubmitting(false);
     }
   }
 
+  if (!isAdmin) {
+    return (
+      <div style={{ ...s.page, textAlign: "center", paddingTop: 80 }}>
+        <div style={{ ...s.card, maxWidth: 500, margin: "0 auto", padding: 40 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+          <h2 style={{ fontSize: 22, color: "#1e293b", marginBottom: 12 }}>Access Restricted</h2>
+          <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+            Only Admin accounts have permission to {isEdit ? "edit" : "add"} help tickets.
+          </p>
+          <Link
+            to="/admin/help-tickets/all"
+            style={{
+              display: "inline-block",
+              background: "#3b82f6",
+              color: "#fff",
+              padding: "10px 20px",
+              borderRadius: 6,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: 14,
+            }}
+          >
+            ← Back to Help Tickets
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <p style={s.cardTitle}>CREATE HELP TICKET</p>
+        <p style={s.cardTitle}>{isEdit ? "EDIT HELP TICKET" : "CREATE HELP TICKET"}</p>
         <div style={s.divider} />
 
         <form onSubmit={handleSubmit}>
@@ -116,9 +195,14 @@ export default function AddHelpTicketPage() {
                     Choose files
                   </button>
                   <span style={s.fileName}>
-                    {mediaFile ? mediaFile.name : "No file chosen"}
+                    {mediaFile ? mediaFile.name : (form.mediaUrl ? form.mediaUrl.split("/").pop() : "No file chosen")}
                   </span>
                 </div>
+                {form.mediaUrl && !mediaFile && (
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#2563eb" }}>
+                    Current attachment: <a href={form.mediaUrl.startsWith("http") ? form.mediaUrl : `/uploads/${form.mediaUrl}`} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>{form.mediaUrl.split("/").pop()}</a>
+                  </p>
+                )}
                 <p style={s.hint}>*File upload maximum limit 2MB</p>
               </div>
 
@@ -155,7 +239,7 @@ export default function AddHelpTicketPage() {
               {error && <p style={s.errorText}>{error}</p>}
               <div>
                 <button type="submit" style={s.submitBtn} disabled={submitting}>
-                  {submitting ? "SUBMITTING..." : "SUBMIT"}
+                  {submitting ? (isEdit ? "UPDATING..." : "SUBMITTING...") : (isEdit ? "UPDATE TICKET" : "SUBMIT")}
                 </button>
               </div>
             </div>

@@ -22,4 +22,5 @@ export interface IHelpTicketRepository {
   listAssignedToMe(userId: string): Promise<HelpTicket[]>;
   listAssignedByMe(userId: string): Promise<HelpTicket[]>;
   updateStatus(id: string, status: string): Promise<void>;
+  update(id: string, ticket: Partial<HelpTicket>): Promise<void>;
 }

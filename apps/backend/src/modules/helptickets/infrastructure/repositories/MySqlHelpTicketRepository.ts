@@ -14,7 +14,7 @@ function mapRow(row: any): HelpTicket {
     problem: row.problem,
     mediaUrl: row.media_url,
     priority: row.priority,
-    plannedDate: row.planned_date ? row.planned_date.toISOString().split("T")[0] : null,
+    plannedDate: row.planned_date ? (row.planned_date instanceof Date ? row.planned_date.toISOString().split("T")[0] : String(row.planned_date).split("T")[0]) : null,
     attachmentMandatory: !!row.attachment_mandatory,
     status: row.status,
     createdBy: row.created_by,
@@ -31,7 +31,7 @@ const SELECT_BASE = `
     cb.full_name AS created_by_name
   FROM help_tickets ht
   LEFT JOIN employees ps ON ps.id = ht.problem_solver_id
-  LEFT JOIN identity_users cb ON cb.id = ht.created_by
+  LEFT JOIN users cb ON cb.id = ht.created_by
   WHERE ht.deleted_at IS NULL
 `;
 
@@ -84,5 +84,24 @@ export class MySqlHelpTicketRepository implements IHelpTicketRepository {
 
   async updateStatus(id: string, status: string): Promise<void> {
     await pool.execute(`UPDATE help_tickets SET status = ? WHERE id = ?`, [status, id]);
+  }
+
+  async update(id: string, ticket: Partial<HelpTicket>): Promise<void> {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (ticket.subject !== undefined) { fields.push("subject = ?"); values.push(ticket.subject); }
+    if (ticket.problemSolverId !== undefined) { fields.push("problem_solver_id = ?"); values.push(ticket.problemSolverId); }
+    if (ticket.problem !== undefined) { fields.push("problem = ?"); values.push(ticket.problem); }
+    if (ticket.mediaUrl !== undefined) { fields.push("media_url = ?"); values.push(ticket.mediaUrl); }
+    if (ticket.priority !== undefined) { fields.push("priority = ?"); values.push(ticket.priority); }
+    if (ticket.plannedDate !== undefined) { fields.push("planned_date = ?"); values.push(ticket.plannedDate); }
+    if (ticket.attachmentMandatory !== undefined) { fields.push("attachment_mandatory = ?"); values.push(ticket.attachmentMandatory ? 1 : 0); }
+    if (ticket.status !== undefined) { fields.push("status = ?"); values.push(ticket.status); }
+
+    if (fields.length === 0) return;
+
+    values.push(id);
+    await pool.execute(`UPDATE help_tickets SET ${fields.join(", ")} WHERE id = ?`, values);
   }
 }

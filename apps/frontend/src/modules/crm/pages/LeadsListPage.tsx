@@ -8,6 +8,11 @@ import { useCanTransferLead, useCanEditLead, useCanViewAllLeads } from "../../au
 const statusColors: Record<string, string> = { active: "#4a4a4a", won: "#1a7f37", lost: "#c0392b", dead: "#999", dormant: "#b8860b" };
 const priorityColors: Record<string, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
 
+function formatLabel(str?: string | null) {
+  if (!str) return "—";
+  return str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function LeadsListPage() {
   const navigate = useNavigate();
   const canTransfer = useCanTransferLead();
@@ -137,11 +142,14 @@ export default function LeadsListPage() {
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Lead ID / Date</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Customer Name</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Company</th>
-              <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Country / City</th>
+              <th data-always-filter="true" style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Country</th>
+              <th data-always-filter="true" style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>City</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Contact Info</th>
-              <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Source / Category</th>
+              <th data-always-filter="true" style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Source</th>
+              <th data-always-filter="true" style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Category</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Financials</th>
-              <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Stage & Merchant</th>
+              <th data-always-filter="true" style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Stage</th>
+              <th data-always-filter="true" style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Merchant</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Next Follow-up</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Priority</th>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Notes</th>
@@ -172,8 +180,11 @@ export default function LeadsListPage() {
                   })()}
                 </td>
                 <td style={{ padding: 10, fontSize: 13 }}>{lead.companyName ?? "—"}</td>
-                <td style={{ padding: 10, fontSize: 12, color: "#666" }}>
-                  {lead.country ?? "—"} {lead.city && `/ ${lead.city}`}
+                <td style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }} data-filter-value={lead.country || "—"}>
+                  {lead.country ?? "—"}
+                </td>
+                <td style={{ padding: 10, fontSize: 12, color: "#666" }} data-filter-value={lead.city || "—"}>
+                  {lead.city ?? "—"}
                   {lead.multipleAddresses && <div style={{ fontSize: 10, color: "#888" }}>{lead.multipleAddresses}</div>}
                 </td>
                 <td style={{ padding: 10, fontSize: 12, color: "#555" }}>
@@ -181,10 +192,14 @@ export default function LeadsListPage() {
                   <div>{lead.email ?? "No Email"}</div>
                   {lead.preferredLanguage && <div>Lang: {lead.preferredLanguage}</div>}
                 </td>
-                <td style={{ padding: 10, fontSize: 12, color: "#666" }}>
-                  {lead.leadSource.replace(/_/g, " ")}
-                  {lead.leadSource === 'trade_fair' && lead.tradeFairName && <span> ({lead.tradeFairName})</span>}
-                  <br />{lead.leadCategory.replace(/_/g, " ")}
+                <td style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }} data-filter-value={formatLabel(lead.leadSource)}>
+                  <div>{formatLabel(lead.leadSource)}</div>
+                  {lead.leadSource === 'trade_fair' && lead.tradeFairName && (
+                    <div style={{ fontSize: 11, color: "#888" }}>({lead.tradeFairName})</div>
+                  )}
+                </td>
+                <td style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }} data-filter-value={formatLabel(lead.leadCategory)}>
+                  {formatLabel(lead.leadCategory)}
                 </td>
                 <td style={{ padding: 10, fontSize: 12, color: "#555" }}>
                   {lead.currency && <span style={{ fontWeight: 600 }}>{lead.currency} </span>}
@@ -195,9 +210,11 @@ export default function LeadsListPage() {
                     </div>
                   )}
                 </td>
-                <td style={{ padding: 10, fontSize: 12 }}>
-                  <div>{lead.salesStage.replace(/_/g, " ")}</div>
-                  <div style={{ color: "#888", fontSize: 11 }}>{lead.merchantName ?? "Unassigned"}</div>
+                <td style={{ padding: 10, fontSize: 12, whiteSpace: "nowrap" }} data-filter-value={formatLabel(lead.salesStage)}>
+                  <div>{formatLabel(lead.salesStage)}</div>
+                </td>
+                <td style={{ padding: 10, fontSize: 12 }} data-filter-value={lead.merchantName ?? "Unassigned"}>
+                  <div style={{ color: "#333", fontWeight: 500 }}>{lead.merchantName ?? "Unassigned"}</div>
                   {canTransfer && ['active', 'dormant'].includes(lead.status) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setTransferLeadId(lead.id); setSelectedMerchantId(lead.assignedMerchantId || ""); }}
@@ -258,7 +275,7 @@ export default function LeadsListPage() {
                 )}
               </tr>
             ))}
-            {items.length === 0 && <tr><td colSpan={canEdit ? 13 : 12} style={{ padding: 20, textAlign: "center", color: "#999" }}>No leads found.</td></tr>}
+            {items.length === 0 && <tr><td colSpan={canEdit ? 16 : 15} style={{ padding: 20, textAlign: "center", color: "#999" }}>No leads found.</td></tr>}
           </tbody>
         </table>
       </div>

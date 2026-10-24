@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { HelpTicketService } from "../../application/services/HelpTicketService";
-import { CreateHelpTicketSchema, UpdateHelpTicketStatusSchema } from "../../application/dto/helpTicket.dto";
+import { CreateHelpTicketSchema, UpdateHelpTicketSchema, UpdateHelpTicketStatusSchema } from "../../application/dto/helpTicket.dto";
 
 const service = new HelpTicketService();
 
@@ -47,6 +47,16 @@ export class HelpTicketController {
       return res.status(400).json({ error: parsed.error.flatten() });
     }
     const ticket = await service.updateStatus(req.params.id, parsed.data);
+    return res.json(ticket);
+  }
+
+  async update(req: Request, res: Response) {
+    const parsed = UpdateHelpTicketSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.flatten() });
+    }
+    const ticket = await service.updateTicket(req.params.id, parsed.data);
+    if (!ticket) return res.status(404).json({ error: "Ticket not found" });
     return res.json(ticket);
   }
 }

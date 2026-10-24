@@ -439,6 +439,7 @@ export default function AppRouter() {
           <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
           <Route path="help-tickets/hub" element={<HelpTicketHubPage />} />
           <Route path="help-tickets/new" element={<AddHelpTicketPage />} />
+          <Route path="help-tickets/edit/:id" element={<AddHelpTicketPage />} />
           <Route path="help-tickets/all" element={<HelpTicketsListPage mode="all" />} />
           <Route path="help-tickets/assigned-to-me" element={<HelpTicketsListPage mode="assigned-to-me" />} />
           <Route path="help-tickets/assigned-by-me" element={<HelpTicketsListPage mode="assigned-by-me" />} />

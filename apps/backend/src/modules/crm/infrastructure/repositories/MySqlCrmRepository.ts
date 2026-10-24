@@ -75,8 +75,8 @@ export class MySqlCrmRepository implements ICrmRepository {
     const values: unknown[] = [];
 
     if (params.search) {
-      conditions.push("(cl.contact_name LIKE ? OR cl.company_name LIKE ? OR cl.lead_code LIKE ? OR cl.email LIKE ?)");
-      values.push(`%${params.search}%`, `%${params.search}%`, `%${params.search}%`, `%${params.search}%`);
+      conditions.push("(cl.contact_name LIKE ? OR cl.company_name LIKE ? OR cl.lead_code LIKE ? OR cl.email LIKE ? OR cl.country LIKE ? OR cl.city LIKE ?)");
+      values.push(`%${params.search}%`, `%${params.search}%`, `%${params.search}%`, `%${params.search}%`, `%${params.search}%`, `%${params.search}%`);
     }
     if (params.assignedMerchantIds) {
       if (params.assignedMerchantIds.length > 0) {
