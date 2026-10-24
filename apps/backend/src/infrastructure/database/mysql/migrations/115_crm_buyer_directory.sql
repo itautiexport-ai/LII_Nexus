@@ -1,0 +1,28 @@
+-- Migration 115: Create crm_buyer_directory table
+CREATE TABLE IF NOT EXISTS crm_buyer_directory (
+  id CHAR(36) PRIMARY KEY,
+  master_buyer_id CHAR(36) NULL,
+  buyer_name VARCHAR(255) NOT NULL,
+  buyer_code VARCHAR(100) NULL,
+  alias_name VARCHAR(255) NULL,
+  country VARCHAR(150) NULL,
+  city VARCHAR(150) NULL,
+  existing_skus INT DEFAULT 0,
+  annual_containers INT DEFAULT 0,
+  monthly_containers DECIMAL(8, 2) DEFAULT 0,
+  container_types TEXT NULL,
+  email VARCHAR(255) NULL,
+  sourcing_person VARCHAR(255) NULL,
+  contact_details TEXT NULL,
+  phone VARCHAR(100) NULL,
+  alternate_phone VARCHAR(100) NULL,
+  address TEXT NULL,
+  notes TEXT NULL,
+  created_by CHAR(36) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL,
+  INDEX idx_buyer_name (buyer_name),
+  INDEX idx_master_buyer (master_buyer_id),
+  CONSTRAINT fk_buyer_directory_master FOREIGN KEY (master_buyer_id) REFERENCES master_data_buyers(id) ON DELETE SET NULL
+);

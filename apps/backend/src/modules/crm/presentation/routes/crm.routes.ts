@@ -61,4 +61,20 @@ router.post("/crm/quotations/:id/quotes", validate(createQuotationQuoteSchema), 
 import complaintRoutes from "./complaint.routes";
 router.use("/crm/complaints", complaintRoutes);
 
+// Buyer Directory
+import { BuyerDirectoryRepository } from "../../infrastructure/repositories/BuyerDirectoryRepository";
+import { BuyerDirectoryService } from "../../application/services/BuyerDirectoryService";
+import { BuyerDirectoryController } from "../controllers/BuyerDirectoryController";
+
+const buyerDirectoryRepo = new BuyerDirectoryRepository();
+const buyerDirectoryService = new BuyerDirectoryService(buyerDirectoryRepo);
+const buyerDirectoryController = new BuyerDirectoryController(buyerDirectoryService);
+
+router.get("/crm/buyer-directory", asyncHandler(buyerDirectoryController.list.bind(buyerDirectoryController)));
+router.get("/crm/buyer-directory/:id", asyncHandler(buyerDirectoryController.getById.bind(buyerDirectoryController)));
+router.post("/crm/buyer-directory", asyncHandler(buyerDirectoryController.create.bind(buyerDirectoryController)));
+router.patch("/crm/buyer-directory/:id", asyncHandler(buyerDirectoryController.update.bind(buyerDirectoryController)));
+router.put("/crm/buyer-directory/:id", asyncHandler(buyerDirectoryController.update.bind(buyerDirectoryController)));
+router.delete("/crm/buyer-directory/:id", asyncHandler(buyerDirectoryController.remove.bind(buyerDirectoryController)));
+
 export default router;

@@ -60,6 +60,7 @@ import InvestigationListPage from "../../modules/crm/pages/InvestigationListPage
 import InvestigationFormPage from "../../modules/crm/pages/InvestigationFormPage";
 import CapaListPage from "../../modules/crm/pages/CapaListPage";
 import CapaFormPage from "../../modules/crm/pages/CapaFormPage";
+import BuyerDirectoryPage from "../../modules/crm/pages/BuyerDirectoryPage";
 import CostingHubPage from "../../modules/costing/pages/CostingHubPage";
 import CostEstimationsListPage from "../../modules/costing/pages/CostEstimationsListPage";
 import CostEstimationFormPage from "../../modules/costing/pages/CostEstimationFormPage";
@@ -356,6 +357,8 @@ export default function AppRouter() {
           <Route path="crm/investigation/new" element={<InvestigationFormPage />} />
           <Route path="crm/capa" element={<CapaListPage />} />
           <Route path="crm/capa/new" element={<CapaFormPage />} />
+          <Route path="crm/buyers" element={<BuyerDirectoryPage />} />
+          <Route path="crm/buyer-directory" element={<BuyerDirectoryPage />} />
 
           {/* QMS (Quality Management System) Routes */}
           <Route path="qms" element={<IqcInspectionPage />} />

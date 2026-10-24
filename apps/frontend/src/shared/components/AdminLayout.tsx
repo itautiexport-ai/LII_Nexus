@@ -160,7 +160,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     key: "crm",
-    label: "CRM",
+    label: "Sales & CRM",
     allowedRoles: ["System Admin", "Merchant", "CEO"],
     items: [
       { label: "Add Lead", to: "/admin/crm/leads/new" },
@@ -182,7 +182,8 @@ export const SECTIONS: NavSection[] = [
           { label: "New Complaint", to: "/admin/crm/complaints/new" },
           { label: "List Complaints", to: "/admin/crm/complaints" },
         ]
-      }
+      },
+      { label: "Create Buyer", to: "/admin/crm/buyers" }
     ],
   },
   {
