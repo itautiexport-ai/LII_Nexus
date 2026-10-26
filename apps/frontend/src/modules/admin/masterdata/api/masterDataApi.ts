@@ -41,6 +41,15 @@ export interface FinishCode {
   createdAt: string;
 }
 
+export interface Buyer {
+  id: string;
+  name: string;
+  buyer_code?: string | null;
+  alias_name?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export const masterDataApi = {
   // Wood Types
   async getWoodTypes(): Promise<WoodType[]> {
@@ -77,16 +86,18 @@ export const masterDataApi = {
   },
 
   // Buyers
-  async getBuyers(): Promise<any[]> {
+  async getBuyers(): Promise<Buyer[]> {
     const res = await axiosInstance.get("/buyers");
     return res.data.data;
   },
-  async createBuyer(name: string): Promise<any> {
-    const res = await axiosInstance.post("/buyers", { name });
+  async createBuyer(payload: string | { name: string; buyer_code?: string | null; alias_name?: string | null }): Promise<Buyer> {
+    const body = typeof payload === "string" ? { name: payload } : payload;
+    const res = await axiosInstance.post("/buyers", body);
     return res.data.data;
   },
-  async updateBuyer(id: string, name: string): Promise<any> {
-    const res = await axiosInstance.put(`/buyers/${id}`, { name });
+  async updateBuyer(id: string, payload: string | { name: string; buyer_code?: string | null; alias_name?: string | null }): Promise<Buyer> {
+    const body = typeof payload === "string" ? { name: payload } : payload;
+    const res = await axiosInstance.put(`/buyers/${id}`, body);
     return res.data.data;
   },
   async deleteBuyer(id: string): Promise<void> {

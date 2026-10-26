@@ -26,9 +26,23 @@ export interface CreateHelpTicketPayload {
   mediaUrl?: string | null;
 }
 
+export interface UpdateHelpTicketPayload {
+  subject?: string;
+  problemSolverId?: string;
+  problem?: string;
+  priority?: "High" | "Medium" | "Low";
+  plannedDate?: string | null;
+  attachmentMandatory?: boolean;
+  mediaUrl?: string | null;
+  status?: "Open" | "In Progress" | "Resolved" | "Closed";
+}
+
 export const helpTicketsApi = {
   create: (data: CreateHelpTicketPayload) =>
     axiosInstance.post<HelpTicket>("/help-tickets", data).then((r) => r.data),
+
+  update: (id: string, data: UpdateHelpTicketPayload) =>
+    axiosInstance.put<HelpTicket>(`/help-tickets/${id}`, data).then((r) => r.data),
 
   listAll: () =>
     axiosInstance.get<HelpTicket[]>("/help-tickets").then((r) => r.data),

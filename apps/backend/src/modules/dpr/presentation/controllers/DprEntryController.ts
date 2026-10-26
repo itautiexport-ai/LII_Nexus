@@ -35,4 +35,14 @@ export const DprEntryController = {
     await service.remove(req.params.id, req.user!.sub);
     return ok(res, { message: "DPR entry deleted." });
   },
+
+  async updateItem(req: AuthenticatedRequest, res: Response) {
+    await service.updateItem(req.params.id, req.params.itemId, req.body, req.user!.sub);
+    return ok(res, { message: "DPR item updated successfully." });
+  },
+
+  async removeItem(req: AuthenticatedRequest, res: Response) {
+    await service.removeItem(req.params.id, req.params.itemId, req.user!.sub);
+    return ok(res, { message: "DPR item deleted successfully." });
+  },
 };

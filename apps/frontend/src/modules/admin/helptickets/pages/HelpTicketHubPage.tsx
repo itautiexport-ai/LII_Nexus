@@ -1,14 +1,15 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../../../auth/hooks/useAuthStore";
+import { useIsSystemAdmin } from "../../../auth/hooks/usePermissions";
 
 export function HelpTicketHubPage() {
   const user = useAuthStore((state: any) => state.user);
   const userRoles = user?.roles || [];
-  const isSystemAdmin = userRoles.includes("System Admin");
+  const isSystemAdmin = useIsSystemAdmin();
 
   const allItems = [
     { label: "List All Help Ticket", to: "/admin/help-tickets/all", desc: "View all help tickets in the system" },
-    { label: "Add New Ticket", to: "/admin/help-tickets/new", desc: "Create a new help ticket" },
+    ...(isSystemAdmin ? [{ label: "Add New Ticket", to: "/admin/help-tickets/new", desc: "Create a new help ticket (Admin only)" }] : []),
     { label: "Assigned to Me", to: "/admin/help-tickets/assigned-to-me", desc: "View help tickets assigned to you" },
     { label: "Assigned by Me", to: "/admin/help-tickets/assigned-by-me", desc: "View help tickets you have created" },
   ];

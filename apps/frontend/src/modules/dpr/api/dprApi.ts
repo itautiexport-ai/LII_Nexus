@@ -60,7 +60,27 @@ export const dprApi = {
     return res.data.data as DprEntryRecord;
   },
 
+  async getById(id: string) {
+    const res = await axiosInstance.get(`/dpr-entries/${id}`);
+    return res.data.data as DprEntryRecord;
+  },
+
+  async update(id: string, payload: any) {
+    const res = await axiosInstance.patch(`/dpr-entries/${id}`, payload);
+    return res.data.data as DprEntryRecord;
+  },
+
   async remove(id: string) {
     await axiosInstance.delete(`/dpr-entries/${id}`);
+  },
+
+  async updateItem(dprEntryId: string, itemId: string, payload: any) {
+    const res = await axiosInstance.patch(`/dpr-entries/${dprEntryId}/items/${itemId}`, payload);
+    return res.data;
+  },
+
+  async removeItem(dprEntryId: string, itemId: string) {
+    const res = await axiosInstance.delete(`/dpr-entries/${dprEntryId}/items/${itemId}`);
+    return res.data;
   },
 };

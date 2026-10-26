@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { MySqlHelpTicketRepository } from "../../infrastructure/repositories/MySqlHelpTicketRepository";
-import { CreateHelpTicketDto, UpdateHelpTicketStatusDto } from "../dto/helpTicket.dto";
+import { CreateHelpTicketDto, UpdateHelpTicketDto, UpdateHelpTicketStatusDto } from "../dto/helpTicket.dto";
 
 const repo = new MySqlHelpTicketRepository();
 
@@ -42,6 +42,11 @@ export class HelpTicketService {
 
   async updateStatus(id: string, dto: UpdateHelpTicketStatusDto) {
     await repo.updateStatus(id, dto.status);
+    return repo.findById(id);
+  }
+
+  async updateTicket(id: string, dto: UpdateHelpTicketDto) {
+    await repo.update(id, dto);
     return repo.findById(id);
   }
 }

@@ -60,6 +60,8 @@ import InvestigationListPage from "../../modules/crm/pages/InvestigationListPage
 import InvestigationFormPage from "../../modules/crm/pages/InvestigationFormPage";
 import CapaListPage from "../../modules/crm/pages/CapaListPage";
 import CapaFormPage from "../../modules/crm/pages/CapaFormPage";
+import CreateBuyerPage from "../../modules/crm/pages/CreateBuyerPage";
+import BuyerDirectoryPage from "../../modules/crm/pages/BuyerDirectoryPage";
 import CostingHubPage from "../../modules/costing/pages/CostingHubPage";
 import CostEstimationsListPage from "../../modules/costing/pages/CostEstimationsListPage";
 import CostEstimationFormPage from "../../modules/costing/pages/CostEstimationFormPage";
@@ -355,6 +357,12 @@ export default function AppRouter() {
           <Route path="crm/investigation/new" element={<InvestigationFormPage />} />
           <Route path="crm/capa" element={<CapaListPage />} />
           <Route path="crm/capa/new" element={<CapaFormPage />} />
+          <Route path="crm/buyers/new" element={<CreateBuyerPage />} />
+          <Route path="crm/buyers/create" element={<CreateBuyerPage />} />
+          <Route path="crm/buyers/edit/:id" element={<CreateBuyerPage />} />
+          <Route path="crm/buyers/:id/edit" element={<CreateBuyerPage />} />
+          <Route path="crm/buyers" element={<BuyerDirectoryPage />} />
+          <Route path="crm/buyer-directory" element={<BuyerDirectoryPage />} />
 
           {/* QMS (Quality Management System) Routes */}
           <Route path="qms" element={<IqcInspectionPage />} />
@@ -437,6 +445,7 @@ export default function AppRouter() {
           <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
           <Route path="help-tickets/hub" element={<HelpTicketHubPage />} />
           <Route path="help-tickets/new" element={<AddHelpTicketPage />} />
+          <Route path="help-tickets/edit/:id" element={<AddHelpTicketPage />} />
           <Route path="help-tickets/all" element={<HelpTicketsListPage mode="all" />} />
           <Route path="help-tickets/assigned-to-me" element={<HelpTicketsListPage mode="assigned-to-me" />} />
           <Route path="help-tickets/assigned-by-me" element={<HelpTicketsListPage mode="assigned-by-me" />} />

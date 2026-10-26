@@ -367,8 +367,9 @@ class TableFilterEnhancer {
         return;
       }
 
+      const alwaysFilter = th.dataset.alwaysFilter === "true" || th.getAttribute("data-always-filter") === "true";
       const uniqueValues = this.getUniqueColumnValues(index);
-      if (uniqueValues.length < 2) return;
+      if (uniqueValues.length < 2 && !alwaysFilter) return;
 
       const wrapper = document.createElement("div");
       wrapper.className = "table-filter-select-wrapper";
@@ -483,7 +484,9 @@ class TableFilterEnhancer {
       let select = this.selectElements.get(index);
       let wrapper = this.selectWrappers.get(index);
 
-      if (uniqueValues.length >= 2) {
+      const alwaysFilter = th.dataset.alwaysFilter === "true" || th.getAttribute("data-always-filter") === "true";
+
+      if (uniqueValues.length >= 2 || (alwaysFilter && uniqueValues.length >= 1)) {
         if (!select || !wrapper) {
           wrapper = document.createElement("div");
           wrapper.className = "table-filter-select-wrapper";
@@ -559,6 +562,12 @@ class TableFilterEnhancer {
         }
       }
     });
+
+    Array.from(this.selectWrappers.entries())
+      .sort(([a], [b]) => a - b)
+      .forEach(([_, wrap]) => {
+        selectsContainer.appendChild(wrap);
+      });
   }
 
   getUniqueColumnValues(colIndex: number): string[] {
@@ -572,7 +581,8 @@ class TableFilterEnhancer {
 
       const cell = row.cells[colIndex];
       if (cell) {
-        const text = cell.textContent?.trim() || "(Blank)";
+        const filterAttr = cell.getAttribute("data-filter-value");
+        const text = (filterAttr !== null ? filterAttr : cell.textContent?.trim()) || "(Blank)";
         values.add(text);
       }
     });
@@ -597,7 +607,8 @@ class TableFilterEnhancer {
       for (const [colIndex, filterVal] of this.activeFilters.entries()) {
         const cell = row.cells[colIndex];
         if (cell) {
-          const val = cell.textContent?.trim() || "(Blank)";
+          const filterAttr = cell.getAttribute("data-filter-value");
+          const val = (filterAttr !== null ? filterAttr : cell.textContent?.trim()) || "(Blank)";
           if (val !== filterVal) {
             matchesFilters = false;
             break;
