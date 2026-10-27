@@ -225,8 +225,7 @@ export const AiHelperWidget: React.FC = () => {
       style={{
         position: "fixed",
         bottom: "20px",
-        left: "calc(50% + 124px)",
-        transform: "translateX(-50%)",
+        right: "20px",
         zIndex: 99999,
         fontFamily: "system-ui, -apple-system, sans-serif"
       }}
@@ -237,25 +236,24 @@ export const AiHelperWidget: React.FC = () => {
           onClick={handleOpen}
           className="milo-launcher-btn"
           aria-label="Ask Milo AI"
+          title="Ask Milo AI"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
+            justifyContent: "center",
+            width: "45px",
+            height: "45px",
             background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
             color: "#ffffff",
             border: "none",
-            borderRadius: "50px",
-            padding: "12px 20px",
+            borderRadius: "50%",
+            padding: "6px",
             boxShadow: "0 10px 25px -5px rgba(79, 70, 229, 0.4)",
             cursor: "pointer",
-            fontWeight: 600,
-            fontSize: "14px",
             transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
           }}
         >
-          <img src="/milo-avatar.png" alt="Milo" style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(255,255,255,0.4)" }} />
-          <span className="milo-btn-text">Ask Milo</span>
-          <span className="milo-badge" style={{ background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "12px", fontSize: "11px" }}>Milo AI</span>
+          <img src="/milo-avatar.png" alt="Milo" style={{ width: "31px", height: "31px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(255,255,255,0.5)" }} />
         </button>
       )}
 
@@ -571,16 +569,16 @@ export const AiHelperWidget: React.FC = () => {
 
         @media (max-width: 860px) {
           .milo-widget-wrapper {
-            left: 50% !important;
+            right: 14px !important;
           }
         }
 
         @media (max-width: 768px) {
           .milo-widget-wrapper {
             bottom: 14px !important;
-            left: 50% !important;
-            right: auto !important;
-            transform: translateX(-50%) !important;
+            left: auto !important;
+            right: 14px !important;
+            transform: none !important;
           }
           .milo-widget-wrapper.is-open {
             transform: none !important;
@@ -590,15 +588,11 @@ export const AiHelperWidget: React.FC = () => {
             bottom: 0 !important;
           }
           .milo-launcher-btn {
-            padding: 0 !important;
-            width: 44px !important;
-            height: 44px !important;
+            width: 45px !important;
+            height: 45px !important;
             border-radius: 50% !important;
             justify-content: center !important;
             box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
-          }
-          .milo-btn-text, .milo-badge {
-            display: none !important;
           }
           .milo-chat-drawer {
             position: fixed !important;
