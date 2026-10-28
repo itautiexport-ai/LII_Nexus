@@ -165,6 +165,7 @@ export const SECTIONS: NavSection[] = [
     items: [
       { label: "Add Lead", to: "/admin/crm/leads/new" },
       { label: "List Leads", to: "/admin/crm/leads" },
+      { label: "Lead Command Center", to: "/admin/crm/command-center" },
       { 
         label: "Quotations", 
         to: "/admin/crm/quotations/hub",

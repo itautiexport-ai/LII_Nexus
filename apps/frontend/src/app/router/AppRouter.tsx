@@ -44,6 +44,7 @@ import MyScorePage from "../../modules/scoring/pages/MyScorePage";
 import RankingsPage from "../../modules/scoring/pages/RankingsPage";
 import CommandCenterPage from "../../modules/commandcenter/pages/CommandCenterPage";
 import LeadsListPage from "../../modules/crm/pages/LeadsListPage";
+import LeadCommandCenterPage from "../../modules/crm/pages/LeadCommandCenterPage";
 import LeadFormPage from "../../modules/crm/pages/LeadFormPage";
 import LeadDetailPage from "../../modules/crm/pages/LeadDetailPage";
 import CrmDashboardsPage from "../../modules/crm/pages/CrmDashboardsPage";
@@ -339,6 +340,8 @@ export default function AppRouter() {
           <Route path="order-management/carton-orders/new" element={<BuyerCartonOrderFormPage />} />
           <Route path="order-management/:id" element={<OrderInHandFormPage />} />
           <Route path="crm/leads" element={<LeadsListPage />} />
+          <Route path="crm/command-center" element={<LeadCommandCenterPage />} />
+          <Route path="crm/lead-command-center" element={<LeadCommandCenterPage />} />
           <Route path="crm/leads/new" element={<LeadFormPage />} />
           <Route path="crm/leads/edit/:id" element={<LeadFormPage />} />
           <Route path="crm/leads/:id/edit" element={<LeadFormPage />} />
