@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { standaloneChecklistApi, StandaloneChecklist } from "../api/checklistApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import { useCanDelete, useIsAdminOrManagement } from "../../auth/hooks/usePermissions";
-import { formatIndianDateTime } from "../../../shared/utils/dateUtils";
+import { formatIndianDateTime, formatIndianDateTimeLocalValue, indianDateTimeLocalToUtcIso } from "../../../shared/utils/dateUtils";
 import { useTableFreeze } from "../../../shared/hooks/useTableFreeze";
 import { TableFreezeButton } from "../../../shared/components/TableFreezeButton";
 import { TableFreezeModal } from "../../../shared/components/TableFreezeModal";
@@ -113,7 +113,7 @@ export function ListChecklistPage() {
   const handleOpenEdit = (item: StandaloneChecklist) => {
     setEditingItem(item);
     const rawDate = (item as any).planned_date || item.plannedDate;
-    const formattedDate = rawDate ? new Date(rawDate).toISOString().slice(0, 16) : "";
+    const formattedDate = formatIndianDateTimeLocalValue(rawDate);
     setEditForm({
       taskName: (item as any).task_name || item.taskName,
       priority: item.priority || "Medium",
@@ -128,7 +128,10 @@ export function ListChecklistPage() {
     if (!editingItem) return;
     try {
       setIsSavingEdit(true);
-      await standaloneChecklistApi.update(editingItem.id, editForm);
+      await standaloneChecklistApi.update(editingItem.id, {
+        ...editForm,
+        plannedDate: indianDateTimeLocalToUtcIso(editForm.plannedDate),
+      });
       setEditingItem(null);
       fetchChecklists();
     } catch (err) {

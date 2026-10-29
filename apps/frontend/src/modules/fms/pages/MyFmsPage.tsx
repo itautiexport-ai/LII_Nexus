@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { fmsApi } from "../api/fmsApi";
+import { formatIndianDate, formatIndianDateTime, formatIndianShortTime } from "../../../shared/utils/dateUtils";
 import "./MyFmsPage.css";
 
 export function MyFmsPage() {
@@ -360,7 +361,7 @@ export function MyFmsPage() {
                   <div style={{ gridColumn: "span 2" }}>
                     <span style={{ color: "#94a3b8" }}>Assigned At: </span>
                     <strong style={{ color: "#334155" }}>
-                      {new Date(t.assignedAt).toLocaleDateString()} {new Date(t.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatIndianDate(t.assignedAt)} {formatIndianShortTime(t.assignedAt)}
                     </strong>
                   </div>
                 </div>
@@ -428,10 +429,10 @@ export function MyFmsPage() {
                     </td>
                     <td>
                       <div style={{ fontSize: "13px", color: "#64748b" }}>
-                        {new Date(t.assignedAt).toLocaleDateString()}
+                        {formatIndianDate(t.assignedAt)}
                       </div>
                       <div style={{ fontSize: "11px", color: "#94a3b8" }}>
-                        {new Date(t.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatIndianShortTime(t.assignedAt)}
                       </div>
                     </td>
                     <td>{renderStatusPill(t.status)}</td>
@@ -652,7 +653,7 @@ export function MyFmsPage() {
                       <div className="my-fms-form-group">
                         <label className="my-fms-label">Completion Date</label>
                         <div style={{ fontSize: "14px", color: "#334155" }}>
-                          {new Date(selectedTask.completedAt).toLocaleString()}
+                          {formatIndianDateTime(selectedTask.completedAt)}
                         </div>
                       </div>
                     )}

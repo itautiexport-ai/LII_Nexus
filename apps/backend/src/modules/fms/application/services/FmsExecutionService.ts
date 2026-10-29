@@ -47,7 +47,7 @@ export class FmsExecutionService {
 
     // Create instance
     await this.dbPool.query(
-      "INSERT INTO fms_instances (id, fms_manager_id, reference_title, status, form_data, creator_id) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO fms_instances (id, fms_manager_id, reference_title, status, form_data, creator_id, created_at) VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())",
       [instanceId, fmsManagerId, dto.referenceTitle, 'In Progress', dto.formData ? JSON.stringify(dto.formData) : null, dto.creatorId || null]
     );
 
@@ -60,7 +60,7 @@ export class FmsExecutionService {
     // Insert instance steps
     for (const step of steps) {
       await this.dbPool.query(
-        "INSERT INTO fms_instance_steps (id, instance_id, fms_step_id, status) VALUES (?, ?, ?, ?)",
+        "INSERT INTO fms_instance_steps (id, instance_id, fms_step_id, status, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())",
         [uuidv4(), instanceId, step.id, 'Pending']
       );
     }
@@ -551,7 +551,7 @@ export class FmsExecutionService {
 
     // Mark updated
     await this.dbPool.query(
-      "UPDATE fms_instance_steps SET status = ?, completed_by = ?, input_data = ?, completed_at = NOW() WHERE id = ?",
+      "UPDATE fms_instance_steps SET status = ?, completed_by = ?, input_data = ?, completed_at = UTC_TIMESTAMP() WHERE id = ?",
       [newStatus, employeeId, JSON.stringify(dto.inputData || {}), instanceStepId]
     );
 

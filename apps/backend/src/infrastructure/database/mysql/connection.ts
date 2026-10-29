@@ -9,6 +9,9 @@ export const pool = mysql.createPool({
   password: env.db.password,
   connectionLimit: env.db.poolMax,
   waitForConnections: true,
+  // Absolute timestamps are persisted and exchanged as UTC. Business-time
+  // presentation and calendar boundaries are handled explicitly in IST.
+  timezone: "Z",
   dateStrings: true,
 });
 

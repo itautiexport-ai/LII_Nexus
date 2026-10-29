@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { standaloneChecklistApi } from "../api/checklistApi";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
+import { formatIndianDateTimeLocalValue, indianDateTimeLocalToUtcIso } from "../../../shared/utils/dateUtils";
 import "./Checklist.css";
 
 const DAYS_OF_WEEK = [
@@ -184,7 +185,7 @@ export function AddChecklistPage() {
     try {
       await standaloneChecklistApi.create({
         ...formData,
-        plannedDate: new Date(formData.plannedDate).toISOString()
+        plannedDate: indianDateTimeLocalToUtcIso(formData.plannedDate)
       });
       alert("Checklist created successfully!");
       setFormData({
@@ -379,7 +380,7 @@ export function AddChecklistPage() {
 
               <div className="chk-form-group">
                 <label className="chk-label">Planned Date <span className="chk-required">*</span> (Auto-calculated)</label>
-                <input type="datetime-local" name="plannedDate" required value={formData.plannedDate} min={new Date().toISOString().slice(0, 16)} onChange={handleChange} className="chk-input" />
+                <input type="datetime-local" name="plannedDate" required value={formData.plannedDate} min={formatIndianDateTimeLocalValue(new Date())} onChange={handleChange} className="chk-input" />
               </div>
 
               <div className="chk-form-group">

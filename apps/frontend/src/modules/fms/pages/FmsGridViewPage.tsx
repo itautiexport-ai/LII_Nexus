@@ -8,6 +8,7 @@ import { axiosInstance } from "../../../services/api/axiosInstance";
 import { useTableFreeze } from "../../../shared/hooks/useTableFreeze";
 import { TableFreezeButton } from "../../../shared/components/TableFreezeButton";
 import { TableFreezeModal } from "../../../shared/components/TableFreezeModal";
+import { formatIndianShortDateTime, parseUtcDateTime } from "../../../shared/utils/dateUtils";
 import "./Fms.css";
 
 export function FmsGridViewPage() {
@@ -336,7 +337,7 @@ export function FmsGridViewPage() {
                     // If a predecessor step is completed, its Actual Date (completedAt) is used as the base
                     // for subsequent steps, ensuring that succeeding steps get their full allotted timeline.
                     const planDates: Record<string, Date> = {};
-                    const instanceCreatedDate = new Date(instance.createdAt);
+                    const instanceCreatedDate = parseUtcDateTime(instance.createdAt) || new Date();
 
                     // Map step instance data for fast lookup by fmsStepId, stepName, or instance step id
                     const stepInstanceDataMap = new Map<string, any>();
@@ -354,7 +355,7 @@ export function FmsGridViewPage() {
                     const getPrerequisiteEffectiveDate = (prereqStepId: string): Date | null => {
                       const sData = stepInstanceDataMap.get(prereqStepId);
                       if (sData && (sData.status === 'Completed' || sData.status === 'Skipped') && sData.completedAt) {
-                        return new Date(sData.completedAt);
+                        return parseUtcDateTime(sData.completedAt);
                       }
                       if (planDates[prereqStepId]) {
                         return planDates[prereqStepId];
@@ -414,9 +415,9 @@ export function FmsGridViewPage() {
                       const calculatedPlanDate = new Date(startDate.getTime());
                       const timeline = step.timelineHours || 0;
                       if (step.timelineUnit === "days") {
-                        calculatedPlanDate.setDate(calculatedPlanDate.getDate() + timeline);
+                        calculatedPlanDate.setTime(calculatedPlanDate.getTime() + timeline * 24 * 60 * 60 * 1000);
                       } else {
-                        calculatedPlanDate.setHours(calculatedPlanDate.getHours() + timeline);
+                        calculatedPlanDate.setTime(calculatedPlanDate.getTime() + timeline * 60 * 60 * 1000);
                       }
                       planDates[step.id] = calculatedPlanDate;
                     }
@@ -456,9 +457,7 @@ export function FmsGridViewPage() {
                           </div>
                         </td>
                         <td style={getStickyCellStyle(isSystemAdmin ? 4 : 3, { customStyle: { ...cellStyle, color: "#64748b", fontSize: "0.75rem", minWidth: "120px" } })}>
-                          {new Date(instance.createdAt).toLocaleString(undefined, {
-                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                          })}
+                          {formatIndianShortDateTime(instance.createdAt)}
                         </td>
                         <td style={getStickyCellStyle(isSystemAdmin ? 5 : 4, { customStyle: { ...cellStyle, textAlign: "center", minWidth: "120px" } })}>
                           <span style={{
@@ -535,17 +534,13 @@ export function FmsGridViewPage() {
 
                           // Plan Date
                           const planDate = planDates[step.id];
-                          const formattedPlanDate = planDate.toLocaleString(undefined, {
-                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                          });
+                          const formattedPlanDate = formatIndianShortDateTime(planDate);
 
                           // Actual Date
                           const formattedActualDate = isStepNotApplicable
                             ? "Not Applicable"
                             : (isCompleted && stepData?.completedAt)
-                              ? new Date(stepData.completedAt).toLocaleString(undefined, {
-                                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                })
+                              ? formatIndianShortDateTime(stepData.completedAt)
                               : "—";
 
                           // Status styling
@@ -572,17 +567,21 @@ export function FmsGridViewPage() {
                             dotColor = "#22c55e";
                             bgColor = "#f0fdf4";
 
-                            const compareDate = stepData?.completedAt ? new Date(stepData.completedAt) : new Date();
-                            const diffMs = compareDate.getTime() - planDate.getTime();
-                            if (diffMs <= 0) {
-                              delayText = "On Time";
+                            const compareDate = stepData?.completedAt ? parseUtcDateTime(stepData.completedAt) : new Date();
+                            if (!compareDate) {
+                              delayText = "-";
                             } else {
-                              isDelayed = true;
-                              const diffHours = diffMs / (1000 * 60 * 60);
-                              if (diffHours < 24) {
-                                delayText = `${Math.round(diffHours)} hrs delay`;
+                              const diffMs = compareDate.getTime() - planDate.getTime();
+                              if (diffMs <= 0) {
+                                delayText = "On Time";
                               } else {
-                                delayText = `${Math.round(diffHours / 24)} days delay`;
+                                isDelayed = true;
+                                const diffHours = diffMs / (1000 * 60 * 60);
+                                if (diffHours < 24) {
+                                  delayText = `${Math.round(diffHours)} hrs delay`;
+                                } else {
+                                  delayText = `${Math.round(diffHours / 24)} days delay`;
+                                }
                               }
                             }
                           } else if (isConfigured) {

@@ -15,9 +15,11 @@ export class StandaloneChecklistService {
     const id = uuidv4();
     const now = new Date();
 
-    const plannedDateStr = getIstDateStr(dto.plannedDate);
-    const plannedDateDb = `${plannedDateStr} 09:00:00`;
-    const plannedDateObj = getIst9AmDate(plannedDateStr);
+    const plannedDateObj = parseUtcDateTime(dto.plannedDate);
+    if (!plannedDateObj) {
+      throw new Error("Invalid planned date");
+    }
+    const plannedDateDb = toMySqlUtcDateTime(plannedDateObj);
 
     const checklist: StandaloneChecklist = {
       id,
@@ -64,10 +66,14 @@ export class StandaloneChecklistService {
     try {
       const [empRows] = await pool.query<any[]>("SELECT user_id FROM employees WHERE id = ?", [dto.assignTo]);
       const targetUserId = empRows[0]?.user_id || dto.assignTo;
-      const formattedDate = new Date(`${plannedDateStr}T09:00:00+05:30`).toLocaleDateString("en-IN", {
+      const formattedDate = plannedDateObj.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
         day: "numeric",
         month: "short",
-        year: "numeric"
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       });
 
       await notificationService.notify({
@@ -139,7 +145,12 @@ export class StandaloneChecklistService {
 
     if (dto.taskName !== undefined) { fields.push("task_name = ?"); values.push(dto.taskName); }
     if (dto.assignTo !== undefined) { fields.push("assign_to = ?"); values.push(dto.assignTo); }
-    if (dto.plannedDate !== undefined) { fields.push("planned_date = ?"); values.push(dto.plannedDate); }
+    if (dto.plannedDate !== undefined) {
+      const plannedDate = parseUtcDateTime(dto.plannedDate);
+      if (!plannedDate) throw new Error("Invalid planned date");
+      fields.push("planned_date = ?");
+      values.push(toMySqlUtcDateTime(plannedDate));
+    }
     if (dto.priority !== undefined) { fields.push("priority = ?"); values.push(dto.priority); }
     if (dto.mode !== undefined) { fields.push("mode = ?"); values.push(dto.mode); }
     if (dto.frequency !== undefined) { fields.push("frequency = ?"); values.push(dto.frequency); }
@@ -150,7 +161,7 @@ export class StandaloneChecklistService {
 
     if (fields.length === 0) return;
 
-    fields.push("updated_at = NOW()");
+    fields.push("updated_at = UTC_TIMESTAMP()");
     values.push(id);
 
     await pool.query(
@@ -161,7 +172,7 @@ export class StandaloneChecklistService {
 
   async deleteChecklist(id: string): Promise<void> {
     await pool.query(
-      "UPDATE standalone_checklists SET deleted_at = NOW() WHERE id = ?",
+      "UPDATE standalone_checklists SET deleted_at = UTC_TIMESTAMP() WHERE id = ?",
       [id]
     );
 
@@ -209,7 +220,7 @@ export class StandaloneChecklistService {
     await pool.query(
       `INSERT INTO standalone_checklist_completions (
         id, checklist_id, occurrence_date, completed_at, completed_by, notes, attachment_url
-      ) VALUES (?, ?, ?, NOW(), ?, ?, ?)`,
+      ) VALUES (?, ?, ?, UTC_TIMESTAMP(), ?, ?, ?)`,
       [completionId, id, targetOccDate, employeeId, notes || null, attachmentUrl || null]
     );
   }
@@ -276,8 +287,9 @@ export class StandaloneChecklistService {
       const freq = (row.frequency || "one-time").toLowerCase().trim();
       const isOneTime = freq === "one-time" || freq === "once" || freq === "single";
 
-      const startDateStr = getIstDateStr(row.planned_date);
-      let curr = getIst9AmDate(startDateStr);
+      const firstPlannedDate = parseUtcDateTime(row.planned_date);
+      if (!firstPlannedDate) continue;
+      let curr = firstPlannedDate;
 
       const occurrences: Date[] = [];
 
@@ -401,33 +413,52 @@ export class StandaloneChecklistService {
 
 function getIstDateStr(d: Date | string): string {
   if (!d) return "";
-  if (typeof d === "string") {
-    if (d.includes(" ") || d.length === 10) {
-      return d.slice(0, 10);
-    }
-    const parsed = new Date(d);
-    if (!isNaN(parsed.getTime())) {
-      return new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(parsed);
-    }
-    return d.slice(0, 10);
-  }
+  if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.trim())) return d.trim();
+  const parsed = typeof d === "string" ? parseUtcDateTime(d) : d;
+  if (!parsed) return typeof d === "string" ? d.slice(0, 10) : "";
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(d);
+  }).format(parsed);
 }
 
-function getIst9AmDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
-  // 09:00:00 Asia/Kolkata (IST = UTC+05:30) corresponds precisely to 03:30:00 UTC
-  return new Date(Date.UTC(y, m - 1, d, 3, 30, 0, 0));
+function parseUtcDateTime(value: Date | string): Date | null {
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  const raw = value.trim();
+  if (!raw) return null;
+  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)
+    ? raw
+    : `${raw.includes("T") ? raw : raw.replace(" ", "T")}Z`;
+  const parsed = new Date(normalized);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function toMySqlUtcDateTime(value: Date): string {
+  return value.toISOString().slice(0, 19).replace("T", " ");
+}
+
+function getIstDateTimeParts(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+    second: Number(values.second),
+  };
 }
 
 function getStartOfTodayIst(now: Date): Date {
@@ -438,28 +469,36 @@ function getStartOfTodayIst(now: Date): Date {
 }
 
 function getNextOccurrenceDate(current: Date, frequency: string): Date {
-  const dateStr = getIstDateStr(current);
-  const [y, m, d] = dateStr.split("-").map(Number);
+  const parts = getIstDateTimeParts(current);
   const freq = (frequency || "").toLowerCase().trim();
 
-  // Anchor in UTC at 03:30:00 (which is 09:00:00 IST)
-  const nextUtc = new Date(Date.UTC(y, m - 1, d, 3, 30, 0, 0));
+  // Perform calendar recurrence in IST, preserving the originally selected
+  // Indian time of day, then convert that wall-clock value back to UTC.
+  const nextIstCalendar = new Date(Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  ));
 
   if (freq === "daily") {
-    nextUtc.setUTCDate(nextUtc.getUTCDate() + 1);
+    nextIstCalendar.setUTCDate(nextIstCalendar.getUTCDate() + 1);
   } else if (freq === "weekly") {
-    nextUtc.setUTCDate(nextUtc.getUTCDate() + 7);
+    nextIstCalendar.setUTCDate(nextIstCalendar.getUTCDate() + 7);
   } else if (freq === "monthly") {
-    nextUtc.setUTCMonth(nextUtc.getUTCMonth() + 1);
+    nextIstCalendar.setUTCMonth(nextIstCalendar.getUTCMonth() + 1);
   } else if (freq === "quarterly") {
-    nextUtc.setUTCMonth(nextUtc.getUTCMonth() + 3);
+    nextIstCalendar.setUTCMonth(nextIstCalendar.getUTCMonth() + 3);
   } else if (freq === "half-yearly" || freq === "half_yearly" || freq === "half yearly" || freq === "bi-annually") {
-    nextUtc.setUTCMonth(nextUtc.getUTCMonth() + 6);
+    nextIstCalendar.setUTCMonth(nextIstCalendar.getUTCMonth() + 6);
   } else if (freq === "yearly" || freq === "annually") {
-    nextUtc.setUTCFullYear(nextUtc.getUTCFullYear() + 1);
+    nextIstCalendar.setUTCFullYear(nextIstCalendar.getUTCFullYear() + 1);
   } else {
-    nextUtc.setUTCDate(nextUtc.getUTCDate() + 1);
+    nextIstCalendar.setUTCDate(nextIstCalendar.getUTCDate() + 1);
   }
-  return nextUtc;
+
+  return new Date(nextIstCalendar.getTime() - 330 * 60 * 1000);
 }
 
