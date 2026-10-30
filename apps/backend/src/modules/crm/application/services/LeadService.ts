@@ -288,13 +288,63 @@ export class LeadService {
     if (syncedStatus && changes.status === undefined) finalChanges.status = syncedStatus;
 
     const updated = await this.repo.update(id, finalChanges);
+
+    // Automatically record changes to messages timeline
+    try {
+      const actorName = (await this.resolveActorName(actorUserId)) || "System";
+      if (changes.managementRemarks !== undefined && changes.managementRemarks !== existing.managementRemarks && changes.managementRemarks?.trim()) {
+        await this.repo.addMessage({
+          id: uuid(),
+          leadId: id,
+          senderId: actorUserId,
+          senderName: actorName,
+          senderRole: "management",
+          message: changes.managementRemarks,
+          messageType: "management_remark",
+        });
+      }
+      if (changes.merchantUpdate !== undefined && changes.merchantUpdate !== existing.merchantUpdate && changes.merchantUpdate?.trim()) {
+        await this.repo.addMessage({
+          id: uuid(),
+          leadId: id,
+          senderId: actorUserId,
+          senderName: actorName,
+          senderRole: "merchant",
+          message: changes.merchantUpdate,
+          messageType: "merchant_update",
+        });
+      }
+      if (changes.salesStage !== undefined && changes.salesStage !== existing.salesStage) {
+        await this.repo.addMessage({
+          id: uuid(),
+          leadId: id,
+          senderId: actorUserId,
+          senderName: actorName,
+          senderRole: "merchant",
+          message: `Stage changed to ${changes.salesStage.replace(/_/g, " ").toUpperCase()}`,
+          messageType: "stage_change",
+        });
+      }
+      if (changes.status !== undefined && changes.status !== existing.status) {
+        await this.repo.addMessage({
+          id: uuid(),
+          leadId: id,
+          senderId: actorUserId,
+          senderName: actorName,
+          senderRole: "merchant",
+          message: `Status changed to ${changes.status.toUpperCase()}`,
+          messageType: "stage_change",
+        });
+      }
+    } catch (msgErr) {
+      console.error("Failed to auto-log lead message:", msgErr);
+    }
+
     await AuditService.record({
       actorUserId, action: "CRM_LEAD_UPDATED", entityType: "crm_lead", entityId: id,
       beforeState: { salesStage: existing.salesStage, status: existing.status },
       afterState: { salesStage: updated.salesStage, status: updated.status },
     });
-
-    // (Notifications removed because Merchants are now just Master Data labels without user accounts)
 
     return updated;
   }
@@ -374,5 +424,66 @@ export class LeadService {
     }
     await AuditService.record({ actorUserId, action: "CRM_LEADS_IMPORTED", entityType: "crm_lead", entityId: null, afterState: { count } });
     return count;
+  }
+
+  async resolveActorName(actorUserId: string): Promise<string> {
+    try {
+      const [rows] = await pool.query<any[]>(
+        "SELECT full_name FROM employees WHERE (user_id = ? OR id = ?) LIMIT 1",
+        [actorUserId, actorUserId]
+      );
+      if (rows.length > 0 && rows[0].full_name) return rows[0].full_name;
+      const [uRows] = await pool.query<any[]>(
+        "SELECT name, email FROM users WHERE id = ? LIMIT 1",
+        [actorUserId]
+      );
+      if (uRows.length > 0 && uRows[0].name) return uRows[0].name;
+    } catch {}
+    return "User";
+  }
+
+  async listMessages(leadId: string, actorUserId: string) {
+    const lead = await this.repo.findById(leadId);
+    if (!lead) throw new NotFoundError("Lead not found.");
+    await this.assertCanAccessLead(lead.assignedMerchantId, actorUserId);
+    return this.repo.listMessagesForLead(leadId);
+  }
+
+  async addMessage(
+    leadId: string,
+    payload: {
+      message: string;
+      senderRole?: "management" | "merchant";
+      senderName?: string;
+      messageType?: "chat" | "management_remark" | "merchant_update" | "stage_change";
+    },
+    actorUserId: string
+  ) {
+    const lead = await this.repo.findById(leadId);
+    if (!lead) throw new NotFoundError("Lead not found.");
+    await this.assertCanAccessLead(lead.assignedMerchantId, actorUserId);
+
+    const isMgmt = await this.isActorAdminOrManagement(actorUserId);
+    const role: "management" | "merchant" = payload.senderRole || (isMgmt ? "management" : "merchant");
+    const name = payload.senderName || (await this.resolveActorName(actorUserId)) || (role === "management" ? "Management" : "Merchant");
+
+    const msg = await this.repo.addMessage({
+      id: uuid(),
+      leadId,
+      senderId: actorUserId,
+      senderName: name,
+      senderRole: role,
+      message: payload.message,
+      messageType: payload.messageType || "chat",
+    });
+
+    // Update lead's latest field on lead record
+    if (role === "management") {
+      await this.repo.update(leadId, { managementRemarks: payload.message });
+    } else {
+      await this.repo.update(leadId, { merchantUpdate: payload.message });
+    }
+
+    return msg;
   }
 }

@@ -1,6 +1,6 @@
 import { v4 as uuid } from "uuid";
 import { pool } from "../../../../infrastructure/database/mysql/connection";
-import { Lead, LeadFile, LeadFollowup, LeadWithContext, computeWeightedForecast } from "../../domain/entities/Lead";
+import { Lead, LeadFile, LeadFollowup, LeadMessage, LeadWithContext, computeWeightedForecast } from "../../domain/entities/Lead";
 import { CreateLeadData, ICrmRepository, ListLeadsParams, UpdateLeadData } from "../../domain/repositories/ICrmRepository";
 
 function mapLead(row: any): Lead {
@@ -34,6 +34,8 @@ function mapLead(row: any): Lead {
     nextFollowUpDate: row.next_follow_up_date,
     followUpRemarks: row.follow_up_remarks,
     nextAction: row.next_action,
+    managementRemarks: row.management_remarks ?? null,
+    merchantUpdate: row.merchant_update ?? null,
     status: row.status,
     priority: row.priority,
     createdBy: row.created_by,
@@ -163,6 +165,7 @@ export class MySqlCrmRepository implements ICrmRepository {
       productCategory: "product_category", inquiryDetails: "inquiry_details", salesStage: "sales_stage",
       forecastAmount: "forecast_amount", winProbability: "win_probability", expectedCloseDate: "expected_close_date",
       nextFollowUpDate: "next_follow_up_date", followUpRemarks: "follow_up_remarks", nextAction: "next_action",
+      managementRemarks: "management_remarks", merchantUpdate: "merchant_update",
       status: "status", priority: "priority", updatedBy: "updated_by",
     };
     const fields: string[] = [];
@@ -236,6 +239,51 @@ export class MySqlCrmRepository implements ICrmRepository {
   async listFilesForLead(leadId: string): Promise<LeadFile[]> {
     const [rows] = await pool.query<any[]>("SELECT * FROM crm_lead_files WHERE lead_id = ?", [leadId]);
     return rows.map((r) => ({ id: r.id, leadId: r.lead_id, fileName: r.file_name, fileUrl: r.file_url, uploadedBy: r.uploaded_by, uploadedAt: r.uploaded_at }));
+  }
+
+  async addMessage(data: {
+    id: string;
+    leadId: string;
+    senderId?: string | null;
+    senderName: string;
+    senderRole: "management" | "merchant" | "system";
+    message: string;
+    messageType?: "chat" | "management_remark" | "merchant_update" | "stage_change";
+  }): Promise<LeadMessage> {
+    await pool.query(
+      `INSERT INTO crm_lead_messages (id, lead_id, sender_id, sender_name, sender_role, message, message_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [data.id, data.leadId, data.senderId ?? null, data.senderName, data.senderRole, data.message, data.messageType ?? "chat"]
+    );
+    const [rows] = await pool.query<any[]>("SELECT * FROM crm_lead_messages WHERE id = ?", [data.id]);
+    const r = rows[0];
+    return {
+      id: r.id,
+      leadId: r.lead_id,
+      senderId: r.sender_id,
+      senderName: r.sender_name,
+      senderRole: r.sender_role,
+      message: r.message,
+      messageType: r.message_type,
+      createdAt: r.created_at,
+    };
+  }
+
+  async listMessagesForLead(leadId: string): Promise<LeadMessage[]> {
+    const [rows] = await pool.query<any[]>(
+      "SELECT * FROM crm_lead_messages WHERE lead_id = ? ORDER BY created_at ASC",
+      [leadId]
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      leadId: r.lead_id,
+      senderId: r.sender_id,
+      senderName: r.sender_name,
+      senderRole: r.sender_role,
+      message: r.message,
+      messageType: r.message_type,
+      createdAt: r.created_at,
+    }));
   }
 
   // Quotations

@@ -42,6 +42,7 @@ export interface OfficeEmReport {
     checklist: OfficeEmModuleScore;
     delegation: OfficeEmModuleScore;
   };
+  averageTaskGapScore?: number | null;
   finalGapScore: number | null;
   adjustedGapScore6040?: number | null;
   taskGapScore6040?: number | null;

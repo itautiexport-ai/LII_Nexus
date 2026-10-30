@@ -100,12 +100,20 @@ export default function OfficeEmReportPage() {
           <div>
             <h3>{title}</h3>
             <div className="module-sub">
-              Redistributed Weight: <strong>{data.normalizedWeight.toFixed(1)}%</strong> (Standard Weight: {data.standardWeight}%)
+              {data.isActive ? (
+                <>Normalized Weight: <strong>{data.normalizedWeight.toFixed(1)}%</strong> (Standard Weight: {data.standardWeight}%)</>
+              ) : (
+                <span style={{ color: "#64748b" }}>N/A — 0 tasks allotted (Excluded from scoring)</span>
+              )}
             </div>
           </div>
           <div className="module-gap-score">
-            <span>Gap Score contribution</span>
-            <span className="bold-red">{data.gapScore.toFixed(1)}</span>
+            <span>Gap Score</span>
+            {data.isActive ? (
+              <span className="bold-red">{data.gapScore.toFixed(1)}</span>
+            ) : (
+              <span style={{ color: "#64748b", fontWeight: 700 }}>N/A</span>
+            )}
           </div>
         </div>
 
@@ -570,7 +578,33 @@ export default function OfficeEmReportPage() {
                       const counts = calculateTaskCounts(module.tasks);
                       return (
                         <div className="modal-module-card" key={title}>
-                          <h3>{title}</h3>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
+                            <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span>{title}</span>
+                              {!module.isActive ? (
+                                <span style={{ fontSize: "11px", fontWeight: "600", background: "#f1f5f9", color: "#64748b", padding: "2px 8px", borderRadius: "10px", border: "1px solid #cbd5e1" }}>
+                                  N/A (0 Allotted)
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: "11px", fontWeight: "600", background: "#eff6ff", color: "#1d4ed8", padding: "2px 8px", borderRadius: "10px", border: "1px solid #bfdbfe" }}>
+                                  Weight: {module.normalizedWeight}%
+                                </span>
+                              )}
+                            </h3>
+                            <div>
+                              <span style={{ 
+                                fontSize: "12px", 
+                                fontWeight: "700", 
+                                padding: "3px 8px", 
+                                borderRadius: "6px",
+                                background: !module.isActive ? "#f1f5f9" : (module.gapScore < 0 ? "#fef2f2" : "#f0fdf4"),
+                                color: !module.isActive ? "#64748b" : (module.gapScore < 0 ? "#dc2626" : "#16a34a"),
+                                border: !module.isActive ? "1px solid #cbd5e1" : (module.gapScore < 0 ? "1px solid #fecaca" : "1px solid #bbf7d0")
+                              }}>
+                                Gap: {!module.isActive ? "N/A" : module.gapScore.toFixed(1)}
+                              </span>
+                            </div>
+                          </div>
                           <div className="modal-stats-grid">
                             <div className="modal-stat-item">
                               <span className="stat-lbl">Total Allotted:</span>
@@ -654,7 +688,14 @@ export default function OfficeEmReportPage() {
                     <div className="footer-stat">
                       <span>Average Task Gap Score:</span>
                       <strong>
-                        {((activeReport.modules.fms.gapScore + activeReport.modules.checklist.gapScore + activeReport.modules.delegation.gapScore) / 3).toFixed(1)}
+                        {activeReport.averageTaskGapScore !== null && activeReport.averageTaskGapScore !== undefined
+                          ? activeReport.averageTaskGapScore.toFixed(1)
+                          : (() => {
+                              const activeMods = [activeReport.modules.fms, activeReport.modules.checklist, activeReport.modules.delegation].filter(m => m.isActive);
+                              return activeMods.length > 0
+                                ? (activeMods.reduce((acc, m) => acc + m.gapScore, 0) / activeMods.length).toFixed(1)
+                                : "0.0";
+                            })()}
                       </strong>
                     </div>
                     <div className="footer-stat" style={{ marginTop: "12px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>

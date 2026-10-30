@@ -36,6 +36,8 @@ export interface Lead {
   nextFollowUpDate: string | null;
   followUpRemarks: string | null;
   nextAction: string | null;
+  managementRemarks: string | null;
+  merchantUpdate: string | null;
   status: LeadStatus;
   priority: LeadPriority;
   createdBy: string | null;
@@ -90,3 +92,15 @@ export interface LeadFile {
   uploadedBy: string | null;
   uploadedAt: Date;
 }
+
+export interface LeadMessage {
+  id: string;
+  leadId: string;
+  senderId: string | null;
+  senderName: string;
+  senderRole: "management" | "merchant" | "system";
+  message: string;
+  messageType: "chat" | "management_remark" | "merchant_update" | "stage_change";
+  createdAt: Date;
+}
+
