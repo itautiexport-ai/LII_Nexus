@@ -739,17 +739,34 @@ const SIDEBAR_STYLES = `
     letter-spacing: -0.02em;
   }
 
+  /* Keep scrolling inside the admin panes instead of the outer document. */
+  html:has(.admin-shell),
+  body:has(.admin-shell) {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  #root:has(.admin-shell) {
+    height: 100%;
+    overflow: hidden;
+  }
+
   .admin-shell {
     display: flex;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
+    overscroll-behavior: none;
   }
 
   .admin-sidebar {
     width: 248px;
     flex-shrink: 0;
     height: 100vh;
+    height: 100dvh;
     overflow-y: auto;
+    overscroll-behavior-y: none;
     overflow-x: hidden;
     border-right: 1px solid #e5e7eb;
     background: #fafafa;
@@ -907,7 +924,10 @@ const SIDEBAR_STYLES = `
   .admin-content {
     flex: 1;
     height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior-y: none;
     overflow-x: hidden;
     background: #fff;
     scrollbar-width: thin;
@@ -979,6 +999,7 @@ const SIDEBAR_STYLES = `
     .admin-content {
       margin-top: 52px;
       height: calc(100vh - 52px);
+      height: calc(100dvh - 52px);
       overflow-x: auto !important;
       -webkit-overflow-scrolling: touch;
     }
