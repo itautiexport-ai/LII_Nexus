@@ -52,9 +52,27 @@ export function UserChecklistPage() {
       setEmployeeId(myEmployeeId);
 
       const dashboardData = await standaloneChecklistApi.getMyDashboard();
-      setMetrics(dashboardData.metrics || { pendingCount: 0, completedToday: 0, totalCompleted: 0 });
-      setActiveChecklists(dashboardData.active || []);
-      setPipelineChecklists(dashboardData.pipeline || []);
+      const isTodaySunday = new Date().getDay() === 0;
+
+      const activeFiltered = (dashboardData.active || []).filter((item: any) => {
+        if (item.skipOnHolidays && isTodaySunday) return false;
+        return true;
+      });
+
+      const pipelineFiltered = (dashboardData.pipeline || []).filter((item: any) => {
+        if (item.skipOnHolidays && new Date(item.plannedDate).getDay() === 0) {
+          return false;
+        }
+        return true;
+      });
+
+      setMetrics({
+        pendingCount: activeFiltered.length,
+        completedToday: dashboardData.metrics?.completedToday || 0,
+        totalCompleted: dashboardData.metrics?.totalCompleted || 0,
+      });
+      setActiveChecklists(activeFiltered);
+      setPipelineChecklists(pipelineFiltered);
       setHistory(dashboardData.history || []);
     } catch (err) {
       console.error("Failed to load user checklist dashboard:", err);

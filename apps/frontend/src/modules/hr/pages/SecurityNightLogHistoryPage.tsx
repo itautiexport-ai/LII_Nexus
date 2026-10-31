@@ -3,29 +3,40 @@ import { securityCustomApi, SecurityNightFormRecord } from "../api/securityCusto
 import { useNavigate } from "react-router-dom";
 
 const CHECKPOINTS = [
-  { id: "501", label: "एच टी पैनल रूम / पिछे वाला गेट 501- फोटो", short: "HT Panel / Back Gate 501" },
-  { id: "502", label: "पावर पैनल रूम / ट्रांसफारमर 502- फोटो", short: "Power Panel / Transformer 502" },
-  { id: "503", label: "बॉयलर / आँपरेटर /हैल्पर 503- फोटो", short: "Boiler / Operator / Helper 503" },
-  { id: "504", label: "डस्ट कलेक्टर एरिया 504-फोटो", short: "Dust Collector Area 504" },
-  { id: "505", label: "मशीन शॉप पॉवर पैनल 505- फोटो", short: "Machine Shop Power Panel 505" },
-  { id: "506", label: "सीएनसी वुडन / आँपरेटर 506- फोटो", short: "CNC Wooden / Operator 506" },
-  { id: "507", label: "पेन्ट बूथ 507- फोटो", short: "Paint Booth 507" },
-  { id: "508", label: "सेन्डिंग एरिया 508 फोटो", short: "Sanding Area 508" },
-  { id: "509", label: "पैकिंग हॉल 509- फोटो", short: "Packing Hall 509" },
-  { id: "510", label: "फायर पैनल 510- फोटो", short: "Fire Panel 510" },
-  { id: "511", label: "सीएनसी लेजर मशीन पैनल 511- फोटो", short: "CNC Laser Panel 511" },
-  { id: "512", label: "पाउडर कोटिंग प्लांट पैनल 512- फोटो", short: "Powder Coating Panel 512" },
-  { id: "513", label: "एसएस वर्क्स शॉप एंव पैनल 513- फोटो", short: "SS Works Panel 513" },
-  { id: "514", label: "प्रथम तल पैनल रूम 514- फोटो", short: "1st Floor Panel Room 514" },
-  { id: "515", label: "प्रथम तल पैकिंग एरिया 515- फोटो", short: "1st Floor Packing 515" },
-  { id: "516", label: "प्रथम तल रॉ मैटेरियल एरिया 516- फोटो", short: "1st Floor Raw Material 516" },
-  { id: "517", label: "ऑफिस एरिया के पास खेड होकर गार्ड स्वयं की फोटो खीचेगा 517- फोटो", short: "Office Area Selfie 517" },
-  { id: "selfie", label: "स्वयं की फोटो मशीन के साथ", short: "Selfie with Machine" },
+  { id: "1", label: "1. पैकिंग हॉल - फोटो", short: "Packing Hall", legacyId: "509" },
+  { id: "2", label: "2. पेन्ट बूथ - फोटो", short: "Paint Booth", legacyId: "507" },
+  { id: "3", label: "3. सेन्डिंग एरिया - फोटो", short: "Sanding Area", legacyId: "508" },
+  { id: "4", label: "4. फायर पैनल - फोटो", short: "Fire Panel", legacyId: "510" },
+  { id: "5", label: "5. एसएस वर्क्स शाॅप एंव पैनल - फोटो", short: "SS Works Shop & Panel", legacyId: "513" },
+  { id: "6", label: "6. पाउडर कोटिंग प्लांट पैनल - फोटो", short: "Powder Coating Plant Panel", legacyId: "512" },
+  { id: "7", label: "7. सीएनसी लेजर मशीन पैनल - फोटो", short: "CNC Laser Machine Panel", legacyId: "511" },
+  { id: "8", label: "8. प्रथम तल पैनल रूम - फोटो", short: "1st Floor Panel Room", legacyId: "514" },
+  { id: "9", label: "9. प्रथम तल पैकिंग एरिया - फोटो", short: "1st Floor Packing Area", legacyId: "515" },
+  { id: "10", label: "10. ऑफिस एरिया के पास खेड होकर गार्ड स्वयं की फोटो खीचेगा - फोटो", short: "Office Area Selfie", legacyId: "517" },
+  { id: "11", label: "11. केमिकल स्टोर - फोटो", short: "Chemical Store" },
+  { id: "12", label: "12. कार्टन रॉ मैटेिरयल एरिया - फोटो", short: "Carton Raw Material Area" },
+  { id: "13", label: "13. C.T.P - फोटो", short: "C.T.P" },
+  { id: "14", label: "14. एच टी पैनल रूम / पिछे वाला गेट - फोटो", short: "HT Panel Room / Back Gate", legacyId: "501" },
+  { id: "15", label: "15. पावर पैनल रूम / ट्रांसफारमर - फोटो", short: "Power Panel Room / Transformer", legacyId: "502" },
+  { id: "16", label: "16. वुड स्टोर - फोटो", short: "Wood Store" },
+  { id: "17", label: "17. सीज़निंग चैम्बर - फोटो", short: "Seasoning Chamber" },
+  { id: "18", label: "18. बॉयलर / आँपरेटर /हैल्पर - फोटो", short: "Boiler / Operator / Helper", legacyId: "503" },
+  { id: "19", label: "19. मशीन शोप पॉवर पैनल - फोटो", short: "Machine Shop Power Panel", legacyId: "505" },
+  { id: "20", label: "20. डस्ट कलेक्टर एरिया - फोटो", short: "Dust Collector Area", legacyId: "504" },
+  { id: "21", label: "21. मशीन शोप (इनसाइड) - फोटो", short: "Machine Shop (Inside)" },
+  { id: "22", label: "22. सीएनसी वुडन / आँपरेटर - फोटो", short: "CNC Wooden / Operator", legacyId: "506" },
+  { id: "23", label: "23. मशीन शोप (आउटसाइड) - फोटो", short: "Machine Shop (Outside)" },
+  { id: "24", label: "24. नया प्लांट - फोटो", short: "New Plant" },
+  { id: "25", label: "25. गेट नई फैक्ट्री - फोटो", short: "New Factory Gate" },
+  { id: "26", label: "26. कैंटीन - फोटो", short: "Canteen" },
+  { id: "27", label: "27. स्वयं की फोटो मशीन के साथ - फोटो", short: "Selfie with Machine", legacyId: "selfie" },
 ];
 
 interface LogImage {
+  id?: string;
   url: string;
   label: string;
+  short?: string;
   capturedAt?: string;
 }
 
@@ -34,14 +45,24 @@ function parseImages(imageUrlStr: string | null): LogImage[] {
   if (imageUrlStr.startsWith("{")) {
     try {
       const obj = JSON.parse(imageUrlStr);
-      return Object.entries(obj).map(([checkpointId, data]: [string, any]) => {
-        const cp = CHECKPOINTS.find((c) => c.id === checkpointId);
+      const entries = Object.entries(obj).map(([checkpointId, data]: [string, any]) => {
+        const cp = CHECKPOINTS.find((c) => c.id === checkpointId || (c as any).legacyId === checkpointId);
         return {
+          id: checkpointId,
           url: data.url || data,
           label: cp ? cp.label : `Checkpoint ${checkpointId}`,
+          short: cp ? cp.short : undefined,
           capturedAt: data.capturedAt,
         };
       });
+      // Sort entries according to CHECKPOINTS sequence
+      entries.sort((a, b) => {
+        const idxA = CHECKPOINTS.findIndex((c) => c.id === a.id || (c as any).legacyId === a.id);
+        const idxB = CHECKPOINTS.findIndex((c) => c.id === b.id || (c as any).legacyId === b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        return 0;
+      });
+      return entries;
     } catch (e) {
       // Fallback on error
     }
@@ -193,7 +214,7 @@ export default function SecurityNightLogHistoryPage() {
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Shift Date</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Location</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Patrol Status</th>
-                  <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Observations</th>
+                  <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Observations / प्रमुख निष्कर्ष</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Remarks</th>
                   <th style={{ padding: "12px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>Action</th>
                 </tr>
@@ -217,8 +238,8 @@ export default function SecurityNightLogHistoryPage() {
                             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", maxWidth: "240px" }}>
                               {parsedImages.map((img, idx) => {
                                 // Extract checkpoint ID or numeric short badge from label
-                                const match = img.label.match(/\d{3}/);
-                                const badgeText = match ? match[0] : img.label.toLowerCase().includes("selfie") ? "Self" : String(idx + 1);
+                                const match = img.label.match(/^(\d+)/) || img.label.match(/\b(\d+)\b/);
+                                const badgeText = match ? match[1] : img.label.toLowerCase().includes("selfie") || img.label.includes("स्वयं") ? "Self" : String(idx + 1);
 
                                 return (
                                   <div

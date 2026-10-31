@@ -146,15 +146,27 @@ export default function MyChecklistPage() {
   const now = new Date();
   const sevenDaysFromNow = new Date();
   sevenDaysFromNow.setDate(now.getDate() + 7);
+  const isTodaySunday = now.getDay() === 0;
 
   // Categorize Standalone Checklists
   const activeStandalone = standaloneList.filter(c => {
+    // If skip on holidays is enabled and today is Sunday, do NOT show in active checklists on Sunday
+    if (c.skipOnHolidays && isTodaySunday) {
+      return false;
+    }
     const pDate = new Date(c.plannedDate);
+    if (c.skipOnHolidays && pDate.getDay() === 0 && isSameDay(pDate, now)) {
+      return false;
+    }
     return pDate <= now || isSameDay(pDate, now);
   });
 
   const pipelineStandalone = standaloneList.filter(c => {
     const pDate = new Date(c.plannedDate);
+    // If skip on holidays is enabled and planned date falls on a Sunday, do NOT show in pipeline
+    if (c.skipOnHolidays && pDate.getDay() === 0) {
+      return false;
+    }
     // Strict pipeline rule: Only show if planned date is in the future AND within 7 days
     return pDate > now && !isSameDay(pDate, now) && pDate <= sevenDaysFromNow;
   });

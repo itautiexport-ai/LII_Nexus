@@ -65,7 +65,13 @@ export class StandaloneChecklistService {
     try {
       const [empRows] = await pool.query<any[]>("SELECT user_id FROM employees WHERE id = ?", [dto.assignTo]);
       const targetUserId = empRows[0]?.user_id || dto.assignTo;
-      const formattedDate = new Date(dto.plannedDate).toLocaleDateString("en-IN", {
+      let effectivePlannedDate = new Date(dto.plannedDate);
+      if (dto.skipOnHolidays && effectivePlannedDate.getDay() === 0) {
+        // If planned date falls on Sunday, advance notification date to Monday
+        effectivePlannedDate.setDate(effectivePlannedDate.getDate() + 1);
+      }
+
+      const formattedDate = effectivePlannedDate.toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
         year: "numeric"
@@ -78,7 +84,7 @@ export class StandaloneChecklistService {
         createdBy: assignedBy,
         title: `Checklist Pipeline: ${dto.taskName}`,
         description: `Apka task pipeline me hai jo ${formattedDate} ko aane wala hai`,
-        dueDate: dto.plannedDate,
+        dueDate: effectivePlannedDate.toISOString(),
         priority: (dto.priority.toLowerCase() === "high" ? "high" : dto.priority.toLowerCase() === "medium" ? "medium" : "low") as any,
       });
     } catch (e) {
@@ -260,6 +266,26 @@ export class StandaloneChecklistService {
       completionsSet.add(`${comp.checklist_id}_${occStr}`);
     }
 
+    // Fetch registered holiday dates from attendance_entries
+    const [holidayRows] = await pool.query<any[]>(
+      `SELECT DISTINCT record_date FROM attendance_entries WHERE (employee_id = ? OR employee_id IS NULL) AND status = 'Holiday'`,
+      [employeeId]
+    );
+    const holidayDatesSet = new Set<string>();
+    for (const h of holidayRows) {
+      if (h.record_date) {
+        holidayDatesSet.add(parseLocalDateStr(new Date(h.record_date)));
+      }
+    }
+
+    const isHolidayOrSunday = (d: Date): boolean => {
+      // Sunday (0) is always a holiday
+      if (d.getDay() === 0) return true;
+      const dStr = parseLocalDateStr(d);
+      if (holidayDatesSet.has(dStr)) return true;
+      return false;
+    };
+
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
@@ -269,6 +295,7 @@ export class StandaloneChecklistService {
     for (const row of rows) {
       const freq = (row.frequency || "one-time").toLowerCase().trim();
       const isOneTime = freq === "one-time" || freq === "once" || freq === "single";
+      const skipHolidays = Boolean(row.skip_on_holidays);
 
       const initDate = new Date(row.planned_date);
       if (initDate.getHours() === 0 && initDate.getMinutes() === 0) {
@@ -279,7 +306,9 @@ export class StandaloneChecklistService {
       let curr = new Date(initDate);
 
       if (isOneTime) {
-        occurrences.push(new Date(curr));
+        if (!skipHolidays || !isHolidayOrSunday(curr)) {
+          occurrences.push(new Date(curr));
+        }
       } else {
         let count = 0;
         while (count < 365) {
@@ -287,10 +316,17 @@ export class StandaloneChecklistService {
           const curr9am = new Date(curr);
           curr9am.setHours(9, 0, 0, 0);
 
-          occurrences.push(new Date(curr9am));
+          if (!skipHolidays || !isHolidayOrSunday(curr9am)) {
+            occurrences.push(new Date(curr9am));
+          }
 
           if (curr9am > now) {
-            break;
+            const diffTime = curr9am.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            // Collect pipeline occurrences up to 7 days in advance
+            if (diffDays >= 7) {
+              break;
+            }
           }
 
           curr = getNextOccurrenceDate(curr, freq);
@@ -298,6 +334,11 @@ export class StandaloneChecklistService {
       }
 
       for (const occDate of occurrences) {
+        // Enforce holiday/Sunday skipping
+        if (skipHolidays && isHolidayOrSunday(occDate)) {
+          continue;
+        }
+
         const dateStr = parseLocalDateStr(occDate);
         const occ9am = new Date(occDate);
         occ9am.setHours(9, 0, 0, 0);
