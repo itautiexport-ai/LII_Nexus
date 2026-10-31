@@ -57,8 +57,17 @@ export const updateLeadSchema = z.object({
   nextFollowUpDate: z.string().optional().nullable(),
   followUpRemarks: z.string().max(1000).optional().nullable(),
   nextAction: z.string().max(500).optional().nullable(),
+  managementRemarks: z.string().optional().nullable(),
+  merchantUpdate: z.string().optional().nullable(),
   status: z.enum(["active", "won", "lost", "dead", "dormant"]).optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+});
+
+export const createMessageSchema = z.object({
+  message: z.string().min(1),
+  senderRole: z.enum(["management", "merchant"]).optional(),
+  senderName: z.string().optional(),
+  messageType: z.enum(["chat", "management_remark", "merchant_update", "stage_change"]).optional(),
 });
 
 export const assignLeadSchema = z.object({

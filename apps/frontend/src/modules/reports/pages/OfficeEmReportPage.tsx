@@ -31,7 +31,7 @@ export default function OfficeEmReportPage() {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [showActions]);
-  
+
   // Expanded week track state (contains the week string, e.g. "2026-W34")
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
   const activeReport = reports.find(r => r.periodType === expandedWeek);
@@ -131,12 +131,20 @@ export default function OfficeEmReportPage() {
           <div>
             <h3>{title}</h3>
             <div className="module-sub">
-              Redistributed Weight: <strong>{data.normalizedWeight.toFixed(1)}%</strong> (Standard Weight: {data.standardWeight}%)
+              {data.isActive ? (
+                <>Normalized Weight: <strong>{data.normalizedWeight.toFixed(1)}%</strong> (Standard Weight: {data.standardWeight}%)</>
+              ) : (
+                <span style={{ color: "#64748b" }}>N/A — 0 tasks allotted (Excluded from scoring)</span>
+              )}
             </div>
           </div>
           <div className="module-gap-score">
-            <span>Gap Score contribution</span>
-            <span className="bold-red">{data.gapScore.toFixed(1)}</span>
+            <span>Gap Score</span>
+            {data.isActive ? (
+              <span className="bold-red">{data.gapScore.toFixed(1)}</span>
+            ) : (
+              <span style={{ color: "#64748b", fontWeight: 700 }}>N/A</span>
+            )}
           </div>
         </div>
 
@@ -400,26 +408,26 @@ export default function OfficeEmReportPage() {
           </select>
         </div>
 
-        <input 
-          type="week" 
-          className="professional-select" 
-          value={period} 
-          onChange={e => setPeriod(e.target.value)} 
+        <input
+          type="week"
+          className="professional-select"
+          value={period}
+          onChange={e => setPeriod(e.target.value)}
           style={{ width: "200px" }}
         />
-        
+
         {reports.length > 0 && (
           <div style={{ position: "relative", display: "inline-block" }}>
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowActions(!showActions);
-              }} 
+              }}
               className="export-btn dropdown-trigger-btn"
             >
               📥 Export / Print Option <span style={{ fontSize: "10px", marginLeft: "4px" }}>▼</span>
             </button>
-            
+
             {showActions && (
               <div style={{
                 position: "absolute",
@@ -434,7 +442,7 @@ export default function OfficeEmReportPage() {
                 minWidth: "180px",
                 overflow: "hidden"
               }}>
-                <button 
+                <button
                   onClick={() => {
                     handleExportExcel();
                     setShowActions(false);
@@ -443,7 +451,7 @@ export default function OfficeEmReportPage() {
                 >
                   🟢 Export to Excel
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     handlePrint();
                     setShowActions(false);
@@ -498,7 +506,7 @@ export default function OfficeEmReportPage() {
                           )}
                         </td>
                         <td style={{ fontSize: "13px", color: "#475569" }}>
-                          <span 
+                          <span
                             onClick={() => { setModalTab("summary"); setExpandedWeek(weekRep.periodType); }}
                             style={{ cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", color: "#2563eb" }}
                             title="Click to view underlying FMS tasks"
@@ -507,7 +515,7 @@ export default function OfficeEmReportPage() {
                           </span>
                         </td>
                         <td style={{ fontSize: "13px", color: "#475569" }}>
-                          <span 
+                          <span
                             onClick={() => { setModalTab("summary"); setExpandedWeek(weekRep.periodType); }}
                             style={{ cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", color: "#2563eb" }}
                             title="Click to view underlying Checklist tasks"
@@ -516,7 +524,7 @@ export default function OfficeEmReportPage() {
                           </span>
                         </td>
                         <td style={{ fontSize: "13px", color: "#475569" }}>
-                          <span 
+                          <span
                             onClick={() => { setModalTab(calculateTaskCounts(weekRep.modules.delegation.tasks).pending > 0 ? "pending" : "summary"); setExpandedWeek(weekRep.periodType); }}
                             style={{ cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", color: "#2563eb", fontWeight: 600 }}
                             title="Click to view underlying Delegation tasks"
@@ -582,21 +590,21 @@ export default function OfficeEmReportPage() {
               <h2>{formatWeekName(activeReport.periodType)} - Detailed Result</h2>
               <button className="custom-modal-close" onClick={() => setExpandedWeek(null)}>✕</button>
             </div>
-            
+
             <div className="modal-tabs">
-              <button 
+              <button
                 className={`modal-tab-btn ${modalTab === "summary" ? "active" : ""}`}
                 onClick={() => setModalTab("summary")}
               >
                 Summary
               </button>
-              <button 
+              <button
                 className={`modal-tab-btn ${modalTab === "pending" ? "active" : ""}`}
                 onClick={() => setModalTab("pending")}
               >
                 Pending Items
               </button>
-              <button 
+              <button
                 className={`modal-tab-btn ${modalTab === "completed" ? "active" : ""}`}
                 onClick={() => setModalTab("completed")}
               >
@@ -639,7 +647,33 @@ export default function OfficeEmReportPage() {
                       const counts = calculateTaskCounts(module.tasks);
                       return (
                         <div className="modal-module-card" key={title}>
-                          <h3>{title}</h3>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
+                            <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span>{title}</span>
+                              {!module.isActive ? (
+                                <span style={{ fontSize: "11px", fontWeight: "600", background: "#f1f5f9", color: "#64748b", padding: "2px 8px", borderRadius: "10px", border: "1px solid #cbd5e1" }}>
+                                  N/A (0 Allotted)
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: "11px", fontWeight: "600", background: "#eff6ff", color: "#1d4ed8", padding: "2px 8px", borderRadius: "10px", border: "1px solid #bfdbfe" }}>
+                                  Weight: {module.normalizedWeight}%
+                                </span>
+                              )}
+                            </h3>
+                            <div>
+                              <span style={{
+                                fontSize: "12px",
+                                fontWeight: "700",
+                                padding: "3px 8px",
+                                borderRadius: "6px",
+                                background: !module.isActive ? "#f1f5f9" : (module.gapScore < 0 ? "#fef2f2" : "#f0fdf4"),
+                                color: !module.isActive ? "#64748b" : (module.gapScore < 0 ? "#dc2626" : "#16a34a"),
+                                border: !module.isActive ? "1px solid #cbd5e1" : (module.gapScore < 0 ? "1px solid #fecaca" : "1px solid #bbf7d0")
+                              }}>
+                                Gap: {!module.isActive ? "N/A" : module.gapScore.toFixed(1)}
+                              </span>
+                            </div>
+                          </div>
                           <div className="modal-stats-grid">
                             <div className="modal-stat-item">
                               <span className="stat-lbl">Total Allotted:</span>
@@ -671,7 +705,14 @@ export default function OfficeEmReportPage() {
                     <div className="footer-stat">
                       <span>Average Task Gap Score:</span>
                       <strong>
-                        {((activeReport.modules.fms.gapScore + activeReport.modules.checklist.gapScore + activeReport.modules.delegation.gapScore) / 3).toFixed(1)}
+                        {activeReport.averageTaskGapScore !== null && activeReport.averageTaskGapScore !== undefined
+                          ? activeReport.averageTaskGapScore.toFixed(1)
+                          : (() => {
+                              const activeMods = [activeReport.modules.fms, activeReport.modules.checklist, activeReport.modules.delegation].filter(m => m.isActive);
+                              return activeMods.length > 0
+                                ? (activeMods.reduce((acc, m) => acc + m.gapScore, 0) / activeMods.length).toFixed(1)
+                                : "0.0";
+                            })()}
                       </strong>
                     </div>
                     <div className="footer-stat" style={{ marginTop: "12px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>

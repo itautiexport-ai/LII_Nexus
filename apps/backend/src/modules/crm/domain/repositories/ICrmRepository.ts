@@ -1,4 +1,4 @@
-import { Lead, LeadCategory, LeadFile, LeadFollowup, LeadPriority, LeadSource, LeadStatus, LeadWithContext, SalesStage } from "../entities/Lead";
+import { Lead, LeadCategory, LeadFile, LeadFollowup, LeadMessage, LeadPriority, LeadSource, LeadStatus, LeadWithContext, SalesStage } from "../entities/Lead";
 
 export interface CreateLeadData {
   id: string;
@@ -28,6 +28,8 @@ export interface CreateLeadData {
   nextFollowUpDate?: string | null;
   followUpRemarks?: string | null;
   nextAction?: string | null;
+  managementRemarks?: string | null;
+  merchantUpdate?: string | null;
   priority?: LeadPriority;
   createdBy: string | null;
 }
@@ -57,6 +59,8 @@ export interface UpdateLeadData {
   nextFollowUpDate?: string | null;
   followUpRemarks?: string | null;
   nextAction?: string | null;
+  managementRemarks?: string | null;
+  merchantUpdate?: string | null;
   status?: LeadStatus;
   priority?: LeadPriority;
   updatedBy?: string;
@@ -94,6 +98,17 @@ export interface ICrmRepository {
 
   addFile(leadId: string, fileName: string, fileUrl: string, uploadedBy: string | null): Promise<LeadFile>;
   listFilesForLead(leadId: string): Promise<LeadFile[]>;
+
+  addMessage(data: {
+    id: string;
+    leadId: string;
+    senderId?: string | null;
+    senderName: string;
+    senderRole: "management" | "merchant" | "system";
+    message: string;
+    messageType?: "chat" | "management_remark" | "merchant_update" | "stage_change";
+  }): Promise<LeadMessage>;
+  listMessagesForLead(leadId: string): Promise<LeadMessage[]>;
 
   // Quotations
   listQuotations(): Promise<any[]>;

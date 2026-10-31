@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { LeadController } from "../controllers/LeadController";
 import { CrmDashboardController } from "../controllers/CrmDashboardController";
-import { createLeadSchema, updateLeadSchema, assignLeadSchema, logFollowupSchema, addFileSchema } from "../../application/dto/lead.dto";
+import { createLeadSchema, updateLeadSchema, assignLeadSchema, logFollowupSchema, addFileSchema, createMessageSchema } from "../../application/dto/lead.dto";
 import { validate } from "../../../../shared/middlewares/validate-request.middleware";
 import { authMiddleware } from "../../../../shared/middlewares/auth.middleware";
 import { requirePermission } from "../../../../shared/middlewares/rbac.middleware";
@@ -41,6 +41,8 @@ router.patch("/crm/leads/:id/assign", validate(assignLeadSchema), asyncHandler(L
 router.delete("/crm/leads/:id", requirePermission("crm.lead.delete"), asyncHandler(LeadController.remove));
 router.post("/crm/leads/:id/followups", validate(logFollowupSchema), asyncHandler(LeadController.logFollowup));
 router.post("/crm/leads/:id/files", validate(addFileSchema), asyncHandler(LeadController.addFile));
+router.get("/crm/leads/:id/messages", asyncHandler(LeadController.listMessages));
+router.post("/crm/leads/:id/messages", validate(createMessageSchema), asyncHandler(LeadController.addMessage));
 
 // Quotations
 import { QuotationController } from "../controllers/QuotationController";

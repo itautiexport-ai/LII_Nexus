@@ -38,12 +38,25 @@ export interface LeadRecord {
   expectedCloseDate: string | null;
   nextFollowUpDate: string | null;
   followUpRemarks: string | null;
+  managementRemarks?: string | null;
+  merchantUpdate?: string | null;
   nextAction: string | null;
   delayDays: number;
   status: LeadStatus;
   priority: LeadPriority;
   createdByName: string | null;
   updatedByName: string | null;
+}
+
+export interface LeadMessage {
+  id: string;
+  leadId: string;
+  senderId: string | null;
+  senderName: string;
+  senderRole: "management" | "merchant" | "system";
+  message: string;
+  messageType: "chat" | "management_remark" | "merchant_update" | "stage_change";
+  createdAt: string;
 }
 
 export interface FollowupRecord {
@@ -61,6 +74,14 @@ export interface LeadDetail extends LeadRecord {
 }
 
 export const crmApi = {
+  async listMessages(leadId: string): Promise<LeadMessage[]> {
+    const res = await axiosInstance.get(`/crm/leads/${leadId}/messages`);
+    return res.data.data;
+  },
+  async addMessage(leadId: string, payload: { message: string; senderRole?: "management" | "merchant"; senderName?: string; messageType?: "chat" | "management_remark" | "merchant_update" | "stage_change" }): Promise<LeadMessage> {
+    const res = await axiosInstance.post(`/crm/leads/${leadId}/messages`, payload);
+    return res.data.data;
+  },
   async list(params: Record<string, string | boolean | undefined> = {}) {
     const res = await axiosInstance.get("/crm/leads", { params: { page: 1, pageSize: 20, ...params } });
     return { items: res.data.data as LeadRecord[], totalItems: res.data.meta.totalItems as number };

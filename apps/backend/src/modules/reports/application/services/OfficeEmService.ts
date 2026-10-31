@@ -42,7 +42,10 @@ export interface OfficeEmReport {
     checklist: OfficeEmModuleScore;
     delegation: OfficeEmModuleScore;
   };
+  averageTaskGapScore?: number | null;
   finalGapScore: number | null;
+  adjustedGapScore6040?: number | null;
+  taskGapScore6040?: number | null;
 }
 
 function getPriorityPoints(priority: string | null): number {
@@ -179,7 +182,7 @@ export class OfficeEmService {
             onTimePoints += points;
           }
         } else {
-          t.base_status = (t.base_status === "running" || t.base_status === "In Progress") ? "running" : "pending";
+          t.base_status = (t.base_status === "running" || (t.base_status === "Under Process" || t.base_status === "In Progress")) ? "running" : "pending";
           const dueTime = new Date(t.due_date).getTime();
           if (dueTime <= endDate.getTime()) {
             totalDuePoints += points;
@@ -187,15 +190,24 @@ export class OfficeEmService {
         }
       });
 
-      const isActive = totalDuePoints > 0 || uniqueTasks.length > 0;
+      // A module is active ONLY if it has tasks allotted (due points > 0)
+      const isActive = totalDuePoints > 0;
 
-      const completionPercent = totalDuePoints > 0 ? (completedPoints / totalDuePoints) * 100 : 0;
-      const onTimePercent = completedPoints > 0 ? (onTimePoints / completedPoints) * 100 : 0;
+      // When no tasks are allotted:
+      // The module is N/A - not poor performance! Gaps are 0, gapScore is 0.
+      let completionPercent = 0;
+      let onTimePercent = 0;
+      let completionGap = 0;
+      let timelinessGap = 0;
+      let gapScore = 0;
 
-      const completionGap = 100 - completionPercent;
-      const timelinessGap = 100 - onTimePercent;
-
-      const gapScore = -1 * ((completionGap * 0.6) + (timelinessGap * 0.4));
+      if (isActive) {
+        completionPercent = (completedPoints / totalDuePoints) * 100;
+        onTimePercent = completedPoints > 0 ? (onTimePoints / completedPoints) * 100 : 0;
+        completionGap = 100 - completionPercent;
+        timelinessGap = 100 - onTimePercent;
+        gapScore = -1 * ((completionGap * 0.6) + (timelinessGap * 0.4));
+      }
 
       const mappedTasks: OfficeEmTaskDetail[] = uniqueTasks.map(t => ({
         id: t.id,
@@ -324,7 +336,7 @@ export class OfficeEmService {
        JOIN fms_steps fs ON fis.fms_step_id = fs.id
        WHERE (
          ((fis.completed_by IN (?) OR fis.status IN ('Completed', 'Skipped')) AND fis.completed_at >= ? AND fis.completed_at <= ?)
-         OR (fi.status = 'In Progress' AND fis.status = 'In Progress')
+         OR (fi.status = 'In Progress' AND fis.status IN ('Under Process', 'In Progress'))
        )`,
       [myIds, startStr, endStr]
     );
@@ -349,7 +361,7 @@ export class OfficeEmService {
       let base_status = "pending";
       if (fis.base_status === "Completed" || fis.base_status === "Skipped" || fis.completed_at !== null) {
         base_status = "completed";
-      } else if (fis.base_status === "In Progress") {
+      } else if ((fis.base_status === "Under Process" || fis.base_status === "In Progress")) {
         base_status = "running";
       }
 
@@ -435,61 +447,136 @@ export class OfficeEmService {
       pendingMessage = "HR evaluation is pending. First get HR evaluation done to get the score.";
     }
 
-    // Weight Redistribution calculation rules
-    const fmsActive = fmsScore.totalDuePoints > 0;
-    const checklistActive = checklistScore.totalDuePoints > 0;
-    const delegationActive = delegationScore.totalDuePoints > 0;
+    // -------------------------------------------------------------
+    // Weight Normalization & Gap Scoring
+    // Rule: If no tasks are allotted in a module, that module is N/A
+    // and must be excluded. Remaining active module weights are
+    // proportionally normalized across all active components.
+    // -------------------------------------------------------------
+    const hasCompletedEvaluations = !isEvaluationPending && hodScore !== null && hrScore !== null;
+    const hodGapScore = hodScore !== null ? -100 * (1 - hodScore / 5) : 0;
+    const hrGapScore = hrScore !== null ? -100 * (1 - hrScore / 5) : 0;
 
-    let fmsRedistributedWeight = 0;
-    let checklistRedistributedWeight = 0;
-    let delegationRedistributedWeight = 0;
-    let hodRedistributedWeight = hodWeightVal;
-    let hrRedistributedWeight = hrWeightVal;
-
-    const N_active_tasks = (fmsActive ? 1 : 0) + (checklistActive ? 1 : 0) + (delegationActive ? 1 : 0);
-    const W_inactive = (!fmsActive ? fmsWeightVal : 0) + (!checklistActive ? checklistWeightVal : 0) + (!delegationActive ? delegationWeightVal : 0);
-
-    if (N_active_tasks > 0) {
-      fmsRedistributedWeight = fmsActive ? fmsWeightVal + (W_inactive / N_active_tasks) : 0;
-      checklistRedistributedWeight = checklistActive ? checklistWeightVal + (W_inactive / N_active_tasks) : 0;
-      delegationRedistributedWeight = delegationActive ? delegationWeightVal + (W_inactive / N_active_tasks) : 0;
-    } else {
-      // If no tasks are active in any of the three components, split task weights equally between HOD and HR
-      const taskWeightsSum = fmsWeightVal + checklistWeightVal + delegationWeightVal;
-      hodRedistributedWeight = hodWeightVal + (taskWeightsSum / 2);
-      hrRedistributedWeight = hrWeightVal + (taskWeightsSum / 2);
+    // 1. Average Task Gap Score (across active task modules only)
+    const activeTaskModules = [fmsScore, checklistScore, delegationScore].filter(m => m.isActive);
+    let averageTaskGapScore: number = 0.0;
+    if (activeTaskModules.length > 0) {
+      const sumGaps = activeTaskModules.reduce((acc, m) => acc + m.gapScore, 0);
+      averageTaskGapScore = parseFloat((sumGaps / activeTaskModules.length).toFixed(1));
     }
 
-    console.log("[DEBUG generateGapScoreReport]", {
-      fmsActive,
-      checklistActive,
-      delegationActive,
-      N_active_tasks,
-      W_inactive,
-      fmsRedistributedWeight,
-      checklistRedistributedWeight,
-      delegationRedistributedWeight
-    });
+    // 2. Total Active Base Weight across all active components
+    let totalActiveBaseWeight = 0;
+    if (fmsScore.isActive) totalActiveBaseWeight += fmsWeightVal;
+    if (checklistScore.isActive) totalActiveBaseWeight += checklistWeightVal;
+    if (delegationScore.isActive) totalActiveBaseWeight += delegationWeightVal;
 
-    fmsScore.normalizedWeight = fmsRedistributedWeight;
-    checklistScore.normalizedWeight = checklistRedistributedWeight;
-    delegationScore.normalizedWeight = delegationRedistributedWeight;
+    if (hasCompletedEvaluations) {
+      totalActiveBaseWeight += hodWeightVal + hrWeightVal;
+    }
 
+    // 3. Proportionally normalize weights
+    let fmsNormalizedWeight = 0;
+    let checklistNormalizedWeight = 0;
+    let delegationNormalizedWeight = 0;
+    let hodNormalizedWeight = 0;
+    let hrNormalizedWeight = 0;
+
+    if (totalActiveBaseWeight > 0) {
+      if (fmsScore.isActive) {
+        fmsNormalizedWeight = parseFloat(((fmsWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
+      }
+      if (checklistScore.isActive) {
+        checklistNormalizedWeight = parseFloat(((checklistWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
+      }
+      if (delegationScore.isActive) {
+        delegationNormalizedWeight = parseFloat(((delegationWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
+      }
+      if (hasCompletedEvaluations) {
+        hodNormalizedWeight = parseFloat(((hodWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
+        hrNormalizedWeight = parseFloat(((hrWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
+      }
+    } else {
+      hodNormalizedWeight = hodWeightVal;
+      hrNormalizedWeight = hrWeightVal;
+    }
+
+    fmsScore.normalizedWeight = fmsNormalizedWeight;
+    checklistScore.normalizedWeight = checklistNormalizedWeight;
+    delegationScore.normalizedWeight = delegationNormalizedWeight;
+
+    // 4. Final Gap Score calculation
     let finalGapScore: number | null = null;
 
-    if (!isEvaluationPending && hodScore !== null && hrScore !== null) {
-      const hodGapScore = -100 * (1 - hodScore / 5);
-      const hrGapScore = -100 * (1 - hrScore / 5);
+    if (hasCompletedEvaluations && totalActiveBaseWeight > 0) {
+      let weightedGapSum = 0;
+      if (fmsScore.isActive) {
+        weightedGapSum += fmsScore.gapScore * (fmsWeightVal / totalActiveBaseWeight);
+      }
+      if (checklistScore.isActive) {
+        weightedGapSum += checklistScore.gapScore * (checklistWeightVal / totalActiveBaseWeight);
+      }
+      if (delegationScore.isActive) {
+        weightedGapSum += delegationScore.gapScore * (delegationWeightVal / totalActiveBaseWeight);
+      }
+      weightedGapSum += hodGapScore * (hodWeightVal / totalActiveBaseWeight);
+      weightedGapSum += hrGapScore * (hrWeightVal / totalActiveBaseWeight);
 
-      finalGapScore = (fmsScore.gapScore * (fmsRedistributedWeight / 100)) +
-                      (checklistScore.gapScore * (checklistRedistributedWeight / 100)) +
-                      (delegationScore.gapScore * (delegationRedistributedWeight / 100)) +
-                      (hodGapScore * (hodRedistributedWeight / 100)) +
-                      (hrGapScore * (hrRedistributedWeight / 100));
+      weightedGapSum = Math.max(-100, Math.min(0, weightedGapSum));
+      finalGapScore = parseFloat(weightedGapSum.toFixed(1));
+    }
 
-      finalGapScore = Math.max(-100, finalGapScore);
+    // ==========================================
+    // 60:40 Additional Calculation (Same-Week Completion Rule)
+    // If all tasks are completed in the same week, the completion penalty is 0,
+    // and penalty is strictly capped to the timeliness portion (max 40% of module weight).
+    // ==========================================
+    const calcModule6040 = (mod: OfficeEmModuleScore): number => {
+      if (!mod.isActive || mod.totalDuePoints === 0) return 0;
+      if (mod.completionPercent >= 100) {
+        return -1 * (mod.timelinessGap * 0.4);
+      }
+      return mod.gapScore;
+    };
 
-      finalGapScore = parseFloat(finalGapScore.toFixed(1));
+    // Task gap score 60:40 across active task modules
+    let taskGapScore6040: number | null = null;
+    const totalActiveTaskBaseWeight = (fmsScore.isActive ? fmsWeightVal : 0) +
+                                      (checklistScore.isActive ? checklistWeightVal : 0) +
+                                      (delegationScore.isActive ? delegationWeightVal : 0);
+
+    if (totalActiveTaskBaseWeight > 0) {
+      let taskSum6040 = 0;
+      if (fmsScore.isActive) {
+        taskSum6040 += calcModule6040(fmsScore) * (fmsWeightVal / totalActiveTaskBaseWeight);
+      }
+      if (checklistScore.isActive) {
+        taskSum6040 += calcModule6040(checklistScore) * (checklistWeightVal / totalActiveTaskBaseWeight);
+      }
+      if (delegationScore.isActive) {
+        taskSum6040 += calcModule6040(delegationScore) * (delegationWeightVal / totalActiveTaskBaseWeight);
+      }
+      taskGapScore6040 = parseFloat(taskSum6040.toFixed(1));
+    }
+
+    // Overall adjusted gap score 60:40 across all active components (including HOD & HR)
+    let adjustedGapScore6040: number | null = null;
+    if (hasCompletedEvaluations && totalActiveBaseWeight > 0) {
+      let adjustedSum = 0;
+      if (fmsScore.isActive) {
+        adjustedSum += calcModule6040(fmsScore) * (fmsWeightVal / totalActiveBaseWeight);
+      }
+      if (checklistScore.isActive) {
+        adjustedSum += calcModule6040(checklistScore) * (checklistWeightVal / totalActiveBaseWeight);
+      }
+      if (delegationScore.isActive) {
+        adjustedSum += calcModule6040(delegationScore) * (delegationWeightVal / totalActiveBaseWeight);
+      }
+      adjustedSum += hodGapScore * (hodWeightVal / totalActiveBaseWeight);
+      adjustedSum += hrGapScore * (hrWeightVal / totalActiveBaseWeight);
+
+      adjustedSum = Math.max(-100, Math.min(0, adjustedSum));
+      adjustedGapScore6040 = parseFloat(adjustedSum.toFixed(1));
     }
 
     return {
@@ -502,14 +589,17 @@ export class OfficeEmService {
       pendingMessage,
       hodScore,
       hrScore,
-      hodWeight: hodRedistributedWeight,
-      hrWeight: hrRedistributedWeight,
+      hodWeight: hodNormalizedWeight,
+      hrWeight: hrNormalizedWeight,
       modules: {
         fms: fmsScore,
         checklist: checklistScore,
         delegation: delegationScore
       },
-      finalGapScore
+      averageTaskGapScore,
+      finalGapScore,
+      adjustedGapScore6040,
+      taskGapScore6040
     };
   }
 

@@ -85,4 +85,12 @@ export const LeadController = {
     const count = await service.bulkImport(rows, req.user!.sub);
     return created(res, { imported: count });
   },
+
+  async listMessages(req: AuthenticatedRequest, res: Response) {
+    return ok(res, await service.listMessages(req.params.id, req.user!.sub));
+  },
+
+  async addMessage(req: AuthenticatedRequest, res: Response) {
+    return created(res, await service.addMessage(req.params.id, req.body, req.user!.sub));
+  },
 };
