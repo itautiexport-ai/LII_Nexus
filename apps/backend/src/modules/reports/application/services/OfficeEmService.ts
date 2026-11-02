@@ -448,10 +448,14 @@ export class OfficeEmService {
     }
 
     // -------------------------------------------------------------
-    // Weight Normalization & Gap Scoring
-    // Rule: If no tasks are allotted in a module, that module is N/A
-    // and must be excluded. Remaining active module weights are
-    // proportionally normalized across all active components.
+    // Weight Redistribution & Gap Scoring
+    // Rule:
+    // - Total task pool weight = fmsWeight + checklistWeight + delegationWeight (e.g. 80%).
+    // - If any task module (FMS, Checklist, Delegation) has no tasks allotted,
+    //   the total task pool weight (e.g. 80%) is proportionally redistributed
+    //   ONLY among the remaining active task modules based on their base weights.
+    // - HOD and HR evaluations NEVER absorb task weights; they strictly retain
+    //   their configured weights (e.g. 10% and 10%).
     // -------------------------------------------------------------
     const hasCompletedEvaluations = !isEvaluationPending && hodScore !== null && hrScore !== null;
     const hodGapScore = hodScore !== null ? -100 * (1 - hodScore / 5) : 0;
@@ -465,62 +469,56 @@ export class OfficeEmService {
       averageTaskGapScore = parseFloat((sumGaps / activeTaskModules.length).toFixed(1));
     }
 
-    // 2. Total Active Base Weight across all active components
-    let totalActiveBaseWeight = 0;
-    if (fmsScore.isActive) totalActiveBaseWeight += fmsWeightVal;
-    if (checklistScore.isActive) totalActiveBaseWeight += checklistWeightVal;
-    if (delegationScore.isActive) totalActiveBaseWeight += delegationWeightVal;
+    // 2. Proportionally redistribute total task pool weight ONLY among active task modules (FMS, Checklist, Delegation)
+    const totalTaskPoolWeight = fmsWeightVal + checklistWeightVal + delegationWeightVal;
+    const activeTaskBaseWeightSum =
+      (fmsScore.isActive ? fmsWeightVal : 0) +
+      (checklistScore.isActive ? checklistWeightVal : 0) +
+      (delegationScore.isActive ? delegationWeightVal : 0);
 
-    if (hasCompletedEvaluations) {
-      totalActiveBaseWeight += hodWeightVal + hrWeightVal;
+    let fmsEffectiveWeight = 0;
+    let checklistEffectiveWeight = 0;
+    let delegationEffectiveWeight = 0;
+
+    if (activeTaskBaseWeightSum > 0) {
+      fmsEffectiveWeight = fmsScore.isActive
+        ? (fmsWeightVal / activeTaskBaseWeightSum) * totalTaskPoolWeight
+        : 0;
+      checklistEffectiveWeight = checklistScore.isActive
+        ? (checklistWeightVal / activeTaskBaseWeightSum) * totalTaskPoolWeight
+        : 0;
+      delegationEffectiveWeight = delegationScore.isActive
+        ? (delegationWeightVal / activeTaskBaseWeightSum) * totalTaskPoolWeight
+        : 0;
     }
 
-    // 3. Proportionally normalize weights
-    let fmsNormalizedWeight = 0;
-    let checklistNormalizedWeight = 0;
-    let delegationNormalizedWeight = 0;
-    let hodNormalizedWeight = 0;
-    let hrNormalizedWeight = 0;
+    // HOD and HR weights remain strictly their configured weights (never receive task weights)
+    const hodEffectiveWeight = hodWeightVal;
+    const hrEffectiveWeight = hrWeightVal;
 
-    if (totalActiveBaseWeight > 0) {
-      if (fmsScore.isActive) {
-        fmsNormalizedWeight = parseFloat(((fmsWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
-      }
-      if (checklistScore.isActive) {
-        checklistNormalizedWeight = parseFloat(((checklistWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
-      }
-      if (delegationScore.isActive) {
-        delegationNormalizedWeight = parseFloat(((delegationWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
-      }
-      if (hasCompletedEvaluations) {
-        hodNormalizedWeight = parseFloat(((hodWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
-        hrNormalizedWeight = parseFloat(((hrWeightVal / totalActiveBaseWeight) * 100).toFixed(1));
-      }
-    } else {
-      hodNormalizedWeight = hodWeightVal;
-      hrNormalizedWeight = hrWeightVal;
-    }
+    const fmsNormalizedWeight = parseFloat(fmsEffectiveWeight.toFixed(2));
+    const checklistNormalizedWeight = parseFloat(checklistEffectiveWeight.toFixed(2));
+    const delegationNormalizedWeight = parseFloat(delegationEffectiveWeight.toFixed(2));
+    const hodNormalizedWeight = parseFloat(hodEffectiveWeight.toFixed(2));
+    const hrNormalizedWeight = parseFloat(hrEffectiveWeight.toFixed(2));
 
     fmsScore.normalizedWeight = fmsNormalizedWeight;
     checklistScore.normalizedWeight = checklistNormalizedWeight;
     delegationScore.normalizedWeight = delegationNormalizedWeight;
 
-    // 4. Final Gap Score calculation
+    const totalConfiguredWeight =
+      (fmsWeightVal + checklistWeightVal + delegationWeightVal + hodWeightVal + hrWeightVal) || 100;
+
+    // 3. Final Gap Score calculation
     let finalGapScore: number | null = null;
 
-    if (hasCompletedEvaluations && totalActiveBaseWeight > 0) {
-      let weightedGapSum = 0;
-      if (fmsScore.isActive) {
-        weightedGapSum += fmsScore.gapScore * (fmsWeightVal / totalActiveBaseWeight);
-      }
-      if (checklistScore.isActive) {
-        weightedGapSum += checklistScore.gapScore * (checklistWeightVal / totalActiveBaseWeight);
-      }
-      if (delegationScore.isActive) {
-        weightedGapSum += delegationScore.gapScore * (delegationWeightVal / totalActiveBaseWeight);
-      }
-      weightedGapSum += hodGapScore * (hodWeightVal / totalActiveBaseWeight);
-      weightedGapSum += hrGapScore * (hrWeightVal / totalActiveBaseWeight);
+    if (hasCompletedEvaluations) {
+      let weightedGapSum =
+        (fmsScore.isActive ? fmsScore.gapScore * (fmsEffectiveWeight / totalConfiguredWeight) : 0) +
+        (checklistScore.isActive ? checklistScore.gapScore * (checklistEffectiveWeight / totalConfiguredWeight) : 0) +
+        (delegationScore.isActive ? delegationScore.gapScore * (delegationEffectiveWeight / totalConfiguredWeight) : 0) +
+        hodGapScore * (hodEffectiveWeight / totalConfiguredWeight) +
+        hrGapScore * (hrEffectiveWeight / totalConfiguredWeight);
 
       weightedGapSum = Math.max(-100, Math.min(0, weightedGapSum));
       finalGapScore = parseFloat(weightedGapSum.toFixed(1));
@@ -539,41 +537,33 @@ export class OfficeEmService {
       return mod.gapScore;
     };
 
-    // Task gap score 60:40 across active task modules
+    // Task gap score 60:40 across active task modules (using redistributed task weights)
     let taskGapScore6040: number | null = null;
-    const totalActiveTaskBaseWeight = (fmsScore.isActive ? fmsWeightVal : 0) +
-                                      (checklistScore.isActive ? checklistWeightVal : 0) +
-                                      (delegationScore.isActive ? delegationWeightVal : 0);
+    const totalActiveTaskWeight = fmsEffectiveWeight + checklistEffectiveWeight + delegationEffectiveWeight;
 
-    if (totalActiveTaskBaseWeight > 0) {
+    if (totalActiveTaskWeight > 0) {
       let taskSum6040 = 0;
       if (fmsScore.isActive) {
-        taskSum6040 += calcModule6040(fmsScore) * (fmsWeightVal / totalActiveTaskBaseWeight);
+        taskSum6040 += calcModule6040(fmsScore) * (fmsEffectiveWeight / totalActiveTaskWeight);
       }
       if (checklistScore.isActive) {
-        taskSum6040 += calcModule6040(checklistScore) * (checklistWeightVal / totalActiveTaskBaseWeight);
+        taskSum6040 += calcModule6040(checklistScore) * (checklistEffectiveWeight / totalActiveTaskWeight);
       }
       if (delegationScore.isActive) {
-        taskSum6040 += calcModule6040(delegationScore) * (delegationWeightVal / totalActiveTaskBaseWeight);
+        taskSum6040 += calcModule6040(delegationScore) * (delegationEffectiveWeight / totalActiveTaskWeight);
       }
       taskGapScore6040 = parseFloat(taskSum6040.toFixed(1));
     }
 
     // Overall adjusted gap score 60:40 across all active components (including HOD & HR)
     let adjustedGapScore6040: number | null = null;
-    if (hasCompletedEvaluations && totalActiveBaseWeight > 0) {
-      let adjustedSum = 0;
-      if (fmsScore.isActive) {
-        adjustedSum += calcModule6040(fmsScore) * (fmsWeightVal / totalActiveBaseWeight);
-      }
-      if (checklistScore.isActive) {
-        adjustedSum += calcModule6040(checklistScore) * (checklistWeightVal / totalActiveBaseWeight);
-      }
-      if (delegationScore.isActive) {
-        adjustedSum += calcModule6040(delegationScore) * (delegationWeightVal / totalActiveBaseWeight);
-      }
-      adjustedSum += hodGapScore * (hodWeightVal / totalActiveBaseWeight);
-      adjustedSum += hrGapScore * (hrWeightVal / totalActiveBaseWeight);
+    if (hasCompletedEvaluations) {
+      let adjustedSum =
+        (fmsScore.isActive ? calcModule6040(fmsScore) * (fmsEffectiveWeight / totalConfiguredWeight) : 0) +
+        (checklistScore.isActive ? calcModule6040(checklistScore) * (checklistEffectiveWeight / totalConfiguredWeight) : 0) +
+        (delegationScore.isActive ? calcModule6040(delegationScore) * (delegationEffectiveWeight / totalConfiguredWeight) : 0) +
+        hodGapScore * (hodEffectiveWeight / totalConfiguredWeight) +
+        hrGapScore * (hrEffectiveWeight / totalConfiguredWeight);
 
       adjustedSum = Math.max(-100, Math.min(0, adjustedSum));
       adjustedGapScore6040 = parseFloat(adjustedSum.toFixed(1));
