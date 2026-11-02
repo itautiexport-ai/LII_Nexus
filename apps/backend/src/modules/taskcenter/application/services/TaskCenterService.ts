@@ -82,6 +82,7 @@ export class TaskCenterService {
          WHERE sc.deleted_at IS NULL
            AND sc.planned_date <= NOW()
            AND sc.assign_to IN (?)
+           AND NOT (sc.skip_on_holidays = 1 AND DAYOFWEEK(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 330 MINUTE)) = 1)
            AND sc.id NOT IN (
              SELECT DISTINCT checklist_id
              FROM standalone_checklist_completions

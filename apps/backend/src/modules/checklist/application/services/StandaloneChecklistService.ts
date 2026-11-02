@@ -66,7 +66,13 @@ export class StandaloneChecklistService {
     try {
       const [empRows] = await pool.query<any[]>("SELECT user_id FROM employees WHERE id = ?", [dto.assignTo]);
       const targetUserId = empRows[0]?.user_id || dto.assignTo;
-      const formattedDate = plannedDateObj.toLocaleString("en-IN", {
+      let effectivePlannedDate = new Date(plannedDateObj);
+      if (dto.skipOnHolidays && isIstSunday(effectivePlannedDate)) {
+        // If planned date falls on Sunday, advance notification date to Monday
+        effectivePlannedDate = getNextOccurrenceDate(effectivePlannedDate, "daily");
+      }
+
+      const formattedDate = effectivePlannedDate.toLocaleString("en-IN", {
         timeZone: "Asia/Kolkata",
         day: "numeric",
         month: "short",
@@ -83,7 +89,7 @@ export class StandaloneChecklistService {
         createdBy: assignedBy,
         title: `Checklist Pipeline: ${dto.taskName}`,
         description: `Apka task pipeline me hai jo ${formattedDate} ko aane wala hai`,
-        dueDate: dto.plannedDate,
+        dueDate: effectivePlannedDate.toISOString(),
         priority: (dto.priority.toLowerCase() === "high" ? "high" : dto.priority.toLowerCase() === "medium" ? "medium" : "low") as any,
       });
     } catch (e) {
@@ -276,6 +282,26 @@ export class StandaloneChecklistService {
       completionsSet.add(`${comp.checklist_id}_${occStr}`);
     }
 
+    // Fetch registered holiday dates from attendance_entries
+    const [holidayRows] = await pool.query<any[]>(
+      `SELECT DISTINCT record_date FROM attendance_entries WHERE (employee_id = ? OR employee_id IS NULL) AND status = 'Holiday'`,
+      [employeeId]
+    );
+    const holidayDatesSet = new Set<string>();
+    for (const h of holidayRows) {
+      if (h.record_date) {
+        holidayDatesSet.add(getIstDateStr(h.record_date));
+      }
+    }
+
+    const isHolidayOrSunday = (d: Date): boolean => {
+      // Sunday (0) is always a holiday
+      if (isIstSunday(d)) return true;
+      const dStr = getIstDateStr(d);
+      if (holidayDatesSet.has(dStr)) return true;
+      return false;
+    };
+
     const now = new Date();
     const todayDateStr = getIstDateStr(now);
     const startOfTodayIst = getStartOfTodayIst(now);
@@ -286,6 +312,7 @@ export class StandaloneChecklistService {
     for (const row of rows) {
       const freq = (row.frequency || "one-time").toLowerCase().trim();
       const isOneTime = freq === "one-time" || freq === "once" || freq === "single";
+      const skipHolidays = Boolean(row.skip_on_holidays);
 
       const firstPlannedDate = parseUtcDateTime(row.planned_date);
       if (!firstPlannedDate) continue;
@@ -294,15 +321,24 @@ export class StandaloneChecklistService {
       const occurrences: Date[] = [];
 
       if (isOneTime) {
-        occurrences.push(new Date(curr));
+        if (!skipHolidays || !isHolidayOrSunday(curr)) {
+          occurrences.push(new Date(curr));
+        }
       } else {
         let count = 0;
         while (count < 365) {
           count++;
-          occurrences.push(new Date(curr));
+          if (!skipHolidays || !isHolidayOrSunday(curr)) {
+            occurrences.push(new Date(curr));
+          }
 
           if (curr > now) {
-            break;
+            const diffTime = curr.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            // Collect pipeline occurrences up to 7 days in advance
+            if (diffDays >= 7) {
+              break;
+            }
           }
 
           curr = getNextOccurrenceDate(curr, freq);
@@ -310,6 +346,11 @@ export class StandaloneChecklistService {
       }
 
       for (const occDate of occurrences) {
+        // Enforce holiday/Sunday skipping
+        if (skipHolidays && isHolidayOrSunday(occDate)) {
+          continue;
+        }
+
         const dateStr = getIstDateStr(occDate);
 
         const compKey = `${row.id}_${dateStr}`;
@@ -409,6 +450,13 @@ export class StandaloneChecklistService {
       history,
     };
   }
+}
+
+function isIstSunday(date: Date): boolean {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+  }).format(date) === "Sun";
 }
 
 function getIstDateStr(d: Date | string): string {

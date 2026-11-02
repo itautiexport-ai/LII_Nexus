@@ -132,7 +132,12 @@ export default function MyChecklistPage() {
 
       setInstances(officeChecklists || []);
       setEmployee(me);
-      setActiveStandalone(dashboardData?.active || []);
+      const isTodaySunday = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata", weekday: "short",
+      }).format(new Date()) === "Sun";
+      setActiveStandalone((dashboardData?.active || []).filter(
+        (item: StandaloneChecklist) => !item.skipOnHolidays || !isTodaySunday
+      ));
       setPipelineStandalone(dashboardData?.pipeline || []);
     } catch (err) {
       console.error("Failed to load checklists:", err);
