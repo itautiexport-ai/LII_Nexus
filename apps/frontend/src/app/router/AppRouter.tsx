@@ -23,6 +23,11 @@ import ProductionEntryPage from "../../modules/factory/pages/ProductionEntryPage
 import WoodTypesPage from "../../modules/admin/masterdata/pages/WoodTypesPage";
 import WoodThicknessPricesPage from "../../modules/admin/masterdata/pages/WoodThicknessPricesPage";
 import MetalPricesPage from "../../modules/admin/masterdata/pages/MetalPricesPage";
+import HardwareAccessoriesPage from "../../modules/admin/masterdata/pages/HardwareAccessoriesPage";
+import WoodPartNamesPage from "../../modules/admin/masterdata/pages/WoodPartNamesPage";
+import AdditionalCostsPage from "../../modules/admin/masterdata/pages/AdditionalCostsPage";
+import MdfPricesPage from "../../modules/admin/masterdata/pages/MdfPricesPage";
+import CurrencyRatesMasterPage from "../../modules/admin/masterdata/pages/CurrencyRatesMasterPage";
 import PrioritiesPage from "../../modules/admin/masterdata/pages/PrioritiesPage";
 import PptThemesMasterPage from "../../modules/admin/masterdata/pages/PptThemesMasterPage";
 import MachinesProductsPage from "../../modules/documents/pages/MachinesProductsPage";
@@ -187,6 +192,11 @@ import EmployeeInductionCompletionListPage from "../../modules/hr/pages/Employee
 import EmployeeAssetManagementPage from "../../modules/hr/pages/EmployeeAssetManagementPage";
 import EmployeeSeparationSettlementPage from "../../modules/hr/pages/EmployeeSeparationSettlementPage";
 import { MasterDataHubPage } from "../../modules/admin/masterdata/pages/MasterDataHubPage";
+import {
+  AdministrativeMasterHubPage,
+  HumanResourceMasterHubPage,
+  CostingMasterHubPage,
+} from "../../modules/admin/masterdata/pages/MasterDataSubHubPage";
 import { MachineEfficiencyHubPage } from "../../modules/admin/machineefficiency/pages/MachineEfficiencyHubPage";
 import { QuotationsHubPage } from "../../modules/crm/pages/QuotationsHubPage";
 import { ComplaintsHubPage } from "../../modules/crm/pages/ComplaintsHubPage";
@@ -238,9 +248,17 @@ export default function AppRouter() {
           <Route path="my-reviews" element={<ReviewsPage />} />
           {/* Master Data */}
           <Route path="master-data" element={<MasterDataHubPage />} />
+          <Route path="master-data/administrative" element={<AdministrativeMasterHubPage />} />
+          <Route path="master-data/human-resource" element={<HumanResourceMasterHubPage />} />
+          <Route path="master-data/costing" element={<CostingMasterHubPage />} />
           <Route path="wood-types" element={<WoodTypesPage />} />
           <Route path="wood-thickness-prices" element={<WoodThicknessPricesPage />} />
           <Route path="metal-prices" element={<MetalPricesPage />} />
+          <Route path="hardware-accessories" element={<HardwareAccessoriesPage />} />
+          <Route path="wood-part-names" element={<WoodPartNamesPage />} />
+          <Route path="additional-costs" element={<AdditionalCostsPage />} />
+          <Route path="mdf-prices" element={<MdfPricesPage />} />
+          <Route path="currency-rates" element={<CurrencyRatesMasterPage />} />
           <Route path="priorities" element={<PrioritiesPage />} />
           <Route path="buyers" element={<BuyersPage />} />
           <Route path="uoms" element={<UomsPage />} />

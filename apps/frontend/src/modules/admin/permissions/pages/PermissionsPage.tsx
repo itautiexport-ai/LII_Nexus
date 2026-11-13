@@ -128,16 +128,18 @@ export default function PermissionsPage() {
                         checked={isSectionAssigned}
                         onChange={() => {
                           const allRolesForSection = [sectionRoleName];
-                          
-                          section.items.forEach((item: any) => {
-                            if (item.items) {
-                              item.items.forEach((sub: any) => {
-                                allRolesForSection.push(`${sectionRoleName} -> ${item.label} -> ${sub.label}`);
-                              });
-                            } else {
-                              allRolesForSection.push(`${sectionRoleName} -> ${item.label}`);
-                            }
-                          });
+                          const collectRoles = (items: any[], prefix: string) => {
+                            items.forEach((entry: any) => {
+                              const role = `${prefix} -> ${entry.label}`;
+                              if (entry.items && entry.items.length > 0) {
+                                allRolesForSection.push(role);
+                                collectRoles(entry.items, role);
+                              } else {
+                                allRolesForSection.push(role);
+                              }
+                            });
+                          };
+                          collectRoles(section.items, sectionRoleName);
 
                           if (isSectionAssigned) {
                             // Deselect main module and all its sub-modules
@@ -158,14 +160,27 @@ export default function PermissionsPage() {
                         const isSubGroup = !!item.items;
                         
                         if (isSubGroup) {
+                          const collectGroupRoles = (entries: any[], prefix: string): string[] => {
+                            const list: string[] = [];
+                            entries.forEach((entry: any) => {
+                              const r = `${prefix} -> ${entry.label}`;
+                              list.push(r);
+                              if (entry.items && entry.items.length > 0) {
+                                list.push(...collectGroupRoles(entry.items, r));
+                              }
+                            });
+                            return list;
+                          };
+                          const groupPrefix = `${sectionRoleName} -> ${item.label}`;
+                          const allRolesForGroup = collectGroupRoles(item.items, groupPrefix);
+
                           return (
                             <div key={item.label} style={{ borderLeft: "2px solid #e5e7eb", paddingLeft: 12 }}>
                               <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
                                 <input 
                                   type="checkbox"
-                                  checked={item.items.every((sub: any) => stagedRoles.includes(`${sectionRoleName} -> ${item.label} -> ${sub.label}`))}
+                                  checked={allRolesForGroup.length > 0 && allRolesForGroup.every((r) => stagedRoles.includes(r))}
                                   onChange={(e) => {
-                                    const allRolesForGroup = item.items.map((sub: any) => `${sectionRoleName} -> ${item.label} -> ${sub.label}`);
                                     if (e.target.checked) {
                                       setStagedRoles(prev => Array.from(new Set([...prev, ...allRolesForGroup])));
                                     } else {
@@ -178,6 +193,48 @@ export default function PermissionsPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 {item.items.map((sub: any) => {
                                   const subRoleName = `${sectionRoleName} -> ${item.label} -> ${sub.label}`;
+                                  if (sub.items && sub.items.length > 0) {
+                                    const nestedRoles = [
+                                      subRoleName,
+                                      ...sub.items.map((child: any) => `${subRoleName} -> ${child.label}`),
+                                    ];
+                                    const isNestedAllAssigned = nestedRoles.every((r) => stagedRoles.includes(r));
+                                    return (
+                                      <div key={sub.label} style={{ borderLeft: "2px solid #dbeafe", paddingLeft: 10, marginTop: 2, marginBottom: 2 }}>
+                                        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, cursor: "pointer" }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={isNestedAllAssigned}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                setStagedRoles(prev => Array.from(new Set([...prev, ...nestedRoles])));
+                                              } else {
+                                                setStagedRoles(prev => prev.filter(r => !nestedRoles.includes(r)));
+                                              }
+                                            }}
+                                          />
+                                          <strong style={{ fontSize: 13, color: "#1d4ed8" }}>{sub.label} (Sub-Module)</strong>
+                                        </label>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                          {sub.items.map((child: any) => {
+                                            const childRoleName = `${subRoleName} -> ${child.label}`;
+                                            const isChildAssigned = stagedRoles.includes(childRoleName);
+                                            return (
+                                              <label key={child.label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isChildAssigned}
+                                                  onChange={() => handleToggleMenuRole(childRoleName, isChildAssigned)}
+                                                />
+                                                <span style={{ fontSize: 13, color: "#374151" }}>{child.label}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
                                   const isSubAssigned = stagedRoles.includes(subRoleName);
                                   return (
                                     <label key={sub.label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>

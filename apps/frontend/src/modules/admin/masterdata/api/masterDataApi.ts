@@ -176,10 +176,198 @@ export const masterDataApi = {
   async deleteQcName(id: string): Promise<void> {
     await axiosInstance.delete(`/qc-names/${id}`);
   },
+
+  // Hardware And Accessories
+  async getHardwareAccessories(): Promise<HardwareAccessory[]> {
+    const res = await axiosInstance.get("/hardware-accessories");
+    return res.data.data;
+  },
+  async createHardwareAccessory(payload: HardwareAccessoryInput): Promise<HardwareAccessory> {
+    const res = await axiosInstance.post("/hardware-accessories", payload);
+    return res.data.data;
+  },
+  async updateHardwareAccessory(id: string, payload: HardwareAccessoryInput): Promise<HardwareAccessory> {
+    const res = await axiosInstance.put(`/hardware-accessories/${id}`, payload);
+    return res.data.data;
+  },
+  async deleteHardwareAccessory(id: string): Promise<void> {
+    await axiosInstance.delete(`/hardware-accessories/${id}`);
+  },
+
+  // Wood Thickness Prices
+  async getWoodThicknessPrices(): Promise<WoodThicknessPriceRecord[]> {
+    const res = await axiosInstance.get("/wood-thickness-prices");
+    return res.data.data;
+  },
+  async createWoodThicknessPrice(payload: WoodThicknessPriceInput): Promise<WoodThicknessPriceRecord> {
+    const res = await axiosInstance.post("/wood-thickness-prices", payload);
+    return res.data.data;
+  },
+  async updateWoodThicknessPrice(id: string, payload: WoodThicknessPriceInput): Promise<WoodThicknessPriceRecord> {
+    const res = await axiosInstance.put(`/wood-thickness-prices/${id}`, payload);
+    return res.data.data;
+  },
+  async deleteWoodThicknessPrice(id: string): Promise<void> {
+    await axiosInstance.delete(`/wood-thickness-prices/${id}`);
+  },
+
+  // Wood Part Names
+  async getWoodPartNames(): Promise<WoodPartNameRecord[]> {
+    const res = await axiosInstance.get("/wood-part-names");
+    return res.data.data;
+  },
+  async createWoodPartName(payload: WoodPartNameInput): Promise<WoodPartNameRecord> {
+    const res = await axiosInstance.post("/wood-part-names", payload);
+    return res.data.data;
+  },
+  async updateWoodPartName(id: string, payload: WoodPartNameInput): Promise<WoodPartNameRecord> {
+    const res = await axiosInstance.put(`/wood-part-names/${id}`, payload);
+    return res.data.data;
+  },
+  async deleteWoodPartName(id: string): Promise<void> {
+    await axiosInstance.delete(`/wood-part-names/${id}`);
+  },
+
+  // Additional Costs
+  async getAdditionalCosts(): Promise<AdditionalCostRecord[]> {
+    const res = await axiosInstance.get("/additional-costs");
+    return res.data.data;
+  },
+  async createAdditionalCost(payload: AdditionalCostInput): Promise<AdditionalCostRecord> {
+    const res = await axiosInstance.post("/additional-costs", payload);
+    return res.data.data;
+  },
+  async updateAdditionalCost(id: string, payload: AdditionalCostInput): Promise<AdditionalCostRecord> {
+    const res = await axiosInstance.put(`/additional-costs/${id}`, payload);
+    return res.data.data;
+  },
+  async deleteAdditionalCost(id: string): Promise<void> {
+    await axiosInstance.delete(`/additional-costs/${id}`);
+  },
+
+  // MDF Prices
+  async getMdfPrices(): Promise<MdfPriceRecord[]> {
+    const res = await axiosInstance.get("/mdf-prices");
+    return res.data.data;
+  },
+  async createMdfPrice(payload: MdfPriceInput): Promise<MdfPriceRecord> {
+    const res = await axiosInstance.post("/mdf-prices", payload);
+    return res.data.data;
+  },
+  async updateMdfPrice(id: string, payload: MdfPriceInput): Promise<MdfPriceRecord> {
+    const res = await axiosInstance.put(`/mdf-prices/${id}`, payload);
+    return res.data.data;
+  },
+  async deleteMdfPrice(id: string): Promise<void> {
+    await axiosInstance.delete(`/mdf-prices/${id}`);
+  },
 };
 
 export interface QcName {
   id: string;
   name: string;
   createdAt?: string;
+}
+
+export interface HardwareAccessory {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  category: string;
+  sizeSpec: string;
+  materialFinish: string;
+  uom: string;
+  rate: number;
+  status: "active" | "inactive";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HardwareAccessoryInput {
+  id?: string;
+  itemCode: string;
+  itemName: string;
+  category?: string;
+  sizeSpec?: string | null;
+  materialFinish?: string | null;
+  uom?: string;
+  rate: number;
+  status?: "active" | "inactive";
+}
+
+export interface WoodThicknessPriceRecord {
+  id: string;
+  woodType: string;
+  thickness: string;
+  thicknessUom: string;
+  length: string;
+  lengthUom: string;
+  ratePerCft: number;
+  status: "active" | "inactive";
+  createdAt: string;
+}
+
+export interface WoodThicknessPriceInput {
+  id?: string;
+  woodType: string;
+  thickness: string;
+  thicknessUom: string;
+  length: string;
+  lengthUom: string;
+  ratePerCft: number;
+  status?: "active" | "inactive";
+}
+
+export interface WoodPartNameRecord {
+  id: string;
+  partCode: string;
+  partName: string;
+}
+
+export interface WoodPartNameInput {
+  id?: string;
+  partCode: string;
+  partName: string;
+}
+
+export interface AdditionalCostRecord {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  price: number;
+  uom: string;
+  status: "active" | "inactive";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdditionalCostInput {
+  id?: string;
+  itemCode: string;
+  itemName: string;
+  price: number;
+  uom?: string;
+  status?: "active" | "inactive";
+}
+
+export interface MdfPriceRecord {
+  id: string;
+  mdfType: string;
+  sheetSize: string;
+  thickness: string;
+  price: number;
+  uom: string;
+  status: "active" | "inactive";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MdfPriceInput {
+  id?: string;
+  mdfType: string;
+  sheetSize: string;
+  thickness: string;
+  price: number;
+  uom?: string;
+  status?: "active" | "inactive";
 }

@@ -22,7 +22,11 @@ export default function LoginPage() {
       setSession(accessToken, user, permissions);
       navigate("/admin");
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message ?? "Login failed.");
+      if (!err?.response) {
+        setError("Unable to reach backend server (http://localhost:4000).");
+      } else {
+        setError(err?.response?.data?.error?.message ?? "Login failed.");
+      }
     } finally {
       setLoading(false);
     }

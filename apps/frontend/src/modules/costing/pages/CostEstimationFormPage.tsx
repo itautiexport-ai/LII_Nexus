@@ -1,30 +1,139 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { costingApi, CostEstimationItem, CostRateMaster } from "../api/costingApi";
-import { masterDataApi, WoodType } from "../../admin/masterdata/api/masterDataApi";
+import {
+  ALL_COMMON_WOOD_PARTS_AND_FRAMES,
+  costingApi,
+  CostEstimationItem,
+  CostRateMaster,
+  FURNITURE_PRODUCT_TYPES,
+  getAssociatedWoodPartsForProduct,
+} from "../api/costingApi";
+import {
+  AdditionalCostRecord,
+  HardwareAccessory,
+  masterDataApi,
+  MdfPriceRecord,
+  WoodPartNameRecord,
+  WoodType,
+} from "../../admin/masterdata/api/masterDataApi";
+import {
+  WoodThicknessPrice,
+  findMatchingWoodThicknessRate,
+  getLocalWoodThicknessPrices,
+  loadSyncedWoodThicknessPrices,
+} from "../../admin/masterdata/pages/WoodThicknessPricesPage";
+import {
+  getLocalWoodPartNames,
+  loadSyncedWoodPartNames,
+} from "../../admin/masterdata/pages/WoodPartNamesPage";
+import {
+  getLocalHardwareAccessories,
+  loadSyncedHardwareAccessories,
+} from "../../admin/masterdata/pages/HardwareAccessoriesPage";
+import {
+  getCachedUomOptions,
+  getLocalAdditionalCosts,
+  loadMergedUomOptions,
+  loadSyncedAdditionalCosts,
+  mergeUomNames,
+} from "../../admin/masterdata/pages/AdditionalCostsPage";
+import {
+  findMatchingMdfPrice,
+  getLocalMdfPrices,
+  getMdfRecordsForType,
+  isMdfType,
+  loadSyncedMdfPrices,
+} from "../../admin/masterdata/pages/MdfPricesPage";
+import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import {
+  MetalPrice,
+  findMatchingMetalPrice,
+  formatDimension,
+  getLocalMetalPrices,
+  getMetalSizeOptions,
+} from "../../admin/masterdata/pages/MetalPricesPage";
+import {
+  getLocalCurrencyMap,
+  getLocalUsdRate,
+} from "../../admin/masterdata/pages/CurrencyRatesMasterPage";
 
 export interface MetalSsItem {
   type: "Metal" | "SS";
   size: string;
-  qty: number | "";
+  thickness: string;
+  length: string;
+  qty?: number | "";
   weight: number | "";
   rate: number | "";
+  base_length?: string;
+  base_weight?: number;
 }
 
 export interface WoodCostingItem {
   wood_part_name: string;
+  wood_type: string;
   length_ft: number | "";
   width_in: number | "";
   thick_in: number | "";
   pcs: number | "";
   rate: number | "";
+  auto_rate?: boolean;
+  backend_cft?: number;
+  mdf_sheet_size?: string;
+  mdf_uom?: string;
 }
 
 export interface AdditionalCostItem {
   additional: string;
   size: string;
   calculation: string;
+  uom: string;
+  converted_value: string;
   price: number | "";
+}
+
+export interface HardwareCostItem {
+  name: string;
+  quantity: number | "";
+  price: number | "";
+}
+
+export interface UpholsteryCostItem {
+  item_name: string;
+  specification?: string;
+  uom?: string;
+  quantity: number | "";
+  rate: number | "";
+}
+
+export interface LabourCostItem {
+  item_name: string;
+  amount: number | "";
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  AED: "AED ",
+  AUD: "A$",
+  CAD: "C$",
+  SGD: "S$",
+  SAR: "SAR ",
+  JPY: "¥",
+};
+
+export interface PackagingCostItem {
+  item_name: string;
+  specification?: string;
+  quantity: number | "";
+  rate: number | "";
+}
+
+export interface ForwardingCostItem {
+  item_name: string;
+  description?: string;
+  amount: number | "";
 }
 
 export interface ExpenseCostItem {
@@ -38,6 +147,317 @@ export interface CncCostItem {
   cost: number | "";
 }
 
+export interface CartonSizeItem {
+  length: number | "";
+  width: number | "";
+  height: number | "";
+  unit: "cm" | "in";
+}
+
+function evaluateSizeEquation(raw: string): string | null {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return "";
+
+  const normalized = trimmed
+    .replace(/^=/, "")
+    .replace(/,/g, "")
+    .replace(/[×xX]/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/\s+/g, "");
+
+  if (!normalized) return "";
+  if (!/^[0-9.+\-*/^%()]+$/.test(normalized)) {
+    return null;
+  }
+
+  let pos = 0;
+
+  const parseExpression = (): number => {
+    let val = parseTerm();
+    while (pos < normalized.length && (normalized[pos] === "+" || normalized[pos] === "-")) {
+      const op = normalized[pos++];
+      const right = parseTerm();
+      val = op === "+" ? val + right : val - right;
+    }
+    return val;
+  };
+
+  const parseTerm = (): number => {
+    let val = parsePower();
+    while (
+      pos < normalized.length &&
+      (normalized[pos] === "*" || normalized[pos] === "/" || normalized[pos] === "%")
+    ) {
+      const op = normalized[pos++];
+      const right = parsePower();
+      if (op === "*") val *= right;
+      else if (op === "/") val = right === 0 ? NaN : val / right;
+      else val = right === 0 ? NaN : val % right;
+    }
+    return val;
+  };
+
+  const parsePower = (): number => {
+    let base = parseUnary();
+    if (pos < normalized.length && normalized[pos] === "^") {
+      pos++;
+      const exp = parsePower();
+      base = Math.pow(base, exp);
+    }
+    return base;
+  };
+
+  const parseUnary = (): number => {
+    if (normalized[pos] === "+") {
+      pos++;
+      return parseUnary();
+    }
+    if (normalized[pos] === "-") {
+      pos++;
+      return -parseUnary();
+    }
+    return parsePrimary();
+  };
+
+  const parsePrimary = (): number => {
+    if (normalized[pos] === "(") {
+      pos++;
+      const inner = parseExpression();
+      if (normalized[pos] !== ")") return NaN;
+      pos++;
+      return inner;
+    }
+    const start = pos;
+    let dotCount = 0;
+    while (
+      pos < normalized.length &&
+      ((normalized[pos] >= "0" && normalized[pos] <= "9") || normalized[pos] === ".")
+    ) {
+      if (normalized[pos] === ".") dotCount++;
+      pos++;
+    }
+    if (start === pos || dotCount > 1) return NaN;
+    const slice = normalized.slice(start, pos);
+    if (slice === ".") return NaN;
+    return Number(slice);
+  };
+
+  const result = parseExpression();
+  if (pos !== normalized.length || !Number.isFinite(result)) {
+    return null;
+  }
+
+  return Number(result.toFixed(4)).toString();
+}
+
+function convertCalculationByUom(calculationRaw: string, uomRaw: string): string {
+  const calcTrimmed = String(calculationRaw ?? "").trim();
+  const uomTrimmed = String(uomRaw ?? "").trim();
+  if (!calcTrimmed || !uomTrimmed) return "";
+
+  const calcNum = Number(calcTrimmed.replace(/,/g, ""));
+  if (!Number.isFinite(calcNum)) return "";
+
+  const u = uomTrimmed.toLowerCase().replace(/[\s.\-_]/g, "");
+
+  let converted = calcNum;
+
+  if (
+    u === "sqin" ||
+    u === "sqinch" ||
+    u === "sqinches" ||
+    u === "squareinch" ||
+    u === "squareinches" ||
+    u === "in2" ||
+    u === "in²"
+  ) {
+    // Sq Inch: divide Calculation by 6.45
+    converted = calcNum / 6.45;
+  } else if (
+    u === "sqft" ||
+    u === "sqfeet" ||
+    u === "sft" ||
+    u === "squarefeet" ||
+    u === "squarefoot" ||
+    u === "ft2" ||
+    u === "ft²"
+  ) {
+    // Sq Ft: divide Calculation by 929
+    converted = calcNum / 929;
+  } else if (
+    u === "sqmtr" ||
+    u === "sqmtrs" ||
+    u === "sqmt" ||
+    u === "sqmts" ||
+    u === "sqm" ||
+    u === "squaremeter" ||
+    u === "squaremeters" ||
+    u === "squaremetre" ||
+    u === "squaremetres" ||
+    u === "m2" ||
+    u === "m²"
+  ) {
+    // Sq Mt: divide Calculation by 10000
+    converted = calcNum / 10000;
+  } else if (
+    u === "sqcm" ||
+    u === "squarecm" ||
+    u === "squarecentimeter" ||
+    u === "squarecentimeters" ||
+    u === "cm2" ||
+    u === "cm²"
+  ) {
+    converted = calcNum;
+  } else if (
+    u === "sqmm" ||
+    u === "squaremm" ||
+    u === "squaremillimeter" ||
+    u === "squaremillimeters" ||
+    u === "mm2" ||
+    u === "mm²"
+  ) {
+    converted = calcNum * 100;
+  } else if (
+    u === "sqyd" ||
+    u === "sqyard" ||
+    u === "sqyards" ||
+    u === "squareyard" ||
+    u === "squareyards" ||
+    u === "gaj"
+  ) {
+    converted = calcNum / 8361.27;
+  } else if (
+    u === "cft" ||
+    u === "cuft" ||
+    u === "cubicfeet" ||
+    u === "cubicfoot" ||
+    u === "ft3" ||
+    u === "ft³"
+  ) {
+    converted = calcNum / 28316.85;
+  } else if (
+    u === "cbm" ||
+    u === "cum" ||
+    u === "cubicmeter" ||
+    u === "cubicmeters" ||
+    u === "cubicmetre" ||
+    u === "cubicmetres" ||
+    u === "m3" ||
+    u === "m³"
+  ) {
+    converted = calcNum / 1000000;
+  } else if (
+    u === "ft" ||
+    u === "feet" ||
+    u === "foot" ||
+    u === "rft" ||
+    u === "runningfeet" ||
+    u === "runningfoot"
+  ) {
+    converted = calcNum / 30.48;
+  } else if (u === "inch" || u === "inches" || u === "in" || u === "rin" || u === "runninginch") {
+    converted = calcNum / 2.54;
+  } else if (
+    u === "meter" ||
+    u === "meters" ||
+    u === "mtr" ||
+    u === "mtrs" ||
+    u === "m" ||
+    u === "metre" ||
+    u === "metres" ||
+    u === "rmt" ||
+    u === "rmtr" ||
+    u === "runningmeter"
+  ) {
+    converted = calcNum / 100;
+  } else if (u === "cm" || u === "cms" || u === "centimeter" || u === "centimeters") {
+    converted = calcNum;
+  } else if (u === "mm" || u === "mms" || u === "millimeter" || u === "millimeters") {
+    converted = calcNum * 10;
+  } else if (u === "yard" || u === "yards" || u === "yd" || u === "yds") {
+    converted = calcNum / 91.44;
+  } else if (u === "dozen" || u === "doz" || u === "dz") {
+    converted = calcNum / 12;
+  } else if (u === "pair" || u === "pairs") {
+    converted = calcNum / 2;
+  } else if (u === "ton" || u === "tons" || u === "metricton") {
+    converted = calcNum / 1000;
+  } else {
+    converted = calcNum;
+  }
+
+  return Number(converted.toFixed(4)).toString();
+}
+
+function parseLengthToMm(lengthStr?: string | number): number {
+  if (lengthStr === undefined || lengthStr === null || lengthStr === "") return 0;
+  if (typeof lengthStr === "number") return lengthStr > 0 ? lengthStr : 0;
+  const str = String(lengthStr).trim().toLowerCase();
+  const match = str.match(/([0-9]+(?:\.[0-9]+)?)/);
+  if (!match) return 0;
+  const num = parseFloat(match[1]);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+
+  if (str.includes("ft") || str.includes("feet") || str.includes("'")) {
+    return num * 304.8;
+  }
+  if (str.includes("cm")) {
+    return num * 10;
+  }
+  if (str.includes("inch") || str.includes("in") || str.includes('"')) {
+    return num * 25.4;
+  }
+  // Check for meters (e.g. "6m", "6 meter", "6 mtr", but not "mm")
+  if (
+    (str.includes("meter") || str.includes("mtr") || str.endsWith("m") || str.includes("m ")) &&
+    !str.includes("mm")
+  ) {
+    return num * 1000;
+  }
+  // Default is mm or plain numeric
+  return num;
+}
+
+function computeMetalRowTotalWeight(item: MetalSsItem): number {
+  const currentLenMm = parseLengthToMm(item.length);
+  const baseLenMm = parseLengthToMm(item.base_length) || 6000;
+  const baseWeight =
+    typeof item.base_weight === "number" && item.base_weight > 0
+      ? item.base_weight
+      : Number(item.weight) || 0;
+
+  if (currentLenMm > 0 && baseLenMm > 0 && baseWeight > 0) {
+    const calculated = (currentLenMm / baseLenMm) * baseWeight;
+    return Number(calculated.toFixed(4));
+  }
+  return baseWeight;
+}
+
+function computeMetalRowTotalAmount(item: MetalSsItem): number {
+  const tw = computeMetalRowTotalWeight(item);
+  const r = Number(item.rate) || 0;
+  return Number((tw * r).toFixed(2));
+}
+
+function computeAdditionalRowAmount(item: AdditionalCostItem): number {
+  const p = Number(item.price) || 0;
+  const convStr = String(item.converted_value ?? "").trim();
+  if (convStr !== "") {
+    const convNum = Number(convStr.replace(/,/g, ""));
+    if (Number.isFinite(convNum)) {
+      return convNum * p;
+    }
+  }
+  const calcStr = String(item.calculation ?? "").trim();
+  if (calcStr !== "") {
+    const calcNum = Number(calcStr.replace(/,/g, ""));
+    if (Number.isFinite(calcNum)) {
+      return calcNum * p;
+    }
+  }
+  return 0;
+}
+
 export default function CostEstimationFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
@@ -46,45 +466,172 @@ export default function CostEstimationFormPage() {
   const [loading, setLoading] = useState(false);
   const [rates, setRates] = useState<CostRateMaster[]>([]);
   const [woodTypesList, setWoodTypesList] = useState<WoodType[]>([]);
+  const [woodPartNamesList, setWoodPartNamesList] = useState<WoodPartNameRecord[]>(() =>
+    getLocalWoodPartNames()
+  );
+
+  const combinedWoodPartSuggestions = React.useMemo(() => {
+    const seenLower = new Set<string>();
+    const list: { value: string; label: string }[] = [];
+
+    woodPartNamesList.forEach((wpn) => {
+      const name = (wpn.partName || "").trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (seenLower.has(key)) return;
+      seenLower.add(key);
+      list.push({
+        value: name,
+        label: wpn.partCode ? `${name} (${wpn.partCode})` : name,
+      });
+    });
+
+    ALL_COMMON_WOOD_PARTS_AND_FRAMES.forEach((pName) => {
+      const name = pName.trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (seenLower.has(key)) return;
+      seenLower.add(key);
+      list.push({
+        value: name,
+        label: name,
+      });
+    });
+
+    return list;
+  }, [woodPartNamesList]);
+  const [hardwareMasterList, setHardwareMasterList] = useState<HardwareAccessory[]>(() =>
+    getLocalHardwareAccessories()
+  );
+  const [additionalMasterList, setAdditionalMasterList] = useState<AdditionalCostRecord[]>(() =>
+    getLocalAdditionalCosts()
+  );
+  const [woodThicknessPrices, setWoodThicknessPrices] = useState<WoodThicknessPrice[]>(() =>
+    getLocalWoodThicknessPrices()
+  );
+  const [mdfPricesList, setMdfPricesList] = useState<MdfPriceRecord[]>(() =>
+    getLocalMdfPrices()
+  );
+  const [uomOptions, setUomOptions] = useState<string[]>(() =>
+    getCachedUomOptions()
+  );
+  const [metalPricesList, setMetalPricesList] = useState<MetalPrice[]>(() =>
+    getLocalMetalPrices()
+  );
 
   // Form State
   const [title, setTitle] = useState("");
   const [productCode, setProductCode] = useState("");
   const [productName, setProductName] = useState("");
+  const [productType, setProductType] = useState("");
+  const [collectionName, setCollectionName] = useState("");
+  const [typeOfCosting, setTypeOfCosting] = useState<"Client Based" | "Showroom Based" | "">("");
   const [overallSize, setOverallSize] = useState("");
   const [woodType, setWoodType] = useState("");
   const [clientName, setClientName] = useState("");
   const [status, setStatus] = useState<'Draft' | 'In Review' | 'Approved' | 'Rejected'>("Draft");
   const [currency, setCurrency] = useState("INR");
   const [exchangeRate, setExchangeRate] = useState(1.0);
-  const [marginPercentage, setMarginPercentage] = useState(20);
+  const [marginPercentage, setMarginPercentage] = useState(26);
   const [taxPercentage, setTaxPercentage] = useState(18);
-  const [factoryExpensesPct, setFactoryExpensesPct] = useState(10);
+  const [expensesPct, setExpensesPct] = useState(15);
+  const [summaryExpensesPct, setSummaryExpensesPct] = useState(20);
+  const [usdExchangeRate, setUsdExchangeRate] = useState<number | "">(() => getLocalUsdRate());
+  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const [currencyExchangeRates, setCurrencyExchangeRates] = useState<Record<string, number>>(() =>
+    getLocalCurrencyMap()
+  );
   const [notes, setNotes] = useState("");
-  const [woodWastagePct, setWoodWastagePct] = useState(10);
+  const [woodWastagePct, setWoodWastagePct] = useState(20);
   const [imageUrl, setImageUrl] = useState("");
 
-  // Section 7: CBM & Packaging State
-  const [c1Length, setC1Length] = useState<number | "">("");
-  const [c1Width, setC1Width] = useState<number | "">("");
-  const [c1Height, setC1Height] = useState<number | "">("");
-  const [c1Unit, setC1Unit] = useState<"cm" | "in">("cm");
+  // Send for Approval Modal State
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalAuthorities, setApprovalAuthorities] = useState<EmployeeRecord[]>([]);
+  const [selectedAuthority, setSelectedAuthority] = useState<EmployeeRecord | null>(null);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  const [savedEstimationId, setSavedEstimationId] = useState("");
 
-  const [c2Length, setC2Length] = useState<number | "">("");
-  const [c2Width, setC2Width] = useState<number | "">("");
-  const [c2Height, setC2Height] = useState<number | "">("");
-  const [c2Unit, setC2Unit] = useState<"cm" | "in">("cm");
+  const loadApprovalAuthorities = async () => {
+    try {
+      const allEmps = await employeesApi.list();
+      const filtered = (allEmps || []).filter((emp) => {
+        const d = (emp.designationTitle || "").toLowerCase();
+        return (
+          d.includes("management") ||
+          d.includes("admin") ||
+          d.includes("director") ||
+          d.includes("ceo") ||
+          d.includes("founder") ||
+          d.includes("managing") ||
+          d.includes("head") ||
+          d.includes("hod") ||
+          d.includes("manager")
+        );
+      });
+      const list = filtered.length > 0 ? filtered : allEmps || [];
+      setApprovalAuthorities(list);
+      if (list.length > 0) {
+        setSelectedAuthority(list[0]);
+      }
+    } catch (err) {
+      console.error("Failed to load approval authorities", err);
+    }
+  };
+
+  // Section 7: CBM & Packaging State (Dynamic Cartons 1, 2, 3...)
+  const [cartons, setCartons] = useState<CartonSizeItem[]>([
+    { length: "", width: "", height: "", unit: "cm" },
+  ]);
+
+  const handleAddCarton = () => {
+    setCartons((prev) => [...prev, { length: "", width: "", height: "", unit: "cm" }]);
+  };
+
+  const handleRemoveCarton = (index: number) => {
+    setCartons((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  };
+
+  const handleCartonChange = (index: number, field: keyof CartonSizeItem, value: any) => {
+    setCartons((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
 
   const [items, setItems] = useState<CostEstimationItem[]>([]);
 
   const [woodItems, setWoodItems] = useState<WoodCostingItem[]>([
-    { wood_part_name: "", length_ft: "", width_in: "", thick_in: "", pcs: 1, rate: 0 },
+    { wood_part_name: "", wood_type: "", length_ft: "", width_in: "", thick_in: "", pcs: 1, rate: 0 },
   ]);
+
+  const handleProductTypeChange = (selectedType: string) => {
+    setProductType(selectedType);
+    if (!selectedType) return;
+
+    const associatedParts = getAssociatedWoodPartsForProduct(selectedType);
+    if (associatedParts.length === 0) return;
+
+    const currentWoodType = woodType || "";
+    const newRows: WoodCostingItem[] = associatedParts.map((p) => ({
+      wood_part_name: p.name,
+      wood_type: currentWoodType,
+      length_ft: "",
+      width_in: "",
+      thick_in: "",
+      pcs: p.defaultPcs || 1,
+      rate: 0,
+    }));
+
+    setWoodItems(newRows);
+  };
 
   const handleAddWoodItem = () => {
     setWoodItems([
       ...woodItems,
-      { wood_part_name: "", length_ft: "", width_in: "", thick_in: "", pcs: 1, rate: 0 },
+      { wood_part_name: "", wood_type: woodType || "", length_ft: "", width_in: "", thick_in: "", pcs: 1, rate: 0 },
     ]);
   };
 
@@ -93,20 +640,138 @@ export default function CostEstimationFormPage() {
     setWoodItems(woodItems.filter((_, i) => i !== index));
   };
 
+  const computeWoodRowCft = (item: WoodCostingItem): number => {
+    const l = Number(item.length_ft) || 0;
+    const w = Number(item.width_in) || 0;
+    const rawT = Number(item.thick_in) || 0;
+    const rowIsMdf = isMdfType(item.wood_type, mdfPricesList);
+    const effectiveThickIn = rowIsMdf ? rawT / 25.4 : rawT;
+    const pcs = Number(item.pcs) || 0;
+    return item.backend_cft ?? (l * w * effectiveThickIn * pcs) / 144;
+  };
+
   const handleWoodItemChange = (index: number, field: keyof WoodCostingItem, value: any) => {
     const updated = [...woodItems];
-    updated[index] = { ...updated[index], [field]: value };
+    const nextItem: WoodCostingItem = { ...updated[index], [field]: value };
+
+    const latestMdf = mdfPricesList.length > 0 ? mdfPricesList : getLocalMdfPrices();
+    const rowIsMdf = isMdfType(nextItem.wood_type, latestMdf);
+
+    if (field === "rate") {
+      nextItem.auto_rate = false;
+    } else if (rowIsMdf) {
+      if (field === "wood_type") {
+        const mdfCandidates = getMdfRecordsForType(nextItem.wood_type, latestMdf);
+        if (mdfCandidates.length === 1 && (nextItem.thick_in === "" || nextItem.auto_rate)) {
+          const parsedThick = parseFloat(
+            String(mdfCandidates[0].thickness || "")
+              .replace(/mm|inch|in|"/gi, "")
+              .trim()
+          );
+          if (!Number.isNaN(parsedThick) && parsedThick > 0) {
+            nextItem.thick_in = parsedThick;
+          }
+        }
+      }
+
+      if (
+        field === "wood_type" ||
+        field === "thick_in" ||
+        field === "length_ft" ||
+        field === "width_in"
+      ) {
+        const matchedMdf = findMatchingMdfPrice(
+          nextItem.wood_type,
+          nextItem.thick_in,
+          nextItem.length_ft,
+          nextItem.width_in,
+          latestMdf
+        );
+        if (matchedMdf) {
+          nextItem.rate = Number(matchedMdf.price) || 0;
+          nextItem.auto_rate = true;
+          nextItem.mdf_sheet_size = matchedMdf.sheetSize || "";
+          nextItem.mdf_uom = matchedMdf.uom || "";
+        } else if (nextItem.auto_rate || field === "wood_type") {
+          nextItem.rate = 0;
+          nextItem.auto_rate = false;
+          nextItem.mdf_sheet_size = "";
+          nextItem.mdf_uom = "";
+        }
+      }
+    } else if (field === "wood_type" || field === "thick_in" || field === "length_ft") {
+      nextItem.mdf_sheet_size = "";
+      nextItem.mdf_uom = "";
+      const latestPrices =
+        woodThicknessPrices.length > 0 ? woodThicknessPrices : getLocalWoodThicknessPrices();
+      const matchedRate = findMatchingWoodThicknessRate(
+        nextItem.wood_type,
+        nextItem.thick_in,
+        nextItem.length_ft,
+        latestPrices
+      );
+      if (matchedRate !== null) {
+        nextItem.rate = matchedRate;
+        nextItem.auto_rate = true;
+      } else if (nextItem.auto_rate || field === "wood_type") {
+        nextItem.rate = 0;
+        nextItem.auto_rate = false;
+      }
+    }
+
+    const l = Number(nextItem.length_ft) || 0;
+    const w = Number(nextItem.width_in) || 0;
+    const rawT = Number(nextItem.thick_in) || 0;
+    const effectiveThickIn = rowIsMdf ? rawT / 25.4 : rawT;
+    const p = Number(nextItem.pcs) || 0;
+    const r = Number(nextItem.rate) || 0;
+    nextItem.backend_cft = (l * w * effectiveThickIn * p) / 144;
+
+    updated[index] = nextItem;
     setWoodItems(updated);
+
+    if (
+      field === "length_ft" ||
+      field === "width_in" ||
+      field === "thick_in" ||
+      field === "pcs" ||
+      field === "rate" ||
+      field === "wood_type"
+    ) {
+      costingApi
+        .calculateCft({ length: l, width: w, thickness: effectiveThickIn, pcs: p, rate: r })
+        .then((res) => {
+          setWoodItems((prev) => {
+            if (!prev[index]) return prev;
+            const cur = prev[index];
+            const curIsMdf = isMdfType(cur.wood_type, latestMdf);
+            const curRawT = Number(cur.thick_in) || 0;
+            const curEffT = curIsMdf ? curRawT / 25.4 : curRawT;
+            if (
+              (Number(cur.length_ft) || 0) === l &&
+              (Number(cur.width_in) || 0) === w &&
+              Math.abs(curEffT - effectiveThickIn) < 0.0001 &&
+              (Number(cur.pcs) || 0) === p
+            ) {
+              const copy = [...prev];
+              copy[index] = { ...cur, backend_cft: res.cft };
+              return copy;
+            }
+            return prev;
+          });
+        })
+        .catch(() => { });
+    }
   };
 
   const [metalSsItems, setMetalSsItems] = useState<MetalSsItem[]>([
-    { type: "Metal", size: "", qty: 1, weight: 0, rate: 0 },
+    { type: "Metal", size: "", thickness: "", length: "", qty: 1, weight: 0, rate: 0, base_length: "6000mm", base_weight: 0 },
   ]);
 
   const handleAddMetalSsItem = () => {
     setMetalSsItems([
       ...metalSsItems,
-      { type: "Metal", size: "", qty: 1, weight: 0, rate: 0 },
+      { type: "Metal", size: "", thickness: "", length: "", qty: 1, weight: 0, rate: 0, base_length: "6000mm", base_weight: 0 },
     ]);
   };
 
@@ -117,22 +782,122 @@ export default function CostEstimationFormPage() {
 
   const handleMetalSsItemChange = (index: number, field: keyof MetalSsItem, value: any) => {
     const updated = [...metalSsItems];
-    updated[index] = { ...updated[index], [field]: value };
+    const nextItem: MetalSsItem = { ...updated[index], [field]: value };
+
+    if (field === "weight") {
+      const numW = Number(value);
+      if (!isNaN(numW)) {
+        nextItem.base_weight = numW;
+      }
+    }
+
+    if (field === "size" || field === "thickness" || field === "type") {
+      const currentType = field === "type" ? (value as "Metal" | "SS") : nextItem.type;
+      const currentSize = field === "size" ? String(value || "") : nextItem.size;
+      const currentThickness = field === "thickness" ? String(value || "") : nextItem.thickness;
+
+      if (currentSize) {
+        const latestPrices = metalPricesList.length > 0 ? metalPricesList : getLocalMetalPrices();
+        const matched = findMatchingMetalPrice(
+          latestPrices,
+          currentType,
+          currentSize,
+          currentThickness
+        );
+
+        if (matched) {
+          // If thickness is not selected yet, auto-select thickness from matched entry
+          if (!currentThickness && matched.metalThickness) {
+            const rawT = String(matched.metalThickness).trim();
+            const numT = parseFloat(rawT);
+            if (numT === 1.6) {
+              nextItem.thickness = "1.6";
+            } else if (numT === 1.2) {
+              nextItem.thickness = "1.2";
+            } else {
+              nextItem.thickness = formatDimension(matched.metalThickness, matched.metalThicknessUom);
+            }
+          }
+
+          // Length from master (standard pipe length is 6000mm)
+          const masterLength = matched.pipeLength
+            ? formatDimension(matched.pipeLength, matched.pipeLengthUom)
+            : "6000mm";
+          nextItem.base_length = masterLength;
+          if (!nextItem.length || field === "size") {
+            nextItem.length = masterLength;
+          }
+
+          // Weight from master: default directly into weight column
+          if (matched.weight !== undefined && matched.weight !== "") {
+            const numW = Number(matched.weight);
+            if (!isNaN(numW)) {
+              const stdWeight = matched.weightUom === "gm" ? Number((numW / 1000).toFixed(4)) : numW;
+              nextItem.weight = stdWeight;
+              nextItem.base_weight = stdWeight;
+            }
+          }
+
+          // Rate from master
+          if (matched.rate !== undefined && matched.rate !== 0) {
+            nextItem.rate = Number(matched.rate) || nextItem.rate;
+          }
+        }
+      }
+    }
+
+    updated[index] = nextItem;
     setMetalSsItems(updated);
   };
 
+  const [hardwareItems, setHardwareItems] = useState<HardwareCostItem[]>([
+    { name: "", quantity: 1, price: 0 },
+  ]);
+
+  const handleAddHardwareItem = () => {
+    setHardwareItems([
+      ...hardwareItems,
+      { name: "", quantity: 1, price: 0 },
+    ]);
+  };
+
+  const handleRemoveHardwareItem = (index: number) => {
+    if (hardwareItems.length === 1) return;
+    setHardwareItems(hardwareItems.filter((_, i) => i !== index));
+  };
+
+  const handleHardwareItemChange = (index: number, field: keyof HardwareCostItem, value: any) => {
+    const updated = [...hardwareItems];
+    const nextItem: HardwareCostItem = { ...updated[index], [field]: value };
+
+    if (field === "name") {
+      const selectedName = String(value || "").trim().toLowerCase();
+      if (!selectedName) {
+        nextItem.price = 0;
+      } else {
+        const latestHw =
+          hardwareMasterList.length > 0 ? hardwareMasterList : getLocalHardwareAccessories();
+        const matched = latestHw.find(
+          (hw) => (hw.itemName || "").trim().toLowerCase() === selectedName
+        );
+        if (matched) {
+          nextItem.price = Number(matched.rate) || 0;
+        }
+      }
+    }
+
+    updated[index] = nextItem;
+    setHardwareItems(updated);
+  };
+
   const [additionalItems, setAdditionalItems] = useState<AdditionalCostItem[]>([
-    { additional: "Hardware", size: "", calculation: "", price: 0 },
-    { additional: "Reclaimed", size: "", calculation: "", price: 0 },
-    { additional: "Metal clading", size: "", calculation: "", price: 0 },
-    { additional: "Leather", size: "", calculation: "", price: 0 },
-    { additional: "Bone", size: "", calculation: "", price: 0 },
+    { additional: "", size: "", calculation: "", uom: "", converted_value: "", price: 0 },
   ]);
 
   const handleAddAdditionalItem = () => {
     setAdditionalItems([
       ...additionalItems,
-      { additional: "", size: "", calculation: "", price: 0 },
+      { additional: "", size: "", calculation: "", uom: "", converted_value: "", price: 0 },
     ]);
   };
 
@@ -143,75 +908,284 @@ export default function CostEstimationFormPage() {
 
   const handleAdditionalItemChange = (index: number, field: keyof AdditionalCostItem, value: any) => {
     const updated = [...additionalItems];
-    updated[index] = { ...updated[index], [field]: value };
+    const nextItem: AdditionalCostItem = { ...updated[index], [field]: value };
+
+    if (field === "additional") {
+      const selectedName = String(value || "").trim().toLowerCase();
+      if (!selectedName) {
+        nextItem.price = 0;
+        nextItem.uom = "";
+      } else {
+        const localAc = getLocalAdditionalCosts();
+        const combinedAc = [...additionalMasterList, ...localAc];
+        const matched = combinedAc.find(
+          (ac) => (ac.itemName || "").trim().toLowerCase() === selectedName
+        );
+        if (matched) {
+          nextItem.price = Number(matched.price) || 0;
+          const rawUom = (matched.uom || "").trim();
+          const matchedOption = uomOptions.find(
+            (u) => u.toLowerCase() === rawUom.toLowerCase()
+          );
+          nextItem.uom = matchedOption || rawUom;
+        }
+      }
+    }
+
+    if (field === "size") {
+      const solved = evaluateSizeEquation(String(value ?? ""));
+      nextItem.calculation = solved !== null ? solved : "";
+    }
+
+    if (field === "size" || field === "calculation" || field === "uom" || field === "additional") {
+      nextItem.converted_value = convertCalculationByUom(nextItem.calculation, nextItem.uom);
+    }
+
+    updated[index] = nextItem;
     setAdditionalItems(updated);
   };
 
-  const [expenseItems, setExpenseItems] = useState<ExpenseCostItem[]>([
-    { item_name: "Labour", amount: 0 },
-    { item_name: "Expenses", amount: 0 },
-    { item_name: "Polish Labour", amount: 0 },
-    { item_name: "Polish Material", amount: 0 },
-    { item_name: "Packing", amount: 0 },
-    { item_name: "Forwarding", amount: 0 },
+  const [upholsteryItems, setUpholsteryItems] = useState<UpholsteryCostItem[]>([
+    { item_name: "Fabric", specification: "", uom: "Meter", quantity: "", rate: "" },
+    { item_name: "Leather", specification: "", uom: "Sq. Ft.", quantity: "", rate: "" },
+    { item_name: "Foam", specification: "", uom: "Sheet", quantity: "", rate: "" },
+    { item_name: "Webbing", specification: "", uom: "Meter", quantity: "", rate: "" },
+    { item_name: "Lining", specification: "", uom: "Meter", quantity: "", rate: "" },
+    { item_name: "Upholstery Materials", specification: "", uom: "Pcs", quantity: "", rate: "" },
   ]);
 
-  const handleAddExpenseItem = () => {
-    setExpenseItems([
-      ...expenseItems,
+  const handleAddUpholsteryItem = () => {
+    setUpholsteryItems([
+      ...upholsteryItems,
+      { item_name: "", specification: "", uom: "Meter", quantity: "", rate: "" },
+    ]);
+  };
+
+  const handleRemoveUpholsteryItem = (index: number) => {
+    if (upholsteryItems.length === 1) return;
+    setUpholsteryItems(upholsteryItems.filter((_, i) => i !== index));
+  };
+
+  const handleUpholsteryItemChange = (index: number, field: keyof UpholsteryCostItem, value: any) => {
+    const updated = [...upholsteryItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setUpholsteryItems(updated);
+  };
+
+  const computeUpholsteryTotalAmount = (): number => {
+    return upholsteryItems.reduce((sum, item) => {
+      const q = Number(item.quantity) || 0;
+      const r = Number(item.rate) || 0;
+      return sum + (q * r);
+    }, 0);
+  };
+
+  const [labourItems, setLabourItems] = useState<LabourCostItem[]>([
+    { item_name: "Carpentry / Assembly Labour", amount: 0 },
+    { item_name: "Polish / Finishing Labour", amount: 0 },
+    { item_name: "Polish Material", amount: 0 },
+    { item_name: "Upholstery Labour", amount: 0 },
+  ]);
+
+  const handleAddLabourItem = () => {
+    setLabourItems([
+      ...labourItems,
       { item_name: "", amount: 0 },
     ]);
   };
 
-  const handleRemoveExpenseItem = (index: number) => {
-    if (expenseItems.length === 1) return;
-    setExpenseItems(expenseItems.filter((_, i) => i !== index));
+  const handleRemoveLabourItem = (index: number) => {
+    if (labourItems.length === 1) return;
+    setLabourItems(labourItems.filter((_, i) => i !== index));
   };
 
-  const handleExpenseItemChange = (index: number, field: keyof ExpenseCostItem, value: any) => {
-    const updated = [...expenseItems];
+  const handleLabourItemChange = (index: number, field: keyof LabourCostItem, value: any) => {
+    const updated = [...labourItems];
     updated[index] = { ...updated[index], [field]: value };
-    setExpenseItems(updated);
+
+    // Auto-calculate Polish Material = 2 * Polish Labour
+    if (field === "amount") {
+      const currentItemName = (updated[index].item_name || "").toLowerCase();
+      if (currentItemName.includes("polish") && (currentItemName.includes("labour") || currentItemName.includes("finishing"))) {
+        const polishMatIndex = updated.findIndex((item) => {
+          const n = (item.item_name || "").toLowerCase();
+          return n.includes("polish") && n.includes("material");
+        });
+        if (polishMatIndex !== -1) {
+          const labourAmt = Number(value) || 0;
+          updated[polishMatIndex] = {
+            ...updated[polishMatIndex],
+            amount: value === "" ? "" : Math.round(labourAmt * 2 * 100) / 100,
+          };
+        }
+      }
+    }
+
+    setLabourItems(updated);
   };
 
-  const [cncItems, setCncItems] = useState<CncCostItem[]>([
-    { item_name: "CNC", timing: "", cost: 0 },
-    { item_name: "Additional Cost", timing: "", cost: 0 },
-  ]);
+  const [otherExpenseItems, setOtherExpenseItems] = useState<ExpenseCostItem[]>([]);
 
-  const handleAddCncItem = () => {
-    setCncItems([
-      ...cncItems,
-      { item_name: "", timing: "", cost: 0 },
+  const handleAddOtherExpenseItem = () => {
+    setOtherExpenseItems([
+      ...otherExpenseItems,
+      { item_name: "", amount: 0 },
     ]);
   };
 
-  const handleRemoveCncItem = (index: number) => {
-    if (cncItems.length === 1) return;
-    setCncItems(cncItems.filter((_, i) => i !== index));
+  const handleRemoveOtherExpenseItem = (index: number) => {
+    setOtherExpenseItems(otherExpenseItems.filter((_, i) => i !== index));
   };
 
-  const handleCncItemChange = (index: number, field: keyof CncCostItem, value: any) => {
-    const updated = [...cncItems];
+  const handleOtherExpenseItemChange = (index: number, field: keyof ExpenseCostItem, value: any) => {
+    const updated = [...otherExpenseItems];
     updated[index] = { ...updated[index], [field]: value };
-    setCncItems(updated);
+    setOtherExpenseItems(updated);
+  };
+
+  const [packagingContainerTotal, setPackagingContainerTotal] = useState<number | "">(150000);
+  const [packagingCustomAmount, setPackagingCustomAmount] = useState<number | null>(null);
+
+  const [forwardingContainerTotal, setForwardingContainerTotal] = useState<number | "">(100000);
+  const [forwardingCustomAmount, setForwardingCustomAmount] = useState<number | null>(null);
+
+  const computeTotalCbm = (): number => {
+    return cartons.reduce((sum, c) => {
+      const l = Number(c.length) || 0;
+      const w = Number(c.width) || 0;
+      const h = Number(c.height) || 0;
+      const cbm = c.unit === "cm" ? (l * w * h) / 1000000 : (l * w * h) / 61023.74;
+      return sum + cbm;
+    }, 0);
+  };
+
+  const computePcsIn40Hq = (): number => {
+    const totalCbm = computeTotalCbm();
+    return totalCbm > 0 ? Math.floor(65.0 / totalCbm) : 0;
+  };
+
+  const computePackagingTotalAmount = (): number => {
+    if (packagingCustomAmount !== null) {
+      return Number(packagingCustomAmount) || 0;
+    }
+    const pcs = computePcsIn40Hq();
+    const base = Number(packagingContainerTotal) || 0;
+    return pcs > 0 ? base / pcs : 0;
+  };
+
+  const computeForwardingTotalAmount = (): number => {
+    if (forwardingCustomAmount !== null) {
+      return Number(forwardingCustomAmount) || 0;
+    }
+    const pcs = computePcsIn40Hq();
+    const base = Number(forwardingContainerTotal) || 0;
+    return pcs > 0 ? base / pcs : 0;
+  };
+
+  const computeWoodTotalAmount = (): number => {
+    return woodItems.reduce((sum, item) => {
+      const r = Number(item.rate) || 0;
+      const cft = computeWoodRowCft(item);
+      return sum + (cft * r);
+    }, 0) * (1 + (Number(woodWastagePct) || 0) / 100);
+  };
+
+  const computeMetalTotalAmount = (): number => {
+    return metalSsItems.reduce((sum, item) => {
+      return sum + computeMetalRowTotalAmount(item);
+    }, 0);
+  };
+
+  const computeHardwareTotalAmount = (): number => {
+    return hardwareItems.reduce(
+      (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+      0
+    );
+  };
+
+  const computeAdditionalTotalAmount = (): number => {
+    return additionalItems.reduce((sum, item) => sum + computeAdditionalRowAmount(item), 0);
+  };
+
+  const computeLabourTotalAmount = (): number => {
+    return labourItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  };
+
+  const computeOtherExpensesTotalAmount = (): number => {
+    return otherExpenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   };
 
   useEffect(() => {
+    if (additionalMasterList.length === 0) return;
+    setAdditionalItems((prev) => {
+      let changed = false;
+      const next = prev.map((row) => {
+        if (!row.additional || row.uom) return row;
+        const matched = additionalMasterList.find(
+          (ac) => (ac.itemName || "").trim().toLowerCase() === row.additional.trim().toLowerCase()
+        );
+        if (matched && matched.uom) {
+          changed = true;
+          const rawUom = matched.uom.trim();
+          const matchedOpt =
+            uomOptions.find((u) => u.toLowerCase() === rawUom.toLowerCase()) || rawUom;
+          return {
+            ...row,
+            uom: matchedOpt,
+            converted_value: convertCalculationByUom(row.calculation, matchedOpt),
+          };
+        }
+        return row;
+      });
+      return changed ? next : prev;
+    });
+  }, [additionalMasterList]);
+
+  useEffect(() => {
     loadStandardRates();
+    loadApprovalAuthorities();
     if (isEdit && id) {
       loadEstimation(id);
     }
+
+    const handleRefreshPrices = () => {
+      loadSyncedWoodThicknessPrices().then(setWoodThicknessPrices).catch(() => { });
+      loadSyncedWoodPartNames().then(setWoodPartNamesList).catch(() => { });
+      loadSyncedHardwareAccessories().then(setHardwareMasterList).catch(() => { });
+      loadSyncedAdditionalCosts().then(setAdditionalMasterList).catch(() => { });
+      loadSyncedMdfPrices().then(setMdfPricesList).catch(() => { });
+      loadMergedUomOptions().then(setUomOptions).catch(() => { });
+      setMetalPricesList(getLocalMetalPrices());
+    };
+    window.addEventListener("focus", handleRefreshPrices);
+    window.addEventListener("storage", handleRefreshPrices);
+    return () => {
+      window.removeEventListener("focus", handleRefreshPrices);
+      window.removeEventListener("storage", handleRefreshPrices);
+    };
   }, [id]);
 
   const loadStandardRates = async () => {
     try {
-      const [ratesData, woodData] = await Promise.all([
-        costingApi.getAllRates(),
-        masterDataApi.getWoodTypes(),
+      const [ratesData, woodData, wpnData, hwData, wtpData, acData, mdfData, uomsData] = await Promise.all([
+        costingApi.getAllRates().catch(() => []),
+        masterDataApi.getWoodTypes().catch(() => []),
+        loadSyncedWoodPartNames(),
+        loadSyncedHardwareAccessories(),
+        loadSyncedWoodThicknessPrices(),
+        loadSyncedAdditionalCosts(),
+        loadSyncedMdfPrices(),
+        loadMergedUomOptions(),
       ]);
       setRates(ratesData);
       setWoodTypesList(woodData || []);
+      setWoodPartNamesList(wpnData || []);
+      setHardwareMasterList(hwData || []);
+      setWoodThicknessPrices(wtpData || []);
+      setAdditionalMasterList(acData || []);
+      setMdfPricesList(mdfData || []);
+      setUomOptions(uomsData || getCachedUomOptions());
+      setMetalPricesList(getLocalMetalPrices());
     } catch (err) {
       console.error("Failed to load rates or wood types", err);
     }
@@ -224,6 +1198,9 @@ export default function CostEstimationFormPage() {
       setTitle(est.title || est.product_name || "");
       setProductCode(est.product_code || "");
       setProductName(est.product_name || est.title || "");
+      setProductType(est.product_type || "");
+      setCollectionName(est.collection_name || "");
+      setTypeOfCosting((est.type_of_costing as any) || "");
       setOverallSize(est.overall_size || "");
       setWoodType(est.wood_type || "");
       setClientName(est.client_name || "");
@@ -345,6 +1322,9 @@ export default function CostEstimationFormPage() {
       title: finalProdName,
       product_code: productCode,
       product_name: productName,
+      product_type: productType,
+      collection_name: collectionName,
+      type_of_costing: typeOfCosting,
       overall_size: overallSize,
       wood_type: woodType,
       client_name: clientName,
@@ -359,91 +1339,202 @@ export default function CostEstimationFormPage() {
           const l = Number(w.length_ft) || 0;
           const wi = Number(w.width_in) || 0;
           const t = Number(w.thick_in) || 0;
+          const rowIsMdf = isMdfType(w.wood_type, mdfPricesList);
+          const effectiveThickIn = rowIsMdf ? t / 25.4 : t;
           const pcs = Number(w.pcs) || 0;
           const r = Number(w.rate) || 0;
-          const cft = (l * wi * t * pcs) / 144;
+          const cft = computeWoodRowCft(w);
           const amt = cft * r;
+          const partLabel = w.wood_part_name || "Wood Part";
+          const mdfSpecExtra =
+            rowIsMdf && (w.mdf_sheet_size || w.mdf_uom)
+              ? `, Sheet:${w.mdf_sheet_size || "-"}${w.mdf_uom ? ` (${w.mdf_uom})` : ""}`
+              : "";
           return {
             category: "Raw Material" as const,
-            item_name: w.wood_part_name || "Wood Part",
-            specification: `L:${l}ft, W:${wi}in, T:${t}in, Pcs:${pcs}, Cft:${cft.toFixed(3)}`,
-            quantity: cft > 0 ? Number(cft.toFixed(3)) : pcs,
+            item_name: w.wood_type ? `${partLabel} (${w.wood_type})` : partLabel,
+            specification: `${w.wood_type ? `Wood: ${w.wood_type}, ` : ""}L:${l}ft, W:${wi}in, T:${rowIsMdf ? `${t}mm (${effectiveThickIn.toFixed(3)}in)` : `${t}in`}, Pcs:${pcs}, Cft:${cft.toFixed(3)}${mdfSpecExtra}`,
+            quantity: Number(cft.toFixed(3)),
             unit_of_measure: "Cft",
             unit_cost: r,
             remarks: `Wood Amount: ₹${amt.toFixed(2)}`,
+            length_ft: l,
+            width_in: wi,
+            thick_in: Number(effectiveThickIn.toFixed(4)),
+            pcs,
           };
         }),
         ...metalSsItems.map((m) => {
-          const q = Number(m.qty) || 0;
+          const tw = computeMetalRowTotalWeight(m);
+          const totalAmt = computeMetalRowTotalAmount(m);
           const w = Number(m.weight) || 0;
           const r = Number(m.rate) || 0;
-          const tw = q * w;
-          const totalAmt = tw > 0 ? tw * r : q * r;
           return {
             category: "Raw Material" as const,
             item_name: `${m.type} (${m.size || "Standard"})`,
-            specification: `Type: ${m.type}, Size: ${m.size}, Weight: ${w}kg, Total Weight: ${tw}kg`,
-            quantity: q,
+            specification: `Type: ${m.type}, Size: ${m.size}${m.thickness ? `, Thickness: ${m.thickness}` : ""}${m.length ? `, Length: ${m.length}` : ""}, Base Weight: ${w}kg, Total Weight: ${tw}kg`,
+            quantity: 1,
             unit_of_measure: "Kg",
-            unit_cost: tw > 0 ? w * r : r,
+            unit_cost: r,
+            remarks: `Total Weight: ${tw}kg @ ₹${r}/kg = ₹${totalAmt.toFixed(2)}`,
+          };
+        }),
+        ...hardwareItems.map((h) => {
+          const q = Number(h.quantity) || 0;
+          const p = Number(h.price) || 0;
+          const totalAmt = q * p;
+          return {
+            category: "Hardware" as const,
+            item_name: h.name || "Hardware Item",
+            specification: `Qty: ${q}, Price: ₹${p.toFixed(2)}`,
+            quantity: q,
+            unit_of_measure: "Pcs",
+            unit_cost: p,
+            remarks: `Total Amount: ₹${totalAmt.toFixed(2)}`,
+          };
+        }),
+        ...upholsteryItems.map((u) => {
+          const q = Number(u.quantity) || 0;
+          const r = Number(u.rate) || 0;
+          const totalAmt = q * r;
+          return {
+            category: "Raw Material" as const,
+            item_name: u.item_name || "Upholstery Item",
+            specification: `${u.specification ? `${u.specification}, ` : ""}Qty: ${q}${u.uom ? ` ${u.uom}` : ""}, Rate: ₹${r.toFixed(2)}`,
+            quantity: q > 0 ? q : 1,
+            unit_of_measure: u.uom || "Pcs",
+            unit_cost: r,
             remarks: `Total Amount: ₹${totalAmt.toFixed(2)}`,
           };
         }),
         ...additionalItems.map((a) => {
           const p = Number(a.price) || 0;
+          const convStr = String(a.converted_value ?? "").trim().replace(/,/g, "");
+          const calcStr = String(a.calculation ?? "").trim().replace(/,/g, "");
+          const qty =
+            convStr !== "" && Number.isFinite(Number(convStr))
+              ? Number(convStr)
+              : calcStr !== "" && Number.isFinite(Number(calcStr))
+                ? Number(calcStr)
+                : 1;
+          const rowAmt = computeAdditionalRowAmount(a);
           return {
             category: "Other" as const,
             item_name: a.additional || "Additional Item",
-            specification: `Size: ${a.size || "-"}, Calc: ${a.calculation || "-"}`,
-            quantity: 1,
-            unit_of_measure: "Pcs",
+            specification: `Size: ${a.size || "-"}, Calc: ${a.calculation || "-"}${a.uom ? `, UOM: ${a.uom}` : ""}${a.converted_value ? `, Converted: ${a.converted_value}` : ""}`,
+            quantity: qty,
+            unit_of_measure: a.uom || "Pcs",
             unit_cost: p,
-            remarks: `Price: ₹${p.toFixed(2)}`,
+            remarks: `Amount: ₹${rowAmt.toFixed(2)}${a.uom ? ` (${a.uom})` : ""}`,
           };
         }),
-        ...expenseItems.map((e) => {
-          const amt = Number(e.amount) || 0;
-          const name = e.item_name || "Expense Item";
+        ...labourItems.map((l) => {
+          const amt = Number(l.amount) || 0;
+          const name = l.item_name || "Labour Item";
           return {
-            category: (name.toLowerCase().includes("labour") ? "Labor" : name.toLowerCase().includes("pack") ? "Packaging" : "Overhead") as any,
+            category: "Labor" as const,
             item_name: name,
-            specification: `Direct Expense`,
+            specification: `Labour Expense`,
             quantity: 1,
             unit_of_measure: "Pcs",
             unit_cost: amt,
             remarks: `Amount: ₹${amt.toFixed(2)}`,
           };
         }),
-        ...cncItems.map((c) => {
-          const cost = Number(c.cost) || 0;
-          const name = c.item_name || "CNC / Machine";
+        {
+          category: "Overhead" as const,
+          item_name: `Expenses (${summaryExpensesPct}%)`,
+          specification: `${summaryExpensesPct}% on Direct Subtotal + Packaging & Forwarding (₹${((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())).toFixed(2)})`,
+          quantity: 1,
+          unit_of_measure: "Pcs",
+          unit_cost: (((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100,
+          remarks: `Expenses (${summaryExpensesPct}%): ₹${((((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100).toFixed(2)}`,
+        },
+        ...otherExpenseItems.map((e) => {
+          const amt = Number(e.amount) || 0;
+          const name = e.item_name || "Operational Expense";
           return {
-            category: "Labor" as const,
+            category: (name.toLowerCase().includes("pack") ? "Packaging" : "Overhead") as any,
             item_name: name,
-            specification: `Timing: ${c.timing || "-"}`,
+            specification: `Operational Expense`,
             quantity: 1,
             unit_of_measure: "Pcs",
-            unit_cost: cost,
-            remarks: `Cost: ₹${cost.toFixed(2)}`,
+            unit_cost: amt,
+            remarks: `Amount: ₹${amt.toFixed(2)}`,
           };
         }),
+        {
+          category: "Packaging" as const,
+          item_name: "Packaging Cost",
+          specification: packagingCustomAmount !== null
+            ? `Custom Amount: ₹${computePackagingTotalAmount().toFixed(2)} (Container Base: ₹${packagingContainerTotal})`
+            : `Formula: ₹${packagingContainerTotal} / ${computePcsIn40Hq()} Pcs in 40HQ`,
+          quantity: 1,
+          unit_of_measure: "Pcs",
+          unit_cost: computePackagingTotalAmount(),
+          remarks: `Total Packaging Cost: ₹${computePackagingTotalAmount().toFixed(2)}`,
+        },
+        {
+          category: "Overhead" as const,
+          item_name: "Forwarding Cost",
+          specification: forwardingCustomAmount !== null
+            ? `Custom Amount: ₹${computeForwardingTotalAmount().toFixed(2)} (Container Base: ₹${forwardingContainerTotal})`
+            : `Formula: ₹${forwardingContainerTotal} / ${computePcsIn40Hq()} Pcs in 40HQ`,
+          quantity: 1,
+          unit_of_measure: "Pcs",
+          unit_cost: computeForwardingTotalAmount(),
+          remarks: `Total Forwarding Cost: ₹${computeForwardingTotalAmount().toFixed(2)}`,
+        },
       ],
     };
 
     setLoading(true);
     try {
+      let savedId = id;
       if (isEdit && id) {
         await costingApi.updateEstimation(id, payload);
-        alert("Cost estimation updated successfully!");
       } else {
-        await costingApi.createEstimation(payload);
-        alert("Cost estimation created successfully!");
+        const res = await costingApi.createEstimation(payload);
+        savedId = res.id;
       }
-      navigate("/admin/costing/new");
+      setSavedEstimationId(savedId || "");
+      setShowApprovalModal(true);
     } catch (err) {
       alert("Failed to save estimation");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendForApproval = async () => {
+    if (!savedEstimationId) {
+      navigate("/admin/costing/list");
+      return;
+    }
+    setApprovalLoading(true);
+    try {
+      const authorityName = selectedAuthority
+        ? `${selectedAuthority.fullName} (${selectedAuthority.designationTitle || "Management / Admin"})`
+        : "Management";
+      const timestamp = new Date().toLocaleString("en-IN", {
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+      const noteEntry = `[${timestamp}] Sent for Approval to: ${authorityName}${approvalNote.trim() ? ` — Note: ${approvalNote.trim()}` : ""
+        }`;
+      const combinedNotes = notes ? `${notes}\n${noteEntry}` : noteEntry;
+
+      await costingApi.updateEstimation(savedEstimationId, {
+        status: "In Review",
+        notes: combinedNotes,
+      });
+
+      alert(`Costing successfully submitted to ${authorityName} for approval!`);
+      navigate("/admin/costing/list");
+    } catch (err) {
+      navigate("/admin/costing/list");
+    } finally {
+      setApprovalLoading(false);
     }
   };
 
@@ -468,7 +1559,7 @@ export default function CostEstimationFormPage() {
           </h1>
         </div>
         <button
-          onClick={() => navigate("/admin/costing/new")}
+          onClick={() => navigate("/admin/costing/list")}
           style={{
             padding: "8px 16px",
             background: "#ffffff",
@@ -482,9 +1573,9 @@ export default function CostEstimationFormPage() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form data-no-enhance="true" onSubmit={handleSubmit}>
         {/* Basic Details Card */}
-        <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
+        <div data-no-enhance="true" style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginTop: 0, marginBottom: 16 }}>
             1. Product Details
           </h3>
@@ -563,86 +1654,265 @@ export default function CostEstimationFormPage() {
               </label>
             )}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", width: "100%" }}>
-            <div style={{ flex: "1 1 280px", minWidth: "280px" }}>
+          <div
+            data-no-enhance="true"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: "16px 20px",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
                 Product Code
               </label>
               <input
                 type="text"
+                placeholder="Enter Product Code"
                 value={productCode}
                 onChange={(e) => setProductCode(e.target.value)}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 }}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  outline: "none",
+                }}
               />
             </div>
 
-            <div style={{ flex: "1 1 280px", minWidth: "280px" }}>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
                 Product Name *
               </label>
               <input
                 type="text"
                 required
+                placeholder="Enter Product Name"
                 value={productName}
                 onChange={(e) => {
                   setProductName(e.target.value);
                   setTitle(e.target.value);
                 }}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 }}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  outline: "none",
+                }}
               />
             </div>
 
-            <div style={{ flex: "1 1 280px", minWidth: "280px" }}>
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
+                Product Type
+              </label>
+              <select
+                data-no-enhance="true"
+                value={productType}
+                onChange={(e) => handleProductTypeChange(e.target.value)}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                <option value="">Select Product Type</option>
+                {FURNITURE_PRODUCT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                {productType && !FURNITURE_PRODUCT_TYPES.includes(productType) && (
+                  <option value={productType}>{productType}</option>
+                )}
+              </select>
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
+                Collection Name
+              </label>
+              <input
+                type="text"
+                placeholder=""
+                value={collectionName}
+                onChange={(e) => setCollectionName(e.target.value)}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
+                Type of Costing
+              </label>
+              <select
+                data-no-enhance="true"
+                value={typeOfCosting}
+                onChange={(e) => setTypeOfCosting(e.target.value as any)}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                <option value="">Select Costing Type</option>
+                <option value="Client Based">Client Based</option>
+                <option value="Showroom Based">Showroom Based</option>
+              </select>
+            </div>
+
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
                 Overall Size
               </label>
               <input
                 type="text"
+                placeholder=""
                 value={overallSize}
                 onChange={(e) => setOverallSize(e.target.value)}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 }}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  outline: "none",
+                }}
               />
             </div>
 
-            <div style={{ flex: "1 1 350px", minWidth: "320px" }}>
-              <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 6 }}>
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
                 Wood Type
               </label>
               <select
+                data-no-enhance="true"
                 value={woodType}
-                onChange={(e) => setWoodType(e.target.value)}
+                onChange={(e) => {
+                  const newType = e.target.value;
+                  setWoodType(newType);
+                  if (newType) {
+                    setWoodItems((prev) =>
+                      prev.map((row) => {
+                        const nextRow = { ...row, wood_type: newType };
+                        if (nextRow.length_ft) {
+                          const latestThickPrices =
+                            woodThicknessPrices.length > 0
+                              ? woodThicknessPrices
+                              : getLocalWoodThicknessPrices();
+                          const matchedRate = findMatchingWoodThicknessRate(
+                            newType,
+                            nextRow.thick_in,
+                            nextRow.length_ft,
+                            latestThickPrices
+                          );
+                          if (matchedRate !== null && matchedRate > 0) {
+                            nextRow.rate = matchedRate;
+                            nextRow.auto_rate = true;
+                          }
+                        }
+                        return nextRow;
+                      })
+                    );
+                  }
+                }}
                 style={{
                   width: "100%",
-                  height: "46px",
+                  maxWidth: "100%",
+                  height: 42,
                   boxSizing: "border-box",
-                  padding: "10px 14px",
-                  border: "2px solid #2563eb",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
                   borderRadius: 6,
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  color: "#111827",
+                  fontSize: 14,
                   backgroundColor: "#ffffff",
+                  color: "#111827",
                   cursor: "pointer",
+                  outline: "none",
                 }}
               >
-                <option value="" style={{ color: "#4b5563", backgroundColor: "#ffffff" }}>-- Select Wood Type --</option>
+                <option value="">Select Wood Type</option>
                 {woodTypesList.map((wt) => (
-                  <option key={wt.id} value={wt.name} style={{ color: "#111827", backgroundColor: "#ffffff", fontSize: "15px", padding: "8px" }}>
+                  <option key={wt.id} value={wt.name}>
                     {wt.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div style={{ flex: "1 1 280px", minWidth: "280px" }}>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
                 Client / Customer Name
               </label>
               <input
                 type="text"
+                placeholder="Enter Client or Customer Name"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 }}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  outline: "none",
+                }}
               />
             </div>
           </div>
@@ -672,206 +1942,318 @@ export default function CostEstimationFormPage() {
             </button>
           </div>
 
-          <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Wood part name</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Length(ft)</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Width(in.)</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>thick.(in.)</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Pcs</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Cft</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Rate</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Amount</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {woodItems.map((item, idx) => {
-                const l = Number(item.length_ft) || 0;
-                const w = Number(item.width_in) || 0;
-                const t = Number(item.thick_in) || 0;
-                const pcs = Number(item.pcs) || 0;
-                const r = Number(item.rate) || 0;
-                const cft = (l * w * t * pcs) / 144;
-                const amount = cft * r;
+          <datalist id="wood-part-suggestions">
+            {combinedWoodPartSuggestions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label !== opt.value ? opt.label : undefined}
+              </option>
+            ))}
+          </datalist>
 
-                return (
-                  <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ padding: "8px 12px" }}>
-                      <input
-                        type="text"
-                        placeholder="Part Name"
-                        value={item.wood_part_name}
-                        onChange={(e) => handleWoodItemChange(idx, "wood_part_name", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "100px" }}>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="ft"
-                        value={item.length_ft}
-                        onChange={(e) => handleWoodItemChange(idx, "length_ft", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "100px" }}>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="in."
-                        value={item.width_in}
-                        onChange={(e) => handleWoodItemChange(idx, "width_in", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "100px" }}>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="in."
-                        value={item.thick_in}
-                        onChange={(e) => handleWoodItemChange(idx, "thick_in", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "90px" }}>
-                      <input
-                        type="number"
-                        step="1"
-                        placeholder="Pcs"
-                        value={item.pcs}
-                        onChange={(e) => handleWoodItemChange(idx, "pcs", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", fontWeight: 600, color: "#374151", width: "100px" }}>
-                      {cft.toFixed(3)}
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "110px" }}>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Rate"
-                        value={item.rate}
-                        onChange={(e) => handleWoodItemChange(idx, "rate", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", fontWeight: 600, color: "#111827", width: "130px" }}>
-                      ₹{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "60px" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveWoodItem(idx)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#dc2626",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              {(() => {
-                const subtotalCft = woodItems.reduce((sum, item) => {
-                  const l = Number(item.length_ft) || 0;
-                  const w = Number(item.width_in) || 0;
-                  const t = Number(item.thick_in) || 0;
-                  const pcs = Number(item.pcs) || 0;
-                  return sum + ((l * w * t * pcs) / 144);
-                }, 0);
-                const wastageCft = (subtotalCft * (Number(woodWastagePct) || 0)) / 100;
-                const totalCftWithWastage = subtotalCft + wastageCft;
-
-                const rawWoodCost = woodItems.reduce((sum, item) => {
-                  const l = Number(item.length_ft) || 0;
-                  const w = Number(item.width_in) || 0;
-                  const t = Number(item.thick_in) || 0;
-                  const pcs = Number(item.pcs) || 0;
+          <div style={{ overflowX: "auto" }}>
+            <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead>
+                <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Wood part name</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Type of Wood</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Length(ft)</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Width(in.)</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>thick.(in./mm)</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Pcs</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Cft</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Rate (₹/CFT)</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Amount</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {woodItems.map((item, idx) => {
                   const r = Number(item.rate) || 0;
-                  const cft = (l * w * t * pcs) / 144;
-                  return sum + (cft * r);
-                }, 0);
+                  const rowIsMdf = isMdfType(item.wood_type, mdfPricesList);
+                  const mdfCandidates = rowIsMdf
+                    ? getMdfRecordsForType(item.wood_type, mdfPricesList)
+                    : [];
+                  const matchedMdf = rowIsMdf
+                    ? findMatchingMdfPrice(
+                      item.wood_type,
+                      item.thick_in,
+                      item.length_ft,
+                      item.width_in,
+                      mdfPricesList
+                    )
+                    : null;
+                  const uniqueMdfThicknesses = Array.from(
+                    new Set(
+                      mdfCandidates
+                        .map((m) =>
+                          String(m.thickness || "")
+                            .replace(/mm|inch|in|"/gi, "")
+                            .trim()
+                        )
+                        .filter(Boolean)
+                    )
+                  );
+                  const cft = computeWoodRowCft(item);
+                  const amount = cft * r;
 
-                const wastageAmt = (rawWoodCost * (Number(woodWastagePct) || 0)) / 100;
-                const totalWithWastage = rawWoodCost + wastageAmt;
+                  return (
+                    <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "8px 12px", minWidth: "170px" }}>
+                        <input
+                          type="text"
+                          list="wood-part-suggestions"
+                          placeholder="Enter or select part name"
+                          value={item.wood_part_name}
+                          onFocus={() => loadSyncedWoodPartNames().then(setWoodPartNamesList).catch(() => { })}
+                          onChange={(e) => handleWoodItemChange(idx, "wood_part_name", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 10px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            backgroundColor: "#ffffff",
+                            color: "#111827",
+                            outline: "none",
+                          }}
+                        />
+                      </td>
 
-                return (
-                  <>
-                    <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
-                      <td colSpan={5} style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 13, color: "#1e293b" }}>
-                        Subtotal Wood:
+                      <td style={{ padding: "8px 12px", minWidth: "170px" }}>
+                        <select
+                          value={item.wood_type}
+                          onFocus={() => {
+                            loadSyncedMdfPrices().then(setMdfPricesList).catch(() => { });
+                            loadSyncedWoodThicknessPrices().then(setWoodThicknessPrices).catch(() => { });
+                          }}
+                          onChange={(e) => handleWoodItemChange(idx, "wood_type", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            backgroundColor: "#ffffff",
+                            color: "#111827",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="">-- Select Wood --</option>
+                          {(() => {
+                            const seenLower = new Set<string>();
+                            const options: string[] = [];
+                            const addOption = (raw?: string) => {
+                              if (!raw) return;
+                              const key = raw.trim().toLowerCase();
+                              if (!key || seenLower.has(key)) return;
+                              seenLower.add(key);
+                              options.push(raw.trim());
+                            };
+                            woodTypesList
+                              .filter((wt) => wt.status !== "inactive" || wt.name === item.wood_type)
+                              .forEach((wt) => addOption(wt.name));
+                            woodThicknessPrices
+                              .filter((p) => p.status !== "inactive")
+                              .forEach((p) => addOption(p.woodType));
+                            mdfPricesList
+                              .filter((m) => m.status !== "inactive")
+                              .forEach((m) => addOption(m.mdfType));
+                            if (item.wood_type) addOption(item.wood_type);
+                            return options.map((name) => (
+                              <option key={name} value={name}>
+                                {name}
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                        {rowIsMdf && matchedMdf && (
+                          <div style={{ fontSize: 11, color: "#2563eb", marginTop: 4, fontWeight: 500 }}>
+                            {matchedMdf.sheetSize ? `Sheet: ${matchedMdf.sheetSize} • ` : ""}
+                            {matchedMdf.thickness}mm
+                            {matchedMdf.uom ? ` • ${matchedMdf.uom}` : ""}
+                          </div>
+                        )}
+                        {rowIsMdf && !matchedMdf && uniqueMdfThicknesses.length > 0 && (
+                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                            Thickness (mm): {uniqueMdfThicknesses.join(", ")}
+                          </div>
+                        )}
                       </td>
-                      <td style={{ padding: "10px 12px", fontWeight: 800, fontSize: 14, color: "#0f172a" }}>
-                        {subtotalCft.toFixed(3)}
+
+                      <td style={{ padding: "8px 12px", width: "100px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="ft"
+                          value={item.length_ft}
+                          onChange={(e) => handleWoodItemChange(idx, "length_ft", e.target.value)}
+                          style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                        />
                       </td>
-                      <td style={{ padding: "10px 12px" }}></td>
-                      <td style={{ padding: "10px 12px", fontWeight: 800, fontSize: 14, color: "#0f172a" }}>
-                        ₹{rawWoodCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+
+                      <td style={{ padding: "8px 12px", width: "100px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="in."
+                          value={item.width_in}
+                          onChange={(e) => handleWoodItemChange(idx, "width_in", e.target.value)}
+                          style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                        />
                       </td>
-                      <td></td>
+
+                      <td style={{ padding: "8px 12px", width: "105px" }}>
+                        {rowIsMdf && uniqueMdfThicknesses.length > 0 && (
+                          <datalist id={`mdf-thick-list-${idx}`}>
+                            {uniqueMdfThicknesses.map((th) => (
+                              <option key={th} value={th} />
+                            ))}
+                          </datalist>
+                        )}
+                        <input
+                          type="number"
+                          step="0.01"
+                          list={rowIsMdf && uniqueMdfThicknesses.length > 0 ? `mdf-thick-list-${idx}` : undefined}
+                          placeholder={rowIsMdf ? "mm" : "in."}
+                          value={item.thick_in}
+                          onChange={(e) => handleWoodItemChange(idx, "thick_in", e.target.value)}
+                          style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "90px" }}>
+                        <input
+                          type="number"
+                          step="1"
+                          placeholder="Pcs"
+                          value={item.pcs}
+                          onChange={(e) => handleWoodItemChange(idx, "pcs", e.target.value)}
+                          style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", fontWeight: 600, color: "#374151", width: "100px" }}>
+                        {cft.toFixed(3)}
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "110px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Rate"
+                          title={item.auto_rate ? `Auto-fetched from Master by Length (${item.length_ft} ft)` : "Rate per CFT"}
+                          value={item.rate}
+                          onChange={(e) => handleWoodItemChange(idx, "rate", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            background: item.auto_rate ? "#f0fdf4" : "#ffffff",
+                            fontWeight: item.auto_rate ? 600 : 400,
+                            color: item.auto_rate ? "#15803d" : "#111827",
+                          }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", fontWeight: 600, color: "#111827", width: "130px" }}>
+                        ₹{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "60px" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWoodItem(idx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#dc2626",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </td>
                     </tr>
-                    <tr style={{ background: "#f8fafc" }}>
-                      <td colSpan={5} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, fontSize: 13, color: "#475569" }}>
-                        <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
-                          <span>Wastage:</span>
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            value={woodWastagePct}
-                            onChange={(e) => setWoodWastagePct(Number(e.target.value))}
-                            style={{ width: "55px", padding: "4px 6px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4, textAlign: "center", fontWeight: 600 }}
-                          />
-                          <span>%</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: "8px 12px", fontWeight: 600, fontSize: 13, color: "#d97706" }}>
-                        + {wastageCft.toFixed(3)}
-                      </td>
-                      <td style={{ padding: "8px 12px" }}></td>
-                      <td style={{ padding: "8px 12px", fontWeight: 600, fontSize: 13, color: "#d97706" }}>
-                        + ₹{wastageAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td></td>
-                    </tr>
-                    <tr style={{ background: "#eff6ff", borderTop: "2px solid #bfdbfe" }}>
-                      <td colSpan={5} style={{ padding: "12px", textAlign: "right", fontWeight: 800, fontSize: 14, color: "#1e3a8a" }}>
-                        Total Wood (incl. Wastage):
-                      </td>
-                      <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
-                        {totalCftWithWastage.toFixed(3)}
-                      </td>
-                      <td style={{ padding: "12px" }}></td>
-                      <td style={{ padding: "12px", fontWeight: 800, fontSize: 16, color: "#2563eb" }}>
-                        ₹{totalWithWastage.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </>
-                );
-              })()}
-            </tfoot>
-          </table>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                {(() => {
+                  const subtotalCft = woodItems.reduce((sum, item) => sum + computeWoodRowCft(item), 0);
+                  const wastageCft = (subtotalCft * (Number(woodWastagePct) || 0)) / 100;
+                  const totalCftWithWastage = subtotalCft + wastageCft;
+
+                  const rawWoodCost = woodItems.reduce((sum, item) => {
+                    const r = Number(item.rate) || 0;
+                    const cft = computeWoodRowCft(item);
+                    return sum + (cft * r);
+                  }, 0);
+
+                  const wastageAmt = (rawWoodCost * (Number(woodWastagePct) || 0)) / 100;
+                  const totalWithWastage = rawWoodCost + wastageAmt;
+
+                  return (
+                    <>
+                      <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
+                        <td colSpan={6} style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 13, color: "#1e293b" }}>
+                          Subtotal Wood:
+                        </td>
+                        <td style={{ padding: "10px 12px", fontWeight: 800, fontSize: 14, color: "#0f172a" }}>
+                          {subtotalCft.toFixed(3)}
+                        </td>
+                        <td style={{ padding: "10px 12px" }}></td>
+                        <td style={{ padding: "10px 12px", fontWeight: 800, fontSize: 14, color: "#0f172a" }}>
+                          ₹{rawWoodCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <td colSpan={6} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, fontSize: 13, color: "#475569" }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
+                            <span>Wastage:</span>
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              value={woodWastagePct}
+                              onChange={(e) => setWoodWastagePct(Number(e.target.value))}
+                              style={{ width: "55px", padding: "4px 6px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4, textAlign: "center", fontWeight: 600 }}
+                            />
+                            <span>%</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: "8px 12px", fontWeight: 600, fontSize: 13, color: "#d97706" }}>
+                          + {wastageCft.toFixed(3)}
+                        </td>
+                        <td style={{ padding: "8px 12px" }}></td>
+                        <td style={{ padding: "8px 12px", fontWeight: 600, fontSize: 13, color: "#d97706" }}>
+                          + ₹{wastageAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr style={{ background: "#eff6ff", borderTop: "2px solid #bfdbfe" }}>
+                        <td colSpan={6} style={{ padding: "12px", textAlign: "right", fontWeight: 800, fontSize: 14, color: "#1e3a8a" }}>
+                          Total Wood (incl. Wastage):
+                        </td>
+                        <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
+                          {totalCftWithWastage.toFixed(3)}
+                        </td>
+                        <td style={{ padding: "12px" }}></td>
+                        <td style={{ padding: "12px", fontWeight: 800, fontSize: 16, color: "#2563eb" }}>
+                          ₹{totalWithWastage.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </>
+                  );
+                })()}
+              </tfoot>
+            </table>
+          </div>
         </div>
 
         {/* Metal and SS Costing Section */}
@@ -903,8 +2285,9 @@ export default function CostEstimationFormPage() {
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
                 <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Type</th>
                 <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Size</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Qty</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Weight</th>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Thickness</th>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Length</th>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Weight (kg)</th>
                 <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Total Weight</th>
                 <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Rate</th>
                 <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Total Amount</th>
@@ -913,11 +2296,8 @@ export default function CostEstimationFormPage() {
             </thead>
             <tbody>
               {metalSsItems.map((item, idx) => {
-                const q = Number(item.qty) || 0;
-                const w = Number(item.weight) || 0;
-                const r = Number(item.rate) || 0;
-                const totalWeight = q * w;
-                const totalAmount = totalWeight > 0 ? totalWeight * r : q * r;
+                const totalWeight = computeMetalRowTotalWeight(item);
+                const totalAmount = computeMetalRowTotalAmount(item);
 
                 return (
                   <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
@@ -932,24 +2312,59 @@ export default function CostEstimationFormPage() {
                       </select>
                     </td>
 
-                    <td style={{ padding: "8px 12px" }}>
-                      <input
-                        type="text"
-                        placeholder="Size (e.g. 25x25mm)"
+                    <td style={{ padding: "8px 12px", minWidth: "140px" }}>
+                      <select
                         value={item.size}
+                        onFocus={() => setMetalPricesList(getLocalMetalPrices())}
                         onChange={(e) => handleMetalSsItemChange(idx, "size", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
+                        style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, backgroundColor: "#ffffff", cursor: "pointer" }}
+                      >
+                        <option value="">-- Select Size --</option>
+                        {(() => {
+                          const opts = getMetalSizeOptions(metalPricesList, item.type);
+                          if (item.size && !opts.some((o) => o.toLowerCase() === item.size.toLowerCase())) {
+                            opts.push(item.size);
+                          }
+                          return opts.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ));
+                        })()}
+                      </select>
                     </td>
 
-                    <td style={{ padding: "8px 12px", width: "90px" }}>
+                    <td style={{ padding: "8px 12px", minWidth: "100px" }}>
+                      <select
+                        value={item.thickness}
+                        onChange={(e) => handleMetalSsItemChange(idx, "thickness", e.target.value)}
+                        style={{
+                          width: "100%",
+                          boxSizing: "border-box",
+                          padding: "6px 8px",
+                          fontSize: 13,
+                          border: "1px solid #d1d5db",
+                          borderRadius: 4,
+                          backgroundColor: "#ffffff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="">-- Select --</option>
+                        <option value="1.6">1.6</option>
+                        <option value="1.2">1.2</option>
+                        {item.thickness && item.thickness !== "1.6" && item.thickness !== "1.2" && (
+                          <option value={item.thickness}>{item.thickness}</option>
+                        )}
+                      </select>
+                    </td>
+
+                    <td style={{ padding: "8px 12px", minWidth: "95px" }}>
                       <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Qty"
-                        value={item.qty}
-                        onChange={(e) => handleMetalSsItemChange(idx, "qty", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                        type="text"
+                        placeholder=""
+                        value={item.length}
+                        onChange={(e) => handleMetalSsItemChange(idx, "length", e.target.value)}
+                        style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
                       />
                     </td>
 
@@ -965,7 +2380,7 @@ export default function CostEstimationFormPage() {
                     </td>
 
                     <td style={{ padding: "8px 12px", fontWeight: 600, color: "#374151", width: "130px" }}>
-                      {totalWeight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {totalWeight > 0 ? `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} kg` : "-"}
                     </td>
 
                     <td style={{ padding: "8px 12px", width: "110px" }}>
@@ -1004,23 +2419,17 @@ export default function CostEstimationFormPage() {
             </tbody>
             <tfoot>
               <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
-                <td colSpan={4} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
+                <td colSpan={5} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
                   Total Weight:
                 </td>
                 <td style={{ padding: "12px", fontWeight: 800, fontSize: 14, color: "#1e293b" }}>
-                  {metalSsItems.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.weight) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg
+                  {metalSsItems.reduce((sum, item) => sum + computeMetalRowTotalWeight(item), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} kg
                 </td>
                 <td style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
                   Total Metal & SS Amount:
                 </td>
                 <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
-                  ₹{metalSsItems.reduce((sum, item) => {
-                    const q = Number(item.qty) || 0;
-                    const w = Number(item.weight) || 0;
-                    const r = Number(item.rate) || 0;
-                    const tw = q * w;
-                    return sum + (tw > 0 ? tw * r : q * r);
-                  }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ₹{metalSsItems.reduce((sum, item) => sum + computeMetalRowTotalAmount(item), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td></td>
               </tr>
@@ -1028,11 +2437,373 @@ export default function CostEstimationFormPage() {
           </table>
         </div>
 
-        {/* Additional Costing Section */}
+        {/* Hardware Costing Section */}
         <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
-              4. Additional Costing
+              4. Hardware Costing
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddHardwareItem}
+              style={{
+                padding: "6px 14px",
+                background: "#eff6ff",
+                color: "#2563eb",
+                border: "1px solid #bfdbfe",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              + Add Item Line
+            </button>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead>
+                <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Name of Hardware</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Quantity</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Price</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Total Amount</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "60px" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hardwareItems.map((item, idx) => {
+                  const qty = Number(item.quantity) || 0;
+                  const price = Number(item.price) || 0;
+                  const totalAmount = qty * price;
+
+                  return (
+                    <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "8px 12px", minWidth: "180px" }}>
+                        <select
+                          value={item.name}
+                          onFocus={() => loadSyncedHardwareAccessories().then(setHardwareMasterList).catch(() => { })}
+                          onChange={(e) => handleHardwareItemChange(idx, "name", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            backgroundColor: "#ffffff",
+                            color: "#111827",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="">-- Select Hardware --</option>
+                          {(() => {
+                            const seenLower = new Set<string>();
+                            const options: { value: string; label: string }[] = [];
+                            hardwareMasterList
+                              .filter((hw) => hw.status !== "inactive" || hw.itemName === item.name)
+                              .forEach((hw) => {
+                                const name = (hw.itemName || "").trim();
+                                if (!name) return;
+                                const key = name.toLowerCase();
+                                if (seenLower.has(key)) return;
+                                seenLower.add(key);
+                                options.push({
+                                  value: name,
+                                  label: hw.itemCode ? `${name} (${hw.itemCode})` : name,
+                                });
+                              });
+                            if (item.name && !seenLower.has(item.name.trim().toLowerCase())) {
+                              options.push({
+                                value: item.name.trim(),
+                                label: item.name.trim(),
+                              });
+                            }
+                            return options.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "110px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => handleHardwareItemChange(idx, "quantity", e.target.value)}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "120px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={item.price}
+                          onChange={(e) => handleHardwareItemChange(idx, "price", e.target.value)}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", fontWeight: 600, color: "#111827", width: "130px" }}>
+                        ₹{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "50px" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHardwareItem(idx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#dc2626",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
+                  <td colSpan={3} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
+                    Total Hardware Amount:
+                  </td>
+                  <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
+                    ₹{hardwareItems
+                      .reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0)
+                      .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        {/* 5. Upholstery Costing Section */}
+        <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
+              5. Upholstery Costing
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddUpholsteryItem}
+              style={{
+                padding: "6px 14px",
+                background: "#eff6ff",
+                color: "#2563eb",
+                border: "1px solid #bfdbfe",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              + Add Item Line
+            </button>
+          </div>
+
+          <datalist id="upholstery-item-suggestions">
+            <option value="Fabric" />
+            <option value="Leather" />
+            <option value="Foam" />
+            <option value="Webbing" />
+            <option value="Lining" />
+            <option value="Upholstery Materials" />
+            <option value="Fabric / Velvet" />
+            <option value="Linen Fabric" />
+            <option value="Leatherette / Faux Leather" />
+            <option value="Genuine Leather" />
+            <option value="High Density Foam (32D)" />
+            <option value="High Density Foam (40D)" />
+            <option value="Memory Foam" />
+            <option value="PU Foam" />
+            <option value="Dacron / Polyfill" />
+            <option value="Lining Fabric" />
+            <option value="Webbing Tape / Elastic Belts" />
+            <option value="Zig-Zag Springs" />
+            <option value="Piping / Beading Cord" />
+            <option value="Velcro / Fasteners" />
+          </datalist>
+
+          <datalist id="upholstery-uom-suggestions">
+            <option value="Meter" />
+            <option value="Mtr" />
+            <option value="Sq. Ft." />
+            <option value="Sheet" />
+            <option value="Kg" />
+            <option value="Roll" />
+            <option value="Pcs" />
+          </datalist>
+
+          <div style={{ overflowX: "auto" }}>
+            <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead>
+                <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Item Name</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Specification</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "120px" }}>UOM</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "110px" }}>Quantity</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "120px" }}>Rate (₹)</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "130px" }}>Amount (₹)</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "50px" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upholsteryItems.map((item, idx) => {
+                  const qty = Number(item.quantity) || 0;
+                  const rate = Number(item.rate) || 0;
+                  const rowAmount = qty * rate;
+
+                  return (
+                    <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "8px 12px", minWidth: "180px" }}>
+                        <input
+                          type="text"
+                          list="upholstery-item-suggestions"
+                          placeholder=""
+                          value={item.item_name}
+                          onChange={(e) => handleUpholsteryItemChange(idx, "item_name", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                          }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", minWidth: "160px" }}>
+                        <input
+                          type="text"
+                          placeholder=""
+                          value={item.specification || ""}
+                          onChange={(e) => handleUpholsteryItemChange(idx, "specification", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                          }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "120px" }}>
+                        <input
+                          type="text"
+                          list="upholstery-uom-suggestions"
+                          placeholder=""
+                          value={item.uom || ""}
+                          onChange={(e) => handleUpholsteryItemChange(idx, "uom", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                          }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "110px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => handleUpholsteryItemChange(idx, "quantity", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                          }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "120px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Rate"
+                          value={item.rate}
+                          onChange={(e) => handleUpholsteryItemChange(idx, "rate", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            fontWeight: 600,
+                            color: "#111827",
+                          }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", fontWeight: 600, color: "#111827", width: "130px" }}>
+                        ₹{rowAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "50px" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveUpholsteryItem(idx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#dc2626",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
+                  <td colSpan={5} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
+                    Total Upholstery Amount:
+                  </td>
+                  <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
+                    ₹{computeUpholsteryTotalAmount().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        {/* 6. Additional Costing Section */}
+        <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
+              6. Additional Costing
             </h3>
             <button
               type="button"
@@ -1052,103 +2823,200 @@ export default function CostEstimationFormPage() {
             </button>
           </div>
 
-          <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Additional</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Size</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Calculation</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Price</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {additionalItems.map((item, idx) => {
-                return (
-                  <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ padding: "8px 12px", width: "220px" }}>
-                      <input
-                        type="text"
-                        placeholder="Additional Item"
-                        value={item.additional}
-                        onChange={(e) => handleAdditionalItemChange(idx, "additional", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 500 }}
-                      />
-                    </td>
+          <div style={{ overflowX: "auto" }}>
+            <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead>
+                <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Process Name</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Size</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Calculation</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>UOM</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Converted Value</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Price</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Amount</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "50px" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {additionalItems.map((item, idx) => {
+                  const rowAmount = computeAdditionalRowAmount(item);
+                  return (
+                    <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "8px 12px", minWidth: "180px" }}>
+                        <select
+                          value={item.additional}
+                          onFocus={() => loadSyncedAdditionalCosts().then(setAdditionalMasterList).catch(() => { })}
+                          onChange={(e) => handleAdditionalItemChange(idx, "additional", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            backgroundColor: "#ffffff",
+                            color: "#111827",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="">-- Select Process Name --</option>
+                          {(() => {
+                            const seenLower = new Set<string>();
+                            const options: { value: string; label: string }[] = [];
+                            additionalMasterList
+                              .filter((ac) => ac.status !== "inactive" || ac.itemName === item.additional)
+                              .forEach((ac) => {
+                                const name = (ac.itemName || "").trim();
+                                if (!name) return;
+                                const key = name.toLowerCase();
+                                if (seenLower.has(key)) return;
+                                seenLower.add(key);
+                                options.push({
+                                  value: name,
+                                  label: ac.itemCode ? `${name} (${ac.itemCode})` : name,
+                                });
+                              });
+                            if (item.additional && !seenLower.has(item.additional.trim().toLowerCase())) {
+                              options.push({
+                                value: item.additional.trim(),
+                                label: item.additional.trim(),
+                              });
+                            }
+                            return options.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                      </td>
 
-                    <td style={{ padding: "8px 12px" }}>
-                      <input
-                        type="text"
-                        placeholder="Size"
-                        value={item.size}
-                        onChange={(e) => handleAdditionalItemChange(idx, "size", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
+                      <td style={{ padding: "8px 12px", minWidth: "145px", width: "160px" }}>
+                        <input
+                          type="text"
+                          placeholder=""
+                          value={item.size}
+                          onChange={(e) => handleAdditionalItemChange(idx, "size", e.target.value)}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                        />
+                      </td>
 
-                    <td style={{ padding: "8px 12px" }}>
-                      <input
-                        type="text"
-                        placeholder="Calculation"
-                        value={item.calculation}
-                        onChange={(e) => handleAdditionalItemChange(idx, "calculation", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
+                      <td style={{ padding: "8px 12px", minWidth: "120px", width: "130px" }}>
+                        <input
+                          type="text"
+                          placeholder="Calculation"
+                          value={item.calculation}
+                          onChange={(e) => handleAdditionalItemChange(idx, "calculation", e.target.value)}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827", backgroundColor: "#f8fafc" }}
+                        />
+                      </td>
 
-                    <td style={{ padding: "8px 12px", width: "150px" }}>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={item.price}
-                        onChange={(e) => handleAdditionalItemChange(idx, "price", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
-                      />
-                    </td>
+                      <td style={{ padding: "8px 12px", minWidth: "125px", width: "135px" }}>
+                        <select
+                          value={item.uom || ""}
+                          onFocus={() => loadMergedUomOptions().then(setUomOptions).catch(() => { })}
+                          onChange={(e) => handleAdditionalItemChange(idx, "uom", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            backgroundColor: "#ffffff",
+                            color: "#111827",
+                            fontWeight: 500,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="">-- Select UOM --</option>
+                          {mergeUomNames(item.uom ? [item.uom, ...uomOptions] : uomOptions).map((uom) => (
+                            <option key={uom} value={uom}>
+                              {uom}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
 
-                    <td style={{ padding: "8px 12px", width: "60px" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAdditionalItem(idx)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#dc2626",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
-                <td colSpan={3} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
-                  Total Additional Amount:
-                </td>
-                <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
-                  ₹{additionalItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
+                      <td style={{ padding: "8px 12px", minWidth: "130px", width: "140px" }}>
+                        <input
+                          type="text"
+                          placeholder="Converted Value"
+                          value={item.converted_value || ""}
+                          onChange={(e) => handleAdditionalItemChange(idx, "converted_value", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #d1d5db",
+                            borderRadius: 4,
+                            fontWeight: 600,
+                            color: "#111827",
+                            backgroundColor: "#f8fafc",
+                          }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "120px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={item.price}
+                          onChange={(e) => handleAdditionalItemChange(idx, "price", e.target.value)}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
+                        />
+                      </td>
+
+                      <td style={{ padding: "8px 12px", fontWeight: 600, color: "#111827", minWidth: "120px", width: "130px" }}>
+                        ₹{rowAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+
+                      <td style={{ padding: "8px 12px", width: "50px" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdditionalItem(idx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#dc2626",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
+                  <td colSpan={6} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
+                    Total Additional Amount:
+                  </td>
+                  <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
+                    ₹{additionalItems.reduce((sum, item) => sum + computeAdditionalRowAmount(item), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
 
-        {/* 5. Labour & Operational Expenses Section */}
+        {/* 7. Labour Expenses Section */}
         <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
-              5. Labour & Operational Expenses
+              7. Labour Expenses
             </h3>
             <button
               type="button"
-              onClick={handleAddExpenseItem}
+              onClick={handleAddLabourItem}
               style={{
                 padding: "6px 14px",
                 background: "#eff6ff",
@@ -1167,40 +3035,41 @@ export default function CostEstimationFormPage() {
           <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Expense Item</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Amount (₹)</th>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Labour Expense Item</th>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "220px" }}>Amount (₹)</th>
                 <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "60px" }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {expenseItems.map((item, idx) => {
+              {labourItems.map((item, idx) => {
                 return (
                   <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
                     <td style={{ padding: "8px 12px" }}>
                       <input
                         type="text"
-                        placeholder="Expense Item Name"
+                        placeholder=""
                         value={item.item_name}
-                        onChange={(e) => handleExpenseItemChange(idx, "item_name", e.target.value)}
-                        style={{ width: "100%", maxWidth: "320px", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 500 }}
+                        onChange={(e) => handleLabourItemChange(idx, "item_name", e.target.value)}
+                        style={{ width: "100%", maxWidth: "360px", padding: "6px 10px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 500 }}
                       />
                     </td>
 
-                    <td style={{ padding: "8px 12px", width: "200px" }}>
+                    <td style={{ padding: "8px 12px" }}>
                       <input
                         type="number"
                         step="0.01"
+                        min="0"
                         placeholder="0.00"
                         value={item.amount}
-                        onChange={(e) => handleExpenseItemChange(idx, "amount", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
+                        onChange={(e) => handleLabourItemChange(idx, "amount", e.target.value)}
+                        style={{ width: "100%", padding: "6px 10px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
                       />
                     </td>
 
-                    <td style={{ padding: "8px 12px", width: "60px" }}>
+                    <td style={{ padding: "8px 12px" }}>
                       <button
                         type="button"
-                        onClick={() => handleRemoveExpenseItem(idx)}
+                        onClick={() => handleRemoveLabourItem(idx)}
                         style={{
                           background: "none",
                           border: "none",
@@ -1219,10 +3088,10 @@ export default function CostEstimationFormPage() {
             <tfoot>
               <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
                 <td style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
-                  Total Expenses Amount:
+                  Total Labour Cost:
                 </td>
                 <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
-                  ₹{expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ₹{computeLabourTotalAmount().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td></td>
               </tr>
@@ -1230,239 +3099,373 @@ export default function CostEstimationFormPage() {
           </table>
         </div>
 
-        {/* 6. CNC & Machine Costing Section */}
-        <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
-              6. CNC & Machine Costing
-            </h3>
-            <button
-              type="button"
-              onClick={handleAddCncItem}
-              style={{
-                padding: "6px 14px",
-                background: "#eff6ff",
-                color: "#2563eb",
-                border: "1px solid #bfdbfe",
-                borderRadius: 6,
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              + Add Machine Line
-            </button>
-          </div>
-
-          <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Item Name</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Timing</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Cost (₹)</th>
-                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "60px" }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cncItems.map((item, idx) => {
-                return (
-                  <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ padding: "8px 12px", width: "220px" }}>
-                      <input
-                        type="text"
-                        placeholder="Item Name"
-                        value={item.item_name}
-                        onChange={(e) => handleCncItemChange(idx, "item_name", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 500 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px" }}>
-                      <input
-                        type="text"
-                        placeholder={idx === 1 ? "-" : "Timing (e.g. 45 mins)"}
-                        value={item.timing}
-                        onChange={(e) => handleCncItemChange(idx, "timing", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "180px" }}>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={item.cost}
-                        onChange={(e) => handleCncItemChange(idx, "cost", e.target.value)}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
-                      />
-                    </td>
-
-                    <td style={{ padding: "8px 12px", width: "60px" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCncItem(idx)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#dc2626",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
-                <td colSpan={2} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
-                  Total CNC & Machine Cost:
-                </td>
-                <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
-                  ₹{cncItems.reduce((sum, item) => sum + (Number(item.cost) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        {/* 7. CBM & Container Load Calculation Section */}
+        {/* 8. Expenses Section */}
         {(() => {
-          const l1 = Number(c1Length) || 0;
-          const w1 = Number(c1Width) || 0;
-          const h1 = Number(c1Height) || 0;
-          const cbm1 = c1Unit === "cm" ? (l1 * w1 * h1) / 1000000 : (l1 * w1 * h1) / 61023.74;
+          const woodTotalCost = computeWoodTotalAmount();
+          const metalTotalCost = computeMetalTotalAmount();
+          const hardwareTotalCost = computeHardwareTotalAmount();
+          const upholsteryTotalCost = computeUpholsteryTotalAmount();
+          const additionalTotalCost = computeAdditionalTotalAmount();
+          const labourTotalCost = computeLabourTotalAmount();
 
-          const l2 = Number(c2Length) || 0;
-          const w2 = Number(c2Width) || 0;
-          const h2 = Number(c2Height) || 0;
-          const cbm2 = c2Unit === "cm" ? (l2 * w2 * h2) / 1000000 : (l2 * w2 * h2) / 61023.74;
+          const directSubtotalCost =
+            woodTotalCost + metalTotalCost + hardwareTotalCost + upholsteryTotalCost + additionalTotalCost + labourTotalCost;
 
-          const totalCbm = cbm1 + cbm2;
-          const pcsIn40Hq = totalCbm > 0 ? Math.floor(68.0 / totalCbm) : 0;
+          const calculatedExpensesAmt = (directSubtotalCost * (Number(expensesPct) || 0)) / 100;
+          const otherExpensesAmt = computeOtherExpensesTotalAmount();
+          const totalExpensesCost = calculatedExpensesAmt + otherExpensesAmt;
+          const costAfterExpenses = directSubtotalCost + totalExpensesCost;
 
           return (
             <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginTop: 0, marginBottom: 16 }}>
-                7. CBM Calculation
-              </h3>
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
+                  8. Expenses
+                </h3>
+                <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#6b7280" }}>
+                  Total direct production cost (Wood + Metal + Hardware + Upholstery + Additional + Labour) plus expenses percentage
+                </p>
+              </div>
 
-              {/* Carton Size 1 */}
-              <div style={{ marginBottom: 20, padding: 16, background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
-                <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Carton Size 1</span>
-                  <span style={{ fontSize: 13, color: "#2563eb", fontWeight: 700 }}>
-                    CBM: {cbm1.toFixed(3)} m³
-                  </span>
+              {/* Direct Cost Breakdown Cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "10px 14px" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Wood Cost</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                    ₹{woodTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Length (L)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="L"
-                      value={c1Length}
-                      onChange={(e) => setC1Length(e.target.value ? Number(e.target.value) : "")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
-                    />
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "10px 14px" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Metal & SS Cost</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                    ₹{metalTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Width (W)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="W"
-                      value={c1Width}
-                      onChange={(e) => setC1Width(e.target.value ? Number(e.target.value) : "")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
-                    />
+                </div>
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "10px 14px" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Hardware Cost</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                    ₹{hardwareTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Height (H)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="H"
-                      value={c1Height}
-                      onChange={(e) => setC1Height(e.target.value ? Number(e.target.value) : "")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
-                    />
+                </div>
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "10px 14px" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Upholstery Cost</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                    ₹{upholsteryTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div style={{ width: "100px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Unit</label>
-                    <select
-                      value={c1Unit}
-                      onChange={(e) => setC1Unit(e.target.value as "cm" | "in")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4, background: "#ffffff" }}
-                    >
-                      <option value="cm">cm</option>
-                      <option value="in">inches</option>
-                    </select>
+                </div>
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "10px 14px" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Additional Cost</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                    ₹{additionalTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "10px 14px" }}>
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>Labour Cost</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>
+                    ₹{labourTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
 
-              {/* Carton Size 2 */}
-              <div style={{ marginBottom: 20, padding: 16, background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
-                <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Carton Size 2</span>
-                  <span style={{ fontSize: 13, color: "#2563eb", fontWeight: 700 }}>
-                    CBM: {cbm2.toFixed(3)} m³
-                  </span>
+              {/* Direct Subtotal Row */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f1f5f9", padding: "12px 16px", borderRadius: 6, marginBottom: 16 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#334155" }}>
+                  Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour):
+                </span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+                  ₹{directSubtotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              {/* Editable Expenses Percentage & Result */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginBottom: 16, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#6b21a8", marginBottom: 6 }}>
+                    Expenses Rate (%)
+                  </label>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={expensesPct}
+                      onChange={(e) => setExpensesPct(Number(e.target.value))}
+                      style={{
+                        width: "80px",
+                        padding: "6px 10px",
+                        fontSize: 14,
+                        border: "1px solid #c084fc",
+                        borderRadius: 6,
+                        textAlign: "center",
+                        fontWeight: 700,
+                        color: "#581c87",
+                        background: "#ffffff",
+                        outline: "none",
+                      }}
+                    />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#6b21a8" }}>%</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#7e22ce", marginTop: 4 }}>
+                    Default is 15% (editable)
+                  </div>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Length (L)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="L"
-                      value={c2Length}
-                      onChange={(e) => setC2Length(e.target.value ? Number(e.target.value) : "")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
-                    />
+
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#6b21a8", marginBottom: 6 }}>
+                    Calculated Expenses Amount ({expensesPct}%)
                   </div>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Width (W)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="W"
-                      value={c2Width}
-                      onChange={(e) => setC2Width(e.target.value ? Number(e.target.value) : "")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
-                    />
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#7e22ce" }}>
+                    + ₹{calculatedExpensesAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Height (H)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="H"
-                      value={c2Height}
-                      onChange={(e) => setC2Height(e.target.value ? Number(e.target.value) : "")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
-                    />
-                  </div>
-                  <div style={{ width: "100px" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>Unit</label>
-                    <select
-                      value={c2Unit}
-                      onChange={(e) => setC2Unit(e.target.value as "cm" | "in")}
-                      style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4, background: "#ffffff" }}
-                    >
-                      <option value="cm">cm</option>
-                      <option value="in">inches</option>
-                    </select>
+                  <div style={{ fontSize: 12, color: "#6b21a8", marginTop: 4 }}>
+                    ({expensesPct}% of direct subtotal ₹{directSubtotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
                   </div>
                 </div>
               </div>
+
+              {/* Optional Other Expense Items (Packing, Forwarding, etc.) */}
+              {otherExpenseItems.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
+                    Additional Operational Expenses
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 10 }}>
+                    <thead>
+                      <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                        <th style={{ padding: "8px 10px", fontSize: 12, color: "#64748b", textAlign: "left" }}>Item Name</th>
+                        <th style={{ padding: "8px 10px", fontSize: 12, color: "#64748b", width: "180px", textAlign: "left" }}>Amount (₹)</th>
+                        <th style={{ padding: "8px 10px", fontSize: 12, color: "#64748b", width: "50px" }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {otherExpenseItems.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "6px 10px" }}>
+                            <input
+                              type="text"
+                              value={item.item_name}
+                              onChange={(e) => handleOtherExpenseItemChange(idx, "item_name", e.target.value)}
+                              placeholder=""
+                              style={{ width: "100%", padding: "5px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4 }}
+                            />
+                          </td>
+                          <td style={{ padding: "6px 10px" }}>
+                            <input
+                              type="number"
+                              value={item.amount}
+                              onChange={(e) => handleOtherExpenseItemChange(idx, "amount", e.target.value)}
+                              placeholder="0.00"
+                              style={{ width: "100%", padding: "5px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600 }}
+                            />
+                          </td>
+                          <td style={{ padding: "6px 10px" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOtherExpenseItem(idx)}
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontWeight: 700 }}
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div style={{ marginBottom: 16 }}>
+                <button
+                  type="button"
+                  onClick={handleAddOtherExpenseItem}
+                  style={{
+                    padding: "5px 12px",
+                    background: "#f3f4f6",
+                    color: "#374151",
+                    border: "1px solid #d1d5db",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Add Other Expense Line
+                </button>
+              </div>
+
+              {/* Total Cost After Expenses Banner */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f0fdf4", border: "1.5px solid #86efac", padding: "14px 18px", borderRadius: 8 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>
+                    Total Cost After Expenses
+                  </div>
+                  <div style={{ fontSize: 12, color: "#15803d", marginTop: 2 }}>
+                    Direct Costs Subtotal + {expensesPct}% Expenses{otherExpensesAmt > 0 ? ` + ₹${otherExpensesAmt.toFixed(2)} Other Expenses` : ""}
+                  </div>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#15803d" }}>
+                  ₹{costAfterExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 9. CBM & Container Load Calculation Section */}
+        {(() => {
+          const cartonCbms = cartons.map((c) => {
+            const l = Number(c.length) || 0;
+            const w = Number(c.width) || 0;
+            const h = Number(c.height) || 0;
+            return c.unit === "cm" ? (l * w * h) / 1000000 : (l * w * h) / 61023.74;
+          });
+
+          const totalCbm = cartonCbms.reduce((sum, val) => sum + val, 0);
+          const pcsIn40Hq = totalCbm > 0 ? Math.floor(65.0 / totalCbm) : 0;
+
+          return (
+            <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
+                  9. CBM Calculation
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleAddCarton}
+                  style={{
+                    padding: "6px 14px",
+                    background: "#eff6ff",
+                    color: "#2563eb",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Add Carton
+                </button>
+              </div>
+
+              {cartons.map((carton, idx) => {
+                const cbm = cartonCbms[idx] || 0;
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      marginBottom: 16,
+                      padding: 16,
+                      background: "#f8fafc",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        fontSize: 14,
+                        color: "#1e293b",
+                        marginBottom: 12,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span>Carton Size {idx + 1}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 13, color: "#2563eb", fontWeight: 700 }}>
+                          CBM: {cbm.toFixed(3)} m³
+                        </span>
+                        {cartons.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCarton(idx)}
+                            title={`Remove Carton Size ${idx + 1}`}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#dc2626",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                              fontSize: 14,
+                              padding: "0 4px",
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
+                      <div style={{ flex: "1 1 120px" }}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>
+                          Length (L)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="L"
+                          value={carton.length}
+                          onChange={(e) =>
+                            handleCartonChange(idx, "length", e.target.value ? Number(e.target.value) : "")
+                          }
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
+                        />
+                      </div>
+                      <div style={{ flex: "1 1 120px" }}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>
+                          Width (W)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="W"
+                          value={carton.width}
+                          onChange={(e) =>
+                            handleCartonChange(idx, "width", e.target.value ? Number(e.target.value) : "")
+                          }
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
+                        />
+                      </div>
+                      <div style={{ flex: "1 1 120px" }}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>
+                          Height (H)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="H"
+                          value={carton.height}
+                          onChange={(e) =>
+                            handleCartonChange(idx, "height", e.target.value ? Number(e.target.value) : "")
+                          }
+                          style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "1px solid #cbd5e1", borderRadius: 4 }}
+                        />
+                      </div>
+                      <div style={{ width: "100px" }}>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 4 }}>
+                          Unit
+                        </label>
+                        <select
+                          value={carton.unit}
+                          onChange={(e) => handleCartonChange(idx, "unit", e.target.value as "cm" | "in")}
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            fontSize: 13,
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 4,
+                            background: "#ffffff",
+                          }}
+                        >
+                          <option value="cm">cm</option>
+                          <option value="in">inches</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
               {/* Total CBM & No of Pcs in 40 HQ */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginTop: 16 }}>
@@ -1477,7 +3480,7 @@ export default function CostEstimationFormPage() {
 
                 <div style={{ background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, padding: "14px 18px", textAlign: "center" }}>
                   <div style={{ fontSize: 13, color: "#92400e", fontWeight: 700, marginBottom: 4, textTransform: "uppercase" }}>
-                    NO OF PCS IN 40 HQ
+                    NO OF PCS IN 40 HQ (65 CBM)
                   </div>
                   <div style={{ fontSize: 22, color: "#d97706", fontWeight: 800 }}>
                     {totalCbm > 0 ? pcsIn40Hq : "-"}
@@ -1488,99 +3491,278 @@ export default function CostEstimationFormPage() {
           );
         })()}
 
+        {/* 10. Packaging & Forwarding Cost Section */}
+        {(() => {
+          const pcsIn40Hq = computePcsIn40Hq();
+          const packagingTotal = computePackagingTotalAmount();
+          const forwardingTotal = computeForwardingTotalAmount();
+          const combinedPackForwardTotal = packagingTotal + forwardingTotal;
+
+          return (
+            <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
+                  10. Packaging & Forwarding Cost
+                </h3>
+              </div>
+
+              {/* Single Line Packaging Cost */}
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 18px", marginBottom: 12, gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 20 }}>📦</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", minWidth: "120px" }}>Packaging Cost</span>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 6, padding: "3px 8px" }}>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>₹</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={packagingContainerTotal}
+                      onChange={(e) => {
+                        setPackagingContainerTotal(e.target.value === "" ? "" : Number(e.target.value));
+                        setPackagingCustomAmount(null);
+                      }}
+                      title="Container Base Amount (Editable)"
+                      placeholder="150000"
+                      style={{ width: "85px", border: "none", outline: "none", fontSize: 13, fontWeight: 600, color: "#1e293b" }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 13, color: "#64748b" }}>
+                    / {pcsIn40Hq > 0 ? `${pcsIn40Hq} Pcs in 40HQ` : "Pcs in 40HQ"}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#ffffff", border: "1px solid #bfdbfe", borderRadius: 6, padding: "5px 10px" }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#2563eb" }}>₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={packagingCustomAmount !== null ? packagingCustomAmount : (packagingTotal > 0 ? Number(packagingTotal.toFixed(2)) : "")}
+                      onChange={(e) => {
+                        setPackagingCustomAmount(e.target.value === "" ? 0 : Number(e.target.value));
+                      }}
+                      placeholder="0.00"
+                      title="Editable Amount per piece"
+                      style={{ width: "110px", border: "none", outline: "none", fontSize: 16, fontWeight: 800, color: "#2563eb", textAlign: "right" }}
+                    />
+                  </div>
+                  {packagingCustomAmount !== null && (
+                    <button
+                      type="button"
+                      onClick={() => setPackagingCustomAmount(null)}
+                      title="Reset to formula calculated amount"
+                      style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 4, padding: "4px 8px", fontSize: 11, color: "#2563eb", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      ↺ Auto
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Single Line Forwarding Cost */}
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 18px", marginBottom: 16, gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 20 }}>🚚</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", minWidth: "120px" }}>Forwarding Cost</span>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 6, padding: "3px 8px" }}>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>₹</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={forwardingContainerTotal}
+                      onChange={(e) => {
+                        setForwardingContainerTotal(e.target.value === "" ? "" : Number(e.target.value));
+                        setForwardingCustomAmount(null);
+                      }}
+                      title="Container Base Amount (Editable)"
+                      placeholder="100000"
+                      style={{ width: "85px", border: "none", outline: "none", fontSize: 13, fontWeight: 600, color: "#1e293b" }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 13, color: "#64748b" }}>
+                    / {pcsIn40Hq > 0 ? `${pcsIn40Hq} Pcs in 40HQ` : "Pcs in 40HQ"}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#ffffff", border: "1px solid #99f6e4", borderRadius: 6, padding: "5px 10px" }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#0d9488" }}>₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={forwardingCustomAmount !== null ? forwardingCustomAmount : (forwardingTotal > 0 ? Number(forwardingTotal.toFixed(2)) : "")}
+                      onChange={(e) => {
+                        setForwardingCustomAmount(e.target.value === "" ? 0 : Number(e.target.value));
+                      }}
+                      placeholder="0.00"
+                      title="Editable Amount per piece"
+                      style={{ width: "110px", border: "none", outline: "none", fontSize: 16, fontWeight: 800, color: "#0d9488", textAlign: "right" }}
+                    />
+                  </div>
+                  {forwardingCustomAmount !== null && (
+                    <button
+                      type="button"
+                      onClick={() => setForwardingCustomAmount(null)}
+                      title="Reset to formula calculated amount"
+                      style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 4, padding: "4px 8px", fontSize: 11, color: "#0d9488", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      ↺ Auto
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Combined Total Packaging & Forwarding Banner */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", border: "1.5px solid #bfdbfe", padding: "14px 20px", borderRadius: 8 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
+                  Total Packaging & Forwarding Cost
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#1d4ed8" }}>
+                  ₹{combinedPackForwardTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Grand Total Summary Card */}
         {(() => {
-          const woodTotal = woodItems.reduce((sum, item) => {
-            const l = Number(item.length_ft) || 0;
-            const w = Number(item.width_in) || 0;
-            const t = Number(item.thick_in) || 0;
-            const pcs = Number(item.pcs) || 0;
-            const r = Number(item.rate) || 0;
-            const cft = (l * w * t * pcs) / 144;
-            return sum + (cft * r);
-          }, 0) * (1 + (Number(woodWastagePct) || 0) / 100);
+          const woodTotal = computeWoodTotalAmount();
+          const metalTotal = computeMetalTotalAmount();
+          const hardwareTotal = computeHardwareTotalAmount();
+          const upholsteryTotal = computeUpholsteryTotalAmount();
+          const additionalTotal = computeAdditionalTotalAmount();
+          const labourTotal = computeLabourTotalAmount();
+          const packagingTotal = computePackagingTotalAmount();
+          const forwardingTotal = computeForwardingTotalAmount();
 
-          const metalTotal = metalSsItems.reduce((sum, item) => {
-            const q = Number(item.qty) || 0;
-            const w = Number(item.weight) || 0;
-            const r = Number(item.rate) || 0;
-            const tw = q * w;
-            return sum + (tw > 0 ? tw * r : q * r);
-          }, 0);
+          const directSubtotal =
+            woodTotal + metalTotal + hardwareTotal + upholsteryTotal + additionalTotal + labourTotal;
+          const totalPackagingAndForwarding = packagingTotal + forwardingTotal;
 
-          const additionalTotal = additionalItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
-          const expensesTotal = expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-          const cncTotal = cncItems.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
+          // Expenses in Blue Summary Card is calculated on (Direct Subtotal + Packaging + Forwarding)
+          const summaryBase = directSubtotal + totalPackagingAndForwarding;
+          const calculatedSummaryExpensesAmt = (summaryBase * (Number(summaryExpensesPct) || 0)) / 100;
+          const otherExpensesAmt = computeOtherExpensesTotalAmount();
+          const totalSummaryExpenses = calculatedSummaryExpensesAmt + otherExpensesAmt;
 
-          const directSubtotal = woodTotal + metalTotal + additionalTotal + expensesTotal + cncTotal;
-          const factoryAmt = (directSubtotal * (Number(factoryExpensesPct) || 0)) / 100;
-          const subtotalWithFactory = directSubtotal + factoryAmt;
-          const profitAmt = (subtotalWithFactory * (Number(marginPercentage) || 0)) / 100;
-          const grandTotal = subtotalWithFactory + profitAmt;
+          const totalCostBeforeProfit = summaryBase + totalSummaryExpenses;
+          const profitAmt = (totalCostBeforeProfit * (Number(marginPercentage) || 0)) / 100;
+          const grandTotal = totalCostBeforeProfit + profitAmt;
+
+          const activeUsdRate = typeof usdExchangeRate === "number" && usdExchangeRate > 0 ? usdExchangeRate : 86.5;
+          const grandTotalInUsd = grandTotal / activeUsdRate;
+
+          const activeSelectedRate =
+            currencyExchangeRates[selectedCurrency] && currencyExchangeRates[selectedCurrency] > 0
+              ? currencyExchangeRates[selectedCurrency]
+              : (selectedCurrency === "USD" ? activeUsdRate : 1);
+          const grandTotalInSelectedCurrency = activeSelectedRate > 0 ? grandTotal / activeSelectedRate : 0;
+          const selectedSymbol = CURRENCY_SYMBOLS[selectedCurrency] || `${selectedCurrency} `;
 
           return (
             <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)", borderRadius: 8, padding: 24, color: "#ffffff", marginBottom: 24, boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)" }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 16px 0", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 10 }}>
-                Cost Estimation Summary
-              </h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 10, marginBottom: 16 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+                  Cost Estimation Summary
+                </h3>
+              </div>
 
-              {/* 5 Cost Section Breakdown Cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "14px", marginBottom: 18 }}>
-                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 12 }}>
-                  <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>Total Wood Cost</div>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>₹{woodTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              {/* Cost Section Breakdown Cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "10px", marginBottom: 18 }}>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Total Wood Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{woodTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 12 }}>
-                  <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>Total Metal & SS Cost</div>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>₹{metalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Total Metal & SS Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{metalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 12 }}>
-                  <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>Total Additional Cost</div>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>₹{additionalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Total Hardware Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{hardwareTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 12 }}>
-                  <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>Total Labour & Expenses</div>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>₹{expensesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Total Upholstery Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{upholsteryTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 12 }}>
-                  <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>Total CNC & Machine</div>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>₹{cncTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Total Additional Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{additionalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Total Labour Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{labourTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Packaging Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{packagingTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Forwarding Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{forwardingTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 10, border: "1px solid rgba(254,240,138,0.3)" }}>
+                  <div style={{ fontSize: 11, opacity: 0.9, marginBottom: 2, color: "#fef08a" }}>Expenses ({summaryExpensesPct}%)</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#fef08a" }}>₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
               </div>
 
               {/* Direct Subtotal Row */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.12)", borderRadius: 6, padding: "10px 16px", marginBottom: 16 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>Direct Costs Subtotal:</span>
-                <span style={{ fontSize: 16, fontWeight: 700 }}>₹{directSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.12)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour):</span>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>₹{directSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
-              {/* Factory Expenses % & Profit Margin % Input Section */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginBottom: 20 }}>
-                {/* Factory Expenses */}
+              {/* Packaging & Forwarding Summary Row */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Packaging & Forwarding Costs Total:</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#67e8f9" }}>+ ₹{totalPackagingAndForwarding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+
+              {/* Base for Summary Expenses calculation */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.15)", borderRadius: 6, padding: "8px 16px", marginBottom: 14, fontSize: 12, color: "#cbd5e1" }}>
+                <span>Base for Expenses Calculation (Direct + Packaging + Forwarding):</span>
+                <span style={{ fontWeight: 700, color: "#ffffff" }}>₹{summaryBase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+
+              {/* Expenses % & Profit Margin % Input Section */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginBottom: 18 }}>
+                {/* Expenses */}
                 <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600 }}>Factory Expenses (%)</label>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 600, display: "block" }}>Expenses Rate (%)</label>
+                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Calculated on Direct + Pack + Forward)</span>
+                    </div>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <input
                         type="number"
                         step="0.5"
                         min="0"
-                        value={factoryExpensesPct}
-                        onChange={(e) => setFactoryExpensesPct(Number(e.target.value))}
+                        value={summaryExpensesPct}
+                        onChange={(e) => setSummaryExpensesPct(Number(e.target.value))}
                         style={{ width: "65px", padding: "4px 6px", fontSize: 13, border: "none", borderRadius: 4, textAlign: "center", fontWeight: 700, color: "#1e3a8a", background: "#ffffff" }}
                       />
                       <span style={{ fontSize: 13, fontWeight: 700 }}>%</span>
                     </div>
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, textAlign: "right", color: "#fef08a" }}>
-                    + ₹{factoryAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    + ₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
 
                 {/* Profit Margin */}
                 <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600 }}>Profit Margin (%)</label>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 600, display: "block" }}>Profit Margin (%)</label>
+                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Default is 26%)</span>
+                    </div>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <input
                         type="number"
@@ -1599,10 +3781,84 @@ export default function CostEstimationFormPage() {
                 </div>
               </div>
 
-              {/* Grand Total Row */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.25)", borderRadius: 6, padding: "16px 20px" }}>
-                <span style={{ fontSize: 17, fontWeight: 700 }}>Grand Total Estimated Cost:</span>
+              {/* Grand Total Row (INR) */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: "14px 20px", marginBottom: 12, border: "1px solid rgba(255,255,255,0.15)" }}>
+                <div>
+                  <span style={{ fontSize: 16, fontWeight: 700, display: "block" }}>Grand Total Estimated Cost (INR):</span>
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>Total Cost Before Profit (₹{totalCostBeforeProfit.toFixed(2)}) + Profit {marginPercentage}% (₹{profitAmt.toFixed(2)})</span>
+                </div>
                 <span style={{ fontSize: 26, fontWeight: 800, color: "#ffffff" }}>₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+
+              {/* USD ($) Conversion Row directly below Grand Total */}
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", background: "rgba(16, 185, 129, 0.2)", border: "1.5px solid rgba(52, 211, 153, 0.4)", borderRadius: 8, padding: "12px 20px", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 22 }}>💵</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#ecfdf5" }}>
+                      Grand Total in USD ($)
+                    </div>
+                    <div style={{ fontSize: 12, color: "#a7f3d0" }}>
+                      Conversion Rate: $1 USD = ₹{activeUsdRate.toFixed(2)} (from Costing Master)
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "#34d399", letterSpacing: "0.5px" }}>
+                  ${grandTotalInUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              {/* Any Currency Conversion Row at the bottom */}
+              <div style={{ background: "rgba(0, 0, 0, 0.25)", border: "1px dashed rgba(255,255,255,0.3)", borderRadius: 8, padding: "12px 18px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 18 }}>🌐</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>Convert to Any Currency:</span>
+
+                    {/* Currency Selector Dropdown */}
+                    <select
+                      value={selectedCurrency}
+                      onChange={(e) => setSelectedCurrency(e.target.value)}
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#1e3a8a",
+                        background: "#ffffff",
+                        border: "none",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        outline: "none"
+                      }}
+                    >
+                      <option value="USD">USD ($) - US Dollar</option>
+                      <option value="EUR">EUR (€) - Euro</option>
+                      <option value="GBP">GBP (£) - British Pound</option>
+                      <option value="AED">AED (د.إ) - UAE Dirham</option>
+                      <option value="AUD">AUD (A$) - Australian Dollar</option>
+                      <option value="CAD">CAD (C$) - Canadian Dollar</option>
+                      <option value="SGD">SGD (S$) - Singapore Dollar</option>
+                      <option value="SAR">SAR (﷼) - Saudi Riyal</option>
+                      <option value="JPY">JPY (¥) - Japanese Yen</option>
+                    </select>
+
+                    {/* Rate Display from Master for Selected Currency */}
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.15)", padding: "5px 12px", borderRadius: 6 }}>
+                      <span style={{ fontSize: 12, color: "#cbd5e1" }}>1 {selectedCurrency} =</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>
+                        ₹{(currencyExchangeRates[selectedCurrency] ?? activeSelectedRate).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Converted Total in Selected Currency */}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{ fontSize: 12, opacity: 0.85 }}>Total in {selectedCurrency}:</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: "#fef08a" }}>
+                      {selectedSymbol}{grandTotalInSelectedCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -1614,7 +3870,7 @@ export default function CostEstimationFormPage() {
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
           <button
             type="button"
-            onClick={() => navigate("/admin/costing/new")}
+            onClick={() => navigate("/admin/costing/list")}
             style={{
               padding: "10px 20px",
               background: "#ffffff",
@@ -1643,6 +3899,184 @@ export default function CostEstimationFormPage() {
           </button>
         </div>
       </form>
+
+      {/* Send for Approval Modal */}
+      {showApprovalModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 99999,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 12,
+              width: "100%",
+              maxWidth: 540,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <div style={{ padding: "20px 24px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 26 }}>📤</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
+                    Send for Approval
+                  </h3>
+                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                    Costing saved! Select a Management or Admin authority to submit for review:
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Authority List */}
+            <div style={{ padding: "20px 24px", maxHeight: "320px", overflowY: "auto" }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 10 }}>
+                Management / Admin Authorities
+              </label>
+
+              {approvalAuthorities.length === 0 ? (
+                <div style={{ padding: 20, textAlign: "center", color: "#64748b", background: "#f8fafc", borderRadius: 8 }}>
+                  Loading authorities...
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {approvalAuthorities.map((emp) => {
+                    const isSelected = selectedAuthority?.id === emp.id;
+                    return (
+                      <div
+                        key={emp.id}
+                        onClick={() => setSelectedAuthority(emp)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "12px 16px",
+                          borderRadius: 8,
+                          border: isSelected ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                          background: isSelected ? "#eff6ff" : "#ffffff",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <input
+                            type="radio"
+                            name="approvalAuthority"
+                            checked={isSelected}
+                            onChange={() => setSelectedAuthority(emp)}
+                            style={{ cursor: "pointer", accentColor: "#2563eb", width: 16, height: 16 }}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 14 }}>
+                              {emp.fullName}
+                            </div>
+                            <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>
+                              {emp.designationTitle || "Management / Admin"} {emp.departmentName ? `• ${emp.departmentName}` : ""}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            borderRadius: 4,
+                            background: isSelected ? "#dbeafe" : "#f1f5f9",
+                            color: isSelected ? "#1d4ed8" : "#475569",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {emp.designationTitle?.toLowerCase().includes("admin") ? "Admin" : "Management"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Optional Note */}
+              <div style={{ marginTop: 16 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  Approval Note / Message (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder=""
+                  value={approvalNote}
+                  onChange={(e) => setApprovalNote(e.target.value)}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
+                    border: "1.5px solid #cbd5e1",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontFamily: "inherit",
+                    outline: "none",
+                    resize: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ padding: "16px 24px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => navigate("/admin/costing/list")}
+                style={{
+                  padding: "9px 16px",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 6,
+                  color: "#475569",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                Skip & View List
+              </button>
+
+              <button
+                type="button"
+                disabled={approvalLoading || !selectedAuthority}
+                onClick={handleSendForApproval}
+                style={{
+                  padding: "9px 20px",
+                  background: "#2563eb",
+                  border: "none",
+                  borderRadius: 6,
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: approvalLoading || !selectedAuthority ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                }}
+              >
+                {approvalLoading ? "Sending..." : "Send for Approval ➔"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

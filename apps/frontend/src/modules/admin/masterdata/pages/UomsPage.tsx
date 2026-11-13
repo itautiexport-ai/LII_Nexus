@@ -18,6 +18,12 @@ export default function UomsPage() {
     try {
       const data = await masterDataApi.getUoms();
       setUoms(data);
+      if (Array.isArray(data)) {
+        localStorage.setItem(
+          "nexus_cached_uoms",
+          JSON.stringify(data.map((u) => (u.name || "").trim()).filter(Boolean))
+        );
+      }
     } catch (err: any) {
       console.error(err);
     } finally {

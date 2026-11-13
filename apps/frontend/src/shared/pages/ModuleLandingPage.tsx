@@ -22,7 +22,23 @@ export default function ModuleLandingPage() {
       const itemRole = `${sectionRolePrefix} -> ${item.label}`;
       if (userRoles.includes(itemRole)) return true;
       if (item.items) {
-        return item.items.some((sub: any) => userRoles.includes(`${itemRole} -> ${sub.label}`));
+        return item.items.some((sub: any) => {
+          if (
+            userRoles.includes(`${itemRole} -> ${sub.label}`) ||
+            userRoles.includes(`${sectionRolePrefix} -> ${sub.label}`)
+          ) {
+            return true;
+          }
+          if (sub.items) {
+            return sub.items.some(
+              (child: any) =>
+                userRoles.includes(`${itemRole} -> ${sub.label} -> ${child.label}`) ||
+                userRoles.includes(`${itemRole} -> ${child.label}`) ||
+                userRoles.includes(`${sectionRolePrefix} -> ${child.label}`)
+            );
+          }
+          return false;
+        });
       }
       return false;
     });
@@ -97,15 +113,31 @@ export default function ModuleLandingPage() {
                       const isSysAdmin = userRoles.includes("System Admin");
                       const secRolePrefix = `Menu: ${section.label}`;
                       const subItemRole = `${secRolePrefix} -> ${item.label} -> ${sub.label}`;
+                      const legacyDirectRole = `${secRolePrefix} -> ${sub.label}`;
                       
-                      const isSubVisible = isSysAdmin || userRoles.includes(subItemRole);
+                      const hasChildRole = sub.items
+                        ? sub.items.some(
+                            (child: any) =>
+                              userRoles.includes(`${subItemRole} -> ${child.label}`) ||
+                              userRoles.includes(`${secRolePrefix} -> ${item.label} -> ${child.label}`) ||
+                              userRoles.includes(`${secRolePrefix} -> ${child.label}`)
+                          )
+                        : false;
+
+                      const isSubVisible =
+                        isSysAdmin ||
+                        userRoles.includes(subItemRole) ||
+                        userRoles.includes(legacyDirectRole) ||
+                        hasChildRole;
                       
                       if (!isSubVisible) return null;
+                      const targetTo = sub.to || sub.items?.[0]?.to;
+                      if (!targetTo) return null;
 
                       return (
                         <Link 
-                          key={sub.to}
-                          to={sub.to}
+                          key={`${sub.label}-${targetTo}`}
+                          to={targetTo}
                           style={{
                             display: "block",
                             padding: "10px 16px",

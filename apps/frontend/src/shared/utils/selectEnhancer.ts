@@ -302,7 +302,10 @@ class SelectEnhancer {
       this.container.style.display = "inline-block";
     }
     
-    if (computedStyle.width && computedStyle.width !== "auto") {
+    if (this.select.style.width && this.select.style.width.includes("%")) {
+      this.container.style.width = this.select.style.width;
+      this.container.style.maxWidth = "100%";
+    } else if (computedStyle.width && computedStyle.width !== "auto") {
       this.container.style.width = computedStyle.width;
     } else if (this.select.style.width) {
       this.container.style.width = this.select.style.width;
@@ -611,6 +614,7 @@ function scanAndEnhance() {
 export function enhanceSelect(select: HTMLSelectElement) {
   if (
     select.dataset.noEnhance === "true" ||
+    Boolean(select.closest?.("[data-no-enhance='true']")) ||
     select.classList.contains("enhanced-select-hidden") ||
     (select as EnhancedHTMLSelectElement).__enhancer
   ) {

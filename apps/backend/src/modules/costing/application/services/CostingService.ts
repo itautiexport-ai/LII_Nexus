@@ -6,7 +6,49 @@ import { CreateCostEstimationDto, UpdateCostEstimationDto, SaveCostRateDto } fro
 export class CostingService {
   constructor(private repo: MySqlCostingRepository = new MySqlCostingRepository()) {}
 
-  private calculateTotals(items: { category: string; quantity: number; unit_cost: number }[], marginPct: number = 20, taxPct: number = 18) {
+  /**
+   * Wood CFT formula: ((Length * Width * Thickness * Pcs) / 144)
+   */
+  public calculateWoodCft(
+    length: number,
+    width: number,
+    thickness: number,
+    pcs: number,
+    rate: number = 0
+  ) {
+    const l = Number(length) || 0;
+    const w = Number(width) || 0;
+    const t = Number(thickness) || 0;
+    const p = Number(pcs) || 0;
+    const r = Number(rate) || 0;
+
+    const cftRaw = (l * w * t * p) / 144;
+    const cft = Number(cftRaw.toFixed(4));
+    const amount = Number((cftRaw * r).toFixed(2));
+
+    return {
+      cft,
+      cftRounded: Number(cftRaw.toFixed(3)),
+      amount,
+    };
+  }
+
+  private calculateTotals(
+    items: {
+      category: string;
+      quantity: number;
+      unit_cost: number;
+      unit_of_measure?: string;
+      length_ft?: number;
+      width_in?: number;
+      thick_in?: number;
+      pcs?: number;
+      specification?: string;
+      remarks?: string;
+    }[],
+    marginPct: number = 20,
+    taxPct: number = 18
+  ) {
     let totalMaterial = 0;
     let totalLabor = 0;
     let totalOverhead = 0;
@@ -14,9 +56,28 @@ export class CostingService {
     let totalPackaging = 0;
 
     const processedItems = items.map((item) => {
-      const qty = Number(item.quantity) || 0;
       const uCost = Number(item.unit_cost) || 0;
-      const totalCost = Number((qty * uCost).toFixed(2));
+      const hasWoodDimensions =
+        item.unit_of_measure === "Cft" &&
+        (item.length_ft !== undefined ||
+          item.width_in !== undefined ||
+          item.thick_in !== undefined ||
+          item.pcs !== undefined);
+
+      let qty = Number(item.quantity) || 0;
+      let totalCost = Number((qty * uCost).toFixed(2));
+
+      if (hasWoodDimensions) {
+        const woodCalc = this.calculateWoodCft(
+          Number(item.length_ft) || 0,
+          Number(item.width_in) || 0,
+          Number(item.thick_in) || 0,
+          Number(item.pcs) || 0,
+          uCost
+        );
+        qty = woodCalc.cftRounded;
+        totalCost = woodCalc.amount;
+      }
 
       switch (item.category) {
         case "Raw Material":
@@ -85,7 +146,7 @@ export class CostingService {
     const id = uuidv4();
     const estimationNumber = await this.repo.generateEstimationNumber();
 
-    const marginPct = dto.margin_percentage ?? 20;
+    const marginPct = dto.margin_percentage ?? 26;
     const taxPct = dto.tax_percentage ?? 18;
 
     const calc = this.calculateTotals(dto.items, marginPct, taxPct);
@@ -96,6 +157,9 @@ export class CostingService {
       title: dto.title || dto.product_name || "Untitled Product",
       product_code: dto.product_code,
       product_name: dto.product_name,
+      product_type: dto.product_type,
+      collection_name: dto.collection_name,
+      type_of_costing: dto.type_of_costing,
       overall_size: dto.overall_size,
       wood_type: dto.wood_type,
       client_name: dto.client_name,
@@ -143,6 +207,9 @@ export class CostingService {
       title: dto.title || dto.product_name,
       product_code: dto.product_code,
       product_name: dto.product_name,
+      product_type: dto.product_type,
+      collection_name: dto.collection_name,
+      type_of_costing: dto.type_of_costing,
       overall_size: dto.overall_size,
       wood_type: dto.wood_type,
       client_name: dto.client_name,

@@ -156,4 +156,238 @@ export class MasterDataService {
   async deleteFinishCode(id: string) {
     await this.repo.deleteFinishCode(id);
   }
+
+  // Hardware And Accessories
+  async getHardwareAccessories() {
+    return await this.repo.getHardwareAccessories();
+  }
+
+  async createHardwareAccessory(input: {
+    id?: string;
+    itemCode: string;
+    itemName: string;
+    category: string;
+    sizeSpec?: string | null;
+    materialFinish?: string | null;
+    uom: string;
+    rate: number;
+    status?: string;
+  }) {
+    if (!input.itemCode?.trim()) throw new Error("Item Code is required");
+    if (!input.itemName?.trim()) throw new Error("Item Name is required");
+    return await this.repo.createHardwareAccessory({
+      ...input,
+      itemCode: input.itemCode.trim(),
+      itemName: input.itemName.trim(),
+    });
+  }
+
+  async updateHardwareAccessory(
+    id: string,
+    input: {
+      itemCode: string;
+      itemName: string;
+      category: string;
+      sizeSpec?: string | null;
+      materialFinish?: string | null;
+      uom: string;
+      rate: number;
+      status?: string;
+    }
+  ) {
+    if (!input.itemCode?.trim()) throw new Error("Item Code is required");
+    if (!input.itemName?.trim()) throw new Error("Item Name is required");
+    return await this.repo.updateHardwareAccessory(id, {
+      ...input,
+      itemCode: input.itemCode.trim(),
+      itemName: input.itemName.trim(),
+    });
+  }
+
+  async deleteHardwareAccessory(id: string) {
+    await this.repo.deleteHardwareAccessory(id);
+  }
+
+  // Wood Thickness Prices
+  async getWoodThicknessPrices() {
+    return await this.repo.getWoodThicknessPrices();
+  }
+
+  async createWoodThicknessPrice(input: {
+    id?: string;
+    woodType: string;
+    thickness: string;
+    thicknessUom: string;
+    length: string;
+    lengthUom: string;
+    ratePerCft: number;
+    status?: string;
+  }) {
+    if (!input.woodType?.trim()) throw new Error("Wood Type is required");
+    if (!input.thickness?.trim()) throw new Error("Thickness is required");
+    if (!input.length?.trim()) throw new Error("Length is required");
+    return await this.repo.createWoodThicknessPrice({
+      ...input,
+      woodType: input.woodType.trim(),
+      thickness: input.thickness.trim(),
+      length: input.length.trim(),
+    });
+  }
+
+  async updateWoodThicknessPrice(
+    id: string,
+    input: {
+      woodType: string;
+      thickness: string;
+      thicknessUom: string;
+      length: string;
+      lengthUom: string;
+      ratePerCft: number;
+      status?: string;
+    }
+  ) {
+    if (!input.woodType?.trim()) throw new Error("Wood Type is required");
+    if (!input.thickness?.trim()) throw new Error("Thickness is required");
+    if (!input.length?.trim()) throw new Error("Length is required");
+    return await this.repo.updateWoodThicknessPrice(id, {
+      ...input,
+      woodType: input.woodType.trim(),
+      thickness: input.thickness.trim(),
+      length: input.length.trim(),
+    });
+  }
+
+  async deleteWoodThicknessPrice(id: string) {
+    await this.repo.deleteWoodThicknessPrice(id);
+  }
+
+  // Wood Part Names
+  async getWoodPartNames() {
+    return await this.repo.getWoodPartNames();
+  }
+
+  async createWoodPartName(input: { id?: string; partCode: string; partName: string }) {
+    if (!input.partName?.trim()) throw new Error("Wood Part Name is required");
+    if (!input.partCode?.trim()) throw new Error("Code is required");
+    return await this.repo.createWoodPartName({
+      id: input.id,
+      partCode: input.partCode.trim(),
+      partName: input.partName.trim(),
+    });
+  }
+
+  async updateWoodPartName(id: string, input: { partCode: string; partName: string }) {
+    if (!input.partName?.trim()) throw new Error("Wood Part Name is required");
+    if (!input.partCode?.trim()) throw new Error("Code is required");
+    return await this.repo.updateWoodPartName(id, {
+      partCode: input.partCode.trim(),
+      partName: input.partName.trim(),
+    });
+  }
+
+  async deleteWoodPartName(id: string) {
+    await this.repo.deleteWoodPartName(id);
+  }
+
+  // Additional Costs
+  async getAdditionalCosts() {
+    return await this.repo.getAdditionalCosts();
+  }
+
+  async createAdditionalCost(input: {
+    id?: string;
+    itemCode: string;
+    itemName: string;
+    price: number;
+    uom?: string;
+    status?: string;
+  }) {
+    if (!input.itemCode?.trim()) throw new Error("Code is required");
+    if (!input.itemName?.trim()) throw new Error("Additional Cost Name is required");
+    return await this.repo.createAdditionalCost({
+      ...input,
+      itemCode: input.itemCode.trim(),
+      itemName: input.itemName.trim(),
+      price: Number(input.price) || 0,
+      uom: (input.uom || "").trim(),
+    });
+  }
+
+  async updateAdditionalCost(
+    id: string,
+    input: {
+      itemCode: string;
+      itemName: string;
+      price: number;
+      uom?: string;
+      status?: string;
+    }
+  ) {
+    if (!input.itemCode?.trim()) throw new Error("Code is required");
+    if (!input.itemName?.trim()) throw new Error("Additional Cost Name is required");
+    return await this.repo.updateAdditionalCost(id, {
+      ...input,
+      itemCode: input.itemCode.trim(),
+      itemName: input.itemName.trim(),
+      price: Number(input.price) || 0,
+      uom: (input.uom || "").trim(),
+    });
+  }
+
+  async deleteAdditionalCost(id: string) {
+    await this.repo.deleteAdditionalCost(id);
+  }
+
+  // MDF Prices
+  async getMdfPrices() {
+    return await this.repo.getMdfPrices();
+  }
+
+  async createMdfPrice(input: {
+    id?: string;
+    mdfType: string;
+    sheetSize: string;
+    thickness: string;
+    price: number;
+    uom?: string;
+    status?: string;
+  }) {
+    if (!input.mdfType?.trim()) throw new Error("MDF Type is required");
+    if (!input.thickness?.toString().trim()) throw new Error("Thickness is required");
+    return await this.repo.createMdfPrice({
+      ...input,
+      mdfType: input.mdfType.trim(),
+      sheetSize: (input.sheetSize || "").trim(),
+      thickness: input.thickness.toString().trim(),
+      price: Number(input.price) || 0,
+      uom: (input.uom || "").trim(),
+    });
+  }
+
+  async updateMdfPrice(
+    id: string,
+    input: {
+      mdfType: string;
+      sheetSize: string;
+      thickness: string;
+      price: number;
+      uom?: string;
+      status?: string;
+    }
+  ) {
+    if (!input.mdfType?.trim()) throw new Error("MDF Type is required");
+    if (!input.thickness?.toString().trim()) throw new Error("Thickness is required");
+    return await this.repo.updateMdfPrice(id, {
+      ...input,
+      mdfType: input.mdfType.trim(),
+      sheetSize: (input.sheetSize || "").trim(),
+      thickness: input.thickness.toString().trim(),
+      price: Number(input.price) || 0,
+      uom: (input.uom || "").trim(),
+    });
+  }
+
+  async deleteMdfPrice(id: string) {
+    await this.repo.deleteMdfPrice(id);
+  }
 }

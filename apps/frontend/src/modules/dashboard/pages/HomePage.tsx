@@ -89,12 +89,19 @@ export default function HomePage() {
         return; // Skip section if not allowed
       }
 
-      // Only take top-level items in each section
-      section.items.forEach(item => {
-        if (item.to) {
-          routes.push({ label: `${section.label} > ${item.label}`, to: item.to });
-        }
-      });
+      // Include top-level items and nested sub-module items in each section
+      const collectNavRoutes = (items: NavItem[], prefix: string) => {
+        items.forEach((item) => {
+          const nextLabel = `${prefix} > ${item.label}`;
+          if (item.to) {
+            routes.push({ label: nextLabel, to: item.to });
+          }
+          if (item.items) {
+            collectNavRoutes(item.items, nextLabel);
+          }
+        });
+      };
+      collectNavRoutes(section.items, section.label);
     });
 
     return routes;

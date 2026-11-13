@@ -18,6 +18,9 @@ export interface CostEstimation {
   title: string;
   product_code?: string;
   product_name?: string;
+  product_type?: string;
+  collection_name?: string;
+  type_of_costing?: string;
   overall_size?: string;
   wood_type?: string;
   client_name?: string;

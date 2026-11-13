@@ -69,4 +69,16 @@ export class CostingController {
     }
     return res.json({ success: true, data: { deleted: true } });
   };
+
+  calculateCft = async (req: Request, res: Response) => {
+    const { length, width, thickness, pcs, rate } = req.body ?? {};
+    const result = this.costingService.calculateWoodCft(
+      Number(length) || 0,
+      Number(width) || 0,
+      Number(thickness) || 0,
+      Number(pcs) || 0,
+      Number(rate) || 0
+    );
+    return res.json({ success: true, data: result });
+  };
 }
