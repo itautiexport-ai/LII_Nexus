@@ -50,6 +50,7 @@ import {
   findMatchingMetalPrice,
   formatDimension,
   getLocalMetalPrices,
+  loadSyncedMetalPrices,
   getMetalSizeOptions,
 } from "../../admin/masterdata/pages/MetalPricesPage";
 import {
@@ -1155,7 +1156,7 @@ export default function CostEstimationFormPage() {
       loadSyncedAdditionalCosts().then(setAdditionalMasterList).catch(() => { });
       loadSyncedMdfPrices().then(setMdfPricesList).catch(() => { });
       loadMergedUomOptions().then(setUomOptions).catch(() => { });
-      setMetalPricesList(getLocalMetalPrices());
+      loadSyncedMetalPrices().then(setMetalPricesList).catch(() => setMetalPricesList(getLocalMetalPrices()));
     };
     window.addEventListener("focus", handleRefreshPrices);
     window.addEventListener("storage", handleRefreshPrices);
@@ -1185,7 +1186,7 @@ export default function CostEstimationFormPage() {
       setAdditionalMasterList(acData || []);
       setMdfPricesList(mdfData || []);
       setUomOptions(uomsData || getCachedUomOptions());
-      setMetalPricesList(getLocalMetalPrices());
+      loadSyncedMetalPrices().then(setMetalPricesList).catch(() => setMetalPricesList(getLocalMetalPrices()));
     } catch (err) {
       console.error("Failed to load rates or wood types", err);
     }

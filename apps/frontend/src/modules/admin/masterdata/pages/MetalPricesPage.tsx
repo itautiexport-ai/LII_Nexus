@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { metalPricesApi, metalPriceError } from "../api/metalPricesApi";
 
 export interface MetalPrice {
   id: string;
@@ -63,113 +64,25 @@ const RATE_UNIT_OPTIONS = [
   { value: "Per Piece", label: "Per Piece (₹/pc)" },
 ];
 
-const DEFAULT_METAL_PRICES: MetalPrice[] = [
-  {
-    id: "mp-1",
-    metalType: "Mild Steel (MS)",
-    pipeSize: "25 x 25",
-    pipeSizeUom: "mm",
-    pipeLength: "20",
-    pipeLengthUom: "feet",
-    metalThickness: "16",
-    metalThicknessUom: "Gauge (SWG)",
-    weight: "",
-    weightUom: "kg",
-    rate: 78,
-    rateUnit: "Per Kg",
-    status: "active",
-    createdAt: "2026-10-01",
-  },
-  {
-    id: "mp-2",
-    metalType: "Mild Steel (MS)",
-    pipeSize: "32",
-    pipeSizeUom: "mm",
-    pipeLength: "20",
-    pipeLengthUom: "feet",
-    metalThickness: "18",
-    metalThicknessUom: "Gauge (SWG)",
-    weight: "",
-    weightUom: "kg",
-    rate: 82,
-    rateUnit: "Per Kg",
-    status: "active",
-    createdAt: "2026-10-01",
-  },
-  {
-    id: "mp-3",
-    metalType: "Stainless Steel (SS 304)",
-    pipeSize: "25 x 25",
-    pipeSizeUom: "mm",
-    pipeLength: "20",
-    pipeLengthUom: "feet",
-    metalThickness: "1.5",
-    metalThicknessUom: "mm",
-    weight: "",
-    weightUom: "kg",
-    rate: 290,
-    rateUnit: "Per Kg",
-    status: "active",
-    createdAt: "2026-10-01",
-  },
-  {
-    id: "mp-4",
-    metalType: "Stainless Steel (SS 202)",
-    pipeSize: "25 x 25",
-    pipeSizeUom: "mm",
-    pipeLength: "20",
-    pipeLengthUom: "feet",
-    metalThickness: "1.2",
-    metalThicknessUom: "mm",
-    weight: "",
-    weightUom: "kg",
-    rate: 185,
-    rateUnit: "Per Kg",
-    status: "active",
-    createdAt: "2026-10-01",
-  },
-  {
-    id: "mp-5",
-    metalType: "Brass",
-    pipeSize: "12",
-    pipeSizeUom: "mm",
-    pipeLength: "12",
-    pipeLengthUom: "feet",
-    metalThickness: "2.0",
-    metalThicknessUom: "mm",
-    weight: "",
-    weightUom: "kg",
-    rate: 650,
-    rateUnit: "Per Kg",
-    status: "active",
-    createdAt: "2026-10-01",
-  },
-  {
-    id: "mp-6",
-    metalType: "Aluminum",
-    pipeSize: "25 x 25",
-    pipeSizeUom: "mm",
-    pipeLength: "12",
-    pipeLengthUom: "feet",
-    metalThickness: "2.0",
-    metalThicknessUom: "mm",
-    weight: "",
-    weightUom: "kg",
-    rate: 240,
-    rateUnit: "Per Kg",
-    status: "active",
-    createdAt: "2026-10-01",
-  },
-];
-
 const LOCAL_STORAGE_KEY = "nexus_metal_prices";
+const SERVER_CACHE_KEY = "nexus_metal_prices_server_cache";
+
+function cacheServerPrices(rows: MetalPrice[]) {
+  try { localStorage.setItem(SERVER_CACHE_KEY, JSON.stringify(rows)); } catch { /* Server remains authoritative if storage is full. */ }
+}
+export async function loadSyncedMetalPrices(): Promise<MetalPrice[]> {
+  const rows = await metalPricesApi.list();
+  cacheServerPrices(rows);
+  return rows;
+}
+
 
 export function getLocalMetalPrices(): MetalPrice[] {
   try {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!saved) return DEFAULT_METAL_PRICES;
+    const saved = localStorage.getItem(SERVER_CACHE_KEY) ?? localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!saved) return [];
     const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return DEFAULT_METAL_PRICES;
+    if (!Array.isArray(parsed)) return [];
     return parsed.map((item: any) => ({
       id: item.id || `mp-${Date.now()}`,
       metalType: item.metalType || "",
@@ -187,7 +100,7 @@ export function getLocalMetalPrices(): MetalPrice[] {
       createdAt: item.createdAt || "",
     }));
   } catch {
-    return DEFAULT_METAL_PRICES;
+    return [];
   }
 }
 
@@ -298,13 +211,13 @@ export default function MetalPricesPage() {
   const [customMetalType, setCustomMetalType] = useState("");
   const [pipeSize, setPipeSize] = useState("25 x 25");
   const [pipeSizeUom, setPipeSizeUom] = useState("mm");
-  const [pipeLength, setPipeLength] = useState("20");
-  const [pipeLengthUom, setPipeLengthUom] = useState("feet");
-  const [metalThickness, setMetalThickness] = useState("16");
-  const [metalThicknessUom, setMetalThicknessUom] = useState("Gauge (SWG)");
+  const [pipeLength, setPipeLength] = useState("6000");
+  const [pipeLengthUom, setPipeLengthUom] = useState("mm");
+  const [metalThickness, setMetalThickness] = useState("1.6");
+  const [metalThicknessUom, setMetalThicknessUom] = useState("mm");
   const [weight, setWeight] = useState("");
   const [weightUom, setWeightUom] = useState("kg");
-  const [rate, setRate] = useState<number | "">(78);
+  const [rate, setRate] = useState<number | "">(140);
   const [rateUnit, setRateUnit] = useState("Per Kg");
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -317,48 +230,36 @@ export default function MetalPricesPage() {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [legacyRaw] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEY));
+
+  const loadData = async () => {
     setLoading(true);
+    setError("");
+    try { setPrices(await loadSyncedMetalPrices()); }
+    catch (e) { setError(metalPriceError(e)); }
+    finally { setLoading(false); }
+  };
+  const downloadLegacyBackup = () => {
+    if (!legacyRaw) return;
+    const url = URL.createObjectURL(new Blob([legacyRaw], { type: "application/json" }));
+    const a = document.createElement("a"); a.href = url; a.download = "metal-prices-browser-backup.json"; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const importLegacy = async () => {
+    if (!legacyRaw || saving || !confirm("Import browser records into shared storage? Existing combinations will be skipped. Download a browser backup first.")) return;
+    setSaving(true); setError("");
     try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Normalize any old records to fit exact format
-        const normalized: MetalPrice[] = parsed.map((item: any) => ({
-          id: item.id || `mp-${Date.now()}`,
-          metalType: item.metalType || "Mild Steel (MS)",
-          pipeSize: item.pipeSize || item.size || "25 x 25",
-          pipeSizeUom: item.pipeSizeUom || item.sizeUom || "mm",
-          pipeLength: item.pipeLength || item.length || "20",
-          pipeLengthUom: item.pipeLengthUom || item.lengthUom || "feet",
-          metalThickness: item.metalThickness || item.thickness || "16",
-          metalThicknessUom: item.metalThicknessUom || item.thicknessUom || "Gauge (SWG)",
-          weight: item.weight != null ? String(item.weight) : "",
-          weightUom: item.weightUom || "kg",
-          rate: Number(item.rate) || 0,
-          rateUnit: item.rateUnit || "Per Kg",
-          status: item.status || "active",
-          createdAt: item.createdAt || new Date().toISOString().split("T")[0],
-        }));
-        setPrices(normalized);
-      } else {
-        setPrices(DEFAULT_METAL_PRICES);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_METAL_PRICES));
-      }
-    } catch (e) {
-      console.error("Error loading metal prices", e);
-      setPrices(DEFAULT_METAL_PRICES);
-    } finally {
-      setLoading(false);
-    }
+      const result = await metalPricesApi.importBrowser(JSON.parse(legacyRaw));
+      await loadData();
+      alert(`Imported ${result.inserted}, skipped ${result.skipped} existing combinations. Browser originals are unchanged.`);
+    } catch (e) { setError(metalPriceError(e)); }
+    finally { setSaving(false); }
   };
 
-  const savePricesToStorage = (updated: MetalPrice[]) => {
-    setPrices(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    if (saving) { e.preventDefault(); return; }
     e.preventDefault();
     const finalMetalType = metalType === "Other" ? customMetalType.trim() : metalType;
     if (!finalMetalType) {
@@ -378,52 +279,17 @@ export default function MetalPricesPage() {
       return;
     }
 
-    const rateNum = Number(rate) || 0;
-
-    if (editingId) {
-      const updated = prices.map((item) =>
-        item.id === editingId
-          ? {
-              ...item,
-              metalType: finalMetalType,
-              pipeSize: pipeSize.trim(),
-              pipeSizeUom,
-              pipeLength: pipeLength.trim(),
-              pipeLengthUom,
-              metalThickness: metalThickness.trim(),
-              metalThicknessUom,
-              weight: weight.trim(),
-              weightUom,
-              rate: rateNum,
-              rateUnit,
-              status,
-            }
-          : item
-      );
-      savePricesToStorage(updated);
-      alert("Metal price rate updated successfully!");
-    } else {
-      const newItem: MetalPrice = {
-        id: `mp-${Date.now()}`,
-        metalType: finalMetalType,
-        pipeSize: pipeSize.trim(),
-        pipeSizeUom,
-        pipeLength: pipeLength.trim(),
-        pipeLengthUom,
-        metalThickness: metalThickness.trim(),
-        metalThicknessUom,
-        weight: weight.trim(),
-        weightUom,
-        rate: rateNum,
-        rateUnit,
-        status,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      savePricesToStorage([newItem, ...prices]);
-      alert("Metal price rate added successfully!");
-    }
-
-    handleCancelEdit();
+    setSaving(true); setError("");
+    try {
+      await metalPricesApi.save({
+        metalType: finalMetalType, pipeSize: pipeSize.trim(), pipeSizeUom,
+        pipeLength: pipeLength.trim(), pipeLengthUom, metalThickness: metalThickness.trim(),
+        metalThicknessUom, weight: weight.trim(), weightUom, rate: Number(rate), rateUnit, status,
+      }, editingId || undefined);
+      await loadData();
+      handleCancelEdit();
+    } catch (e) { setError(metalPriceError(e)); }
+    finally { setSaving(false); }
   };
 
   const handleEdit = (item: MetalPrice) => {
@@ -450,10 +316,12 @@ export default function MetalPricesPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this metal price rate?")) return;
-    const updated = prices.filter((item) => item.id !== id);
-    savePricesToStorage(updated);
+  const handleDelete = async (id: string) => {
+    if (saving || !confirm("Are you sure you want to delete this metal price rate?")) return;
+    setSaving(true); setError("");
+    try { await metalPricesApi.remove(id); await loadData(); }
+    catch (e) { setError(metalPriceError(e)); }
+    finally { setSaving(false); }
   };
 
   const handleCancelEdit = () => {
@@ -462,13 +330,13 @@ export default function MetalPricesPage() {
     setCustomMetalType("");
     setPipeSize("25 x 25");
     setPipeSizeUom("mm");
-    setPipeLength("20");
-    setPipeLengthUom("feet");
-    setMetalThickness("16");
-    setMetalThicknessUom("Gauge (SWG)");
+    setPipeLength("6000");
+    setPipeLengthUom("mm");
+    setMetalThickness("1.6");
+    setMetalThicknessUom("mm");
     setWeight("");
     setWeightUom("kg");
-    setRate(78);
+    setRate(140);
     setRateUnit("Per Kg");
     setStatus("active");
   };
@@ -495,6 +363,14 @@ export default function MetalPricesPage() {
 
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1100, margin: "0 auto" }}>
+      {error && <div role="alert" style={{ color: "#991b1b", padding: 12 }}>{error} <button type="button" onClick={loadData}>Retry loading</button></div>}
+      {saving && <p role="status">Saving to server…</p>}
+      {legacyRaw && <aside style={{ padding: 12, background: "#fffbeb", marginBottom: 16 }}>
+        Existing browser records are preserved separately. Import skips combinations already on the server.
+        <button type="button" onClick={downloadLegacyBackup}>Download browser backup</button>
+        <button type="button" disabled={saving} onClick={importLegacy}>Import browser records</button>
+      </aside>}
+
       {/* CSS to remove high-low spinner stepper buttons from number inputs */}
       <style>{`
         .no-spin-arrows::-webkit-inner-spin-button,
@@ -548,7 +424,12 @@ export default function MetalPricesPage() {
               </label>
               <select
                 value={metalType}
-                onChange={(e) => setMetalType(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setMetalType(value);
+                  if (!editingId && value === "Mild Steel (MS)") setRate(140);
+                  if (!editingId && value === "Stainless Steel (SS 202)") setRate(340);
+                }}
                 style={{
                   width: "100%",
                   height: "42px",
@@ -841,6 +722,7 @@ export default function MetalPricesPage() {
             )}
             <button
               type="submit"
+              disabled={saving}
               style={{
                 padding: "9px 24px",
                 background: "#2563eb",

@@ -11,6 +11,7 @@ import { PptMasterDataService } from "../../application/services/PptMasterDataSe
 import { MySqlMasterDataRepository } from "../../infrastructure/repositories/MySqlMasterDataRepository";
 import { authMiddleware } from "../../../../shared/middlewares/auth.middleware";
 import { asyncHandler } from "../../../../shared/utils/asyncHandler";
+import metalPriceRoutes from './metalPrice.routes';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -44,6 +45,7 @@ const pptService = new PptMasterDataService();
 const pptController = new PptMasterDataController(pptService);
 
 router.use(authMiddleware as any);
+router.use('/metal-prices', metalPriceRoutes);
 
 // Wood Types
 router.get("/wood-types", asyncHandler(controller.getWoodTypes.bind(controller)));
