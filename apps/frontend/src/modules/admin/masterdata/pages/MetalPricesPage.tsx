@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 export interface MetalPrice {
   id: string;
@@ -9,6 +10,8 @@ export interface MetalPrice {
   pipeLengthUom: string;
   metalThickness: string;
   metalThicknessUom: string;
+  weight: string;
+  weightUom: string;
   rate: number;
   rateUnit: string;
   status: "active" | "inactive";
@@ -48,6 +51,11 @@ const METAL_THICKNESS_UOM_OPTIONS = [
   { value: "inch", label: 'Inch (")' },
 ];
 
+const WEIGHT_UOM_OPTIONS = [
+  { value: "kg", label: "Kg (kg)" },
+  { value: "gm", label: "Gm (g)" },
+];
+
 const RATE_UNIT_OPTIONS = [
   { value: "Per Kg", label: "Per Kg (₹/Kg)" },
   { value: "Per Foot", label: "Per Foot (₹/ft)" },
@@ -65,6 +73,8 @@ const DEFAULT_METAL_PRICES: MetalPrice[] = [
     pipeLengthUom: "feet",
     metalThickness: "16",
     metalThicknessUom: "Gauge (SWG)",
+    weight: "",
+    weightUom: "kg",
     rate: 78,
     rateUnit: "Per Kg",
     status: "active",
@@ -79,6 +89,8 @@ const DEFAULT_METAL_PRICES: MetalPrice[] = [
     pipeLengthUom: "feet",
     metalThickness: "18",
     metalThicknessUom: "Gauge (SWG)",
+    weight: "",
+    weightUom: "kg",
     rate: 82,
     rateUnit: "Per Kg",
     status: "active",
@@ -93,6 +105,8 @@ const DEFAULT_METAL_PRICES: MetalPrice[] = [
     pipeLengthUom: "feet",
     metalThickness: "1.5",
     metalThicknessUom: "mm",
+    weight: "",
+    weightUom: "kg",
     rate: 290,
     rateUnit: "Per Kg",
     status: "active",
@@ -107,6 +121,8 @@ const DEFAULT_METAL_PRICES: MetalPrice[] = [
     pipeLengthUom: "feet",
     metalThickness: "1.2",
     metalThicknessUom: "mm",
+    weight: "",
+    weightUom: "kg",
     rate: 185,
     rateUnit: "Per Kg",
     status: "active",
@@ -121,6 +137,8 @@ const DEFAULT_METAL_PRICES: MetalPrice[] = [
     pipeLengthUom: "feet",
     metalThickness: "2.0",
     metalThicknessUom: "mm",
+    weight: "",
+    weightUom: "kg",
     rate: 650,
     rateUnit: "Per Kg",
     status: "active",
@@ -135,6 +153,8 @@ const DEFAULT_METAL_PRICES: MetalPrice[] = [
     pipeLengthUom: "feet",
     metalThickness: "2.0",
     metalThicknessUom: "mm",
+    weight: "",
+    weightUom: "kg",
     rate: 240,
     rateUnit: "Per Kg",
     status: "active",
@@ -144,7 +164,55 @@ const DEFAULT_METAL_PRICES: MetalPrice[] = [
 
 const LOCAL_STORAGE_KEY = "nexus_metal_prices";
 
-function formatDimension(val?: string, uom?: string): string {
+export function getLocalMetalPrices(): MetalPrice[] {
+  try {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!saved) return DEFAULT_METAL_PRICES;
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return DEFAULT_METAL_PRICES;
+    return parsed.map((item: any) => ({
+      id: item.id || `mp-${Date.now()}`,
+      metalType: item.metalType || "",
+      pipeSize: item.pipeSize || item.size || "",
+      pipeSizeUom: item.pipeSizeUom || item.sizeUom || "mm",
+      pipeLength: item.pipeLength || item.length || "",
+      pipeLengthUom: item.pipeLengthUom || item.lengthUom || "feet",
+      metalThickness: item.metalThickness || item.thickness || "",
+      metalThicknessUom: item.metalThicknessUom || item.thicknessUom || "Gauge (SWG)",
+      weight: item.weight != null ? String(item.weight) : "",
+      weightUom: item.weightUom || "kg",
+      rate: Number(item.rate) || 0,
+      rateUnit: item.rateUnit || "Per Kg",
+      status: item.status || "active",
+      createdAt: item.createdAt || "",
+    }));
+  } catch {
+    return DEFAULT_METAL_PRICES;
+  }
+}
+
+/** Unique "size" labels (e.g. "25 x 25 mm") for the costing sheet dropdown. */
+export function getMetalSizeOptions(prices: MetalPrice[], costingType?: "Metal" | "SS"): string[] {
+  const active = prices.filter((p) => p.status !== "inactive" && (p.pipeSize || "").trim());
+  const isSs = (p: MetalPrice) => /stainless|\bss\b/i.test(p.metalType);
+  let scoped = active;
+  if (costingType === "SS") scoped = active.filter(isSs);
+  else if (costingType === "Metal") scoped = active.filter((p) => !isSs(p));
+  if (scoped.length === 0) scoped = active;
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of scoped) {
+    const label = formatDimension(p.pipeSize, p.pipeSizeUom);
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(label);
+  }
+  return out;
+}
+
+export function formatDimension(val?: string, uom?: string): string {
   if (!val || val === "—") return "—";
   const cleanedVal = val.trim();
   if (
@@ -167,6 +235,60 @@ function formatDimension(val?: string, uom?: string): string {
   return uom ? `${cleanedVal} ${uom}` : cleanedVal;
 }
 
+export function findMatchingMetalPrice(
+  prices: MetalPrice[],
+  costingType: "Metal" | "SS",
+  size: string,
+  thickness?: string
+): MetalPrice | null {
+  if (!size) return null;
+  const active = prices.filter((p) => p.status !== "inactive");
+  const isSs = (p: MetalPrice) => /stainless|\bss\b/i.test(p.metalType);
+  const scoped = costingType === "SS" ? active.filter(isSs) : active.filter((p) => !isSs(p));
+  const pool = scoped.length > 0 ? scoped : active;
+
+  const cleanSize = (s: string) =>
+    (s || "")
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/[xX*×]/g, "*")
+      .replace(/mm|inch|in|"|cm/g, "")
+      .trim();
+
+  const targetSizeFormatted = size.trim().toLowerCase();
+  const targetSizeClean = cleanSize(size);
+
+  const cleanThickness = (t: string) => {
+    const num = parseFloat(String(t || "").replace(/[^0-9.]/g, ""));
+    return isNaN(num) ? String(t || "").trim().toLowerCase() : num.toString();
+  };
+
+  const targetThick = thickness ? cleanThickness(thickness) : "";
+
+  // 1. If thickness provided, search for exact match on size + thickness
+  if (targetThick) {
+    const exactMatch = pool.find((p) => {
+      const pSizeFormatted = formatDimension(p.pipeSize, p.pipeSizeUom).toLowerCase();
+      const pSizeClean = cleanSize(p.pipeSize);
+      const sizeMatches = pSizeFormatted === targetSizeFormatted || pSizeClean === targetSizeClean;
+      if (!sizeMatches) return false;
+
+      const pThick = cleanThickness(p.metalThickness || "");
+      return pThick === targetThick;
+    });
+    if (exactMatch) return exactMatch;
+  }
+
+  // 2. Fallback to size match
+  return (
+    pool.find((p) => {
+      const pSizeFormatted = formatDimension(p.pipeSize, p.pipeSizeUom).toLowerCase();
+      const pSizeClean = cleanSize(p.pipeSize);
+      return pSizeFormatted === targetSizeFormatted || pSizeClean === targetSizeClean;
+    }) || null
+  );
+}
+
 export default function MetalPricesPage() {
   const [prices, setPrices] = useState<MetalPrice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,6 +302,8 @@ export default function MetalPricesPage() {
   const [pipeLengthUom, setPipeLengthUom] = useState("feet");
   const [metalThickness, setMetalThickness] = useState("16");
   const [metalThicknessUom, setMetalThicknessUom] = useState("Gauge (SWG)");
+  const [weight, setWeight] = useState("");
+  const [weightUom, setWeightUom] = useState("kg");
   const [rate, setRate] = useState<number | "">(78);
   const [rateUnit, setRateUnit] = useState("Per Kg");
   const [status, setStatus] = useState<"active" | "inactive">("active");
@@ -209,6 +333,8 @@ export default function MetalPricesPage() {
           pipeLengthUom: item.pipeLengthUom || item.lengthUom || "feet",
           metalThickness: item.metalThickness || item.thickness || "16",
           metalThicknessUom: item.metalThicknessUom || item.thicknessUom || "Gauge (SWG)",
+          weight: item.weight != null ? String(item.weight) : "",
+          weightUom: item.weightUom || "kg",
           rate: Number(item.rate) || 0,
           rateUnit: item.rateUnit || "Per Kg",
           status: item.status || "active",
@@ -266,6 +392,8 @@ export default function MetalPricesPage() {
               pipeLengthUom,
               metalThickness: metalThickness.trim(),
               metalThicknessUom,
+              weight: weight.trim(),
+              weightUom,
               rate: rateNum,
               rateUnit,
               status,
@@ -284,6 +412,8 @@ export default function MetalPricesPage() {
         pipeLengthUom,
         metalThickness: metalThickness.trim(),
         metalThicknessUom,
+        weight: weight.trim(),
+        weightUom,
         rate: rateNum,
         rateUnit,
         status,
@@ -312,6 +442,8 @@ export default function MetalPricesPage() {
     setPipeLengthUom(item.pipeLengthUom || "feet");
     setMetalThickness(item.metalThickness || "");
     setMetalThicknessUom(item.metalThicknessUom || "Gauge (SWG)");
+    setWeight(item.weight || "");
+    setWeightUom(item.weightUom || "kg");
     setRate(item.rate);
     setRateUnit(item.rateUnit || "Per Kg");
     setStatus(item.status);
@@ -334,6 +466,8 @@ export default function MetalPricesPage() {
     setPipeLengthUom("feet");
     setMetalThickness("16");
     setMetalThicknessUom("Gauge (SWG)");
+    setWeight("");
+    setWeightUom("kg");
     setRate(78);
     setRateUnit("Per Kg");
     setStatus("active");
@@ -348,6 +482,7 @@ export default function MetalPricesPage() {
       (item.pipeSize && item.pipeSize.toLowerCase().includes(term)) ||
       (item.pipeLength && item.pipeLength.toLowerCase().includes(term)) ||
       (item.metalThickness && item.metalThickness.toLowerCase().includes(term)) ||
+      (item.weight && item.weight.toLowerCase().includes(term)) ||
       item.rate.toString().includes(term);
     return matchesMetal && matchesSearch;
   });
@@ -374,6 +509,22 @@ export default function MetalPricesPage() {
 
       {/* Page Header */}
       <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 10 }}>
+          <Link
+            to="/admin/master-data/costing"
+            style={{
+              color: "#2563eb",
+              textDecoration: "none",
+              fontSize: 13,
+              fontWeight: 600,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            &larr; Back to Costing Master
+          </Link>
+        </div>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>
           Metal Prices
         </h1>
@@ -552,7 +703,47 @@ export default function MetalPricesPage() {
               </div>
             </div>
 
-            {/* 5. Rate with Basis (Without high-low spin bar) */}
+            {/* 5. Weight with UOM */}
+            <div style={{ flex: "1 1 200px" }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                Weight
+              </label>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="e.g. 5.2"
+                  value={weight}
+                  className="no-spin-arrows"
+                  onChange={(e) => setWeight(e.target.value)}
+                  style={{ flex: 1, minWidth: 0, height: "42px", boxSizing: "border-box", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14 }}
+                />
+                <select
+                  value={weightUom}
+                  onChange={(e) => setWeightUom(e.target.value)}
+                  style={{
+                    width: "95px",
+                    height: "42px",
+                    padding: "8px 6px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    backgroundColor: "#f8fafc",
+                    color: "#1e293b",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {WEIGHT_UOM_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 6. Rate with Basis (Without high-low spin bar) */}
             <div style={{ flex: "1 1 200px" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                 Rate (₹) *
@@ -604,7 +795,7 @@ export default function MetalPricesPage() {
               </div>
             </div>
 
-            {/* 6. Status */}
+            {/* 7. Status */}
             <div style={{ flex: "1 1 120px" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                 Status
@@ -708,6 +899,7 @@ export default function MetalPricesPage() {
                 <th style={{ padding: "12px 14px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Pipe Size</th>
                 <th style={{ padding: "12px 14px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Pipe Length</th>
                 <th style={{ padding: "12px 14px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Thickness of Metal</th>
+                <th style={{ padding: "12px 14px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Weight</th>
                 <th style={{ padding: "12px 14px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Rate</th>
                 <th style={{ padding: "12px 14px", fontSize: 13, fontWeight: 700, color: "#475569" }}>Status</th>
                 <th style={{ padding: "12px 14px", fontSize: 13, fontWeight: 700, color: "#475569", width: "120px" }}>Actions</th>
@@ -727,6 +919,9 @@ export default function MetalPricesPage() {
                   </td>
                   <td style={{ padding: "12px 14px", fontWeight: 600, color: "#7c3aed" }}>
                     {formatDimension(item.metalThickness, item.metalThicknessUom)}
+                  </td>
+                  <td style={{ padding: "12px 14px", fontWeight: 600, color: "#b45309", whiteSpace: "nowrap" }}>
+                    {item.weight ? `${item.weight} ${item.weightUom === "gm" ? "g" : "kg"}` : "—"}
                   </td>
                   <td style={{ padding: "12px 14px", fontWeight: 700, color: "#059669", whiteSpace: "nowrap" }}>
                     ₹{Number(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
@@ -768,7 +963,7 @@ export default function MetalPricesPage() {
               ))}
               {filteredPrices.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>
+                  <td colSpan={8} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>
                     No metal price rates found matching your criteria.
                   </td>
                 </tr>

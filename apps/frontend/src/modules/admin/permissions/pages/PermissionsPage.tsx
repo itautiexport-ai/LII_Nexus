@@ -31,7 +31,7 @@ export default function PermissionsPage() {
   const getOrCreateRole = async (roleName: string) => {
     const existingRole = roles.find(r => r.name === roleName);
     if (existingRole) return existingRole;
-    
+
     // Create it dynamically if it doesn't exist
     const newRole = await rolesApi.create(roleName, `Navigation access to ${roleName}`);
     setRoles(prev => [...prev, newRole]);
@@ -53,26 +53,26 @@ export default function PermissionsPage() {
       const originalRoles = selectedUser.roles || [];
       const rolesToAdd = stagedRoles.filter(r => !originalRoles.includes(r));
       const rolesToRemove = originalRoles.filter(r => !stagedRoles.includes(r));
-      
+
       for (const roleName of rolesToAdd) {
         const role = await getOrCreateRole(roleName);
         await rolesApi.assignToUser(selectedUserId, role.id);
       }
-      
+
       for (const roleName of rolesToRemove) {
         const role = roles.find(r => r.name === roleName);
         if (role) {
           await rolesApi.removeFromUser(selectedUserId, role.id);
         }
       }
-      
+
       // Update local users array
-      setUsers(prevUsers => prevUsers.map(u => 
-        u.id === selectedUserId 
-          ? { ...u, roles: stagedRoles } 
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === selectedUserId
+          ? { ...u, roles: stagedRoles }
           : u
       ));
-      
+
       alert("Permissions saved successfully!");
     } catch (err) {
       console.error("Failed to save roles", err);
@@ -88,14 +88,14 @@ export default function PermissionsPage() {
       <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 32 }}>
         Select a user to assign granular access to Main Modules and Sub Modules.
       </p>
-      
+
       <div style={{ background: "#f9fafb", padding: 24, borderRadius: 12, border: "1px solid #e5e7eb", marginBottom: 48 }}>
         <div style={{ marginBottom: 24 }}>
           <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
             Select User
           </label>
-          <select 
-            value={selectedUserId} 
+          <select
+            value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
             style={{ width: "100%", maxWidth: 400, padding: "10px 14px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 15 }}
           >
@@ -115,29 +115,31 @@ export default function PermissionsPage() {
               {SECTIONS.map(section => {
                 const sectionRoleName = `Menu: ${section.label}`;
                 const isSectionAssigned = stagedRoles.includes(sectionRoleName);
-                
+
                 return (
                   <div key={section.key} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
                     {/* Main Module Checkbox */}
-                    <div style={{ 
-                      padding: "12px 16px", background: isSectionAssigned ? "#f0fdf4" : "#f9fafb", 
-                      borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: 12 
+                    <div style={{
+                      padding: "12px 16px", background: isSectionAssigned ? "#f0fdf4" : "#f9fafb",
+                      borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: 12
                     }}>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={isSectionAssigned}
                         onChange={() => {
                           const allRolesForSection = [sectionRoleName];
-                          
-                          section.items.forEach((item: any) => {
-                            if (item.items) {
-                              item.items.forEach((sub: any) => {
-                                allRolesForSection.push(`${sectionRoleName} -> ${item.label} -> ${sub.label}`);
-                              });
-                            } else {
-                              allRolesForSection.push(`${sectionRoleName} -> ${item.label}`);
-                            }
-                          });
+                          const collectRoles = (items: any[], prefix: string) => {
+                            items.forEach((entry: any) => {
+                              const role = `${prefix} -> ${entry.label}`;
+                              if (entry.items && entry.items.length > 0) {
+                                allRolesForSection.push(role);
+                                collectRoles(entry.items, role);
+                              } else {
+                                allRolesForSection.push(role);
+                              }
+                            });
+                          };
+                          collectRoles(section.items, sectionRoleName);
 
                           if (isSectionAssigned) {
                             // Deselect main module and all its sub-modules
@@ -156,16 +158,29 @@ export default function PermissionsPage() {
                     <div style={{ padding: "12px 16px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
                       {section.items.map((item: any) => {
                         const isSubGroup = !!item.items;
-                        
+
                         if (isSubGroup) {
+                          const collectGroupRoles = (entries: any[], prefix: string): string[] => {
+                            const list: string[] = [];
+                            entries.forEach((entry: any) => {
+                              const r = `${prefix} -> ${entry.label}`;
+                              list.push(r);
+                              if (entry.items && entry.items.length > 0) {
+                                list.push(...collectGroupRoles(entry.items, r));
+                              }
+                            });
+                            return list;
+                          };
+                          const groupPrefix = `${sectionRoleName} -> ${item.label}`;
+                          const allRolesForGroup = collectGroupRoles(item.items, groupPrefix);
+
                           return (
                             <div key={item.label} style={{ borderLeft: "2px solid #e5e7eb", paddingLeft: 12 }}>
                               <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
-                                <input 
+                                <input
                                   type="checkbox"
-                                  checked={item.items.every((sub: any) => stagedRoles.includes(`${sectionRoleName} -> ${item.label} -> ${sub.label}`))}
+                                  checked={allRolesForGroup.length > 0 && allRolesForGroup.every((r) => stagedRoles.includes(r))}
                                   onChange={(e) => {
-                                    const allRolesForGroup = item.items.map((sub: any) => `${sectionRoleName} -> ${item.label} -> ${sub.label}`);
                                     if (e.target.checked) {
                                       setStagedRoles(prev => Array.from(new Set([...prev, ...allRolesForGroup])));
                                     } else {
@@ -178,11 +193,53 @@ export default function PermissionsPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 {item.items.map((sub: any) => {
                                   const subRoleName = `${sectionRoleName} -> ${item.label} -> ${sub.label}`;
+                                  if (sub.items && sub.items.length > 0) {
+                                    const nestedRoles = [
+                                      subRoleName,
+                                      ...sub.items.map((child: any) => `${subRoleName} -> ${child.label}`),
+                                    ];
+                                    const isNestedAllAssigned = nestedRoles.every((r) => stagedRoles.includes(r));
+                                    return (
+                                      <div key={sub.label} style={{ borderLeft: "2px solid #dbeafe", paddingLeft: 10, marginTop: 2, marginBottom: 2 }}>
+                                        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, cursor: "pointer" }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={isNestedAllAssigned}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                setStagedRoles(prev => Array.from(new Set([...prev, ...nestedRoles])));
+                                              } else {
+                                                setStagedRoles(prev => prev.filter(r => !nestedRoles.includes(r)));
+                                              }
+                                            }}
+                                          />
+                                          <strong style={{ fontSize: 13, color: "#1d4ed8" }}>{sub.label} (Sub-Module)</strong>
+                                        </label>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                          {sub.items.map((child: any) => {
+                                            const childRoleName = `${subRoleName} -> ${child.label}`;
+                                            const isChildAssigned = stagedRoles.includes(childRoleName);
+                                            return (
+                                              <label key={child.label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isChildAssigned}
+                                                  onChange={() => handleToggleMenuRole(childRoleName, isChildAssigned)}
+                                                />
+                                                <span style={{ fontSize: 13, color: "#374151" }}>{child.label}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
                                   const isSubAssigned = stagedRoles.includes(subRoleName);
                                   return (
                                     <label key={sub.label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                                      <input 
-                                        type="checkbox" 
+                                      <input
+                                        type="checkbox"
                                         checked={isSubAssigned}
                                         onChange={() => handleToggleMenuRole(subRoleName, isSubAssigned)}
                                       />
@@ -200,8 +257,8 @@ export default function PermissionsPage() {
                         const isItemAssigned = stagedRoles.includes(itemRoleName);
                         return (
                           <label key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               checked={isItemAssigned}
                               onChange={() => handleToggleMenuRole(itemRoleName, isItemAssigned)}
                             />
@@ -214,9 +271,9 @@ export default function PermissionsPage() {
                 );
               })}
             </div>
-            
+
             <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
-              <button 
+              <button
                 onClick={handleSave}
                 disabled={isSaving}
                 style={{

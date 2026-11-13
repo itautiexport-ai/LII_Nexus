@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { documentApi } from "../../documents/api/documentApi";
+import { catalogueError, catalogueProductsApi } from "../api/catalogueProductsApi";
+import { getAssetUrl } from "../../../shared/utils/urlHelper";
 import "../Sourcewiz.css";
 
 interface ProductImage {
@@ -45,9 +46,9 @@ export default function SourcewizProductFormPage() {
     productId: "",
 
     // Product Info
-    costPriceCurrency: "USD",
+    costPriceCurrency: "",
     costPriceVal: "",
-    costPriceUnit: "per Pc",
+    costPriceUnit: "",
     collectionName: "",
     color: "",
     productionTechnique: "",
@@ -55,9 +56,9 @@ export default function SourcewizProductFormPage() {
     sizeCm: "",
     productName: "",
     assembledKd: "",
-    sellingPriceCurrency: "USD",
+    sellingPriceCurrency: "",
     sellingPriceVal: "",
-    sellingPriceUnit: "per Pc",
+    sellingPriceUnit: "",
     gp40ft: "",
     loadability40ftHc: "",
     cbm: "",
@@ -68,14 +69,14 @@ export default function SourcewizProductFormPage() {
     // Internal Details
     theme: "",
     season: "",
-    internalCostPriceCurrency: "USD",
+    internalCostPriceCurrency: "",
     internalCostPriceVal: "",
-    internalCostPriceUnit: "per Pc",
+    internalCostPriceUnit: "",
     searchKeywords: "",
     vendorName: "",
-    priceFromVendorCurrency: "USD",
+    priceFromVendorCurrency: "",
     priceFromVendorVal: "",
-    priceFromVendorUnit: "per Pc",
+    priceFromVendorUnit: "",
     exclusiveFor: "",
 
     // Production Details
@@ -85,25 +86,29 @@ export default function SourcewizProductFormPage() {
   });
 
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [loadingProduct, setLoadingProduct] = useState(Boolean(editId));
+  const [saveError, setSaveError] = useState("");
 
   // Load existing product details if editing
   useEffect(() => {
     if (!editId) return;
 
+    let cancelled = false;
+    setEditingOriginal(null);
+    setImages([]);
+    setSaveError("");
+    setLoadingProduct(true);
+    const loadProduct = async () => {
     try {
-      const saved =
-        localStorage.getItem("lii_product_catalogue_items") ||
-        localStorage.getItem("lii_product_catalog_items");
-      let allProducts: any[] = [];
-      if (saved) {
-        allProducts = JSON.parse(saved);
-      }
-      let item = allProducts.find((p) => String(p.id) === String(editId));
+      const item = await catalogueProductsApi.get(editId);
+      if (cancelled) return;
 
       if (item) {
         setEditingOriginal(item);
         if (item.fullDetails) {
-          setFormData({ ...item.fullDetails });
+          setFormData((prev) => ({ ...prev, ...item.fullDetails }));
         } else {
           setFormData((prev) => ({
             ...prev,
@@ -116,9 +121,9 @@ export default function SourcewizProductFormPage() {
             woodFinish: item.woodFinish || "",
             metalFinish: item.metalFinish || "",
             sizeCm: item.sizeCm || "",
-            assembledKd: item.assembledKd || "KD",
+            assembledKd: item.assembledKd || "",
             sellingPriceVal: item.fobPriceUsd != null ? String(item.fobPriceUsd) : "",
-            costPriceVal: item.costPriceVal || (item.fobPriceUsd != null ? String(item.fobPriceUsd) : ""),
+            costPriceVal: item.costPriceVal || "",
             moq: item.moq != null ? String(item.moq) : "",
             cbm: item.cbm != null ? String(item.cbm) : "",
             gp40ft: item.gp40ft != null ? String(item.gp40ft) : "",
@@ -140,17 +145,27 @@ export default function SourcewizProductFormPage() {
         }
       }
     } catch (err) {
-      console.error("Failed to load product for editing:", err);
+      if (!cancelled) setSaveError(`${catalogueError(err)} If this is an old browser product, import it from the catalogue first.`);
+    } finally {
+      if (!cancelled) setLoadingProduct(false);
     }
+    };
+    void loadProduct();
+    return () => { cancelled = true; };
   }, [editId]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+    if (uploading || saving) return;
     if (files && files.length > 0) {
+      if (images.length + files.length > 30) { setSaveError("Maximum 30 images per product."); return; }
+      setUploading(true);
+      setSaveError("");
       const newImgs: ProductImage[] = [];
       const defaultAngleLabels = [
         "Front View (Main Cover)",
@@ -162,21 +177,28 @@ export default function SourcewizProductFormPage() {
         "Lifestyle / Setting Photo",
       ];
 
+      try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const previewUrl = URL.createObjectURL(file);
+        const url = await catalogueProductsApi.upload(file, file.name);
+        const previewUrl = getAssetUrl(url);
         const autoLabel =
           defaultAngleLabels[images.length + i] ||
           `Product Image ${images.length + i + 1}`;
         newImgs.push({
           id: Date.now() + "_" + i + "_" + Math.random(),
           label: autoLabel,
-          url: previewUrl,
+          url,
           previewUrl: previewUrl,
           isMain: images.length === 0 && i === 0,
         });
       }
-      setImages((prev) => [...prev, ...newImgs]);
+      } catch (error) {
+        setSaveError(catalogueError(error));
+      } finally {
+        setImages((prev) => [...prev, ...newImgs]);
+        setUploading(false);
+      }
     }
   };
 
@@ -198,76 +220,64 @@ export default function SourcewizProductFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving || uploading || loadingProduct || (isEditMode && !editingOriginal)) return;
+    setSaving(true);
+    setSaveError("");
+    setSaveSuccess(false);
 
-    const mainImg =
-      images.find((img) => img.isMain)?.previewUrl ||
-      images[0]?.previewUrl ||
-      editingOriginal?.image ||
-      "https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?w=600&auto=format&fit=crop&q=80";
-
+    const details = Object.fromEntries(
+      Object.entries(formData).map(([key, value]) => [key, String(value ?? "").trim()])
+    );
+    if (!details.productName || !details.productId) {
+      setSaveError("Please enter product information before saving. Product Name and Product ID / SKU are required.");
+      setActiveTab("Details");
+      setOpenSections((prev) => ({ ...prev, basicDetails: true, productInfo: true }));
+      setSaving(false);
+      return;
+    }
+    const optionalNumber = (value: string) => value === "" ? null : Number(value);
+    const numericFields = ["sellingPriceVal", "costPriceVal", "moq", "cbm", "gp40ft"];
+    if (numericFields.some((key) => details[key] !== "" && !Number.isFinite(Number(details[key])))) {
+      setSaveError("Please enter valid numbers for prices, MOQ, CBM and loadability.");
+      setSaving(false);
+      return;
+    }
     const productPayload = {
-      id: editId || "PF-" + Date.now(),
-      sku: formData.productId || editingOriginal?.sku || `SW-LII-PF-${Math.floor(10000 + Math.random() * 90000)}`,
-      name: formData.productName || editingOriginal?.name || "Product Entry",
-      category: formData.category || editingOriginal?.category || "Furniture",
-      subCategory: formData.subCategory || editingOriginal?.subCategory || "General",
-      collectionName: formData.collectionName || editingOriginal?.collectionName || "Custom Collection",
-      material: formData.material || editingOriginal?.material || "Wood & Metal",
-      woodFinish: formData.woodFinish || editingOriginal?.woodFinish || "Natural",
-      metalFinish: formData.metalFinish || editingOriginal?.metalFinish || "Standard",
-      sizeCm: formData.sizeCm || editingOriginal?.sizeCm || "100X50X75",
-      fobPriceUsd: parseFloat(formData.sellingPriceVal || formData.costPriceVal || String(editingOriginal?.fobPriceUsd || "150")) || 150,
-      moq: parseInt(formData.moq || String(editingOriginal?.moq || "10"), 10) || 10,
-      cbm: parseFloat(formData.cbm || String(editingOriginal?.cbm || "0.35")) || 0.35,
-      gp40ft: parseInt(formData.gp40ft || String(editingOriginal?.gp40ft || "50"), 10) || 50,
-      assembledKd: formData.assembledKd || editingOriginal?.assembledKd || "KD",
-      image: mainImg,
-      stockStatus: (editingOriginal?.stockStatus || "Sample Ready") as "In Stock" | "Sample Ready" | "Made to Order",
-      fullDetails: formData,
-      images: images,
+      ...editingOriginal,
+      sku: details.productId,
+      name: details.productName,
+      category: details.category,
+      subCategory: details.subCategory,
+      collectionName: details.collectionName,
+      material: details.material,
+      woodFinish: details.woodFinish,
+      metalFinish: details.metalFinish,
+      sizeCm: details.sizeCm,
+      fobPriceUsd: optionalNumber(details.sellingPriceVal),
+      moq: optionalNumber(details.moq),
+      cbm: optionalNumber(details.cbm),
+      gp40ft: optionalNumber(details.gp40ft),
+      assembledKd: details.assembledKd,
+      image: images.find((img) => img.isMain)?.url || images[0]?.url || "",
+      fullDetails: details,
+      images: images.map((img) => ({ ...img, previewUrl: img.url })),
     };
 
-    // Save to localStorage
     try {
-      const saved =
-        localStorage.getItem("lii_product_catalogue_items") ||
-        localStorage.getItem("lii_product_catalog_items") ||
-        "[]";
-      let existing: any[] = JSON.parse(saved);
-
-      let updatedList: any[] = [];
-      if (editId) {
-        const found = existing.some((p: any) => String(p.id) === String(editId));
-        if (found) {
-          updatedList = existing.map((p: any) => (String(p.id) === String(editId) ? productPayload : p));
-        } else {
-          updatedList = [productPayload, ...existing];
-        }
-      } else {
-        updatedList = [productPayload, ...existing];
-      }
-
-      localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updatedList));
-      localStorage.setItem("lii_product_catalog_items", JSON.stringify(updatedList));
-    } catch (err) {
-      console.error("Failed to save product to localStorage:", err);
-    }
-
-    // Try saving to backend database API
-    try {
-      await documentApi.createProduct(productPayload.name, productPayload.sku).catch(() => null);
-    } catch (e) {
-      // Non-blocking fallback
-    }
-
-    setSaveSuccess(true);
-    setTimeout(() => {
+      await catalogueProductsApi.save(productPayload, editId || undefined);
+      setSaveSuccess(true);
       navigate("/admin/sourcewiz/products");
-    }, 1200);
+    } catch (error) {
+      setSaveError(catalogueError(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "20px" }}>
+      {saveError && <div role="alert" style={{ padding: 16, marginBottom: 16, background: "#fef2f2", color: "#991b1b" }}>{saveError}</div>}
+      {(uploading || loadingProduct) && <p role="status">{uploading ? "Uploading images to server…" : "Loading product…"}</p>}
       <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
         {/* Header Bar */}
         <div
@@ -464,7 +474,8 @@ export default function SourcewizProductFormPage() {
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  disabled={uploading || saving || loadingProduct}
                   onChange={handleFileUpload}
                   style={{ display: "none" }}
                 />
@@ -798,6 +809,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select currency</option>
                         <option value="USD">$ USD</option>
                         <option value="EUR">€ EUR</option>
                         <option value="INR">₹ INR</option>
@@ -827,6 +839,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select unit</option>
                         <option value="per Pc">per Pc</option>
                         <option value="per Set">per Set</option>
                       </select>
@@ -970,6 +983,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select currency</option>
                         <option value="USD">$ USD</option>
                         <option value="EUR">€ EUR</option>
                         <option value="INR">₹ INR</option>
@@ -999,6 +1013,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select unit</option>
                         <option value="per Pc">per Pc</option>
                         <option value="per Set">per Set</option>
                       </select>
@@ -1228,6 +1243,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select currency</option>
                         <option value="USD">$ USD</option>
                         <option value="EUR">€ EUR</option>
                         <option value="INR">₹ INR</option>
@@ -1257,6 +1273,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select unit</option>
                         <option value="per Pc">per Pc</option>
                         <option value="per Set">per Set</option>
                       </select>
@@ -1325,6 +1342,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select currency</option>
                         <option value="USD">$ USD</option>
                         <option value="EUR">€ EUR</option>
                         <option value="INR">₹ INR</option>
@@ -1354,6 +1372,7 @@ export default function SourcewizProductFormPage() {
                           background: "#fff",
                         }}
                       >
+                        <option value="">Select unit</option>
                         <option value="per Pc">per Pc</option>
                         <option value="per Set">per Set</option>
                       </select>
@@ -1493,6 +1512,7 @@ export default function SourcewizProductFormPage() {
               </button>
               <button
                 type="submit"
+                disabled={saving || uploading || loadingProduct || (isEditMode && !editingOriginal)}
                 style={{
                   padding: "12px 28px",
                   borderRadius: "8px",

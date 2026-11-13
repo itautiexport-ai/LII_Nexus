@@ -6,12 +6,27 @@ export interface CreateCostEstimationItemDto {
   unit_of_measure: string;
   unit_cost: number;
   remarks?: string;
+  length_ft?: number;
+  width_in?: number;
+  thick_in?: number;
+  pcs?: number;
+}
+
+export interface CalculateWoodCftDto {
+  length: number;
+  width: number;
+  thickness: number;
+  pcs: number;
+  rate?: number;
 }
 
 export interface CreateCostEstimationDto {
   title?: string;
   product_code?: string;
   product_name?: string;
+  product_type?: string;
+  collection_name?: string;
+  type_of_costing?: string;
   overall_size?: string;
   wood_type?: string;
   client_name?: string;
@@ -28,6 +43,9 @@ export interface UpdateCostEstimationDto {
   title?: string;
   product_code?: string;
   product_name?: string;
+  product_type?: string;
+  collection_name?: string;
+  type_of_costing?: string;
   overall_size?: string;
   wood_type?: string;
   client_name?: string;

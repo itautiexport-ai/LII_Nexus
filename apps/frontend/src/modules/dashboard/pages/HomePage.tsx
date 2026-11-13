@@ -39,7 +39,7 @@ export default function HomePage() {
         setShortcuts(JSON.parse(stored));
       } catch (err) {}
     }
-    
+
     // Fetch my employee record for celebrations
     employeesApi.getMe().then(setMyEmployee).catch(() => {});
   }, [user]);
@@ -89,12 +89,19 @@ export default function HomePage() {
         return; // Skip section if not allowed
       }
 
-      // Only take top-level items in each section
-      section.items.forEach(item => {
-        if (item.to) {
-          routes.push({ label: `${section.label} > ${item.label}`, to: item.to });
-        }
-      });
+      // Include top-level items and nested sub-module items in each section
+      const collectNavRoutes = (items: NavItem[], prefix: string) => {
+        items.forEach((item) => {
+          const nextLabel = `${prefix} > ${item.label}`;
+          if (item.to) {
+            routes.push({ label: nextLabel, to: item.to });
+          }
+          if (item.items) {
+            collectNavRoutes(item.items, nextLabel);
+          }
+        });
+      };
+      collectNavRoutes(section.items, section.label);
     });
 
     return routes;
@@ -189,22 +196,22 @@ export default function HomePage() {
             zIndex: 1
           }}></div>
           <div style={{ position: "relative", zIndex: 2, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}>
-            <h2 style={{ 
-              margin: "0 0 16px 0", 
-              fontSize: 32, 
-              fontWeight: 800, 
+            <h2 style={{
+              margin: "0 0 16px 0",
+              fontSize: 32,
+              fontWeight: 800,
               color: "#0f172a", // Dark slate / professional deep color
               letterSpacing: "-0.02em"
             }}>
               {todayEvent.title}
             </h2>
-            <p style={{ 
-              margin: 0, 
-              fontSize: 18, 
+            <p style={{
+              margin: 0,
+              fontSize: 18,
               color: "#334155", // Slate grey
-              fontWeight: 500, 
-              maxWidth: 600, 
-              marginLeft: "auto", 
+              fontWeight: 500,
+              maxWidth: 600,
+              marginLeft: "auto",
               marginRight: "auto",
               lineHeight: 1.6
             }}>
@@ -221,15 +228,15 @@ export default function HomePage() {
 
       <div className="home-grid">
         {shortcuts.map((link) => (
-          <div 
-            key={link.id} 
+          <div
+            key={link.id}
             className="home-card"
             onClick={() => navigate(link.route)}
           >
             <div className="home-card-header">
               <div className="home-card-icon">{link.icon}</div>
-              <button 
-                className="remove-shortcut-btn" 
+              <button
+                className="remove-shortcut-btn"
                 onClick={(e) => handleRemoveShortcut(e, link.id)}
                 title="Remove Shortcut"
               >
@@ -255,34 +262,34 @@ export default function HomePage() {
             <h3>Add New Shortcut</h3>
             <div className="modal-form">
               <label>Icon (Emoji)</label>
-              <input 
-                type="text" 
-                value={newShortcut.icon} 
-                onChange={e => setNewShortcut({...newShortcut, icon: e.target.value})} 
+              <input
+                type="text"
+                value={newShortcut.icon}
+                onChange={e => setNewShortcut({...newShortcut, icon: e.target.value})}
                 placeholder="🔗"
               />
               <label>Title</label>
-              <input 
-                type="text" 
-                value={newShortcut.title || ""} 
-                onChange={e => setNewShortcut({...newShortcut, title: e.target.value})} 
+              <input
+                type="text"
+                value={newShortcut.title || ""}
+                onChange={e => setNewShortcut({...newShortcut, title: e.target.value})}
                 placeholder="e.g. Reports"
               />
               <label>Description</label>
-              <input 
-                type="text" 
-                value={newShortcut.description || ""} 
-                onChange={e => setNewShortcut({...newShortcut, description: e.target.value})} 
+              <input
+                type="text"
+                value={newShortcut.description || ""}
+                onChange={e => setNewShortcut({...newShortcut, description: e.target.value})}
                 placeholder="Quick access to reports"
               />
               <label>Module / Route</label>
-              <select 
-                value={newShortcut.route || ""} 
+              <select
+                value={newShortcut.route || ""}
                 onChange={e => {
                   const to = e.target.value;
                   const found = availableRoutes.find(r => r.to === to);
                   setNewShortcut({
-                    ...newShortcut, 
+                    ...newShortcut,
                     route: to,
                     // Auto-fill title if empty
                     title: newShortcut.title || (found ? found.label.split(" > ").pop() : "")

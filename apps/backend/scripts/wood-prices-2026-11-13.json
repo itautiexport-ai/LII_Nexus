@@ -1,0 +1,812 @@
+[
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "1",
+    "ratePerCft": 780
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "1",
+    "ratePerCft": 780
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "1",
+    "ratePerCft": 880
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "1",
+    "ratePerCft": 588
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "1",
+    "ratePerCft": 588
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "1",
+    "ratePerCft": 630
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "1",
+    "ratePerCft": 612
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "1",
+    "ratePerCft": 624
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "1",
+    "ratePerCft": 660
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "1.5",
+    "ratePerCft": 780
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "1.5",
+    "ratePerCft": 780
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "1.5",
+    "ratePerCft": 880
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "1.5",
+    "ratePerCft": 588
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "1.5",
+    "ratePerCft": 588
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "1.5",
+    "ratePerCft": 630
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "1.5",
+    "ratePerCft": 612
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "1.5",
+    "ratePerCft": 624
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "1.5",
+    "ratePerCft": 660
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "2",
+    "ratePerCft": 780
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "2",
+    "ratePerCft": 780
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "2",
+    "ratePerCft": 880
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "2",
+    "ratePerCft": 588
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "2",
+    "ratePerCft": 588
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "2",
+    "ratePerCft": 630
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "2",
+    "ratePerCft": 612
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "2",
+    "ratePerCft": 624
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "2",
+    "ratePerCft": 660
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "2.5",
+    "ratePerCft": 880
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "2.5",
+    "ratePerCft": 880
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "2.5",
+    "ratePerCft": 980
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "2.5",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "2.5",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "2.5",
+    "ratePerCft": 738
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "2.5",
+    "ratePerCft": 660
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "2.5",
+    "ratePerCft": 672
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "2.5",
+    "ratePerCft": 708
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "3",
+    "ratePerCft": 880
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "3",
+    "ratePerCft": 880
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "3",
+    "ratePerCft": 980
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "3",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "3",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "3",
+    "ratePerCft": 738
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "3",
+    "ratePerCft": 660
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "3",
+    "ratePerCft": 672
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "3",
+    "ratePerCft": 708
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "3.5",
+    "ratePerCft": 980
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "3.5",
+    "ratePerCft": 980
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "3.5",
+    "ratePerCft": 1080
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "3.5",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "3.5",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "3.5",
+    "ratePerCft": 738
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "3.5",
+    "ratePerCft": 660
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "3.5",
+    "ratePerCft": 672
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "3.5",
+    "ratePerCft": 708
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "4",
+    "ratePerCft": 980
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "4",
+    "ratePerCft": 980
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "4",
+    "ratePerCft": 1080
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "4",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "4",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "4",
+    "ratePerCft": 738
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "4",
+    "ratePerCft": 720
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "4",
+    "ratePerCft": 732
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "4",
+    "ratePerCft": 760
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "4.5",
+    "ratePerCft": 1080
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "4.5",
+    "ratePerCft": 1080
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "4.5",
+    "ratePerCft": 1180
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "4.5",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "4.5",
+    "ratePerCft": 696
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "4.5",
+    "ratePerCft": 738
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "4.5",
+    "ratePerCft": 720
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "4.5",
+    "ratePerCft": 732
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "4.5",
+    "ratePerCft": 760
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "5",
+    "ratePerCft": 1080
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "5",
+    "ratePerCft": 1080
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "5",
+    "ratePerCft": 1180
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "5",
+    "ratePerCft": 882
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "5",
+    "ratePerCft": 756
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "5",
+    "ratePerCft": 768
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "5",
+    "ratePerCft": 796
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "5.5",
+    "ratePerCft": 1280
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "5.5",
+    "ratePerCft": 1280
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "5.5",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "5.5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "5.5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "5.5",
+    "ratePerCft": 882
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "5.5",
+    "ratePerCft": 828
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "5.5",
+    "ratePerCft": 836
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "5.5",
+    "ratePerCft": 868
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "6",
+    "ratePerCft": 1280
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "6",
+    "ratePerCft": 1280
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "6",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "6",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "6",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "6",
+    "ratePerCft": 882
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "6",
+    "ratePerCft": 828
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "6",
+    "ratePerCft": 836
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "6",
+    "ratePerCft": 868
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "6.5",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "6.5",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "6.5",
+    "ratePerCft": 1480
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "6.5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "6.5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "6.5",
+    "ratePerCft": 882
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "6.5",
+    "ratePerCft": 888
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "6.5",
+    "ratePerCft": 900
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "6.5",
+    "ratePerCft": 928
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "7",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "7",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "7",
+    "ratePerCft": 1480
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "7",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "7",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "7",
+    "ratePerCft": 882
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "7",
+    "ratePerCft": 888
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "7",
+    "ratePerCft": 900
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "7",
+    "ratePerCft": 928
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "7.5",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "7.5",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "7.5",
+    "ratePerCft": 1480
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "7.5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "7.5",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "7.5",
+    "ratePerCft": 882
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "7.5",
+    "ratePerCft": 888
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "7.5",
+    "ratePerCft": 900
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "7.5",
+    "ratePerCft": 928
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1",
+    "length": "8",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "1.5",
+    "length": "8",
+    "ratePerCft": 1380
+  },
+  {
+    "woodType": "Sheesham",
+    "thickness": "2",
+    "length": "8",
+    "ratePerCft": 1480
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1",
+    "length": "8",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "1.5",
+    "length": "8",
+    "ratePerCft": 840
+  },
+  {
+    "woodType": "Mango",
+    "thickness": "2",
+    "length": "8",
+    "ratePerCft": 882
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1",
+    "length": "8",
+    "ratePerCft": 888
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "1.5",
+    "length": "8",
+    "ratePerCft": 900
+  },
+  {
+    "woodType": "Acacia",
+    "thickness": "2",
+    "length": "8",
+    "ratePerCft": 928
+  }
+]

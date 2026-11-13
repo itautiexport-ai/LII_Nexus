@@ -57,7 +57,7 @@ export default function CostEstimationDetailPage() {
           onClick={() => navigate("/admin/costing/list")}
           style={{ padding: "8px 16px", background: "#ffffff", border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer" }}
         >
-          ← Back to List
+          ← Back to List of New Costing
         </button>
         <div style={{ display: "flex", gap: 12 }}>
           <button
@@ -96,18 +96,38 @@ export default function CostEstimationDetailPage() {
         </div>
 
         {/* Estimation Metadata */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, background: "#f9fafb", padding: 16, borderRadius: 6, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, background: "#f9fafb", padding: 16, borderRadius: 6, marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 12, color: "#6b7280" }}>Product / Title</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.title}</div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Product Code</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.product_code || "—"}</div>
           </div>
           <div>
-            <div style={{ fontSize: 12, color: "#6b7280" }}>Client Name</div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Product Name / Title</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.product_name || estimation.title}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Product Type</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.product_type || "—"}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Collection Name</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.collection_name || "—"}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Type of Costing</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#2563eb" }}>{estimation.type_of_costing || "—"}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Overall Size</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.overall_size || "—"}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Wood Type</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.wood_type || "—"}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Client / Customer Name</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.client_name || "—"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: "#6b7280" }}>Currency / Rate</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{estimation.currency} (Ex: {estimation.exchange_rate})</div>
           </div>
         </div>
 

@@ -22,7 +22,23 @@ export default function ModuleLandingPage() {
       const itemRole = `${sectionRolePrefix} -> ${item.label}`;
       if (userRoles.includes(itemRole)) return true;
       if (item.items) {
-        return item.items.some((sub: any) => userRoles.includes(`${itemRole} -> ${sub.label}`));
+        return item.items.some((sub: any) => {
+          if (
+            userRoles.includes(`${itemRole} -> ${sub.label}`) ||
+            userRoles.includes(`${sectionRolePrefix} -> ${sub.label}`)
+          ) {
+            return true;
+          }
+          if (sub.items) {
+            return sub.items.some(
+              (child: any) =>
+                userRoles.includes(`${itemRole} -> ${sub.label} -> ${child.label}`) ||
+                userRoles.includes(`${itemRole} -> ${child.label}`) ||
+                userRoles.includes(`${sectionRolePrefix} -> ${child.label}`)
+            );
+          }
+          return false;
+        });
       }
       return false;
     });
@@ -39,10 +55,10 @@ export default function ModuleLandingPage() {
   return (
     <div style={{ padding: "32px 40px", maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ marginBottom: 40 }}>
-        <h1 style={{ 
-          fontSize: 32, 
-          fontWeight: 800, 
-          color: "#0f172a", 
+        <h1 style={{
+          fontSize: 32,
+          fontWeight: 800,
+          color: "#0f172a",
           margin: "0 0 12px 0",
           letterSpacing: "-0.02em"
         }}>
@@ -54,10 +70,10 @@ export default function ModuleLandingPage() {
       </div>
 
       {visibleItems.length === 0 ? (
-        <div style={{ 
-          background: "#fff", 
-          padding: 40, 
-          borderRadius: 16, 
+        <div style={{
+          background: "#fff",
+          padding: 40,
+          borderRadius: 16,
           textAlign: "center",
           border: "1px dashed #cbd5e1"
         }}>
@@ -66,18 +82,18 @@ export default function ModuleLandingPage() {
           </p>
         </div>
       ) : (
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", 
-          gap: 24 
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: 24
         }}>
           {visibleItems.map((item: any) => {
             const isGroup = !!item.items;
-            // If it's a group, clicking the card navigates to the first sub-item, 
+            // If it's a group, clicking the card navigates to the first sub-item,
             // or we just render sub-items as nested links.
             if (isGroup) {
               return (
-                <div 
+                <div
                   key={item.label}
                   style={{
                     background: "#fff",
@@ -97,15 +113,31 @@ export default function ModuleLandingPage() {
                       const isSysAdmin = userRoles.includes("System Admin");
                       const secRolePrefix = `Menu: ${section.label}`;
                       const subItemRole = `${secRolePrefix} -> ${item.label} -> ${sub.label}`;
-                      
-                      const isSubVisible = isSysAdmin || userRoles.includes(subItemRole);
-                      
+                      const legacyDirectRole = `${secRolePrefix} -> ${sub.label}`;
+
+                      const hasChildRole = sub.items
+                        ? sub.items.some(
+                            (child: any) =>
+                              userRoles.includes(`${subItemRole} -> ${child.label}`) ||
+                              userRoles.includes(`${secRolePrefix} -> ${item.label} -> ${child.label}`) ||
+                              userRoles.includes(`${secRolePrefix} -> ${child.label}`)
+                          )
+                        : false;
+
+                      const isSubVisible =
+                        isSysAdmin ||
+                        userRoles.includes(subItemRole) ||
+                        userRoles.includes(legacyDirectRole) ||
+                        hasChildRole;
+
                       if (!isSubVisible) return null;
+                      const targetTo = sub.to || sub.items?.[0]?.to;
+                      if (!targetTo) return null;
 
                       return (
-                        <Link 
-                          key={sub.to}
-                          to={sub.to}
+                        <Link
+                          key={`${sub.label}-${targetTo}`}
+                          to={targetTo}
                           style={{
                             display: "block",
                             padding: "10px 16px",
@@ -130,7 +162,7 @@ export default function ModuleLandingPage() {
 
             // Normal Item Card
             return (
-              <Link 
+              <Link
                 key={item.to}
                 to={item.to}
                 style={{

@@ -18,5 +18,6 @@ router.delete("/estimations/:id", asyncHandler(controller.deleteEstimation));
 router.get("/rates", asyncHandler(controller.getAllRates));
 router.post("/rates", asyncHandler(controller.saveRate));
 router.delete("/rates/:id", asyncHandler(controller.deleteRate));
+router.post("/calculate-cft", asyncHandler(controller.calculateCft));
 
 export default router;

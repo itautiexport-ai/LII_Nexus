@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { costingApi, CostRateMaster } from "../api/costingApi";
+import {
+  getCachedUomOptions,
+  loadMergedUomOptions,
+} from "../../admin/masterdata/pages/AdditionalCostsPage";
 
 export default function CostRatesMasterPage() {
   const navigate = useNavigate();
   const [rates, setRates] = useState<CostRateMaster[]>([]);
+  const [uomOptions, setUomOptions] = useState<string[]>(() => getCachedUomOptions());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
@@ -19,6 +24,7 @@ export default function CostRatesMasterPage() {
 
   useEffect(() => {
     loadRates();
+    loadMergedUomOptions().then(setUomOptions).catch(() => {});
   }, []);
 
   const loadRates = async () => {
@@ -238,12 +244,20 @@ export default function CostRatesMasterPage() {
 
               <div style={{ marginBottom: 12 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Unit of Measure (UOM)</label>
-                <input
-                  type="text"
+                <select
                   value={unitOfMeasure}
                   onChange={(e) => setUnitOfMeasure(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 }}
-                />
+                  style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, background: "#fff" }}
+                >
+                  {(unitOfMeasure && !uomOptions.some((u) => u.toLowerCase() === unitOfMeasure.toLowerCase())
+                    ? [unitOfMeasure, ...uomOptions]
+                    : uomOptions
+                  ).map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div style={{ marginBottom: 20 }}>

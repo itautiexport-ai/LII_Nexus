@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../Sourcewiz.css";
 import {
@@ -16,6 +16,8 @@ import { catalogueShareApi, SharedDeckData } from "../api/catalogueShareApi";
 import { pptMasterApi, PptMasterTheme, PptFrontPage } from "../../admin/masterdata/api/pptMasterApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import { useIsSystemAdmin } from "../../auth/hooks/usePermissions";
+import { catalogueError, catalogueProductsApi } from "../api/catalogueProductsApi";
+import LegacyCatalogueImport from "../components/LegacyCatalogueImport";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&auto=format&fit=crop&q=80";
 
@@ -197,13 +199,19 @@ export default function SourcewizProductsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isSysAdmin = useIsSystemAdmin();
-  const isAdmin =
-    isSysAdmin ||
-    (user?.email || "").toLowerCase().trim() === "admin@liinexus.com" ||
-    (user?.email || "").toLowerCase().trim() === "admin" ||
-    (user?.roles || []).some((r) => r.toLowerCase().includes("admin"));
+  const isAdmin = isSysAdmin;
 
   const [products, setProducts] = useState<CatalogProductItem[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState("");
+  const [deletingProducts, setDeletingProducts] = useState(false);
+  const loadProducts = useCallback(async () => {
+    setProductsLoading(true);
+    setProductsError("");
+    try { setProducts(await catalogueProductsApi.list()); }
+    catch (error) { setProductsError(catalogueError(error)); }
+    finally { setProductsLoading(false); }
+  }, []);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -224,25 +232,29 @@ export default function SourcewizProductsPage() {
     setDeleteConfirmation({ id: productId, name: productName });
   };
 
-  const confirmDeleteProduct = () => {
-    if (!deleteConfirmation) return;
+  const confirmDeleteProduct = async () => {
+    if (!deleteConfirmation || deletingProducts) return;
     const { id } = deleteConfirmation;
-    const updated = products.filter((p) => String(p.id) !== String(id));
-    setProducts(updated);
-    setSelectedIds((prev) => prev.filter((i) => String(i) !== String(id)));
-    localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updated));
-    localStorage.setItem("lii_product_catalog_items", JSON.stringify(updated));
-    setDeleteConfirmation(null);
+    setDeletingProducts(true);
+    try {
+      await catalogueProductsApi.remove([id]);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
+      setDeleteConfirmation(null);
+    } catch (error) { alert(catalogueError(error)); }
+    finally { setDeletingProducts(false); }
   };
 
-  const confirmBulkDelete = () => {
-    if (!isAdmin) return;
-    const updated = products.filter((p) => !selectedIds.includes(String(p.id)));
-    setProducts(updated);
-    setSelectedIds([]);
-    localStorage.setItem("lii_product_catalogue_items", JSON.stringify(updated));
-    localStorage.setItem("lii_product_catalog_items", JSON.stringify(updated));
-    setBulkDeleteConfirmation(false);
+  const confirmBulkDelete = async () => {
+    if (!isAdmin || deletingProducts) return;
+    setDeletingProducts(true);
+    try {
+      await catalogueProductsApi.remove(selectedIds);
+      setProducts((prev) => prev.filter((p) => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+      setBulkDeleteConfirmation(false);
+    } catch (error) { alert(catalogueError(error)); }
+    finally { setDeletingProducts(false); }
   };
 
   // Selected products for presentation (default empty)
@@ -368,31 +380,11 @@ export default function SourcewizProductsPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved =
-        localStorage.getItem("lii_product_catalogue_items") ||
-        localStorage.getItem("lii_product_catalog_items");
-      if (saved) {
-        const parsed: CatalogProductItem[] = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          // Purge default dummy mock items from user's storage
-          const mockIds = new Set(["1", "2", "3", "4"]);
-          const mockSkus = new Set(["SW-LII-DT-12557", "SW-LII-OC-04", "SW-LII-AC-09", "SW-LII-SB-12"]);
-          const realUserProducts = parsed.filter(
-            (p) => !mockIds.has(String(p.id)) && !mockSkus.has(String(p.sku))
-          );
-          setProducts(realUserProducts);
-          localStorage.setItem("lii_product_catalogue_items", JSON.stringify(realUserProducts));
-          localStorage.setItem("lii_product_catalog_items", JSON.stringify(realUserProducts));
-          return;
-        }
-      }
-      setProducts([]);
-    } catch (e) {
-      console.error("Failed to load products from localStorage:", e);
-      setProducts([]);
-    }
-  }, []);
+    void loadProducts();
+    const refreshOnFocus = () => { void loadProducts(); };
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
+  }, [loadProducts]);
 
   const categories = ["All", "Furniture", "Outdoor", "Storage", "Decor"];
 
@@ -528,6 +520,11 @@ export default function SourcewizProductsPage() {
 
   return (
     <div className="sw-container">
+      <LegacyCatalogueImport onImported={loadProducts} />
+      {productsLoading && <p role="status">Loading shared catalogue…</p>}
+      {productsError && <div role="alert" style={{ padding: 16, marginBottom: 16, background: "#fef2f2", color: "#991b1b" }}>
+        {productsError} <button type="button" onClick={() => void loadProducts()}>Retry</button>
+      </div>}
       {/* EXECUTIVE ENTERPRISE HEADER */}
       <div className="sw-page-header">
         <div>
@@ -1016,7 +1013,7 @@ export default function SourcewizProductsPage() {
                         {/* Price & MOQ */}
                         <td>
                           <div style={{ color: "#0f172a", fontWeight: 800, fontSize: "0.92rem", fontVariantNumeric: "tabular-nums" }}>
-                            ${product.fobPriceUsd.toFixed(2)}
+                            {product.fobPriceUsd == null ? "—" : `$${product.fobPriceUsd.toFixed(2)}`}
                             <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>
                               FOB
                             </span>
@@ -1340,7 +1337,7 @@ export default function SourcewizProductsPage() {
                   <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid #f1f5f9" }}>
                     <div>
                       <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
-                        ${product.fobPriceUsd.toFixed(2)}
+                        {product.fobPriceUsd == null ? "—" : `$${product.fobPriceUsd.toFixed(2)}`}
                         <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>FOB</span>
                       </div>
                       <div style={{ fontSize: "0.68rem", color: "#64748b" }}>MOQ: {product.moq} Pcs</div>
@@ -2362,7 +2359,7 @@ export default function SourcewizProductsPage() {
                               <div style={{ textAlign: "right" }}>
                                 {fieldsConfig.includePricing && (
                                   <span style={{ fontSize: "1.05rem", fontWeight: 800, color: `#${currentTheme.product.priceColor}`, display: "block" }}>
-                                    ${product.fobPriceUsd.toFixed(2)} USD
+                                    {product.fobPriceUsd == null ? "—" : `${product.fobPriceUsd == null ? "—" : `$${product.fobPriceUsd.toFixed(2)}`} USD`}
                                   </span>
                                 )}
                                 {fieldsConfig.includeSku && (

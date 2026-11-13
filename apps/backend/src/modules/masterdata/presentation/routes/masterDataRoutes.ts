@@ -98,6 +98,36 @@ router.post("/finish-codes", asyncHandler(controller.createFinishCode.bind(contr
 router.put("/finish-codes/:id", asyncHandler(controller.updateFinishCode.bind(controller)));
 router.delete("/finish-codes/:id", asyncHandler(controller.deleteFinishCode.bind(controller)));
 
+// Hardware And Accessories
+router.get("/hardware-accessories", asyncHandler(controller.getHardwareAccessories.bind(controller)));
+router.post("/hardware-accessories", asyncHandler(controller.createHardwareAccessory.bind(controller)));
+router.put("/hardware-accessories/:id", asyncHandler(controller.updateHardwareAccessory.bind(controller)));
+router.delete("/hardware-accessories/:id", asyncHandler(controller.deleteHardwareAccessory.bind(controller)));
+
+// Wood Thickness Prices
+router.get("/wood-thickness-prices", asyncHandler(controller.getWoodThicknessPrices.bind(controller)));
+router.post("/wood-thickness-prices", asyncHandler(controller.createWoodThicknessPrice.bind(controller)));
+router.put("/wood-thickness-prices/:id", asyncHandler(controller.updateWoodThicknessPrice.bind(controller)));
+router.delete("/wood-thickness-prices/:id", asyncHandler(controller.deleteWoodThicknessPrice.bind(controller)));
+
+// Wood Part Names
+router.get("/wood-part-names", asyncHandler(controller.getWoodPartNames.bind(controller)));
+router.post("/wood-part-names", asyncHandler(controller.createWoodPartName.bind(controller)));
+router.put("/wood-part-names/:id", asyncHandler(controller.updateWoodPartName.bind(controller)));
+router.delete("/wood-part-names/:id", asyncHandler(controller.deleteWoodPartName.bind(controller)));
+
+// Additional Costs
+router.get("/additional-costs", asyncHandler(controller.getAdditionalCosts.bind(controller)));
+router.post("/additional-costs", asyncHandler(controller.createAdditionalCost.bind(controller)));
+router.put("/additional-costs/:id", asyncHandler(controller.updateAdditionalCost.bind(controller)));
+router.delete("/additional-costs/:id", asyncHandler(controller.deleteAdditionalCost.bind(controller)));
+
+// MDF Prices
+router.get("/mdf-prices", asyncHandler(controller.getMdfPrices.bind(controller)));
+router.post("/mdf-prices", asyncHandler(controller.createMdfPrice.bind(controller)));
+router.put("/mdf-prices/:id", asyncHandler(controller.updateMdfPrice.bind(controller)));
+router.delete("/mdf-prices/:id", asyncHandler(controller.deleteMdfPrice.bind(controller)));
+
 // ==========================================
 // PPT Master Themes
 // ==========================================

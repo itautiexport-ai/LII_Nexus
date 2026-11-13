@@ -2,6 +2,7 @@ import { Router } from "express";
 import { CatalogueShareController } from "../controllers/CatalogueShareController";
 import { authMiddleware } from "../../../../shared/middlewares/auth.middleware";
 import { asyncHandler } from "../../../../shared/utils/asyncHandler";
+import catalogueProductRoutes from "./catalogueProduct.routes";
 
 const router = Router();
 const controller = new CatalogueShareController();
@@ -13,5 +14,6 @@ router.post("/shared-decks/:token/view", asyncHandler(controller.recordDeckView)
 // Authenticated routes for internal users to create and manage shared decks
 router.post("/share-deck", authMiddleware, asyncHandler(controller.createSharedDeck));
 router.get("/my-shared-decks", authMiddleware, asyncHandler(controller.getMySharedDecks));
+router.use("/", catalogueProductRoutes);
 
 export default router;

@@ -33,12 +33,25 @@ export const SECTIONS: NavSection[] = [
         to: "/admin/master-data",
         hideChildrenInSidebar: true,
         items: [
+          { label: "Administrative Master", to: "/admin/master-data/administrative" },
+          { label: "Human Resource Master", to: "/admin/master-data/human-resource" },
+          {
+            label: "Costing Master",
+            to: "/admin/master-data/costing",
+            items: [
+              { label: "Metal Prices", to: "/admin/metal-prices" },
+              { label: "Wood Thickness Prices", to: "/admin/wood-thickness-prices" },
+              { label: "Hardware And Accessories", to: "/admin/hardware-accessories" },
+              { label: "Wood Part Name", to: "/admin/wood-part-names" },
+              { label: "Additional Cost", to: "/admin/additional-costs" },
+              { label: "MDF Prices", to: "/admin/mdf-prices" },
+              { label: "Currency Conversion Rates", to: "/admin/currency-rates" },
+            ]
+          },
           { label: "Departments", to: "/admin/departments" },
           { label: "Designations", to: "/admin/designations" },
           { label: "Shifts", to: "/admin/shifts" },
           { label: "Wood Types", to: "/admin/wood-types" },
-          { label: "Wood Thickness Prices", to: "/admin/wood-thickness-prices" },
-          { label: "Metal Prices", to: "/admin/metal-prices" },
           { label: "Priorities", to: "/admin/priorities" },
           { label: "UOMs", to: "/admin/uoms" },
           { label: "HOD Names", to: "/admin/hods" },
@@ -163,11 +176,16 @@ export const SECTIONS: NavSection[] = [
     label: "Sales & CRM",
     allowedRoles: ["System Admin", "Merchant", "CEO"],
     items: [
-      { label: "Add Lead", to: "/admin/crm/leads/new" },
-      { label: "List Leads", to: "/admin/crm/leads" },
-      { label: "Lead Command Center", to: "/admin/crm/command-center" },
-      { 
-        label: "Quotations", 
+      {
+        label: "Lead Management",
+        items: [
+          { label: "Add Lead", to: "/admin/crm/leads/new" },
+          { label: "List Leads", to: "/admin/crm/leads" },
+          { label: "Lead Command Center", to: "/admin/crm/command-center" },
+        ]
+      },
+      {
+        label: "Quotations",
         to: "/admin/crm/quotations/hub",
         hideChildrenInSidebar: true,
         items: [
@@ -204,6 +222,7 @@ export const SECTIONS: NavSection[] = [
     allowedRoles: ["System Admin", "Merchant", "CEO", "HOD"],
     items: [
       { label: "New Costing Sheet", to: "/admin/costing/new" },
+      { label: "List of New Costing", to: "/admin/costing/list" },
     ],
   },
   {
@@ -371,17 +390,18 @@ function SidebarSubGroup({ item, pathname, userRoles, legacyAccess, sectionRoleP
 
   const visibleSubs = item.items.filter((sub: any) => {
     if (legacyAccess) return true;
-    
-    // Check specific sub-item role
+
+    // Check specific sub-item role (and legacy flat role for moved items)
     const subItemRole = `${sectionRolePrefix} -> ${item.label} -> ${sub.label}`;
-    return userRoles.includes(subItemRole);
+    const legacyDirectRole = `${sectionRolePrefix} -> ${sub.label}`;
+    return userRoles.includes(subItemRole) || userRoles.includes(legacyDirectRole);
   });
 
   if (visibleSubs.length === 0 && !userRoles.includes(sectionRolePrefix) && !legacyAccess) return null;
 
   return (
     <div className="sidebar-subgroup">
-      <button 
+      <button
         type="button"
         className={"sidebar-subgroup-title" + (isExpanded ? " active" : "")}
         onClick={() => {
@@ -400,6 +420,7 @@ function SidebarSubGroup({ item, pathname, userRoles, legacyAccess, sectionRoleP
             <NavLink
               key={sub.to}
               to={sub.to}
+              end={visibleSubs.some((s: any) => s.to !== sub.to && s.to?.startsWith(sub.to + "/"))}
               className={({ isActive }) => "sidebar-sublink nested" + (isActive ? " active" : "")}
             >
               {sub.label}
@@ -413,16 +434,40 @@ function SidebarSubGroup({ item, pathname, userRoles, legacyAccess, sectionRoleP
 
 const STORAGE_KEY = "lii-nexus-sidebar-expanded-section";
 
+function matchesNavItemPath(item: NavItem, pathname: string): boolean {
+  if (item.to && (pathname === item.to || pathname.startsWith(item.to + "/"))) {
+    return true;
+  }
+  if (item.items) {
+    return item.items.some((sub) => matchesNavItemPath(sub, pathname));
+  }
+  return false;
+}
+
+function hasAnyNavItemRole(item: NavItem, parentPrefix: string, sectionPrefix: string, userRoles: string[]): boolean {
+  const itemRole = `${parentPrefix} -> ${item.label}`;
+  const legacySectionRole = `${sectionPrefix} -> ${item.label}`;
+  if (userRoles.includes(itemRole) || userRoles.includes(legacySectionRole)) {
+    return true;
+  }
+  if (item.items) {
+    return item.items.some(
+      (sub) =>
+        hasAnyNavItemRole(sub, itemRole, sectionPrefix, userRoles) ||
+        userRoles.includes(`${parentPrefix} -> ${sub.label}`)
+    );
+  }
+  return false;
+}
+
 function findActiveSectionKey(pathname: string): string | null {
   for (const section of SECTIONS) {
-    if (section.items.some((item: any) => {
-      if (item.items) {
-        return item.items.some((sub: any) => pathname === sub.to || pathname.startsWith(sub.to + "/"));
-      }
-      return pathname === item.to || pathname.startsWith(item.to + "/");
-    })) {
+    if (section.items.some((item) => matchesNavItemPath(item, pathname))) {
       return section.key;
     }
+  }
+  if (pathname.startsWith("/admin/costing/")) {
+    return "costing-estimation";
   }
   return null;
 }
@@ -494,12 +539,12 @@ export default function AdminLayout() {
         {SECTIONS.filter(section => {
           if (!user) return false;
           const userRoles = user.roles || [];
-          
+
           // System Admin bypasses all checks
           if (userRoles.includes("System Admin")) {
             return true;
           }
-          
+
           // Granular check: Check if user has "Menu: Section" OR ANY "Menu: Section -> Item"
           const sectionRolePrefix = `Menu: ${section.label}`;
           return userRoles.some(r => r === sectionRolePrefix || r.startsWith(`${sectionRolePrefix} -> `));
@@ -511,17 +556,10 @@ export default function AdminLayout() {
           const userRoles = user?.roles || [];
           const isSystemAdmin = userRoles.includes("System Admin");
           const sectionRolePrefix = `Menu: ${section.label}`;
-          
+
           const visibleItems = section.items.filter((item: any) => {
             if (isSystemAdmin) return true; // System Admin sees all
-            
-            // Check specific item role
-            const itemRole = `${sectionRolePrefix} -> ${item.label}`;
-            if (userRoles.includes(itemRole)) return true;
-            if (item.items) {
-              return item.items.some((sub: any) => userRoles.includes(`${itemRole} -> ${sub.label}`));
-            }
-            return false;
+            return hasAnyNavItemRole(item, sectionRolePrefix, sectionRolePrefix, userRoles);
           });
 
           if (visibleItems.length === 0 && !userRoles.includes(sectionRolePrefix) && !isSystemAdmin) return null;
@@ -549,10 +587,10 @@ export default function AdminLayout() {
                   {visibleItems.map((item: any) => {
                     if (item.items && !item.hideChildrenInSidebar) {
                       return (
-                        <SidebarSubGroup 
-                          key={item.label} 
-                          item={item} 
-                          pathname={location.pathname} 
+                        <SidebarSubGroup
+                          key={item.label}
+                          item={item}
+                          pathname={location.pathname}
                           userRoles={userRoles}
                           legacyAccess={isSystemAdmin}
                           sectionRolePrefix={sectionRolePrefix}
@@ -873,7 +911,7 @@ const SIDEBAR_STYLES = `
   }
   .sidebar-sublink:hover { background: #f3f4f6; color: #111827; }
   .sidebar-sublink.active { background: #e0e7ff; color: #4338ca; font-weight: 500; }
-  
+
   .sidebar-subgroup {
     margin: 0;
   }
@@ -1034,7 +1072,7 @@ const SIDEBAR_STYLES = `
   table:not(.sw-table) tr:hover td {
     background-color: #f1f5f9 !important; /* Hover highlight row */
   }
-  
+
   /* Additional UI tweaks for professional look */
   .table-pagination-controls, .table-filter-bar {
     border: 1px solid #94a3b8 !important;
