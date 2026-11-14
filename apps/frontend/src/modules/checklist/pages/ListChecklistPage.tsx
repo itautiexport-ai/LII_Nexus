@@ -245,7 +245,9 @@ export function ListChecklistPage() {
                     style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4 }}
                   >
                     <option value="Daily">Daily</option>
+                    <option value="Alternate">Alternate</option>
                     <option value="Weekly">Weekly</option>
+                    <option value="Fortnightly">Fortnightly</option>
                     <option value="Monthly">Monthly</option>
                     <option value="Quarterly">Quarterly</option>
                     <option value="Yearly">Yearly</option>

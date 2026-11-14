@@ -61,7 +61,9 @@ export default function CostEstimationsListPage() {
       });
       const formattedEntry = `[${timestamp}] ${chatMessage.trim()}`;
       const cleanExistingNotes = (activeChatEst.notes || "")
-        .replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "")
+        .replace(/<!--\s*FORM_DATA_START[\s\S]*?<!--\s*FORM_DATA_END\s*-*>/gi, "")
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/<!--[\s\S]*?->/g, "")
         .trim();
       const updatedNotes = cleanExistingNotes
         ? `${cleanExistingNotes}\n${formattedEntry}`
@@ -475,12 +477,22 @@ export default function CostEstimationsListPage() {
             <div style={{ flex: 1, padding: 20, overflowY: "auto", background: "#f8fafc" }}>
               {(() => {
                 const cleanChatNotes = (activeChatEst.notes || "")
-                  .replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "")
+                  .replace(/<!--\s*FORM_DATA_START[\s\S]*?<!--\s*FORM_DATA_END\s*-*>/gi, "")
+                  .replace(/<!--[\s\S]*?-->/g, "")
+                  .replace(/<!--[\s\S]*?->/g, "")
                   .trim();
                 const chatLines = cleanChatNotes
                   .split("\n")
                   .map((l) => l.trim())
-                  .filter((l) => l.length > 0 && !l.startsWith("<!--") && !l.endsWith("-->"));
+                  .filter(
+                    (l) =>
+                      l.length > 0 &&
+                      !l.startsWith("<!--") &&
+                      !l.endsWith("-->") &&
+                      !l.endsWith("->") &&
+                      !l.includes("FORM_DATA") &&
+                      !l.includes('"woodItems"')
+                  );
 
                 if (chatLines.length === 0) {
                   return (

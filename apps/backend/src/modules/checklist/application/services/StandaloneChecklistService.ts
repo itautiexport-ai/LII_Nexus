@@ -453,8 +453,12 @@ function getNextOccurrenceDate(current: Date, frequency: string): Date {
 
   if (freq === "daily") {
     next.setDate(next.getDate() + 1);
+  } else if (freq === "alternate") {
+    next.setDate(next.getDate() + 2);
   } else if (freq === "weekly") {
     next.setDate(next.getDate() + 7);
+  } else if (freq === "fortnightly" || freq === "biweekly" || freq === "bi-weekly") {
+    next.setDate(next.getDate() + 14);
   } else if (freq === "monthly") {
     next.setMonth(next.getMonth() + 1);
   } else if (freq === "quarterly") {

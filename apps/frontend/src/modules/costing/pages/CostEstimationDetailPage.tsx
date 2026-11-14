@@ -199,7 +199,11 @@ export default function CostEstimationDetailPage() {
         </div>
 
         {(() => {
-          const cleanNotes = (estimation.notes || "").replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+          const cleanNotes = (estimation.notes || "")
+            .replace(/<!--\s*FORM_DATA_START[\s\S]*?<!--\s*FORM_DATA_END\s*-*>/gi, "")
+            .replace(/<!--[\s\S]*?-->/g, "")
+            .replace(/<!--[\s\S]*?->/g, "")
+            .trim();
           if (!cleanNotes) return null;
           return (
             <div style={{ marginTop: 24, borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>

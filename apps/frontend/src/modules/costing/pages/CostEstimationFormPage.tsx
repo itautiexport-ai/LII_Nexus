@@ -1312,7 +1312,11 @@ export default function CostEstimationFormPage() {
       setTaxPercentage(est.tax_percentage ?? 18);
 
       const rawNotes = est.notes || "";
-      const cleanedNotes = rawNotes.replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+      const cleanedNotes = rawNotes
+        .replace(/<!--\s*FORM_DATA_START[\s\S]*?<!--\s*FORM_DATA_END\s*-*>/gi, "")
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/<!--[\s\S]*?->/g, "")
+        .trim();
       setNotes(cleanedNotes);
 
       let loadedFromFormData = false;
@@ -1349,9 +1353,9 @@ export default function CostEstimationFormPage() {
       }
 
       // 2. Check embedded form_data inside raw notes
-      if (!loadedFromFormData && rawNotes.includes("<!-- FORM_DATA_START -->")) {
+      if (!loadedFromFormData && (rawNotes.includes("FORM_DATA_START") || rawNotes.includes("woodItems"))) {
         try {
-          const match = rawNotes.match(/<!-- FORM_DATA_START -->([\s\S]*?)<!-- FORM_DATA_END -->/);
+          const match = rawNotes.match(/<!--\s*FORM_DATA_START\s*-*?>([\s\S]*?)<!--\s*FORM_DATA_END\s*-*?>/i);
           if (match && match[1]) {
             const fd = JSON.parse(match[1]);
             if (Array.isArray(fd.woodItems) && fd.woodItems.length > 0) setWoodItems(fd.woodItems);
@@ -1622,7 +1626,11 @@ export default function CostEstimationFormPage() {
       imageUrl,
     };
     const formDataJson = JSON.stringify(formDataObj);
-    const cleanNotesBeforeSave = (notes || "").replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+    const cleanNotesBeforeSave = (notes || "")
+      .replace(/<!--\s*FORM_DATA_START[\s\S]*?<!--\s*FORM_DATA_END\s*-*>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<!--[\s\S]*?->/g, "")
+      .trim();
 
     const payload = {
       title: finalProdName,
@@ -1865,7 +1873,11 @@ export default function CostEstimationFormPage() {
         imageUrl,
       };
       const formDataJson = JSON.stringify(formDataObj);
-      const cleanNotesBeforeSave = (notes || "").replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+      const cleanNotesBeforeSave = (notes || "")
+      .replace(/<!--\s*FORM_DATA_START[\s\S]*?<!--\s*FORM_DATA_END\s*-*>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<!--[\s\S]*?->/g, "")
+      .trim();
       const combinedNotes = cleanNotesBeforeSave ? `${cleanNotesBeforeSave}\n${noteEntry}` : noteEntry;
 
       await costingApi.updateEstimation(savedEstimationId, {

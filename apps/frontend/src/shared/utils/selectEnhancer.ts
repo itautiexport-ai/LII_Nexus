@@ -12,8 +12,9 @@ function injectStyles() {
     .custom-select-container {
       position: relative;
       display: inline-block;
-      width: 100%;
-      box-sizing: border-box;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
@@ -305,13 +306,11 @@ class SelectEnhancer {
     if (this.select.style.width && this.select.style.width.includes("%")) {
       this.container.style.width = this.select.style.width;
       this.container.style.maxWidth = "100%";
-    } else if (computedStyle.width && computedStyle.width !== "auto") {
-      this.container.style.width = computedStyle.width;
-    } else if (this.select.style.width) {
-      this.container.style.width = this.select.style.width;
     } else {
       this.container.style.width = "100%";
+      this.container.style.maxWidth = "100%";
     }
+    this.container.style.boxSizing = "border-box";
   }
 
   updateState() {
