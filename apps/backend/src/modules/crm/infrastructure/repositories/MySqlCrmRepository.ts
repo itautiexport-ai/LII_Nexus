@@ -100,7 +100,7 @@ export class MySqlCrmRepository implements ICrmRepository {
     const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
     const [rows] = await pool.query<any[]>(
-      `${WITH_CONTEXT_SELECT} ${whereClause} ORDER BY cl.updated_at DESC LIMIT ? OFFSET ?`,
+      `${WITH_CONTEXT_SELECT} ${whereClause} ORDER BY cl.updated_at DESC, cl.id DESC LIMIT ? OFFSET ?`,
       [...values, params.pageSize, offset]
     );
     const [countRows] = await pool.query<any[]>(`SELECT COUNT(*) as total FROM crm_leads cl ${whereClause}`, values);

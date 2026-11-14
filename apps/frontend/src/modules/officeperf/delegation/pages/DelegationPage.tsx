@@ -8,6 +8,8 @@ import { TableFreezeButton } from "../../../../shared/components/TableFreezeButt
 import { TableFreezeModal } from "../../../../shared/components/TableFreezeModal";
 import { axiosInstance } from "../../../../services/api/axiosInstance";
 
+import { loadAllTablePages } from "../../../../shared/utils/loadAllTablePages";
+
 type DisplayTask = DelegatedTaskRecord & { displayStatus: string };
 
 const priorityColors: Record<DelegationPriority, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
@@ -102,34 +104,38 @@ export default function DelegationPage() {
   const [filterPriority, setFilterPriority] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
+  const loadVersion = useRef(0);
+  const [loadError, setLoadError] = useState("");
+
   async function load() {
+    const version = ++loadVersion.current;
+    const isCurrent = () => version === loadVersion.current;
     try {
       const [empRes, receivedRes, delegatedRes, reports] = await Promise.all([
         axiosInstance.get("/employees/me").catch(() => null),
-        delegationApi.list({
-          page: 1,
-          pageSize: 500,
-          scope: "assigned_to_me",
-        }).catch(() => ({ items: [], totalItems: 0 })),
-        delegationApi.list({
-          page: 1,
-          pageSize: 500,
-          scope: isAdmin ? "all" : "assigned_by_me",
-        }).catch(() => ({ items: [], totalItems: 0 })),
+        loadAllTablePages((page, pageSize) => delegationApi.list({
+          page, pageSize, scope: "assigned_to_me",
+        }), isCurrent),
+        loadAllTablePages((page, pageSize) => delegationApi.list({
+          page, pageSize, scope: isAdmin ? "all" : "assigned_by_me",
+        }), isCurrent),
         factoryApi.myDirectReports().catch(() => []),
       ]);
 
+      if (!isCurrent()) return;
+      setLoadError("");
       const me = empRes?.data?.data;
       setCurrentEmployee(me || null);
 
-      const receivedItems = (receivedRes.items as DisplayTask[]) || [];
-      const delegatedItems = (delegatedRes.items as DisplayTask[]) || [];
+      const receivedItems = receivedRes as DisplayTask[];
+      const delegatedItems = delegatedRes as DisplayTask[];
 
       setReceived(receivedItems);
       setDelegated(delegatedItems);
       setTotalItems(tab === "received" ? receivedItems.length : delegatedItems.length);
       setDirectReports(reports || []);
     } catch (err) {
+      if (isCurrent()) setLoadError("Could not load all delegated tasks. Please retry.");
       console.error("Failed to load delegations:", err);
     }
   }
@@ -137,7 +143,7 @@ export default function DelegationPage() {
   useEffect(() => {
     load();
     const interval = setInterval(() => load(), 15000);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); loadVersion.current++; };
   }, [isAdmin]);
 
   const handlePageChange = (newPage: number) => {
@@ -307,6 +313,7 @@ export default function DelegationPage() {
 
   const totalDisplayItems = filteredList.length;
   const totalPages = Math.max(1, Math.ceil(totalDisplayItems / pageSize));
+  useEffect(() => { setPage(current => Math.min(current, totalPages)); }, [totalPages]);
 
   const paginatedList = useMemo(() => {
     const startIndex = (page - 1) * pageSize;
@@ -374,6 +381,8 @@ export default function DelegationPage() {
         </div>
       </div>
 
+      {loadError && <p role="alert" style={{ color: "crimson" }}>{loadError} <button type="button" onClick={load}>Retry</button></p>}
+
       {/* Metrics Summary Strip */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fit, minmax(200px, 1fr))", gap: isMobile ? 8 : 12, marginBottom: 16 }}>
         <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: isMobile ? "10px 12px" : "12px 16px" }}>
@@ -426,7 +435,7 @@ export default function DelegationPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #ddd", flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <button
-            onClick={() => { setTab("received"); setSelectedIds([]); }}
+            onClick={() => { setTab("received"); setSelectedIds([]); setPage(1); }}
             style={{
               padding: "8px 14px",
               border: "none",
@@ -440,7 +449,7 @@ export default function DelegationPage() {
             Assigned to Me ({received.length})
           </button>
           <button
-            onClick={() => { setTab("delegated"); setSelectedIds([]); }}
+            onClick={() => { setTab("delegated"); setSelectedIds([]); setPage(1); }}
             style={{
               padding: "8px 14px",
               border: "none",
@@ -769,7 +778,7 @@ export default function DelegationPage() {
       ) : (
         <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <div style={getContainerStyle()}>
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: "1350px" }}>
+            <table data-filter-all-pages="true" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: "1350px" }}>
           <thead>
             <tr style={{ textAlign: "left" }}>
               <th style={getStickyHeaderStyle(0, { customStyle: { padding: 8, width: 44, background: "#f8fafc", borderBottom: "1px solid #ddd" } })}>
@@ -800,7 +809,7 @@ export default function DelegationPage() {
             </tr>
           </thead>
           <tbody>
-            {paginatedList.map((t) => (
+            {filteredList.map((t) => (
               <tr key={t.id}>
                 <td style={getStickyCellStyle(0, { customStyle: { padding: 8, borderBottom: "1px solid #eee", backgroundColor: "#ffffff" } })}>
                   {isAdmin && (
@@ -1057,8 +1066,8 @@ export default function DelegationPage() {
       </div>
       )}
 
-      {/* Pagination Controls */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 4px", flexWrap: "wrap", gap: 12 }}>
+      {/* Cards use React pagination; the table has its own filter-then-paginate controls. */}
+      {viewMode === "card" && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 4px", flexWrap: "wrap", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, color: "#64748b", fontSize: 13 }}>
           <span>
             Showing {totalDisplayItems > 0 ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, totalDisplayItems)} of {totalDisplayItems} total tasks
@@ -1148,7 +1157,7 @@ export default function DelegationPage() {
             Last »
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Request Extension Modal */}
       {showRequestExtensionModal && (

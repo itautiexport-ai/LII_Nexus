@@ -318,6 +318,7 @@ class TableFilterEnhancer {
     
     this.searchInput.addEventListener("input", () => {
       this.globalSearchQuery = this.searchInput!.value.toLowerCase().trim();
+      if (this.table.dataset.filterAllPages === "true") this.currentPage = 1;
       this.applyAllFilters();
       this.updateResetButtonState();
     });
@@ -391,6 +392,7 @@ class TableFilterEnhancer {
       });
 
       select.addEventListener("change", () => {
+        if (this.table.dataset.filterAllPages === "true") this.currentPage = 1;
         const selectedVal = select.value;
         if (selectedVal === "") {
           this.activeFilters.delete(index);
@@ -504,6 +506,7 @@ class TableFilterEnhancer {
           selectsContainer.appendChild(wrapper);
 
           select.addEventListener("change", () => {
+            if (this.table.dataset.filterAllPages === "true") this.currentPage = 1;
             const selectedVal = select!.value;
             if (selectedVal === "") {
               this.activeFilters.delete(index);

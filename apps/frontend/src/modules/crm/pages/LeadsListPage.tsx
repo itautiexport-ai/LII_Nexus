@@ -5,6 +5,8 @@ import { merchantsApi, MerchantRecord } from "../../admin/masterdata/api/merchan
 import PermissionGate from "../../../shared/guards/PermissionGate";
 import { useCanTransferLead, useCanEditLead, useCanViewAllLeads } from "../../auth/hooks/usePermissions";
 
+import { loadAllTablePages } from "../../../shared/utils/loadAllTablePages";
+
 const statusColors: Record<string, string> = { active: "#4a4a4a", won: "#1a7f37", lost: "#c0392b", dead: "#999", dormant: "#b8860b" };
 const priorityColors: Record<string, string> = { low: "#999", medium: "#4a90d9", high: "#e08e0b", urgent: "#c0392b" };
 
@@ -21,7 +23,6 @@ export default function LeadsListPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<LeadRecord[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [leadSource, setLeadSource] = useState("");
@@ -32,20 +33,34 @@ export default function LeadsListPage() {
   const [merchants, setMerchants] = useState<MerchantRecord[]>([]);
   const [transferLeadId, setTransferLeadId] = useState<string | null>(null);
   const [selectedMerchantId, setSelectedMerchantId] = useState("");
-  const pageSize = 15;
+  const loadVersion = useRef(0);
+  const [loadError, setLoadError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function load() {
-    const res = await crmApi.list({
-      page: String(page), pageSize: String(pageSize), search: search || undefined,
-      status: status || undefined, leadSource: leadSource || undefined, leadCategory: leadCategory || undefined,
-      overdueOnly: overdueOnly || undefined,
-      assignedMerchantId: (canViewAll && filterMerchantId) ? filterMerchantId : undefined,
-    });
-    setItems(res.items);
-    setTotal(res.totalItems);
+    const version = ++loadVersion.current;
+    const isCurrent = () => version === loadVersion.current;
+    setLoading(true);
+    setLoadError("");
+    try {
+      const rows = await loadAllTablePages((page, pageSize) => crmApi.list({
+        page: String(page), pageSize: String(pageSize), search: search || undefined,
+        status: status || undefined, leadSource: leadSource || undefined, leadCategory: leadCategory || undefined,
+        overdueOnly: overdueOnly || undefined,
+        assignedMerchantId: (canViewAll && filterMerchantId) ? filterMerchantId : undefined,
+      }), isCurrent);
+      if (isCurrent()) { setItems(rows); setTotal(rows.length); }
+    } catch (err) {
+      if (isCurrent()) setLoadError("Could not load all leads. Please retry.");
+    } finally {
+      if (isCurrent()) setLoading(false);
+    }
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- re-runs on filter/page changes only, `load` itself is stable
-  useEffect(() => { load(); }, [page, search, status, leadSource, leadCategory, overdueOnly, filterMerchantId]);
+  // Every existing server filter and permission scope is retained across all fetched pages.
+  useEffect(() => {
+    void load();
+    return () => { loadVersion.current++; };
+  }, [search, status, leadSource, leadCategory, overdueOnly, filterMerchantId, canViewAll]);
 
   useEffect(() => {
     merchantsApi.list().then(setMerchants).catch(console.error);
@@ -79,7 +94,6 @@ export default function LeadsListPage() {
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   async function handleStatusChange(e: React.ChangeEvent<HTMLSelectElement>, leadId: string) {
     e.stopPropagation();
@@ -103,27 +117,29 @@ export default function LeadsListPage() {
         </div>
       </div>
 
+      {loading && <p role="status">Loading leads…</p>}
+      {loadError && <p role="alert" style={{ color: "crimson" }}>{loadError} <button type="button" onClick={load}>Retry</button></p>}
       {importMessage && <p style={{ fontSize: 13, color: importMessage.includes("Imported") ? "#1a7f37" : "#c0392b", marginBottom: 12 }}>{importMessage}</p>}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <input placeholder="Search name, company, code, email..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} style={{ padding: 6, minWidth: 240, border: "1px solid #ccc", borderRadius: 4 }} />
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
+        <input placeholder="Search name, company, code, email..." value={search} onChange={(e) => { setSearch(e.target.value); }} style={{ padding: 6, minWidth: 240, border: "1px solid #ccc", borderRadius: 4 }} />
+        <select value={status} onChange={(e) => { setStatus(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
           <option value="">All statuses</option>
           <option value="active">Active</option><option value="won">Won</option><option value="lost">Lost</option><option value="dead">Dead</option><option value="dormant">Dormant</option>
         </select>
-        <select value={leadSource} onChange={(e) => { setLeadSource(e.target.value); setPage(1); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
+        <select value={leadSource} onChange={(e) => { setLeadSource(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
           <option value="">All sources</option>
           <option value="trade_fair">Trade Fair</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option>
           <option value="website">Website</option><option value="referral">Referral</option><option value="other">Other</option>
         </select>
-        <select value={leadCategory} onChange={(e) => { setLeadCategory(e.target.value); setPage(1); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
+        <select value={leadCategory} onChange={(e) => { setLeadCategory(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
           <option value="">All categories</option>
           <option value="export">Export</option><option value="domestic">Domestic</option>
           <option value="hotel_restaurant_project">Hotel/Restaurant/Project</option>
           <option value="buyer_agent">Buyer Agent</option><option value="repeat_customer">Repeat Customer</option>
         </select>
         {canViewAll && (
-          <select value={filterMerchantId} onChange={(e) => { setFilterMerchantId(e.target.value); setPage(1); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
+          <select value={filterMerchantId} onChange={(e) => { setFilterMerchantId(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
             <option value="">All Merchants</option>
             {merchants.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
@@ -131,12 +147,12 @@ export default function LeadsListPage() {
           </select>
         )}
         <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
-          <input type="checkbox" checked={overdueOnly} onChange={(e) => { setOverdueOnly(e.target.checked); setPage(1); }} /> Overdue only
+          <input type="checkbox" checked={overdueOnly} onChange={(e) => { setOverdueOnly(e.target.checked); }} /> Overdue only
         </label>
       </div>
 
       <div style={{ overflowX: "auto", border: "1px solid #e0e0e0", borderRadius: 6 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+        <table data-filter-all-pages="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
           <thead>
             <tr style={{ textAlign: "left", background: "#f7f7f8", borderBottom: "1px solid #e0e0e0" }}>
               <th style={{ padding: 10, fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>Lead ID / Date</th>
@@ -282,11 +298,7 @@ export default function LeadsListPage() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
         <span style={{ fontSize: 13, color: "#777" }}>{total} total leads</span>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</button>
-          <span style={{ fontSize: 13, padding: "4px 8px" }}>Page {page} of {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
-        </div>
+
       </div>
 
       {canTransfer && transferLeadId && (
