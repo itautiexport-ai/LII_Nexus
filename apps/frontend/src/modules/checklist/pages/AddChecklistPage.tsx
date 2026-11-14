@@ -121,7 +121,7 @@ export function AddChecklistPage() {
       if (now.getHours() >= 18) {
         target.setDate(target.getDate() + 1);
       }
-    } else if (freq === "Weekly" || freq === "Alternate") {
+    } else if (freq === "Weekly" || freq === "Alternate" || freq === "Fortnightly") {
       if (daysWeek.length > 0) {
         const currentDay = now.getDay();
         let daysToAdd = 0;
@@ -264,6 +264,7 @@ export function AddChecklistPage() {
                   <option value="Daily">Daily</option>
                   <option value="Alternate">Alternate</option>
                   <option value="Weekly">Weekly</option>
+                  <option value="Fortnightly">Fortnightly</option>
                   <option value="Monthly">Monthly</option>
                   <option value="Quarterly">Quarterly</option>
                   <option value="Yearly">Yearly</option>
@@ -271,7 +272,7 @@ export function AddChecklistPage() {
               </div>
 
               {/* Dynamic Days / Month selection based on Frequency */}
-              {(formData.frequency === "Weekly" || formData.frequency === "Alternate") && (
+              {(formData.frequency === "Weekly" || formData.frequency === "Alternate" || formData.frequency === "Fortnightly") && (
                 <div className="chk-form-group" style={{ gridColumn: '1 / -1' }}>
                   <label className="chk-label">Select Scheduled Days (e.g. Every Tue, Thu, Sat) <span className="chk-required">*</span></label>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>

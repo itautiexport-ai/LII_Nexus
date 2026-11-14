@@ -533,8 +533,12 @@ function getNextOccurrenceDate(current: Date, frequency: string): Date {
 
   if (freq === "daily") {
     nextIstCalendar.setUTCDate(nextIstCalendar.getUTCDate() + 1);
+  } else if (freq === "alternate") {
+    nextIstCalendar.setUTCDate(nextIstCalendar.getUTCDate() + 2);
   } else if (freq === "weekly") {
     nextIstCalendar.setUTCDate(nextIstCalendar.getUTCDate() + 7);
+  } else if (freq === "fortnightly" || freq === "biweekly" || freq === "bi-weekly") {
+    nextIstCalendar.setUTCDate(nextIstCalendar.getUTCDate() + 14);
   } else if (freq === "monthly") {
     nextIstCalendar.setUTCMonth(nextIstCalendar.getUTCMonth() + 1);
   } else if (freq === "quarterly") {

@@ -54,11 +54,25 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .chk-form-group {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.chk-form-group .custom-select-container,
+.chk-form-group .custom-select-trigger {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .chk-label {
