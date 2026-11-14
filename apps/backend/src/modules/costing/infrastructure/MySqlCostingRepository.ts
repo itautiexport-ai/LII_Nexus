@@ -50,6 +50,7 @@ export class MySqlCostingRepository {
       ["type_of_costing", "VARCHAR(100) NULL AFTER collection_name"],
       ["overall_size", "VARCHAR(255) NULL AFTER type_of_costing"],
       ["wood_type", "VARCHAR(100) NULL AFTER overall_size"],
+      ["form_data", "LONGTEXT NULL AFTER notes"],
     ];
     for (const [colName, colDef] of extraCols) {
       const [cols]: any = await pool.query(
@@ -166,8 +167,8 @@ export class MySqlCostingRepository {
           id, estimation_number, title, product_code, product_name, product_type, collection_name, type_of_costing, overall_size, wood_type, client_name, crm_lead_id, status, currency, exchange_rate,
           total_material_cost, total_labor_cost, total_overhead_cost, total_finishing_cost,
           total_packaging_cost, subtotal_cost, margin_percentage, margin_amount,
-          tax_percentage, tax_amount, final_price, notes, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          tax_percentage, tax_amount, final_price, notes, form_data, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           estimation.id,
           estimation.estimation_number,
@@ -196,6 +197,7 @@ export class MySqlCostingRepository {
           estimation.tax_amount || 0,
           estimation.final_price || 0,
           estimation.notes || null,
+          (estimation as any).form_data || null,
           estimation.created_by || null,
         ]
       );
@@ -263,7 +265,8 @@ export class MySqlCostingRepository {
           tax_percentage = COALESCE(?, tax_percentage),
           tax_amount = COALESCE(?, tax_amount),
           final_price = COALESCE(?, final_price),
-          notes = COALESCE(?, notes)
+          notes = COALESCE(?, notes),
+          form_data = COALESCE(?, form_data)
         WHERE id = ?`,
         [
           estimation.title ?? null,
@@ -291,6 +294,7 @@ export class MySqlCostingRepository {
           estimation.tax_amount ?? null,
           estimation.final_price ?? null,
           estimation.notes ?? null,
+          (estimation as any).form_data ?? null,
           id
         ]
       );

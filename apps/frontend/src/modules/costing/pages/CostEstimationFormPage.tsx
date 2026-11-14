@@ -556,27 +556,102 @@ export default function CostEstimationFormPage() {
   const loadApprovalAuthorities = async () => {
     try {
       const allEmps = await employeesApi.list();
-      const filtered = (allEmps || []).filter((emp) => {
-        const d = (emp.designationTitle || "").toLowerCase();
-        return (
-          d.includes("management") ||
-          d.includes("admin") ||
-          d.includes("director") ||
-          d.includes("ceo") ||
-          d.includes("founder") ||
-          d.includes("managing") ||
-          d.includes("head") ||
-          d.includes("hod") ||
-          d.includes("manager")
-        );
+      const matchedRavi = (allEmps || []).find((emp) => {
+        const name = (emp.fullName || "").toLowerCase();
+        return name.includes("ravi") && name.includes("utmani");
       });
-      const list = filtered.length > 0 ? filtered : allEmps || [];
+      const matchedRaj = (allEmps || []).find((emp) => {
+        const name = (emp.fullName || "").toLowerCase();
+        return name.includes("raj") && name.includes("utmani");
+      });
+
+      const list: EmployeeRecord[] = [
+        matchedRavi || {
+          id: "auth-ravi-utmani",
+          employeeCode: "DIR-01",
+          fullName: "Ravi Utmani",
+          email: null,
+          phone: null,
+          departmentId: null,
+          designationId: null,
+          managerId: null,
+          userId: null,
+          departmentName: "Management",
+          designationTitle: "Director",
+          managerName: null,
+          dateOfJoining: null,
+          birthday: null,
+          anniversary: null,
+          status: "active",
+          salary: 0,
+        },
+        matchedRaj || {
+          id: "auth-raj-utmani",
+          employeeCode: "DIR-02",
+          fullName: "Raj Utmani",
+          email: null,
+          phone: null,
+          departmentId: null,
+          designationId: null,
+          managerId: null,
+          userId: null,
+          departmentName: "Management",
+          designationTitle: "Director",
+          managerName: null,
+          dateOfJoining: null,
+          birthday: null,
+          anniversary: null,
+          status: "active",
+          salary: 0,
+        },
+      ];
+
       setApprovalAuthorities(list);
-      if (list.length > 0) {
-        setSelectedAuthority(list[0]);
-      }
+      setSelectedAuthority(list[0]);
     } catch (err) {
       console.error("Failed to load approval authorities", err);
+      const fallbackList: EmployeeRecord[] = [
+        {
+          id: "auth-ravi-utmani",
+          employeeCode: "DIR-01",
+          fullName: "Ravi Utmani",
+          email: null,
+          phone: null,
+          departmentId: null,
+          designationId: null,
+          managerId: null,
+          userId: null,
+          departmentName: "Management",
+          designationTitle: "Director",
+          managerName: null,
+          dateOfJoining: null,
+          birthday: null,
+          anniversary: null,
+          status: "active",
+          salary: 0,
+        },
+        {
+          id: "auth-raj-utmani",
+          employeeCode: "DIR-02",
+          fullName: "Raj Utmani",
+          email: null,
+          phone: null,
+          departmentId: null,
+          designationId: null,
+          managerId: null,
+          userId: null,
+          departmentName: "Management",
+          designationTitle: "Director",
+          managerName: null,
+          dateOfJoining: null,
+          birthday: null,
+          anniversary: null,
+          status: "active",
+          salary: 0,
+        },
+      ];
+      setApprovalAuthorities(fallbackList);
+      setSelectedAuthority(fallbackList[0]);
     }
   };
 
@@ -982,8 +1057,6 @@ export default function CostEstimationFormPage() {
 
   const [labourItems, setLabourItems] = useState<LabourCostItem[]>([
     { item_name: "Carpentry / Assembly Labour", amount: 0 },
-    { item_name: "Polish / Finishing Labour", amount: 0 },
-    { item_name: "Polish Material", amount: 0 },
     { item_name: "Upholstery Labour", amount: 0 },
   ]);
 
@@ -1001,6 +1074,30 @@ export default function CostEstimationFormPage() {
 
   const handleLabourItemChange = (index: number, field: keyof LabourCostItem, value: any) => {
     const updated = [...labourItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setLabourItems(updated);
+  };
+
+  // 9. Polish & Finishing Cost Items
+  const [polishItems, setPolishItems] = useState<LabourCostItem[]>([
+    { item_name: "Polish / Finishing Labour", amount: 0 },
+    { item_name: "Polish Material", amount: 0 },
+  ]);
+
+  const handleAddPolishItem = () => {
+    setPolishItems([
+      ...polishItems,
+      { item_name: "", amount: 0 },
+    ]);
+  };
+
+  const handleRemovePolishItem = (index: number) => {
+    if (polishItems.length === 1) return;
+    setPolishItems(polishItems.filter((_, i) => i !== index));
+  };
+
+  const handlePolishItemChange = (index: number, field: keyof LabourCostItem, value: any) => {
+    const updated = [...polishItems];
     updated[index] = { ...updated[index], [field]: value };
 
     // Auto-calculate Polish Material = 2 * Polish Labour
@@ -1021,7 +1118,11 @@ export default function CostEstimationFormPage() {
       }
     }
 
-    setLabourItems(updated);
+    setPolishItems(updated);
+  };
+
+  const computePolishTotalAmount = (): number => {
+    return polishItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   };
 
   const [otherExpenseItems, setOtherExpenseItems] = useState<ExpenseCostItem[]>([]);
@@ -1207,11 +1308,192 @@ export default function CostEstimationFormPage() {
       setStatus(est.status || "Draft");
       setCurrency(est.currency || "INR");
       setExchangeRate(est.exchange_rate || 1.0);
-      setMarginPercentage(est.margin_percentage ?? 20);
+      setMarginPercentage(est.margin_percentage ?? 26);
       setTaxPercentage(est.tax_percentage ?? 18);
-      setNotes(est.notes || "");
-      if (est.items && est.items.length > 0) {
+
+      const rawNotes = est.notes || "";
+      const cleanedNotes = rawNotes.replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+      setNotes(cleanedNotes);
+
+      let loadedFromFormData = false;
+
+      // 1. Check direct form_data column from backend
+      if (est.form_data) {
+        try {
+          const fd = typeof est.form_data === "string" ? JSON.parse(est.form_data) : est.form_data;
+          if (fd && typeof fd === "object") {
+            if (Array.isArray(fd.woodItems) && fd.woodItems.length > 0) setWoodItems(fd.woodItems);
+            if (Array.isArray(fd.metalSsItems) && fd.metalSsItems.length > 0) setMetalSsItems(fd.metalSsItems);
+            if (Array.isArray(fd.hardwareItems) && fd.hardwareItems.length > 0) setHardwareItems(fd.hardwareItems);
+            if (Array.isArray(fd.upholsteryItems) && fd.upholsteryItems.length > 0) setUpholsteryItems(fd.upholsteryItems);
+            if (Array.isArray(fd.additionalItems) && fd.additionalItems.length > 0) setAdditionalItems(fd.additionalItems);
+            if (Array.isArray(fd.labourItems) && fd.labourItems.length > 0) setLabourItems(fd.labourItems);
+            if (Array.isArray(fd.polishItems) && fd.polishItems.length > 0) setPolishItems(fd.polishItems);
+            if (Array.isArray(fd.otherExpenseItems)) setOtherExpenseItems(fd.otherExpenseItems);
+            if (Array.isArray(fd.cartons) && fd.cartons.length > 0) setCartons(fd.cartons);
+            if (fd.packagingContainerTotal !== undefined && fd.packagingContainerTotal !== "") setPackagingContainerTotal(fd.packagingContainerTotal);
+            if (fd.packagingCustomAmount !== undefined) setPackagingCustomAmount(fd.packagingCustomAmount);
+            if (fd.forwardingContainerTotal !== undefined && fd.forwardingContainerTotal !== "") setForwardingContainerTotal(fd.forwardingContainerTotal);
+            if (fd.forwardingCustomAmount !== undefined) setForwardingCustomAmount(fd.forwardingCustomAmount);
+            if (fd.expensesPct !== undefined) setExpensesPct(Number(fd.expensesPct));
+            if (fd.summaryExpensesPct !== undefined) setSummaryExpensesPct(Number(fd.summaryExpensesPct));
+            if (fd.usdExchangeRate !== undefined && fd.usdExchangeRate !== "") setUsdExchangeRate(Number(fd.usdExchangeRate));
+            if (fd.selectedCurrency !== undefined) setSelectedCurrency(fd.selectedCurrency);
+            if (fd.woodWastagePct !== undefined) setWoodWastagePct(Number(fd.woodWastagePct));
+            if (fd.imageUrl) setImageUrl(fd.imageUrl);
+            loadedFromFormData = true;
+          }
+        } catch (e) {
+          console.error("Failed to parse form_data JSON", e);
+        }
+      }
+
+      // 2. Check embedded form_data inside raw notes
+      if (!loadedFromFormData && rawNotes.includes("<!-- FORM_DATA_START -->")) {
+        try {
+          const match = rawNotes.match(/<!-- FORM_DATA_START -->([\s\S]*?)<!-- FORM_DATA_END -->/);
+          if (match && match[1]) {
+            const fd = JSON.parse(match[1]);
+            if (Array.isArray(fd.woodItems) && fd.woodItems.length > 0) setWoodItems(fd.woodItems);
+            if (Array.isArray(fd.metalSsItems) && fd.metalSsItems.length > 0) setMetalSsItems(fd.metalSsItems);
+            if (Array.isArray(fd.hardwareItems) && fd.hardwareItems.length > 0) setHardwareItems(fd.hardwareItems);
+            if (Array.isArray(fd.upholsteryItems) && fd.upholsteryItems.length > 0) setUpholsteryItems(fd.upholsteryItems);
+            if (Array.isArray(fd.additionalItems) && fd.additionalItems.length > 0) setAdditionalItems(fd.additionalItems);
+            if (Array.isArray(fd.labourItems) && fd.labourItems.length > 0) setLabourItems(fd.labourItems);
+            if (Array.isArray(fd.polishItems) && fd.polishItems.length > 0) setPolishItems(fd.polishItems);
+            if (Array.isArray(fd.otherExpenseItems)) setOtherExpenseItems(fd.otherExpenseItems);
+            if (Array.isArray(fd.cartons) && fd.cartons.length > 0) setCartons(fd.cartons);
+            if (fd.packagingContainerTotal !== undefined && fd.packagingContainerTotal !== "") setPackagingContainerTotal(fd.packagingContainerTotal);
+            if (fd.packagingCustomAmount !== undefined) setPackagingCustomAmount(fd.packagingCustomAmount);
+            if (fd.forwardingContainerTotal !== undefined && fd.forwardingContainerTotal !== "") setForwardingContainerTotal(fd.forwardingContainerTotal);
+            if (fd.forwardingCustomAmount !== undefined) setForwardingCustomAmount(fd.forwardingCustomAmount);
+            if (fd.expensesPct !== undefined) setExpensesPct(Number(fd.expensesPct));
+            if (fd.summaryExpensesPct !== undefined) setSummaryExpensesPct(Number(fd.summaryExpensesPct));
+            if (fd.usdExchangeRate !== undefined && fd.usdExchangeRate !== "") setUsdExchangeRate(Number(fd.usdExchangeRate));
+            if (fd.selectedCurrency !== undefined) setSelectedCurrency(fd.selectedCurrency);
+            if (fd.woodWastagePct !== undefined) setWoodWastagePct(Number(fd.woodWastagePct));
+            if (fd.imageUrl) setImageUrl(fd.imageUrl);
+            loadedFromFormData = true;
+          }
+        } catch (e) {
+          console.error("Failed to parse embedded notes form_data", e);
+        }
+      }
+
+      // 3. Fallback: Reconstruct all items from est.items array
+      if (!loadedFromFormData && est.items && est.items.length > 0) {
         setItems(est.items);
+
+        const restoredWood: WoodCostingItem[] = [];
+        const restoredMetal: MetalSsItem[] = [];
+        const restoredHardware: HardwareCostItem[] = [];
+        const restoredUpholstery: UpholsteryCostItem[] = [];
+        const restoredAdditional: AdditionalCostItem[] = [];
+        const restoredLabour: LabourCostItem[] = [];
+        const restoredPolish: LabourCostItem[] = [];
+        const restoredOtherExpenses: ExpenseCostItem[] = [];
+
+        est.items.forEach((it) => {
+          const cat = it.category;
+          const name = it.item_name || "";
+          const spec = it.specification || "";
+          const rem = it.remarks || "";
+          const nameLower = name.toLowerCase();
+
+          if (cat === "Finishing" || nameLower.includes("polish")) {
+            restoredPolish.push({
+              item_name: name,
+              amount: it.unit_cost || 0,
+            });
+          } else if (cat === "Labor") {
+            restoredLabour.push({
+              item_name: name,
+              amount: it.unit_cost || 0,
+            });
+          } else if (cat === "Hardware") {
+            restoredHardware.push({
+              name,
+              quantity: it.quantity || 1,
+              price: it.unit_cost || 0,
+            });
+          } else if (cat === "Other" && !nameLower.includes("expense") && !rem.includes("Operational Expense")) {
+            restoredAdditional.push({
+              additional: name,
+              size: "",
+              calculation: "",
+              uom: it.unit_of_measure || "Pcs",
+              price: it.unit_cost || 0,
+              converted_value: String(it.quantity || 1),
+            });
+          } else if (cat === "Packaging" && nameLower.includes("packaging cost")) {
+            setPackagingCustomAmount(it.unit_cost || 0);
+          } else if (cat === "Overhead" && nameLower.includes("forwarding cost")) {
+            setForwardingCustomAmount(it.unit_cost || 0);
+          } else if (cat === "Overhead" && (nameLower.includes("operational expense") || rem.includes("Operational Expense"))) {
+            restoredOtherExpenses.push({
+              item_name: name,
+              amount: it.unit_cost || 0,
+            });
+          } else if (cat === "Raw Material") {
+            if (rem.includes("Wood Amount:") || spec.includes("L:") || it.unit_of_measure === "Cft" || it.length_ft !== undefined) {
+              let woodPart = name;
+              let rowWoodType = est.wood_type || "";
+              const matchWoodType = name.match(/\(([^)]+)\)$/);
+              if (matchWoodType && matchWoodType[1]) {
+                rowWoodType = matchWoodType[1];
+                woodPart = name.replace(/\s*\([^)]+\)$/, "").trim();
+              }
+              const lMatch = spec.match(/L:\s*([0-9.]+)\s*ft/);
+              const wMatch = spec.match(/W:\s*([0-9.]+)\s*in/);
+              const tMatch = spec.match(/T:\s*([0-9.]+)\s*(?:in|mm)/);
+              const pcsMatch = spec.match(/Pcs:\s*([0-9]+)/);
+
+              restoredWood.push({
+                wood_part_name: woodPart,
+                wood_type: rowWoodType,
+                length_ft: it.length_ft !== undefined ? it.length_ft : lMatch ? Number(lMatch[1]) : "",
+                width_in: it.width_in !== undefined ? it.width_in : wMatch ? Number(wMatch[1]) : "",
+                thick_in: it.thick_in !== undefined ? it.thick_in : tMatch ? Number(tMatch[1]) : "",
+                pcs: it.pcs !== undefined ? it.pcs : pcsMatch ? Number(pcsMatch[1]) : 1,
+                rate: it.unit_cost || 0,
+              });
+            } else if (spec.includes("Total Weight:") || spec.includes("Base Weight:") || nameLower.includes("ss") || nameLower.includes("metal")) {
+              let mType = name;
+              let mSize = "";
+              const matchType = name.match(/^(.*?)\s*\((.*?)\)$/);
+              if (matchType) {
+                mType = matchType[1];
+                mSize = matchType[2];
+              }
+              const wMatch = spec.match(/Base Weight:\s*([0-9.]+)\s*kg/);
+              restoredMetal.push({
+                type: (mType.toUpperCase().includes("SS") ? "SS" : "Metal") as "Metal" | "SS",
+                size: mSize,
+                thickness: "",
+                length: "",
+                weight: wMatch ? Number(wMatch[1]) : 0,
+                rate: it.unit_cost || 0,
+              });
+            } else {
+              restoredUpholstery.push({
+                item_name: name,
+                specification: spec,
+                quantity: it.quantity || 1,
+                uom: it.unit_of_measure || "Mtr",
+                rate: it.unit_cost || 0,
+              });
+            }
+          }
+        });
+
+        if (restoredWood.length > 0) setWoodItems(restoredWood);
+        if (restoredMetal.length > 0) setMetalSsItems(restoredMetal);
+        if (restoredHardware.length > 0) setHardwareItems(restoredHardware);
+        if (restoredUpholstery.length > 0) setUpholsteryItems(restoredUpholstery);
+        if (restoredAdditional.length > 0) setAdditionalItems(restoredAdditional);
+        if (restoredLabour.length > 0) setLabourItems(restoredLabour);
+        if (restoredPolish.length > 0) setPolishItems(restoredPolish);
+        if (restoredOtherExpenses.length > 0) setOtherExpenseItems(restoredOtherExpenses);
       }
     } catch (err) {
       alert("Failed to load estimation detail");
@@ -1318,6 +1600,30 @@ export default function CostEstimationFormPage() {
       return;
     }
 
+    const formDataObj = {
+      woodItems,
+      metalSsItems,
+      hardwareItems,
+      upholsteryItems,
+      additionalItems,
+      labourItems,
+      polishItems,
+      otherExpenseItems,
+      cartons,
+      packagingContainerTotal,
+      packagingCustomAmount,
+      forwardingContainerTotal,
+      forwardingCustomAmount,
+      expensesPct,
+      summaryExpensesPct,
+      usdExchangeRate,
+      selectedCurrency,
+      woodWastagePct,
+      imageUrl,
+    };
+    const formDataJson = JSON.stringify(formDataObj);
+    const cleanNotesBeforeSave = (notes || "").replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+
     const payload = {
       title: finalProdName,
       product_code: productCode,
@@ -1333,7 +1639,8 @@ export default function CostEstimationFormPage() {
       exchange_rate: Number(exchangeRate),
       margin_percentage: Number(marginPercentage),
       tax_percentage: Number(taxPercentage),
-      notes,
+      notes: cleanNotesBeforeSave,
+      form_data: formDataJson,
       items: [
         ...woodItems.map((w) => {
           const l = Number(w.length_ft) || 0;
@@ -1441,14 +1748,27 @@ export default function CostEstimationFormPage() {
             remarks: `Amount: ₹${amt.toFixed(2)}`,
           };
         }),
+        ...polishItems.map((p) => {
+          const amt = Number(p.amount) || 0;
+          const name = p.item_name || "Polish Expense";
+          return {
+            category: "Finishing" as const,
+            item_name: name,
+            specification: `Polish & Finishing Expense`,
+            quantity: 1,
+            unit_of_measure: "Pcs",
+            unit_cost: amt,
+            remarks: `Polish Amount: ₹${amt.toFixed(2)}`,
+          };
+        }),
         {
           category: "Overhead" as const,
           item_name: `Expenses (${summaryExpensesPct}%)`,
-          specification: `${summaryExpensesPct}% on Direct Subtotal + Packaging & Forwarding (₹${((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())).toFixed(2)})`,
+          specification: `${summaryExpensesPct}% on Direct Subtotal + Polish + Packaging & Forwarding (₹${((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount() + computePolishTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())).toFixed(2)})`,
           quantity: 1,
           unit_of_measure: "Pcs",
-          unit_cost: (((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100,
-          remarks: `Expenses (${summaryExpensesPct}%): ₹${((((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100).toFixed(2)}`,
+          unit_cost: (((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount() + computePolishTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100,
+          remarks: `Expenses (${summaryExpensesPct}%): ₹${((((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount() + computePolishTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100).toFixed(2)}`,
         },
         ...otherExpenseItems.map((e) => {
           const amt = Number(e.amount) || 0;
@@ -1514,7 +1834,7 @@ export default function CostEstimationFormPage() {
     setApprovalLoading(true);
     try {
       const authorityName = selectedAuthority
-        ? `${selectedAuthority.fullName} (${selectedAuthority.designationTitle || "Management / Admin"})`
+        ? `${selectedAuthority.fullName} (${selectedAuthority.designationTitle || "Director"})`
         : "Management";
       const timestamp = new Date().toLocaleString("en-IN", {
         dateStyle: "short",
@@ -1522,11 +1842,36 @@ export default function CostEstimationFormPage() {
       });
       const noteEntry = `[${timestamp}] Sent for Approval to: ${authorityName}${approvalNote.trim() ? ` — Note: ${approvalNote.trim()}` : ""
         }`;
-      const combinedNotes = notes ? `${notes}\n${noteEntry}` : noteEntry;
+
+      const formDataObj = {
+        woodItems,
+        metalSsItems,
+        hardwareItems,
+        upholsteryItems,
+        additionalItems,
+        labourItems,
+        polishItems,
+        otherExpenseItems,
+        cartons,
+        packagingContainerTotal,
+        packagingCustomAmount,
+        forwardingContainerTotal,
+        forwardingCustomAmount,
+        expensesPct,
+        summaryExpensesPct,
+        usdExchangeRate,
+        selectedCurrency,
+        woodWastagePct,
+        imageUrl,
+      };
+      const formDataJson = JSON.stringify(formDataObj);
+      const cleanNotesBeforeSave = (notes || "").replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+      const combinedNotes = cleanNotesBeforeSave ? `${cleanNotesBeforeSave}\n${noteEntry}` : noteEntry;
 
       await costingApi.updateEstimation(savedEstimationId, {
         status: "In Review",
         notes: combinedNotes,
+        form_data: formDataJson,
       });
 
       alert(`Costing successfully submitted to ${authorityName} for approval!`);
@@ -1535,6 +1880,38 @@ export default function CostEstimationFormPage() {
       navigate("/admin/costing/list");
     } finally {
       setApprovalLoading(false);
+    }
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    const target = e.target as HTMLElement;
+    if (!target) return;
+
+    // Do not intercept Enter inside textarea (allow newline) or on buttons
+    if (target.tagName === "TEXTAREA" || target.tagName === "BUTTON") return;
+
+    if (e.key === "Enter") {
+      // Prevent premature form submission while entering data
+      e.preventDefault();
+
+      const form = e.currentTarget;
+      const selector =
+        'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]):not([disabled]):not([readonly]), select:not([disabled]):not([readonly])';
+      const focusable = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement>(selector)).filter(
+        (el) => el.offsetParent !== null && !el.disabled && el.tabIndex !== -1
+      );
+
+      const currentIndex = focusable.indexOf(target as any);
+      if (currentIndex !== -1) {
+        const nextIndex = e.shiftKey ? currentIndex - 1 : currentIndex + 1;
+        if (nextIndex >= 0 && nextIndex < focusable.length) {
+          const nextEl = focusable[nextIndex];
+          nextEl.focus();
+          if (nextEl instanceof HTMLInputElement && (nextEl.type === "text" || nextEl.type === "number")) {
+            nextEl.select?.();
+          }
+        }
+      }
     }
   };
 
@@ -1573,7 +1950,7 @@ export default function CostEstimationFormPage() {
         </button>
       </div>
 
-      <form data-no-enhance="true" onSubmit={handleSubmit}>
+      <form data-no-enhance="true" onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
         {/* Basic Details Card */}
         <div data-no-enhance="true" style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginTop: 0, marginBottom: 16 }}>
@@ -3311,7 +3688,100 @@ export default function CostEstimationFormPage() {
           );
         })()}
 
-        {/* 9. CBM & Container Load Calculation Section */}
+        {/* 9. Polish & Finishing Cost Section */}
+        <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
+                9. Polish & Finishing Cost
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddPolishItem}
+              style={{
+                padding: "6px 14px",
+                background: "#eff6ff",
+                color: "#2563eb",
+                border: "1px solid #bfdbfe",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              + Add Item Line
+            </button>
+          </div>
+
+          <table data-no-enhance="true" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <thead>
+              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Finishing Expense Item</th>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "220px" }}>Amount (₹)</th>
+                <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "60px" }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {polishItems.map((item, idx) => {
+                return (
+                  <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "8px 12px" }}>
+                      <input
+                        type="text"
+                        placeholder=""
+                        value={item.item_name}
+                        onChange={(e) => handlePolishItemChange(idx, "item_name", e.target.value)}
+                        style={{ width: "100%", maxWidth: "360px", padding: "6px 10px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 500 }}
+                      />
+                    </td>
+
+                    <td style={{ padding: "8px 12px" }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={item.amount}
+                        onChange={(e) => handlePolishItemChange(idx, "amount", e.target.value)}
+                        style={{ width: "100%", padding: "6px 10px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
+                      />
+                    </td>
+
+                    <td style={{ padding: "8px 12px" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePolishItem(idx)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#dc2626",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
+                <td style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
+                  Total Polish & Finishing Cost:
+                </td>
+                <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
+                  ₹{computePolishTotalAmount().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* 10. CBM & Container Load Calculation Section */}
         {(() => {
           const cartonCbms = cartons.map((c) => {
             const l = Number(c.length) || 0;
@@ -3327,7 +3797,7 @@ export default function CostEstimationFormPage() {
             <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
-                  9. CBM Calculation
+                  10. CBM Calculation
                 </h3>
                 <button
                   type="button"
@@ -3491,7 +3961,7 @@ export default function CostEstimationFormPage() {
           );
         })()}
 
-        {/* 10. Packaging & Forwarding Cost Section */}
+        {/* 11. Packaging & Forwarding Cost Section */}
         {(() => {
           const pcsIn40Hq = computePcsIn40Hq();
           const packagingTotal = computePackagingTotalAmount();
@@ -3502,7 +3972,7 @@ export default function CostEstimationFormPage() {
             <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
               <div style={{ marginBottom: 16 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", margin: 0 }}>
-                  10. Packaging & Forwarding Cost
+                  11. Packaging & Forwarding Cost
                 </h3>
               </div>
 
@@ -3637,6 +4107,7 @@ export default function CostEstimationFormPage() {
           const upholsteryTotal = computeUpholsteryTotalAmount();
           const additionalTotal = computeAdditionalTotalAmount();
           const labourTotal = computeLabourTotalAmount();
+          const polishTotal = computePolishTotalAmount();
           const packagingTotal = computePackagingTotalAmount();
           const forwardingTotal = computeForwardingTotalAmount();
 
@@ -3644,8 +4115,8 @@ export default function CostEstimationFormPage() {
             woodTotal + metalTotal + hardwareTotal + upholsteryTotal + additionalTotal + labourTotal;
           const totalPackagingAndForwarding = packagingTotal + forwardingTotal;
 
-          // Expenses in Blue Summary Card is calculated on (Direct Subtotal + Packaging + Forwarding)
-          const summaryBase = directSubtotal + totalPackagingAndForwarding;
+          // Expenses in Blue Summary Card is calculated on (Direct Subtotal + Polish Cost + Packaging + Forwarding)
+          const summaryBase = directSubtotal + polishTotal + totalPackagingAndForwarding;
           const calculatedSummaryExpensesAmt = (summaryBase * (Number(summaryExpensesPct) || 0)) / 100;
           const otherExpensesAmt = computeOtherExpensesTotalAmount();
           const totalSummaryExpenses = calculatedSummaryExpensesAmt + otherExpensesAmt;
@@ -3699,6 +4170,10 @@ export default function CostEstimationFormPage() {
                   <div style={{ fontSize: 14, fontWeight: 700 }}>₹{labourTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
                 <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
+                  <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Total Polish Cost</div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>₹{polishTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 6, padding: 10 }}>
                   <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 2 }}>Packaging Cost</div>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>₹{packagingTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
@@ -3718,6 +4193,12 @@ export default function CostEstimationFormPage() {
                 <span style={{ fontSize: 15, fontWeight: 700 }}>₹{directSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
+              {/* Polish & Finishing Summary Row */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Polish & Finishing Cost Total:</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#fed7aa" }}>+ ₹{polishTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+
               {/* Packaging & Forwarding Summary Row */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>Packaging & Forwarding Costs Total:</span>
@@ -3726,7 +4207,7 @@ export default function CostEstimationFormPage() {
 
               {/* Base for Summary Expenses calculation */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.15)", borderRadius: 6, padding: "8px 16px", marginBottom: 14, fontSize: 12, color: "#cbd5e1" }}>
-                <span>Base for Expenses Calculation (Direct + Packaging + Forwarding):</span>
+                <span>Base for Expenses Calculation (Direct + Polish + Packaging + Forwarding):</span>
                 <span style={{ fontWeight: 700, color: "#ffffff" }}>₹{summaryBase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
@@ -3737,7 +4218,7 @@ export default function CostEstimationFormPage() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <div>
                       <label style={{ fontSize: 13, fontWeight: 600, display: "block" }}>Expenses Rate (%)</label>
-                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Calculated on Direct + Pack + Forward)</span>
+                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Calculated on Direct + Polish + Pack + Forward)</span>
                     </div>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <input
@@ -3937,7 +4418,7 @@ export default function CostEstimationFormPage() {
                     Send for Approval
                   </h3>
                   <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
-                    Costing saved! Select a Management or Admin authority to submit for review:
+                    Costing saved! Select approval authority (Ravi Utmani or Raj Utmani):
                   </div>
                 </div>
               </div>
@@ -3946,7 +4427,7 @@ export default function CostEstimationFormPage() {
             {/* Authority List */}
             <div style={{ padding: "20px 24px", maxHeight: "320px", overflowY: "auto" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 10 }}>
-                Management / Admin Authorities
+                Approval Authorities (Ravi Utmani / Raj Utmani)
               </label>
 
               {approvalAuthorities.length === 0 ? (

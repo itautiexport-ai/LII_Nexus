@@ -147,16 +147,23 @@ export default function CostEstimationDetailPage() {
             </tr>
           </thead>
           <tbody>
-            {estimation.items?.map((it, idx) => (
-              <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#4b5563" }}>{it.category}</td>
-                <td style={{ padding: "10px 12px", fontSize: 13, color: "#111827" }}>{it.item_name}</td>
-                <td style={{ padding: "10px 12px", fontSize: 13, color: "#374151" }}>{it.quantity}</td>
-                <td style={{ padding: "10px 12px", fontSize: 13, color: "#374151" }}>{it.unit_of_measure}</td>
-                <td style={{ padding: "10px 12px", fontSize: 13, color: "#374151" }}>₹{Number(it.unit_cost).toLocaleString()}</td>
-                <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#111827" }}>₹{Number(it.total_cost).toLocaleString()}</td>
-              </tr>
-            ))}
+            {estimation.items?.map((it, idx) => {
+              const uCost = Number(it.unit_cost) || 0;
+              const itTotal = Number(it.total_cost) > 0 ? Number(it.total_cost) : (Number(it.quantity) || 1) * uCost;
+              return (
+                <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                  <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#4b5563" }}>{it.category}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 13, color: "#111827" }}>
+                    <div>{it.item_name}</div>
+                    {it.specification && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{it.specification}</div>}
+                  </td>
+                  <td style={{ padding: "10px 12px", fontSize: 13, color: "#374151" }}>{it.quantity}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 13, color: "#374151" }}>{it.unit_of_measure}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 13, color: "#374151" }}>₹{uCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#111827" }}>₹{itTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -164,39 +171,43 @@ export default function CostEstimationDetailPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, borderTop: "2px solid #e5e7eb", paddingTop: 20 }}>
           <div>
             <h4 style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginTop: 0 }}>Cost Group Summary</h4>
-            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Material Cost: ₹{Number(estimation.total_material_cost).toLocaleString()}</div>
-            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Labor Cost: ₹{Number(estimation.total_labor_cost).toLocaleString()}</div>
-            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Finishing Cost: ₹{Number(estimation.total_finishing_cost).toLocaleString()}</div>
-            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Packaging Cost: ₹{Number(estimation.total_packaging_cost).toLocaleString()}</div>
-            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Overhead Cost: ₹{Number(estimation.total_overhead_cost).toLocaleString()}</div>
+            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Material Cost: ₹{Number(estimation.total_material_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Labor Cost: ₹{Number(estimation.total_labor_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Finishing Cost: ₹{Number(estimation.total_finishing_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Packaging Cost: ₹{Number(estimation.total_packaging_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 4 }}>Overhead Cost: ₹{Number(estimation.total_overhead_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
 
           <div style={{ background: "#f9fafb", padding: 16, borderRadius: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
               <span>Subtotal Cost:</span>
-              <span>₹{Number(estimation.subtotal_cost).toLocaleString()}</span>
+              <span>₹{Number(estimation.subtotal_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#059669", fontWeight: 600, marginBottom: 8 }}>
               <span>Profit Margin ({estimation.margin_percentage}%):</span>
-              <span>+ ₹{Number(estimation.margin_amount).toLocaleString()}</span>
+              <span>+ ₹{Number(estimation.margin_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#4b5563", marginBottom: 12 }}>
               <span>Tax ({estimation.tax_percentage}%):</span>
-              <span>+ ₹{Number(estimation.tax_amount).toLocaleString()}</span>
+              <span>+ ₹{Number(estimation.tax_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ background: "#2563eb", color: "#ffffff", padding: 12, borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 600 }}>Final Quoted Price:</span>
-              <span style={{ fontSize: 18, fontWeight: 800 }}>₹{Number(estimation.final_price).toLocaleString()}</span>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>₹{Number(estimation.final_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
 
-        {estimation.notes && (
-          <div style={{ marginTop: 24, borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
-            <h4 style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: "0 0 6px 0" }}>Notes / Technical Remarks</h4>
-            <p style={{ fontSize: 13, color: "#4b5563", margin: 0, whiteSpace: "pre-wrap" }}>{estimation.notes}</p>
-          </div>
-        )}
+        {(() => {
+          const cleanNotes = (estimation.notes || "").replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "").trim();
+          if (!cleanNotes) return null;
+          return (
+            <div style={{ marginTop: 24, borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: "0 0 6px 0" }}>Notes / Technical Remarks</h4>
+              <p style={{ fontSize: 13, color: "#4b5563", margin: 0, whiteSpace: "pre-wrap" }}>{cleanNotes}</p>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

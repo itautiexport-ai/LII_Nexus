@@ -179,6 +179,7 @@ export class CostingService {
       tax_amount: calc.taxAmount,
       final_price: calc.finalPrice,
       notes: dto.notes,
+      form_data: dto.form_data,
       created_by: userId,
     };
 
@@ -220,6 +221,7 @@ export class CostingService {
       margin_percentage: dto.margin_percentage,
       tax_percentage: dto.tax_percentage,
       notes: dto.notes,
+      ...(dto.form_data !== undefined ? { form_data: dto.form_data } : {}),
     };
 
     if (dto.items) {

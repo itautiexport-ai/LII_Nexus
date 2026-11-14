@@ -44,6 +44,7 @@ export interface CostEstimation {
   tax_amount: number;
   final_price: number;
   notes?: string;
+  form_data?: string | null;
   created_by?: string;
   created_at?: string;
   updated_at?: string;

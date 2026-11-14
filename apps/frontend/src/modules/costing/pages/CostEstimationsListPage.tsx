@@ -60,8 +60,11 @@ export default function CostEstimationsListPage() {
         timeStyle: "short",
       });
       const formattedEntry = `[${timestamp}] ${chatMessage.trim()}`;
-      const updatedNotes = activeChatEst.notes
-        ? `${activeChatEst.notes}\n${formattedEntry}`
+      const cleanExistingNotes = (activeChatEst.notes || "")
+        .replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "")
+        .trim();
+      const updatedNotes = cleanExistingNotes
+        ? `${cleanExistingNotes}\n${formattedEntry}`
         : formattedEntry;
 
       await costingApi.updateEstimation(activeChatEst.id, { notes: updatedNotes });
@@ -470,37 +473,51 @@ export default function CostEstimationsListPage() {
 
             {/* Chat Body (Messages) */}
             <div style={{ flex: 1, padding: 20, overflowY: "auto", background: "#f8fafc" }}>
-              {activeChatEst.notes ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {activeChatEst.notes.split("\n").filter(Boolean).map((line, idx) => {
-                    const isSystemOrTagged = line.startsWith("[");
-                    return (
-                      <div
-                        key={idx}
-                        style={{
-                          background: isSystemOrTagged ? "#ffffff" : "#f1f5f9",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: 8,
-                          padding: "10px 14px",
-                          boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
-                        }}
-                      >
-                        <div style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
-                          {line}
-                        </div>
+              {(() => {
+                const cleanChatNotes = (activeChatEst.notes || "")
+                  .replace(/<!-- FORM_DATA_START -->[\s\S]*?<!-- FORM_DATA_END -->/g, "")
+                  .trim();
+                const chatLines = cleanChatNotes
+                  .split("\n")
+                  .map((l) => l.trim())
+                  .filter((l) => l.length > 0 && !l.startsWith("<!--") && !l.endsWith("-->"));
+
+                if (chatLines.length === 0) {
+                  return (
+                    <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>No approval messages yet</div>
+                      <div style={{ fontSize: 12, marginTop: 4 }}>
+                        Write a message below to communicate regarding approval, rate clarifications, or specifications.
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>No approval messages yet</div>
-                  <div style={{ fontSize: 12, marginTop: 4 }}>
-                    Write a message below to communicate regarding approval, rate clarifications, or specifications.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {chatLines.map((line, idx) => {
+                      const isSystemOrTagged = line.startsWith("[");
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            background: isSystemOrTagged ? "#ffffff" : "#eff6ff",
+                            border: isSystemOrTagged ? "1px solid #e2e8f0" : "1px solid #bfdbfe",
+                            borderRadius: 8,
+                            padding: "10px 14px",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+                          }}
+                        >
+                          <div style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                            {line}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Chat Input Footer */}
