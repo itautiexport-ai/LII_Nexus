@@ -4,6 +4,10 @@ import { CostingService } from "../../application/services/CostingService";
 export class CostingController {
   constructor(private costingService: CostingService = new CostingService()) {}
 
+  getApprovalAuthorities = async (_req: Request, res: Response) => {
+    return res.json({ success: true, data: await this.costingService.getApprovalAuthorities() });
+  };
+
   getSummary = async (_req: Request, res: Response) => {
     const summary = await this.costingService.getSummary();
     return res.json({ success: true, data: summary });
@@ -35,7 +39,7 @@ export class CostingController {
 
   updateEstimation = async (req: Request, res: Response) => {
     const { id } = req.params;
-    const estimation = await this.costingService.updateEstimation(id, req.body);
+    const estimation = await this.costingService.updateEstimation(id, req.body, (req as any).user?.id);
     if (!estimation) {
       return res.status(404).json({ success: false, error: { message: "Cost estimation not found" } });
     }

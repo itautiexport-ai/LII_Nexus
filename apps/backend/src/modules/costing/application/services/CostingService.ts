@@ -2,9 +2,29 @@ import { v4 as uuidv4 } from "uuid";
 import { MySqlCostingRepository } from "../../infrastructure/MySqlCostingRepository";
 import { CostEstimation, CostEstimationItem, CostRateMaster } from "../../domain/CostEstimation";
 import { CreateCostEstimationDto, UpdateCostEstimationDto, SaveCostRateDto } from "../dto/costing.dto";
+import { pool } from '../../../../infrastructure/database/mysql/connection';
+import { ForbiddenError, ValidationError } from '../../../../core/domain/errors/DomainError';
 
 export class CostingService {
   constructor(private repo: MySqlCostingRepository = new MySqlCostingRepository()) {}
+
+  async getApprovalAuthorities(): Promise<Array<{id: string; fullName: string; designationTitle: string}>> {
+    const [rows] = await pool.query<any[]>(`SELECT id, full_name FROM users
+      WHERE deleted_at IS NULL AND status='active'
+        AND LOWER(TRIM(full_name)) IN ('ravi utmani','raj utmani') ORDER BY full_name`);
+    // Fail closed if a name is ambiguous; never invent placeholder accounts.
+    return rows.filter(r => rows.filter(x => x.full_name.trim().toLowerCase() === r.full_name.trim().toLowerCase()).length === 1)
+      .map(r => ({ id: r.id, fullName: r.full_name, designationTitle: 'Approval authority' }));
+  }
+
+  private validateFormData(value: unknown) {
+    if (value === undefined) return;
+    if (typeof value !== 'string' || Buffer.byteLength(value) > 90000) throw new ValidationError('Invalid or oversized costing form data.');
+    try {
+      const parsed = JSON.parse(value);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error();
+    } catch { throw new ValidationError('Costing form_data must contain a JSON object.'); }
+  }
 
   /**
    * Wood CFT formula: ((Length * Width * Thickness * Pcs) / 144)
@@ -143,6 +163,7 @@ export class CostingService {
   }
 
   async createEstimation(dto: CreateCostEstimationDto, userId?: string): Promise<CostEstimation> {
+    this.validateFormData(dto.form_data);
     const id = uuidv4();
     const estimationNumber = await this.repo.generateEstimationNumber();
 
@@ -179,6 +200,7 @@ export class CostingService {
       tax_amount: calc.taxAmount,
       final_price: calc.finalPrice,
       notes: dto.notes,
+      form_data: dto.form_data,
       created_by: userId,
     };
 
@@ -198,9 +220,23 @@ export class CostingService {
     return this.repo.createEstimation(estimation, itemsToSave);
   }
 
-  async updateEstimation(id: string, dto: UpdateCostEstimationDto): Promise<CostEstimation | null> {
+  async updateEstimation(id: string, dto: UpdateCostEstimationDto, actorUserId?: string): Promise<CostEstimation | null> {
     const existing = await this.repo.findEstimationById(id);
     if (!existing) return null;
+    this.validateFormData(dto.form_data);
+    if (dto.status !== undefined && !['Draft','In Review','Approved','Rejected'].includes(dto.status)) throw new ValidationError('Invalid costing status.');
+    const authorities = await this.getApprovalAuthorities();
+    const actorCanApprove = authorities.some(a => a.id === actorUserId);
+    if ((dto.status === 'Approved' || dto.status === 'Rejected') && !actorCanApprove) {
+      throw new ForbiddenError('Only Ravi Utmani or Raj Utmani can approve or reject costing.');
+    }
+    if (['Approved','Rejected'].includes(existing.status) && !actorCanApprove && Object.keys(dto).some(k => k !== 'notes')) {
+      throw new ForbiddenError('Only Ravi Utmani or Raj Utmani can modify finalized costing.');
+    }
+    const authorityId = dto.approval_authority_id ?? existing.approval_authority_id;
+    if (((dto.status === 'In Review' && existing.status !== 'In Review') || dto.approval_authority_id !== undefined) && !authorities.some(a => a.id === authorityId)) {
+      throw new ValidationError('Select an active Ravi Utmani or Raj Utmani account for approval.');
+    }
 
     let itemsToSave: CostEstimationItem[] | undefined;
     let updatedEstimationData: Partial<CostEstimation> = {
@@ -220,6 +256,8 @@ export class CostingService {
       margin_percentage: dto.margin_percentage,
       tax_percentage: dto.tax_percentage,
       notes: dto.notes,
+      ...(dto.form_data !== undefined ? { form_data: dto.form_data } : {}),
+      ...(dto.approval_authority_id !== undefined ? { approval_authority_id: dto.approval_authority_id } : {}),
     };
 
     if (dto.items) {

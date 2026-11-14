@@ -44,6 +44,8 @@ export interface CostEstimation {
   tax_amount: number;
   final_price: number;
   notes?: string;
+  form_data?: string | null;
+  approval_authority_id?: string | null;
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -546,6 +548,10 @@ export const costingApi = {
     if (status) params.status = status;
     const res = await axiosInstance.get("/costing/estimations", { params });
     return res.data.data as CostEstimation[];
+  },
+
+  getApprovalAuthorities: async (): Promise<Array<{id: string; fullName: string; designationTitle: string}>> => {
+    return (await axiosInstance.get("/costing/approval-authorities")).data.data;
   },
 
   getEstimationById: async (id: string) => {

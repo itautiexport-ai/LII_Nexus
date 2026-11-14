@@ -7,6 +7,7 @@ const router = Router();
 const controller = new CostingController();
 
 router.use(authMiddleware);
+router.get('/approval-authorities', asyncHandler(controller.getApprovalAuthorities));
 
 router.get("/summary", asyncHandler(controller.getSummary));
 router.get("/estimations", asyncHandler(controller.getAllEstimations));

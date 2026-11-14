@@ -36,10 +36,12 @@ export interface CreateCostEstimationDto {
   margin_percentage?: number;
   tax_percentage?: number;
   notes?: string;
+  form_data?: string;
   items: CreateCostEstimationItemDto[];
 }
 
 export interface UpdateCostEstimationDto {
+  approval_authority_id?: string;
   title?: string;
   product_code?: string;
   product_name?: string;
@@ -56,6 +58,7 @@ export interface UpdateCostEstimationDto {
   margin_percentage?: number;
   tax_percentage?: number;
   notes?: string;
+  form_data?: string;
   items?: CreateCostEstimationItemDto[];
 }
 
