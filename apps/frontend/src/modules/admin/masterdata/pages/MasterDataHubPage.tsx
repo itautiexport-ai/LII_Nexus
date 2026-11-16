@@ -44,6 +44,7 @@ export function MasterDataHubPage() {
     },
     { label: "Departments", to: "/admin/departments", desc: "Manage company departments" },
     { label: "Designations", to: "/admin/designations", desc: "Manage employee roles and titles" },
+    { label: "Factories", to: "/admin/factories", desc: "Manage factory locations and production units" },
     { label: "Shifts", to: "/admin/shifts", desc: "Manage work shifts" },
     { label: "Wood Types", to: "/admin/wood-types", desc: "Manage wood types" },
     { label: "Priorities", to: "/admin/priorities", desc: "Manage priority levels" },

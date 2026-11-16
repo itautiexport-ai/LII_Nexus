@@ -5,19 +5,23 @@ export interface CatalogProductItem {
   sku: string;
   name: string;
   category: string;
-  subCategory: string;
-  collectionName: string;
-  material: string;
-  woodFinish: string;
-  metalFinish: string;
-  sizeCm: string;
+  subCategory?: string;
+  collectionName?: string;
+  material?: string;
+  woodFinish?: string;
+  metalFinish?: string;
+  sizeCm?: string;
+  dimensions?: string;
   fobPriceUsd: number;
   moq: number;
   cbm: number;
-  gp40ft: number;
-  assembledKd: string;
-  image: string;
-  stockStatus: string;
+  gp40ft?: number;
+  assembledKd?: string;
+  image?: string;
+  images?: string[];
+  stockStatus?: string;
+  createdAt?: string;
+  addedDate?: string;
 }
 
 export type ThemeId = "obsidian" | "studio" | "earth" | "teal" | "navy" | string;
@@ -912,7 +916,7 @@ export async function generateProductPptx(
     }
 
     // 5. Left Image Box
-    const base64Img = await toBase64DataUrl(p.image);
+    const base64Img = await toBase64DataUrl(p.image || p.images?.[0] || "");
     if (base64Img) {
       try {
         pSlide.addImage({

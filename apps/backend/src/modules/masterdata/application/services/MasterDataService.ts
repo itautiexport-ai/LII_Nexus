@@ -390,4 +390,23 @@ export class MasterDataService {
   async deleteMdfPrice(id: string) {
     await this.repo.deleteMdfPrice(id);
   }
+
+  // Factories
+  async getFactories() {
+    return await this.repo.getFactories();
+  }
+
+  async createFactory(name: string, code?: string) {
+    if (!name || !name.trim()) throw new Error("Factory name is required");
+    return await this.repo.createFactory(name, code);
+  }
+
+  async updateFactory(id: string, name: string, code?: string, status?: string) {
+    if (!name || !name.trim()) throw new Error("Factory name is required");
+    return await this.repo.updateFactory(id, name, code, status);
+  }
+
+  async deleteFactory(id: string) {
+    await this.repo.deleteFactory(id);
+  }
 }

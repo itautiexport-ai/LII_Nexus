@@ -17,6 +17,12 @@ export default function ResourcesCenterPage() {
       to: "/admin/resource-center/document-library",
     },
     {
+      title: "Factory Documents",
+      description: "Factory-wise documents (LII, LIE, Laxmi Joy LLP) with master management.",
+      icon: "🏭",
+      to: "/admin/resource-center/factory-documents",
+    },
+    {
       title: "Upload Document",
       description: "Add a new document to the document library.",
       icon: "⬆️",

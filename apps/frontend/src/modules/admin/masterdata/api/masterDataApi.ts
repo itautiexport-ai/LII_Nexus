@@ -33,6 +33,15 @@ export interface Merchant {
   status: "active" | "inactive";
 }
 
+export interface Factory {
+  id: string;
+  name: string;
+  code?: string;
+  status: "active" | "inactive";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface FinishCode {
   id: string;
   code: string;
@@ -260,6 +269,23 @@ export const masterDataApi = {
   },
   async deleteMdfPrice(id: string): Promise<void> {
     await axiosInstance.delete(`/mdf-prices/${id}`);
+  },
+
+  // Factories
+  async getFactories(): Promise<Factory[]> {
+    const res = await axiosInstance.get("/factories");
+    return res.data.data;
+  },
+  async createFactory(name: string, code?: string): Promise<Factory> {
+    const res = await axiosInstance.post("/factories", { name, code });
+    return res.data.data;
+  },
+  async updateFactory(id: string, name: string, code?: string, status?: string): Promise<Factory> {
+    const res = await axiosInstance.put(`/factories/${id}`, { name, code, status });
+    return res.data.data;
+  },
+  async deleteFactory(id: string): Promise<void> {
+    await axiosInstance.delete(`/factories/${id}`);
   },
 };
 

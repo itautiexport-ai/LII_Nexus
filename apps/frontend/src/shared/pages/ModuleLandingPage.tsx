@@ -2,10 +2,15 @@ import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { SECTIONS } from "../../shared/components/AdminLayout";
 import { useAuthStore } from "../../modules/auth/hooks/useAuthStore";
+import SourcewizHubPage from "../../modules/sourcewiz/pages/SourcewizHubPage";
 
 export default function ModuleLandingPage() {
   const { moduleKey } = useParams();
   const user = useAuthStore((s) => s.user);
+
+  if (moduleKey === "sourcewiz") {
+    return <SourcewizHubPage />;
+  }
 
   const section = useMemo(() => {
     return SECTIONS.find((s) => s.key === moduleKey);

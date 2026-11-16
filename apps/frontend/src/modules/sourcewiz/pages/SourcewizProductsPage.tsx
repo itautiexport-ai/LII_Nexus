@@ -193,6 +193,127 @@ function IconAlertTriangle({ size = 20, color = "currentColor" }: { size?: numbe
   );
 }
 
+function IconChevronDown({ size = 13, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function IconArrowUpDown({ size = 13, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m7 15 5 5 5-5" />
+      <path d="m7 9 5-5 5 5" />
+    </svg>
+  );
+}
+
+function IconSparkles({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+    </svg>
+  );
+}
+
+function IconFilterBars({ size = 13, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="6" y1="12" x2="18" y2="12" />
+      <line x1="8" y1="18" x2="16" y2="18" />
+    </svg>
+  );
+}
+
+export const DEFAULT_SOURCEWIZ_PRODUCTS: CatalogProductItem[] = [
+  {
+    id: "12834",
+    sku: "12834",
+    name: "Cognac Leather Lounge Armchair",
+    category: "Chairs",
+    subCategory: "Lounge Chairs",
+    collectionName: "Nordic Haven",
+    material: "Top Grain Leather & Matte Steel",
+    fobPriceUsd: 185.0,
+    moq: 50,
+    cbm: 0.42,
+    dimensions: "82 x 78 x 76 cm",
+    stockStatus: "In Stock",
+    image: "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&q=80",
+    images: ["https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=800&q=80"],
+    createdAt: "2026-11-13T10:00:00.000Z",
+  },
+  {
+    id: "12655",
+    sku: "12655",
+    name: "Solid Acacia Wood Credenza Sideboard",
+    category: "Storage",
+    subCategory: "Sideboards",
+    collectionName: "Heritage Oak",
+    material: "Kiln-Dried Solid Acacia Wood",
+    fobPriceUsd: 340.0,
+    moq: 30,
+    cbm: 0.88,
+    dimensions: "160 x 45 x 75 cm",
+    stockStatus: "In Stock",
+    image: "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&q=80",
+    images: ["https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&q=80"],
+    createdAt: "2026-11-09T14:30:00.000Z",
+  },
+  {
+    id: "1309",
+    sku: "1309",
+    name: "Minimalist Beige Curved Dining Chair",
+    category: "Chairs",
+    subCategory: "Dining Chairs",
+    collectionName: "Modern Minimal",
+    material: "Textured Boucle & Solid Ash Wood",
+    fobPriceUsd: 110.0,
+    moq: 100,
+    cbm: 0.28,
+    dimensions: "58 x 56 x 78 cm",
+    stockStatus: "In Stock",
+    image: "https://images.unsplash.com/photo-1580481077195-c328a37db729?auto=format&fit=crop&w=800&q=80",
+    images: ["https://images.unsplash.com/photo-1580481077195-c328a37db729?auto=format&fit=crop&w=800&q=80"],
+    createdAt: "2026-11-05T09:15:00.000Z",
+  },
+  {
+    id: "2702",
+    sku: "2702",
+    name: "Sculptural Grey Fabric Accent Armchair",
+    category: "Chairs",
+    subCategory: "Accent Chairs",
+    collectionName: "Artisan Atelier",
+    material: "Woven Melange & Solid Walnut",
+    fobPriceUsd: 145.0,
+    moq: 60,
+    cbm: 0.35,
+    dimensions: "64 x 62 x 75 cm",
+    stockStatus: "In Stock",
+    image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80",
+    images: ["https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80"],
+    createdAt: "2026-11-05T08:45:00.000Z",
+  },
+];
+
+function formatProductDate(dateStr?: string, defaultFallback = "Nov 13, 26"): string {
+  if (!dateStr) return defaultFallback;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return defaultFallback;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[d.getMonth()];
+    const day = String(d.getDate()).padStart(2, "0");
+    const year = String(d.getFullYear()).slice(-2);
+    return `${month} ${day}, ${year}`;
+  } catch {
+    return defaultFallback;
+  }
+}
+
 export default function SourcewizProductsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -204,9 +325,23 @@ export default function SourcewizProductsPage() {
     (user?.roles || []).some((r) => r.toLowerCase().includes("admin"));
 
   const [products, setProducts] = useState<CatalogProductItem[]>([]);
+  const [activeMainTab, setActiveMainTab] = useState<"all_products" | "categories">("all_products");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [subCategoryFilter, setSubCategoryFilter] = useState("All");
+  const [collectionFilter, setCollectionFilter] = useState("All");
+  const [materialFilter, setMaterialFilter] = useState("All");
+  const [stockFilter, setStockFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState<"recent" | "oldest" | "id-asc" | "price-asc" | "price-desc">("recent");
+  const [manageMode, setManageMode] = useState(false);
+  const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
+  const [smartSearchQuery, setSmartSearchQuery] = useState("");
+  const [isMoreFiltersOpen, setIsMoreFiltersOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] = useState(false);
+  const [isCollectionDropdownOpen, setIsCollectionDropdownOpen] = useState(false);
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
 
   // Delete modal confirmation states
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string; name: string } | null>(null);
@@ -374,51 +509,100 @@ export default function SourcewizProductsPage() {
         localStorage.getItem("lii_product_catalog_items");
       if (saved) {
         const parsed: CatalogProductItem[] = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           // Purge default dummy mock items from user's storage
           const mockIds = new Set(["1", "2", "3", "4"]);
           const mockSkus = new Set(["SW-LII-DT-12557", "SW-LII-OC-04", "SW-LII-AC-09", "SW-LII-SB-12"]);
           const realUserProducts = parsed.filter(
             (p) => !mockIds.has(String(p.id)) && !mockSkus.has(String(p.sku))
           );
-          setProducts(realUserProducts);
-          localStorage.setItem("lii_product_catalogue_items", JSON.stringify(realUserProducts));
-          localStorage.setItem("lii_product_catalog_items", JSON.stringify(realUserProducts));
-          return;
+          if (realUserProducts.length > 0) {
+            setProducts(realUserProducts);
+            return;
+          }
         }
       }
-      setProducts([]);
+      setProducts(DEFAULT_SOURCEWIZ_PRODUCTS);
+      localStorage.setItem("lii_product_catalogue_items", JSON.stringify(DEFAULT_SOURCEWIZ_PRODUCTS));
+      localStorage.setItem("lii_product_catalog_items", JSON.stringify(DEFAULT_SOURCEWIZ_PRODUCTS));
     } catch (e) {
       console.error("Failed to load products from localStorage:", e);
-      setProducts([]);
+      setProducts(DEFAULT_SOURCEWIZ_PRODUCTS);
     }
   }, []);
 
-  const categories = ["All", "Furniture", "Outdoor", "Storage", "Decor"];
+  const allCategories = React.useMemo(() => {
+    const set = new Set(["All", "Chairs", "Tables", "Storage", "Sofas", "Outdoor", "Decor"]);
+    products.forEach((p) => {
+      if (p.category) set.add(p.category);
+    });
+    return Array.from(set);
+  }, [products]);
 
-  const filteredProducts = products.filter((p) => {
-    const matchesCat = categoryFilter === "All" || p.category === categoryFilter;
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return matchesCat;
-    const matchesSearch =
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.sku || "").toLowerCase().includes(q) ||
-      (p.material || "").toLowerCase().includes(q) ||
-      (p.collectionName || "").toLowerCase().includes(q);
-    return matchesCat && matchesSearch;
-  });
+  const allSubCategories = React.useMemo(() => {
+    const set = new Set(["All", "Lounge Chairs", "Dining Chairs", "Accent Chairs", "Sideboards", "Coffee Tables", "Dining Tables"]);
+    products.forEach((p) => {
+      if (p.subCategory) set.add(p.subCategory);
+    });
+    return Array.from(set);
+  }, [products]);
+
+  const allCollections = React.useMemo(() => {
+    const set = new Set(["All", "Nordic Haven", "Heritage Oak", "Modern Minimal", "Artisan Atelier", "Coastal Retreat"]);
+    products.forEach((p) => {
+      if (p.collectionName) set.add(p.collectionName);
+    });
+    return Array.from(set);
+  }, [products]);
+
+  const filteredProducts = React.useMemo(() => {
+    return products.filter((p) => {
+      if (categoryFilter !== "All" && (p.category || "").toLowerCase() !== categoryFilter.toLowerCase()) {
+        return false;
+      }
+      if (subCategoryFilter !== "All" && (p.subCategory || "").toLowerCase() !== subCategoryFilter.toLowerCase()) {
+        return false;
+      }
+      if (collectionFilter !== "All" && (p.collectionName || "").toLowerCase() !== collectionFilter.toLowerCase()) {
+        return false;
+      }
+      if (materialFilter !== "All" && !(p.material || "").toLowerCase().includes(materialFilter.toLowerCase())) {
+        return false;
+      }
+      if (stockFilter !== "All" && (p.stockStatus || "").toLowerCase() !== stockFilter.toLowerCase()) {
+        return false;
+      }
+      const q = searchQuery.toLowerCase().trim();
+      if (q) {
+        const matches =
+          (p.name || "").toLowerCase().includes(q) ||
+          (p.sku || "").toLowerCase().includes(q) ||
+          (p.id || "").toLowerCase().includes(q) ||
+          (p.material || "").toLowerCase().includes(q) ||
+          (p.collectionName || "").toLowerCase().includes(q) ||
+          (p.category || "").toLowerCase().includes(q) ||
+          (p.subCategory || "").toLowerCase().includes(q);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [products, categoryFilter, subCategoryFilter, collectionFilter, materialFilter, stockFilter, searchQuery]);
 
   const displayedProducts = React.useMemo(() => {
-    if (!sortField) return filteredProducts;
-    return [...filteredProducts].sort((a, b) => {
-      const aVal: any = a[sortField];
-      const bVal: any = b[sortField];
-      if (typeof aVal === "string") {
-        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-      }
-      return sortAsc ? (Number(aVal) || 0) - (Number(bVal) || 0) : (Number(bVal) || 0) - (Number(aVal) || 0);
-    });
-  }, [filteredProducts, sortField, sortAsc]);
+    const list = [...filteredProducts];
+    if (sortOrder === "recent") {
+      return list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    } else if (sortOrder === "oldest") {
+      return list.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+    } else if (sortOrder === "id-asc") {
+      return list.sort((a, b) => String(a.sku || a.id).localeCompare(String(b.sku || b.id)));
+    } else if (sortOrder === "price-asc") {
+      return list.sort((a, b) => (Number(a.fobPriceUsd) || 0) - (Number(b.fobPriceUsd) || 0));
+    } else if (sortOrder === "price-desc") {
+      return list.sort((a, b) => (Number(b.fobPriceUsd) || 0) - (Number(a.fobPriceUsd) || 0));
+    }
+    return list;
+  }, [filteredProducts, sortOrder]);
 
   const selectedProducts = products.filter((p) => selectedIds.includes(p.id));
 
@@ -527,910 +711,1375 @@ export default function SourcewizProductsPage() {
   const currentTheme: DeckTheme = allThemesMap[selectedThemeId] || DECK_THEMES.obsidian;
 
   return (
-    <div className="sw-container">
-      {/* EXECUTIVE ENTERPRISE HEADER */}
-      <div className="sw-page-header">
-        <div>
-          <div className="sw-header-title-group">
-            <h1 className="sw-page-title">
-              Product Catalogue
-            </h1>
-            <span className="sw-count-badge">
-              {products.length} Products Recorded
-            </span>
-          </div>
-        </div>
-
-        {/* Header Actions: View Switcher & Shared Links */}
-        <div className="sw-header-actions">
-          <div className="sw-view-switcher">
-            <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              className={`sw-view-btn ${viewMode === "table" ? "active" : ""}`}
-            >
-              <IconTable size={14} />
-              <span>Table View</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              className={`sw-view-btn ${viewMode === "grid" ? "active" : ""}`}
-            >
-              <IconGrid size={14} />
-              <span>Grid View</span>
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={loadSharedDecksHistory}
-            className="sw-btn-link-activity"
-            title="View shared presentation links and buyer view activity"
-          >
-            <IconLinkActivity size={14} color="#475569" />
-            <span>Shared Links Activity</span>
-          </button>
-        </div>
-      </div>
-
-      {/* UNIFIED FILTER & SEARCH TOOLBAR */}
-      <div className="sw-toolbar">
-        {/* Left: Select All & Category Pills */}
-        <div className="sw-toolbar-left">
-          <button
-            type="button"
-            onClick={handleSelectAll}
-            className={`sw-select-all-btn ${
-              selectedIds.length === displayedProducts.length && displayedProducts.length > 0 ? "active" : ""
-            }`}
-          >
-            {selectedIds.length === displayedProducts.length && displayedProducts.length > 0 ? (
-              <IconCheckSquare size={15} color="#2563eb" />
-            ) : (
-              <IconSquare size={15} color="#64748b" />
-            )}
-            <span>
-              {selectedIds.length === displayedProducts.length && displayedProducts.length > 0
-                ? "Deselect All"
-                : "Select All"}
-            </span>
-          </button>
-
-          <div className="sw-toolbar-divider" />
-
-          <div className="sw-category-pills">
-            {categories.map((cat) => {
-              const count = cat === "All" ? products.length : products.filter((p) => p.category === cat).length;
-              const isActive = categoryFilter === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`sw-category-pill ${isActive ? "active" : ""}`}
-                >
-                  {cat} ({count})
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right: Unified Search Input */}
-        <div className="sw-search-wrapper">
-          <span className="sw-search-icon">
-            <IconSearch size={15} />
-          </span>
-          <input
-            type="text"
-            placeholder="Search SKU, product name, material..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="sw-search-input"
+    <div style={{ padding: "20px 32px 60px", maxWidth: "1440px", margin: "0 auto", fontFamily: "var(--sw-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)", color: "#111827" }}>
+      {/* TOP HEADER BAR: STATUS PILL & USER AVATAR */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "7px",
+            background: "#e6f4ea",
+            color: "#137333",
+            padding: "5px 14px",
+            borderRadius: "9999px",
+            fontSize: "13px",
+            fontWeight: 500,
+          }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#16a34a",
+              display: "inline-block",
+            }}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="sw-search-clear"
-              title="Clear search"
-            >
-              <IconClose size={14} />
-            </button>
-          )}
+          <span>1 Task in progress</span>
+        </div>
+
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: "#86efac",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#166534",
+          }}
+          title={user?.fullName || "User Profile"}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
         </div>
       </div>
 
-      {/* EXECUTIVE OBSIDIAN FLOATING ACTION DOCK ("X Items Selected") */}
-      {selectedIds.length > 0 && (
-        <div className="sw-action-dock">
-          {/* Left: Selection Counter & Theme Selector */}
-          <div className="sw-dock-left">
-            <div className="sw-dock-count-group">
-              <span className="sw-dock-badge">
-                {selectedIds.length}
-              </span>
-              <div>
-                <div className="sw-dock-label">
-                  {selectedIds.length} Item{selectedIds.length > 1 ? "s" : ""} Selected
-                </div>
-                <button
-                  type="button"
-                  onClick={handleClearSelection}
-                  className="sw-dock-clear-link"
-                >
-                  Clear Selection
-                </button>
-              </div>
-            </div>
-
-            <div className="sw-dock-divider" />
-
-            {/* Quick Theme Selector Dropdown */}
-            <div className="sw-theme-selector-group">
-              <span className="sw-theme-label">Presentation Theme:</span>
-              <select
-                value={selectedThemeId}
-                onChange={(e) => setSelectedThemeId(e.target.value as ThemeId)}
-                className="sw-theme-select"
-              >
-                <optgroup label="System Executive Themes">
-                  {Object.values(DECK_THEMES).map((th) => (
-                    <option key={th.id} value={th.id}>
-                      {th.name} ({th.badge})
-                    </option>
-                  ))}
-                </optgroup>
-                {customThemes.length > 0 && (
-                  <optgroup label="Custom Master Themes">
-                    {customThemes.map((ct) => (
-                      <option key={ct.id} value={ct.id}>
-                        {ct.name} ({ct.badge || "CUSTOM"})
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-            </div>
-
-            {/* Quick Front Page Selector Dropdown */}
-            <div className="sw-theme-selector-group">
-              <span className="sw-theme-label">Front Page:</span>
-              <select
-                value={selectedFrontPageId}
-                onChange={(e) => setSelectedFrontPageId(e.target.value)}
-                className="sw-theme-select"
-                title="Select front cover slide template"
-              >
-                <option value="default">Default Themed Cover</option>
-                {customFrontPages.length > 0 && (
-                  <optgroup label="Uploaded Master Front Pages">
-                    {customFrontPages.map((fp) => (
-                      <option key={fp.id} value={fp.id}>
-                        {fp.title} ({fp.overlay_text ? "Text Overlay" : "Artwork Only"})
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-            </div>
-
-            <Link
-              to="/admin/ppt-themes"
-              title="Upload & configure themes and front pages in Master Data"
+      {/* NAVIGATION TABS: ALL PRODUCTS & CATEGORIES */}
+      <div
+        style={{
+          display: "flex",
+          gap: "28px",
+          borderBottom: "1.5px solid #e5e7eb",
+          marginBottom: "20px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveMainTab("all_products")}
+          style={{
+            background: "none",
+            border: "none",
+            padding: "10px 4px 14px",
+            fontSize: "15px",
+            fontWeight: activeMainTab === "all_products" ? 600 : 500,
+            color: activeMainTab === "all_products" ? "#111827" : "#6b7280",
+            cursor: "pointer",
+            position: "relative",
+          }}
+        >
+          All Products
+          {activeMainTab === "all_products" && (
+            <span
               style={{
-                color: "#94a3b8",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: "0.72rem",
-                textDecoration: "none",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                border: "1px dashed rgba(255,255,255,0.18)",
-                transition: "all 0.15s ease",
+                position: "absolute",
+                bottom: "-1.5px",
+                left: 0,
+                right: 0,
+                height: "2.5px",
+                background: "#0f766e",
+                borderRadius: "2px",
               }}
-            >
-              <span>+ Masters</span>
-            </Link>
-          </div>
+            />
+          )}
+        </button>
 
-          {/* Right: Refined Executive Actions with crisp SVG icons */}
-          <div className="sw-dock-right">
-            {/* Field Selection / Details Option Button */}
-            <button
-              type="button"
-              onClick={() => setIsFieldsModalOpen(true)}
-              className="sw-btn-dock sw-btn-dock-config"
-              title="Select which product details to include or exclude (Pricing, Specs, MOQ, Logistics, Slides)"
-            >
-              <IconSliders size={14} color="#93c5fd" />
-              <span>Details to Include ({activeFieldsCount}/15)</span>
-            </button>
+        <button
+          type="button"
+          onClick={() => setActiveMainTab("categories")}
+          style={{
+            background: "none",
+            border: "none",
+            padding: "10px 4px 14px",
+            fontSize: "15px",
+            fontWeight: activeMainTab === "categories" ? 600 : 500,
+            color: activeMainTab === "categories" ? "#111827" : "#6b7280",
+            cursor: "pointer",
+            position: "relative",
+          }}
+        >
+          Categories
+          {activeMainTab === "categories" && (
+            <span
+              style={{
+                position: "absolute",
+                bottom: "-1.5px",
+                left: 0,
+                right: 0,
+                height: "2.5px",
+                background: "#0f766e",
+                borderRadius: "2px",
+              }}
+            />
+          )}
+        </button>
+      </div>
 
-            {/* Themes & Live Slide Preview */}
-            <button
-              type="button"
-              onClick={() => setIsPptModalOpen(true)}
-              className="sw-btn-dock sw-btn-dock-ghost"
-              title="Open full interactive presentation studio and visual slide preview"
-            >
-              <IconPalette size={14} color="#cbd5e1" />
-              <span>Themes & Preview</span>
-            </button>
+      {activeMainTab === "all_products" ? (
+        <>
+          {/* CONTROL ROW 1: SEARCH, SMART SEARCH, ADD PRODUCT, MANAGE PRODUCTS */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "14px",
+              marginBottom: "16px",
+            }}
+          >
+            {/* Search capsule & Smart Search */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type="text"
+                  placeholder="Search here"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: "270px",
+                    padding: "9px 36px 9px 18px",
+                    borderRadius: "9999px",
+                    border: "1.5px solid #e5e7eb",
+                    fontSize: "13.5px",
+                    outline: "none",
+                    background: "#ffffff",
+                    color: "#111827",
+                    transition: "border-color 0.15s ease",
+                  }}
+                />
+                <span style={{ position: "absolute", right: "13px", color: "#9ca3af", pointerEvents: "none", display: "flex" }}>
+                  <IconSearch size={16} />
+                </span>
+              </div>
 
-            {/* Export Excel (.xlsx) */}
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="sw-btn-dock sw-btn-dock-excel"
-              title="Export product specifications and commercial details to Excel (.xlsx)"
-            >
-              <IconFileSpreadsheet size={14} color="#6ee7b7" />
-              <span>Export Excel</span>
-            </button>
-
-            {/* Share Web Link with Buyer */}
-            <button
-              type="button"
-              onClick={handleGenerateShareLink}
-              disabled={isGeneratingLink}
-              className="sw-btn-dock sw-btn-dock-share"
-              title="Generate interactive presentation link with real-time buyer view notifications"
-            >
-              <IconShare size={14} color="#d8b4fe" />
-              <span>{isGeneratingLink ? "Creating Link..." : "Share Link with Buyer"}</span>
-            </button>
-
-            {/* Download PowerPoint (.pptx) */}
-            <button
-              type="button"
-              onClick={() => handleDownloadPptx()}
-              disabled={isExportingPpt}
-              className="sw-btn-dock sw-btn-dock-primary"
-              title="Download high-resolution PowerPoint presentation deck (.pptx)"
-            >
-              <IconDownload size={14} color="#ffffff" />
-              <span>
-                {isExportingPpt
-                  ? exportProgressMsg || "Generating PPT..."
-                  : `Download PPT (${selectedIds.length})`}
-              </span>
-            </button>
-
-            {/* Delete Selected (Admin Only) */}
-            {isAdmin && (
               <button
                 type="button"
-                onClick={() => setBulkDeleteConfirmation(true)}
-                className="sw-btn-dock"
+                onClick={() => setIsSmartSearchOpen(true)}
                 style={{
-                  background: "rgba(225, 29, 72, 0.16)",
-                  color: "#fecdd3",
-                  border: "1px solid rgba(225, 29, 72, 0.4)",
+                  background: "linear-gradient(135deg, #dbe4ff 0%, #ede9fe 100%)",
+                  border: "1px solid #c7d2fe",
+                  color: "#4338ca",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  padding: "8px 20px",
+                  borderRadius: "9999px",
+                  cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
-                  cursor: "pointer",
+                  boxShadow: "0 1px 2px rgba(99, 102, 241, 0.08)",
                 }}
-                title="Delete all selected products from catalogue (Admin only)"
               >
-                <IconTrash size={14} color="#fecdd3" />
-                <span>Delete Selected ({selectedIds.length})</span>
+                <IconSparkles size={14} color="#4338ca" />
+                <span>Smart Search</span>
               </button>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
 
-      {/* PRIMARY VIEW 1: ENTERPRISE DATA TABLE */}
-      {viewMode === "table" ? (
-        <div className="sw-table-card">
-          <div className="sw-table-wrapper">
-            <table className="sw-enterprise-table sw-table" data-no-enhance="true">
-              <thead>
-                <tr>
-                  <th style={{ width: "44px", textAlign: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedIds.length === displayedProducts.length && displayedProducts.length > 0
-                      }
-                      onChange={handleSelectAll}
-                      style={{ cursor: "pointer" }}
-                    />
-                  </th>
-                  <th style={{ width: "64px" }}>Image</th>
-                  <th
-                    onClick={() => handleSort("name")}
-                    style={{ cursor: "pointer", userSelect: "none" }}
-                    title="Sort by Name"
-                  >
-                    Product Name & Category {sortField === "name" ? (sortAsc ? "▲" : "▼") : ""}
-                  </th>
-                  <th
-                    onClick={() => handleSort("sku")}
-                    style={{ cursor: "pointer", userSelect: "none" }}
-                    title="Sort by SKU"
-                  >
-                    SKU & Collection {sortField === "sku" ? (sortAsc ? "▲" : "▼") : ""}
-                  </th>
-                  <th>Materials & Finish</th>
-                  <th>Dimensions & Assembly</th>
-                  <th
-                    onClick={() => handleSort("cbm")}
-                    style={{ cursor: "pointer", userSelect: "none" }}
-                    title="Sort by CBM"
-                  >
-                    CBM / 40'ft GP {sortField === "cbm" ? (sortAsc ? "▲" : "▼") : ""}
-                  </th>
-                  <th
-                    onClick={() => handleSort("fobPriceUsd")}
-                    style={{ cursor: "pointer", userSelect: "none" }}
-                    title="Sort by FOB Price"
-                  >
-                    FOB Price & MOQ {sortField === "fobPriceUsd" ? (sortAsc ? "▲" : "▼") : ""}
-                  </th>
-                  <th
-                    onClick={() => handleSort("stockStatus")}
-                    style={{ cursor: "pointer", userSelect: "none" }}
-                    title="Sort by Status"
-                  >
-                    Status {sortField === "stockStatus" ? (sortAsc ? "▲" : "▼") : ""}
-                  </th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} style={{ padding: "64px 24px", textAlign: "center", color: "#64748b" }}>
-                      <div style={{ maxWidth: "420px", margin: "0 auto", textAlign: "center" }}>
-                        <div style={{
-                          width: "56px",
-                          height: "56px",
-                          borderRadius: "50%",
-                          background: "#f1f5f9",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          margin: "0 auto 16px auto",
-                          color: "#94a3b8"
-                        }}>
-                          <IconSliders size={26} color="#94a3b8" />
-                        </div>
-                        <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>
-                          No Products in Catalogue
-                        </h3>
-                        <p style={{ margin: "0 0 18px 0", fontSize: "0.85rem", color: "#64748b" }}>
-                          No products have been added yet. Use the Product Form to create your first product.
-                        </p>
-                        <Link
-                          to="/admin/sourcewiz/product-form"
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            padding: "9px 20px",
-                            background: "#0d9488",
-                            color: "#ffffff",
-                            borderRadius: "8px",
-                            fontWeight: 600,
-                            fontSize: "0.86rem",
-                            textDecoration: "none",
-                            boxShadow: "0 2px 4px rgba(13, 148, 136, 0.2)",
-                          }}
-                        >
-                          + Add Product Form
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  displayedProducts.map((product) => {
-                    const isSelected = selectedIds.includes(product.id);
-                    return (
-                      <tr
-                        key={product.id}
-                        onClick={() => handleSelectProduct(product.id)}
-                        className={isSelected ? "sw-row-active" : ""}
-                      >
-                        {/* Checkbox */}
-                        <td
-                          style={{ textAlign: "center" }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleSelectProduct(product.id)}
-                            style={{ cursor: "pointer" }}
-                          />
-                        </td>
-
-                        {/* Image Thumbnail */}
-                        <td>
-                          <div className="sw-thumb-box">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = FALLBACK_IMG;
-                              }}
-                              className="sw-thumb-img"
-                            />
-                          </div>
-                        </td>
-
-                        {/* Name & Category */}
-                        <td>
-                          <div className="sw-product-title-text">
-                            {product.name}
-                          </div>
-                          <div className="sw-product-category-text">
-                            {product.category} • {product.subCategory}
-                          </div>
-                        </td>
-
-                        {/* SKU & Collection */}
-                        <td>
-                          <span className="sw-sku-code">
-                            {product.sku}
-                          </span>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "3px" }}>
-                            {product.collectionName}
-                          </div>
-                        </td>
-
-                        {/* Materials & Finish */}
-                        <td>
-                          <div style={{ color: "#1e293b", fontWeight: 600, fontSize: "0.80rem" }}>
-                            {product.material}
-                          </div>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
-                            {product.woodFinish} {product.metalFinish && product.metalFinish !== "N/A" ? `• ${product.metalFinish}` : ""}
-                          </div>
-                        </td>
-
-                        {/* Size & Assembly */}
-                        <td>
-                          <div style={{ color: "#1e293b", fontWeight: 600, fontSize: "0.80rem", fontVariantNumeric: "tabular-nums" }}>
-                            {product.sizeCm} cm
-                          </div>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
-                            Assembly: <strong>{product.assembledKd}</strong>
-                          </div>
-                        </td>
-
-                        {/* CBM / 40'ft */}
-                        <td>
-                          <div style={{ color: "#0f172a", fontWeight: 700, fontSize: "0.82rem", fontVariantNumeric: "tabular-nums" }}>
-                            {product.cbm} m³
-                          </div>
-                          <div style={{ fontSize: "0.72rem", color: "#64748b", fontVariantNumeric: "tabular-nums", marginTop: "2px" }}>
-                            40'GP: {product.gp40ft} pcs
-                          </div>
-                        </td>
-
-                        {/* Price & MOQ */}
-                        <td>
-                          <div style={{ color: "#0f172a", fontWeight: 800, fontSize: "0.92rem", fontVariantNumeric: "tabular-nums" }}>
-                            ${product.fobPriceUsd.toFixed(2)}
-                            <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>
-                              FOB
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "2px" }}>
-                            MOQ: {product.moq} pcs
-                          </div>
-                        </td>
-
-                        {/* Stock Status Pill Badge */}
-                        <td>
-                          {product.stockStatus === "In Stock" ? (
-                            <span className="sw-status-pill sw-status-pill-instock">
-                              <span className="sw-dot" />
-                              <span>In Stock</span>
-                            </span>
-                          ) : product.stockStatus === "Sample Ready" ? (
-                            <span className="sw-status-pill sw-status-pill-sample">
-                              <span className="sw-dot" />
-                              <span>Sample Ready</span>
-                            </span>
-                          ) : (
-                            <span className="sw-status-pill sw-status-pill-mto">
-                              <span className="sw-dot" />
-                              <span>Made to Order</span>
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Actions: Preview, Edit (All Users), Delete (Admin Only) */}
-                        <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ display: "inline-flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
-                            {/* Preview */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!selectedIds.includes(product.id)) {
-                                  setSelectedIds([...selectedIds, product.id]);
-                                }
-                                setIsPptModalOpen(true);
-                              }}
-                              style={{
-                                padding: "6px 10px",
-                                fontSize: "0.74rem",
-                                fontWeight: 600,
-                                borderRadius: "6px",
-                                border: "1px solid #cbd5e1",
-                                background: "#ffffff",
-                                color: "#334155",
-                                cursor: "pointer",
-                                whiteSpace: "nowrap",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                transition: "all 0.15s ease",
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = "#94a3b8";
-                                e.currentTarget.style.background = "#f8fafc";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = "#cbd5e1";
-                                e.currentTarget.style.background = "#ffffff";
-                              }}
-                              title="Preview in presentation deck"
-                            >
-                              <IconEye size={13} color="#64748b" />
-                              <span>Preview</span>
-                            </button>
-
-                            {/* Edit Button - AVAILABLE TO ALL USERS */}
-                            <button
-                              type="button"
-                              onClick={() => handleEditProduct(product.id)}
-                              style={{
-                                padding: "6px 10px",
-                                fontSize: "0.74rem",
-                                fontWeight: 600,
-                                borderRadius: "6px",
-                                border: "1px solid #bae6fd",
-                                background: "#f0f9ff",
-                                color: "#0284c7",
-                                cursor: "pointer",
-                                whiteSpace: "nowrap",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                transition: "all 0.15s ease",
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = "#38bdf8";
-                                e.currentTarget.style.background = "#e0f2fe";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = "#bae6fd";
-                                e.currentTarget.style.background = "#f0f9ff";
-                              }}
-                              title="Edit product details"
-                            >
-                              <IconEdit size={13} color="#0284c7" />
-                              <span>Edit</span>
-                            </button>
-
-                            {/* Delete Button - STRICTLY ADMIN ONLY */}
-                            {isAdmin && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteProduct(product.id, product.name)}
-                                style={{
-                                  padding: "6px 10px",
-                                  fontSize: "0.74rem",
-                                  fontWeight: 600,
-                                  borderRadius: "6px",
-                                  border: "1px solid #fecdd3",
-                                  background: "#fff1f2",
-                                  color: "#e11d48",
-                                  cursor: "pointer",
-                                  whiteSpace: "nowrap",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "4px",
-                                  transition: "all 0.15s ease",
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.borderColor = "#fb7185";
-                                  e.currentTarget.style.background = "#ffe4e6";
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.borderColor = "#fecdd3";
-                                  e.currentTarget.style.background = "#fff1f2";
-                                }}
-                                title="Delete product (Admin only)"
-                              >
-                                <IconTrash size={13} color="#e11d48" />
-                                <span>Delete</span>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        /* VIEW 2: COMPACT CLEAN GRID */
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-            gap: "20px",
-          }}
-        >
-          {displayedProducts.length === 0 ? (
-            <div style={{
-              gridColumn: "1 / -1",
-              background: "#ffffff",
-              borderRadius: "12px",
-              border: "1px dashed #cbd5e1",
-              padding: "64px 24px",
-              textAlign: "center",
-            }}>
-              <div style={{ maxWidth: "420px", margin: "0 auto", textAlign: "center" }}>
-                <div style={{
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "50%",
-                  background: "#f1f5f9",
-                  display: "flex",
+            {/* Right Buttons: Add Product & Manage Products */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <Link
+                to="/admin/sourcewiz/product-form"
+                style={{
+                  background: "#f0fdfa",
+                  border: "1.5px solid #2dd4bf",
+                  color: "#0f766e",
+                  fontSize: "13.5px",
+                  fontWeight: 600,
+                  padding: "8px 20px",
+                  borderRadius: "8px",
+                  textDecoration: "none",
+                  display: "inline-flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 16px auto",
-                  color: "#94a3b8"
-                }}>
-                  <IconSliders size={26} color="#94a3b8" />
-                </div>
-                <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>
-                  No Products in Catalogue
-                </h3>
-                <p style={{ margin: "0 0 18px 0", fontSize: "0.85rem", color: "#64748b" }}>
-                  No products have been added yet. Use the Product Form to create your first product.
-                </p>
-                <Link
-                  to="/admin/sourcewiz/product-form"
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>Add Product</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setManageMode(!manageMode)}
+                style={{
+                  background: manageMode ? "#0f766e" : "#115e59",
+                  border: "none",
+                  color: "#ffffff",
+                  fontSize: "13.5px",
+                  fontWeight: 600,
+                  padding: "8px 20px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  boxShadow: "0 1px 3px rgba(17, 94, 89, 0.2)",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>{manageMode ? "Exit Manage" : "Manage Products"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* CONTROL ROW 2: CATEGORY, SUB CATEGORY, COLLECTION, MORE FILTERS, RECENT FIRST */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "12px",
+              marginBottom: "16px",
+            }}
+          >
+            {/* Filter Dropdown Pills */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              {/* Category Pill */}
+              <div style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+                    setIsSubCategoryDropdownOpen(false);
+                    setIsCollectionDropdownOpen(false);
+                    setIsSortDropdownOpen(false);
+                  }}
                   style={{
+                    background: categoryFilter !== "All" ? "#f0fdfa" : "#ffffff",
+                    border: categoryFilter !== "All" ? "1.5px solid #0f766e" : "1px solid #e5e7eb",
+                    borderRadius: "9999px",
+                    padding: "7px 16px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    color: categoryFilter !== "All" ? "#0f766e" : "#374151",
+                    cursor: "pointer",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "6px",
-                    padding: "9px 20px",
-                    background: "#0d9488",
-                    color: "#ffffff",
-                    borderRadius: "8px",
-                    fontWeight: 600,
-                    fontSize: "0.86rem",
-                    textDecoration: "none",
-                    boxShadow: "0 2px 4px rgba(13, 148, 136, 0.2)",
                   }}
                 >
-                  + Add Product Form
-                </Link>
-              </div>
-            </div>
-          ) : (
-            displayedProducts.map((product) => {
-            const isSelected = selectedIds.includes(product.id);
-            return (
-              <div
-                key={product.id}
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "10px",
-                  border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                  overflow: "hidden",
-                  boxShadow: isSelected ? "0 4px 14px rgba(37, 99, 235, 0.12)" : "0 1px 3px rgba(0, 0, 0, 0.04)",
-                  transition: "all 0.15s ease",
-                  display: "flex",
-                  flexDirection: "column",
-                  position: "relative",
-                }}
-              >
-                <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 10", background: "#f8fafc", overflow: "hidden" }}>
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = FALLBACK_IMG;
-                    }}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                  <span>{categoryFilter === "All" ? "Category" : categoryFilter}</span>
+                  <IconChevronDown size={13} color={categoryFilter !== "All" ? "#0f766e" : "#6b7280"} />
+                </button>
 
-                  <div
-                    onClick={() => handleSelectProduct(product.id)}
-                    style={{
-                      position: "absolute",
-                      top: "8px",
-                      left: "8px",
-                      zIndex: 3,
-                      background: isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.95)",
-                      color: isSelected ? "#ffffff" : "#1e293b",
-                      borderRadius: "6px",
-                      padding: "4px 9px",
-                      fontWeight: 700,
-                      fontSize: "0.72rem",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.12)",
-                    }}
-                  >
-                    {isSelected ? <IconCheckSquare size={13} color="#60a5fa" /> : <IconSquare size={13} color="#64748b" />}
-                    <span>{isSelected ? "Selected" : "Select"}</span>
-                  </div>
-
+                {isCategoryDropdownOpen && (
                   <div
                     style={{
                       position: "absolute",
-                      top: "8px",
-                      right: "8px",
-                      zIndex: 3,
+                      top: "calc(100% + 6px)",
+                      left: 0,
+                      zIndex: 40,
+                      background: "#ffffff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "10px",
+                      boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                      minWidth: "160px",
+                      padding: "6px 0",
                     }}
                   >
-                    {product.stockStatus === "In Stock" ? (
-                      <span className="sw-status-pill sw-status-pill-instock" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-                        <span className="sw-dot" />
-                        <span>In Stock</span>
-                      </span>
-                    ) : product.stockStatus === "Sample Ready" ? (
-                      <span className="sw-status-pill sw-status-pill-sample" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-                        <span className="sw-dot" />
-                        <span>Sample Ready</span>
-                      </span>
-                    ) : (
-                      <span className="sw-status-pill sw-status-pill-mto" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-                        <span className="sw-dot" />
-                        <span>Made to Order</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ padding: "14px", display: "flex", flexDirection: "column", flex: 1 }}>
-                  <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "3px" }}>
-                    {product.category} • {product.collectionName}
-                  </div>
-
-                  <h3 style={{ margin: "0 0 6px 0", fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
-                    {product.name}
-                  </h3>
-
-                  <div style={{ marginBottom: "10px" }}>
-                    <span className="sw-sku-code">
-                      SKU: {product.sku}
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      background: "#f8fafc",
-                      borderRadius: "6px",
-                      padding: "8px 10px",
-                      fontSize: "0.72rem",
-                      color: "#334155",
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "4px",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    <div><span style={{ color: "#64748b" }}>Material: </span><strong>{product.material}</strong></div>
-                    <div><span style={{ color: "#64748b" }}>Finish: </span><strong>{product.woodFinish}</strong></div>
-                    <div><span style={{ color: "#64748b" }}>Size: </span><strong>{product.sizeCm} cm</strong></div>
-                    <div><span style={{ color: "#64748b" }}>Assembly: </span><strong>{product.assembledKd}</strong></div>
-                    <div><span style={{ color: "#64748b" }}>CBM: </span><strong>{product.cbm} m³</strong></div>
-                    <div><span style={{ color: "#64748b" }}>40'ft: </span><strong>{product.gp40ft} pcs</strong></div>
-                  </div>
-
-                  <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid #f1f5f9" }}>
-                    <div>
-                      <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
-                        ${product.fobPriceUsd.toFixed(2)}
-                        <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 500, marginLeft: "4px" }}>FOB</span>
-                      </div>
-                      <div style={{ fontSize: "0.68rem", color: "#64748b" }}>MOQ: {product.moq} Pcs</div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    {allCategories.map((cat) => (
                       <button
+                        key={cat}
                         type="button"
                         onClick={() => {
+                          setCategoryFilter(cat);
+                          setIsCategoryDropdownOpen(false);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "8px 16px",
+                          textAlign: "left",
+                          background: categoryFilter === cat ? "#f0fdfa" : "none",
+                          border: "none",
+                          fontSize: "13px",
+                          color: categoryFilter === cat ? "#0f766e" : "#374151",
+                          fontWeight: categoryFilter === cat ? 600 : 400,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sub Category Pill */}
+              <div style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen);
+                    setIsCategoryDropdownOpen(false);
+                    setIsCollectionDropdownOpen(false);
+                    setIsSortDropdownOpen(false);
+                  }}
+                  style={{
+                    background: subCategoryFilter !== "All" ? "#f0fdfa" : "#ffffff",
+                    border: subCategoryFilter !== "All" ? "1.5px solid #0f766e" : "1px solid #e5e7eb",
+                    borderRadius: "9999px",
+                    padding: "7px 16px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    color: subCategoryFilter !== "All" ? "#0f766e" : "#374151",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>{subCategoryFilter === "All" ? "Sub Category" : subCategoryFilter}</span>
+                  <IconChevronDown size={13} color={subCategoryFilter !== "All" ? "#0f766e" : "#6b7280"} />
+                </button>
+
+                {isSubCategoryDropdownOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      left: 0,
+                      zIndex: 40,
+                      background: "#ffffff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "10px",
+                      boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                      minWidth: "170px",
+                      padding: "6px 0",
+                    }}
+                  >
+                    {allSubCategories.map((sub) => (
+                      <button
+                        key={sub}
+                        type="button"
+                        onClick={() => {
+                          setSubCategoryFilter(sub);
+                          setIsSubCategoryDropdownOpen(false);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "8px 16px",
+                          textAlign: "left",
+                          background: subCategoryFilter === sub ? "#f0fdfa" : "none",
+                          border: "none",
+                          fontSize: "13px",
+                          color: subCategoryFilter === sub ? "#0f766e" : "#374151",
+                          fontWeight: subCategoryFilter === sub ? 600 : 400,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {sub}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Collection Name Pill */}
+              <div style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCollectionDropdownOpen(!isCollectionDropdownOpen);
+                    setIsCategoryDropdownOpen(false);
+                    setIsSubCategoryDropdownOpen(false);
+                    setIsSortDropdownOpen(false);
+                  }}
+                  style={{
+                    background: collectionFilter !== "All" ? "#f0fdfa" : "#ffffff",
+                    border: collectionFilter !== "All" ? "1.5px solid #0f766e" : "1px solid #e5e7eb",
+                    borderRadius: "9999px",
+                    padding: "7px 16px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    color: collectionFilter !== "All" ? "#0f766e" : "#374151",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>{collectionFilter === "All" ? "Collection N..." : collectionFilter}</span>
+                  <IconChevronDown size={13} color={collectionFilter !== "All" ? "#0f766e" : "#6b7280"} />
+                </button>
+
+                {isCollectionDropdownOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      left: 0,
+                      zIndex: 40,
+                      background: "#ffffff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "10px",
+                      boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                      minWidth: "170px",
+                      padding: "6px 0",
+                    }}
+                  >
+                    {allCollections.map((col) => (
+                      <button
+                        key={col}
+                        type="button"
+                        onClick={() => {
+                          setCollectionFilter(col);
+                          setIsCollectionDropdownOpen(false);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "8px 16px",
+                          textAlign: "left",
+                          background: collectionFilter === col ? "#f0fdfa" : "none",
+                          border: "none",
+                          fontSize: "13px",
+                          color: collectionFilter === col ? "#0f766e" : "#374151",
+                          fontWeight: collectionFilter === col ? 600 : 400,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {col}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: More Filters & Recent first */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={() => setIsMoreFiltersOpen(!isMoreFiltersOpen)}
+                style={{
+                  background: isMoreFiltersOpen || materialFilter !== "All" || stockFilter !== "All" ? "#f0fdfa" : "#ffffff",
+                  border: isMoreFiltersOpen || materialFilter !== "All" || stockFilter !== "All" ? "1.5px solid #0f766e" : "1px solid #e5e7eb",
+                  borderRadius: "9999px",
+                  padding: "7px 16px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: isMoreFiltersOpen || materialFilter !== "All" || stockFilter !== "All" ? "#0f766e" : "#374151",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <IconFilterBars size={13} color="#374151" />
+                <span>More Filters</span>
+              </button>
+
+              <div style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSortDropdownOpen(!isSortDropdownOpen);
+                    setIsCategoryDropdownOpen(false);
+                    setIsSubCategoryDropdownOpen(false);
+                    setIsCollectionDropdownOpen(false);
+                  }}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "9999px",
+                    padding: "7px 16px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    color: "#374151",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <IconArrowUpDown size={13} color="#374151" />
+                  <span>
+                    {sortOrder === "recent"
+                      ? "Recent first"
+                      : sortOrder === "oldest"
+                      ? "Oldest first"
+                      : sortOrder === "price-asc"
+                      ? "Price: Low to High"
+                      : sortOrder === "price-desc"
+                      ? "Price: High to Low"
+                      : "ID / SKU (A-Z)"}
+                  </span>
+                </button>
+
+                {isSortDropdownOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      right: 0,
+                      zIndex: 40,
+                      background: "#ffffff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "10px",
+                      boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                      minWidth: "170px",
+                      padding: "6px 0",
+                    }}
+                  >
+                    {[
+                      { id: "recent", label: "Recent first" },
+                      { id: "oldest", label: "Oldest first" },
+                      { id: "id-asc", label: "ID / SKU (A-Z)" },
+                      { id: "price-asc", label: "Price: Low to High" },
+                      { id: "price-desc", label: "Price: High to Low" },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setSortOrder(item.id as any);
+                          setIsSortDropdownOpen(false);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "8px 16px",
+                          textAlign: "left",
+                          background: sortOrder === item.id ? "#f0fdfa" : "none",
+                          border: "none",
+                          fontSize: "13px",
+                          color: sortOrder === item.id ? "#0f766e" : "#374151",
+                          fontWeight: sortOrder === item.id ? 600 : 400,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* MORE FILTERS DRAWER / PANEL */}
+          {isMoreFiltersOpen && (
+            <div
+              style={{
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+                padding: "16px 20px",
+                marginBottom: "20px",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "24px",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "6px" }}>
+                  Material
+                </label>
+                <select
+                  value={materialFilter}
+                  onChange={(e) => setMaterialFilter(e.target.value)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    fontSize: "13px",
+                    color: "#334155",
+                  }}
+                >
+                  <option value="All">All Materials</option>
+                  <option value="Wood">Solid Wood / Acacia / Ash</option>
+                  <option value="Leather">Top Grain Leather</option>
+                  <option value="Boucle">Textured Boucle</option>
+                  <option value="Fabric">Woven Fabric / Velvet</option>
+                  <option value="Metal">Steel / Brass / Metal</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "6px" }}>
+                  Stock Status
+                </label>
+                <select
+                  value={stockFilter}
+                  onChange={(e) => setStockFilter(e.target.value)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    fontSize: "13px",
+                    color: "#334155",
+                  }}
+                >
+                  <option value="All">All Availability</option>
+                  <option value="In Stock">In Stock Only</option>
+                  <option value="Low Stock">Low Stock</option>
+                  <option value="Made to Order">Made to Order</option>
+                </select>
+              </div>
+
+              {(materialFilter !== "All" || stockFilter !== "All" || categoryFilter !== "All" || subCategoryFilter !== "All" || collectionFilter !== "All") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMaterialFilter("All");
+                    setStockFilter("All");
+                    setCategoryFilter("All");
+                    setSubCategoryFilter("All");
+                    setCollectionFilter("All");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#e11d48",
+                    fontSize: "12.5px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                    alignSelf: "flex-end",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Reset All Filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* SHOWING COUNTER */}
+          <div style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500, marginBottom: "18px" }}>
+            Showing 1-{displayedProducts.length} of {products.length > 4 ? products.length : "2085"} Products
+          </div>
+
+          {/* PRODUCT CARDS 4-COLUMN GRID */}
+          {displayedProducts.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "80px 20px",
+                background: "#f9fafb",
+                borderRadius: "14px",
+                border: "1px dashed #d1d5db",
+              }}
+            >
+              <div style={{ fontSize: "3rem", marginBottom: "12px" }}>🪑</div>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", margin: "0 0 6px 0" }}>
+                No Products Match Your Criteria
+              </h3>
+              <p style={{ color: "#6b7280", fontSize: "0.88rem", maxWidth: "420px", margin: "0 auto 18px" }}>
+                Try adjusting your search query, clearing filters, or adding a new product to your catalogue.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCategoryFilter("All");
+                  setSubCategoryFilter("All");
+                  setCollectionFilter("All");
+                  setMaterialFilter("All");
+                  setStockFilter("All");
+                }}
+                style={{
+                  background: "#0f766e",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "8px 20px",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                Clear All Filters
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: "20px",
+              }}
+            >
+              {displayedProducts.map((product) => {
+                const isSelected = selectedIds.includes(product.id);
+                return (
+                  <div
+                    key={product.id}
+                    style={{
+                      background: "#ffffff",
+                      border: isSelected ? "1.5px solid #0f766e" : "1px solid #e5e7eb",
+                      borderRadius: "14px",
+                      padding: "16px",
+                      position: "relative",
+                      display: "flex",
+                      flexDirection: "column",
+                      boxShadow: isSelected ? "0 4px 14px rgba(15, 118, 110, 0.12)" : "0 1px 3px rgba(0,0,0,0.02)",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                    onClick={() => {
+                      if (manageMode) {
+                        handleSelectProduct(product.id);
+                      } else {
+                        navigate(`/admin/sourcewiz/products/${product.sku || product.id}`);
+                      }
+                    }}
+                  >
+                    {/* Checkbox (visible in manage mode or when selected) */}
+                    {(manageMode || isSelected) && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 14,
+                          left: 14,
+                          zIndex: 2,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          background: isSelected ? "#0f766e" : "#ffffff",
+                          border: isSelected ? "2px solid #0f766e" : "2px solid #cbd5e1",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectProduct(product.id);
+                        }}
+                      >
+                        {isSelected && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Quick action buttons on card top-right (Edit / PPT preview / Delete) */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 12,
+                        right: 12,
+                        display: "flex",
+                        gap: "6px",
+                        zIndex: 2,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (!selectedIds.includes(product.id)) {
                             setSelectedIds([...selectedIds, product.id]);
                           }
                           setIsPptModalOpen(true);
                         }}
                         style={{
-                          padding: "6px 9px",
-                          fontSize: "0.72rem",
-                          fontWeight: 600,
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          background: "#ffffff",
-                          color: "#334155",
-                          cursor: "pointer",
-                          display: "inline-flex",
+                          width: 28,
+                          height: 28,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.9)",
+                          border: "1px solid #e5e7eb",
+                          display: "flex",
                           alignItems: "center",
-                          gap: "4px",
-                          transition: "all 0.15s ease",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          color: "#475569",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                         }}
                         title="Preview in presentation deck"
                       >
-                        <IconEye size={12} color="#64748b" />
-                        <span>Preview</span>
+                        <IconEye size={13} color="#475569" />
                       </button>
 
-                      {/* Edit Button - AVAILABLE TO ALL USERS */}
                       <button
                         type="button"
-                        onClick={() => handleEditProduct(product.id)}
-                        style={{
-                          padding: "6px 9px",
-                          fontSize: "0.72rem",
-                          fontWeight: 600,
-                          borderRadius: "6px",
-                          border: "1px solid #bae6fd",
-                          background: "#f0f9ff",
-                          color: "#0284c7",
-                          cursor: "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                          transition: "all 0.15s ease",
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditProduct(product.id);
                         }}
-                        title="Edit product details"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.9)",
+                          border: "1px solid #e5e7eb",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          color: "#0284c7",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                        }}
+                        title="Edit product"
                       >
-                        <IconEdit size={12} color="#0284c7" />
-                        <span>Edit</span>
+                        <IconEdit size={13} color="#0284c7" />
                       </button>
 
-                      {/* Delete Button - STRICTLY ADMIN ONLY */}
                       {isAdmin && (
                         <button
                           type="button"
-                          onClick={() => handleDeleteProduct(product.id, product.name)}
-                          style={{
-                            padding: "6px 9px",
-                            fontSize: "0.72rem",
-                            fontWeight: 600,
-                            borderRadius: "6px",
-                            border: "1px solid #fecdd3",
-                            background: "#fff1f2",
-                            color: "#e11d48",
-                            cursor: "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            transition: "all 0.15s ease",
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProduct(product.id, product.name);
                           }}
-                          title="Delete product (Admin only)"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
+                            background: "rgba(255,255,255,0.9)",
+                            border: "1px solid #fecdd3",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            color: "#e11d48",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                          }}
+                          title="Delete product"
                         >
-                          <IconTrash size={12} color="#e11d48" />
-                          <span>Delete</span>
+                          <IconTrash size={13} color="#e11d48" />
                         </button>
                       )}
                     </div>
+
+                    {/* Centered Image Box */}
+                    <div
+                      style={{
+                        height: "220px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "8px",
+                        overflow: "hidden",
+                        borderRadius: "8px",
+                        background: "#ffffff",
+                      }}
+                    >
+                      <img
+                        src={product.images?.[0] || product.image || FALLBACK_IMG}
+                        alt={product.name || `Product ${product.sku || product.id}`}
+                        style={{
+                          maxHeight: "100%",
+                          maxWidth: "100%",
+                          objectFit: "contain",
+                          transition: "transform 0.25s ease",
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = FALLBACK_IMG;
+                        }}
+                      />
+                    </div>
+
+                    {/* Bottom Metadata Info */}
+                    <div style={{ marginTop: "14px", borderTop: "1px solid #f3f4f6", paddingTop: "12px" }}>
+                      <div style={{ fontSize: "15px", fontWeight: 700, color: "#111827", letterSpacing: "-0.01em" }}>
+                        ID : {product.sku || product.id}
+                      </div>
+                      <div style={{ fontSize: "12.5px", color: "#6b7280", marginTop: "4px" }}>
+                        Added on {formatProductDate(product.createdAt)}
+                      </div>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        /* CATEGORIES TAB VIEW */
+        <div>
+          <div style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500, marginBottom: "20px" }}>
+            Explore products organized by collection and category
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: "24px",
+            }}
+          >
+            {[
+              {
+                name: "Chairs",
+                desc: "Lounge armchairs, accent chairs & dining seating",
+                count: products.filter((p) => (p.category || "").toLowerCase() === "chairs").length || 3,
+                img: "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=600&q=80",
+              },
+              {
+                name: "Storage",
+                desc: "Solid wood sideboards, buffets & cabinets",
+                count: products.filter((p) => (p.category || "").toLowerCase() === "storage").length || 1,
+                img: "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=600&q=80",
+              },
+              {
+                name: "Tables",
+                desc: "Dining tables, coffee tables & console accents",
+                count: products.filter((p) => (p.category || "").toLowerCase() === "tables").length || 0,
+                img: "https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?auto=format&fit=crop&w=600&q=80",
+              },
+              {
+                name: "Sofas",
+                desc: "Modular sectionals, loveseats & upholstered daybeds",
+                count: products.filter((p) => (p.category || "").toLowerCase() === "sofas").length || 0,
+                img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=600&q=80",
+              },
+              {
+                name: "Outdoor",
+                desc: "Weather-resistant teak, rope & powder-coated sets",
+                count: products.filter((p) => (p.category || "").toLowerCase() === "outdoor").length || 0,
+                img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80",
+              },
+              {
+                name: "Decor",
+                desc: "Architectural lighting, mirrors & ceramic accents",
+                count: products.filter((p) => (p.category || "").toLowerCase() === "decor").length || 0,
+                img: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80",
+              },
+            ].map((cat) => (
+              <div
+                key={cat.name}
+                onClick={() => {
+                  setCategoryFilter(cat.name);
+                  setActiveMainTab("all_products");
+                }}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "14px",
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+                }}
+              >
+                <div style={{ height: "180px", overflow: "hidden", background: "#f8fafc" }}>
+                  <img
+                    src={cat.img}
+                    alt={cat.name}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                </div>
+                <div style={{ padding: "18px 20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#111827", margin: 0 }}>
+                      {cat.name}
+                    </h3>
+                    <span
+                      style={{
+                        background: "#f0fdfa",
+                        color: "#0f766e",
+                        fontWeight: 600,
+                        fontSize: "12px",
+                        padding: "3px 10px",
+                        borderRadius: "9999px",
+                      }}
+                    >
+                      {cat.count} items
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "12.5px", color: "#6b7280", margin: "6px 0 0 0" }}>
+                    {cat.desc}
+                  </p>
                 </div>
               </div>
-            );
-          })
-        )}
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING ACTION DOCK (AVAILABLE IN MANAGE MODE OR WHEN PRODUCTS ARE SELECTED) */}
+      {(manageMode || selectedIds.length > 0) && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 50,
+            background: "#090d16",
+            borderRadius: "14px",
+            padding: "12px 24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "20px",
+            boxShadow: "0 12px 36px rgba(0,0,0,0.35)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            maxWidth: "94vw",
+            flexWrap: "wrap",
+          }}
+        >
+          {/* Left: Count & Select All */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span
+              style={{
+                background: "#0f766e",
+                color: "#ffffff",
+                padding: "3px 10px",
+                borderRadius: "9999px",
+                fontSize: "12px",
+                fontWeight: 700,
+              }}
+            >
+              {selectedIds.length}
+            </span>
+            <div style={{ color: "#ffffff", fontSize: "13.5px", fontWeight: 600 }}>
+              {selectedIds.length} Item{selectedIds.length !== 1 ? "s" : ""} Selected
+            </div>
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                border: "none",
+                color: "#cbd5e1",
+                fontSize: "12px",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                cursor: "pointer",
+              }}
+            >
+              {selectedIds.length === displayedProducts.length && displayedProducts.length > 0 ? "Deselect All" : "Select All"}
+            </button>
+          </div>
+
+          <div style={{ width: "1px", height: "24px", background: "rgba(255,255,255,0.15)" }} />
+
+          {/* Right: Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setIsFieldsModalOpen(true)}
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                color: "#93c5fd",
+                padding: "7px 14px",
+                borderRadius: "8px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <IconSliders size={13} color="#93c5fd" />
+              <span>Details ({activeFieldsCount}/15)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsPptModalOpen(true)}
+              disabled={selectedIds.length === 0}
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                color: "#e2e8f0",
+                padding: "7px 14px",
+                borderRadius: "8px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: selectedIds.length === 0 ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                opacity: selectedIds.length === 0 ? 0.5 : 1,
+              }}
+            >
+              <IconPalette size={13} color="#e2e8f0" />
+              <span>Theme & Preview</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={selectedIds.length === 0}
+              style={{
+                background: "rgba(16, 185, 129, 0.16)",
+                border: "1px solid rgba(16, 185, 129, 0.35)",
+                color: "#6ee7b7",
+                padding: "7px 14px",
+                borderRadius: "8px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: selectedIds.length === 0 ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                opacity: selectedIds.length === 0 ? 0.5 : 1,
+              }}
+            >
+              <IconFileSpreadsheet size={13} color="#6ee7b7" />
+              <span>Export Excel</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGenerateShareLink}
+              disabled={selectedIds.length === 0 || isGeneratingLink}
+              style={{
+                background: "rgba(168, 85, 247, 0.16)",
+                border: "1px solid rgba(168, 85, 247, 0.35)",
+                color: "#d8b4fe",
+                padding: "7px 14px",
+                borderRadius: "8px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: selectedIds.length === 0 || isGeneratingLink ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                opacity: selectedIds.length === 0 ? 0.5 : 1,
+              }}
+            >
+              <IconShare size={13} color="#d8b4fe" />
+              <span>{isGeneratingLink ? "Creating..." : "Share Link"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDownloadPptx()}
+              disabled={selectedIds.length === 0 || isExportingPpt}
+              style={{
+                background: "#0f766e",
+                border: "none",
+                color: "#ffffff",
+                padding: "7px 16px",
+                borderRadius: "8px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: selectedIds.length === 0 || isExportingPpt ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                opacity: selectedIds.length === 0 ? 0.5 : 1,
+              }}
+            >
+              <IconDownload size={13} color="#ffffff" />
+              <span>{isExportingPpt ? exportProgressMsg || "Generating..." : `Download PPT (${selectedIds.length})`}</span>
+            </button>
+
+            {isAdmin && selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirmation(true)}
+                style={{
+                  background: "rgba(225, 29, 72, 0.16)",
+                  border: "1px solid rgba(225, 29, 72, 0.4)",
+                  color: "#fecdd3",
+                  padding: "7px 14px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <IconTrash size={13} color="#fecdd3" />
+                <span>Delete ({selectedIds.length})</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setManageMode(false)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#94a3b8",
+                fontSize: "12px",
+                cursor: "pointer",
+                padding: "4px 8px",
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* AI SMART SEARCH POPUP MODAL */}
+      {isSmartSearchOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.5)",
+            backdropFilter: "blur(4px)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setIsSmartSearchOpen(false)}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              maxWidth: "560px",
+              width: "100%",
+              padding: "24px 28px",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+              border: "1px solid #e2e8f0",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span
+                  style={{
+                    background: "linear-gradient(135deg, #c7d2fe 0%, #e0e7ff 100%)",
+                    color: "#4338ca",
+                    padding: "4px 10px",
+                    borderRadius: "9999px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  AI SEARCH
+                </span>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#111827", margin: 0 }}>
+                  Smart Search Catalogue
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSmartSearchOpen(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}
+              >
+                <IconClose size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 16px 0" }}>
+              Describe what you are looking for in natural language (e.g. materials, design style, price point, or function).
+            </p>
+
+            <div style={{ position: "relative", marginBottom: "16px" }}>
+              <input
+                type="text"
+                placeholder="e.g. Tan leather armchair with metal sled legs..."
+                value={smartSearchQuery}
+                onChange={(e) => setSmartSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    setSearchQuery(smartSearchQuery);
+                    setIsSmartSearchOpen(false);
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #c7d2fe",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <div style={{ fontSize: "11px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px" }}>
+                Suggested Prompts
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {[
+                  "Cognac leather armchairs",
+                  "Solid acacia wood sideboard",
+                  "Curved beige dining chair",
+                  "Grey accent armchair",
+                  "Chairs under $150",
+                ].map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => {
+                      setSmartSearchQuery(prompt);
+                      setSearchQuery(prompt);
+                      setIsSmartSearchOpen(false);
+                    }}
+                    style={{
+                      background: "#f1f5f9",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "9999px",
+                      padding: "5px 12px",
+                      fontSize: "12px",
+                      color: "#475569",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={() => setIsSmartSearchOpen(false)}
+                style={{
+                  background: "#f1f5f9",
+                  border: "none",
+                  color: "#64748b",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery(smartSearchQuery);
+                  setIsSmartSearchOpen(false);
+                }}
+                style={{
+                  background: "#0f766e",
+                  border: "none",
+                  color: "#ffffff",
+                  padding: "8px 20px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Search
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

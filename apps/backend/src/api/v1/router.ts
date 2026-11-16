@@ -20,6 +20,7 @@ import reportRoutes from "../../modules/reports/presentation/routes/report.route
 import behaviourRoutes from "../../modules/behaviour/presentation/routes/behaviour.routes";
 import meetingRoutes from "../../modules/meetings/presentation/routes/meeting.routes";
 import documentRoutes from "../../modules/documents/presentation/routes/document.routes";
+import factoryDocumentRoutes from "../../modules/documents/presentation/routes/factoryDocument.routes";
 import kpiEngineRoutes from "../../modules/kpiengine/presentation/routes/kpiengine.routes";
 import dprRoutes from "../../modules/dpr/presentation/routes/dpr.routes";
 import { masterDataRoutes } from "../../modules/masterdata/presentation/routes/masterDataRoutes";
@@ -83,6 +84,7 @@ router.use("/", reportRoutes); // exposes /reports/run, /reports/export/*, /repo
 router.use("/", behaviourRoutes); // exposes /behaviour/index/*, /behaviour/health/*, /behaviour/analytics/*, /insight-rules
 router.use("/", meetingRoutes); // exposes /meetings, /meetings/:id/mom, /meetings/actions/*
 router.use("/", documentRoutes); // exposes /documents, /documents/:id/versions, /machines, /products
+router.use("/", factoryDocumentRoutes); // exposes /factory-documents
 router.use("/", kpiEngineRoutes); // exposes /kpi-engine/definitions, /kpi-engine/scores/*, /kpi-engine/dashboard
 router.use("/", dprRoutes); // exposes /dpr-entries
 router.use("/", standaloneChecklistRoutes); // exposes /standalone-checklists

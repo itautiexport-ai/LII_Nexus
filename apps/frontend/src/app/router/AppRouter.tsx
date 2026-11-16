@@ -21,6 +21,7 @@ import ProductionLinesPage from "../../modules/admin/factory/productionLines/pag
 import ShiftsPage from "../../modules/admin/factory/shifts/pages/ShiftsPage";
 import ProductionEntryPage from "../../modules/factory/pages/ProductionEntryPage";
 import WoodTypesPage from "../../modules/admin/masterdata/pages/WoodTypesPage";
+import FactoriesPage from "../../modules/admin/masterdata/pages/FactoriesPage";
 import WoodThicknessPricesPage from "../../modules/admin/masterdata/pages/WoodThicknessPricesPage";
 import MetalPricesPage from "../../modules/admin/masterdata/pages/MetalPricesPage";
 import HardwareAccessoriesPage from "../../modules/admin/masterdata/pages/HardwareAccessoriesPage";
@@ -160,6 +161,7 @@ import EmployeeScorePage from "../../modules/performance-evaluation/pages/Employ
 import EvaluationsListPage from "../../modules/performance-evaluation/pages/EvaluationsListPage";
 import HomePage from "../../modules/dashboard/pages/HomePage";
 import DocumentLibraryPage from "../../modules/resourcescenter/pages/DocumentLibraryPage";
+import FactoryDocumentsPage from "../../modules/resourcescenter/pages/FactoryDocumentsPage";
 import ImportantUrlsPage from "../../modules/resourcescenter/pages/ImportantUrlsPage";
 import SopsPage from "../../modules/resourcescenter/pages/SopsPage";
 import PoliciesPage from "../../modules/resourcescenter/pages/PoliciesPage";
@@ -169,7 +171,10 @@ import ManualsPage from "../../modules/resourcescenter/pages/ManualsPage";
 import FormatsLibraryPage from "../../modules/resourcescenter/pages/FormatsLibraryPage";
 import SourcewizProductFormPage from "../../modules/sourcewiz/pages/SourcewizProductFormPage";
 import SourcewizProductsPage from "../../modules/sourcewiz/pages/SourcewizProductsPage";
+import SourcewizProductDetailPage from "../../modules/sourcewiz/pages/SourcewizProductDetailPage";
+import SourcewizCreateCataloguePage from "../../modules/sourcewiz/pages/SourcewizCreateCataloguePage";
 import SourcewizDashboardPage from "../../modules/sourcewiz/pages/SourcewizDashboardPage";
+import SourcewizHubPage from "../../modules/sourcewiz/pages/SourcewizHubPage";
 import SourcewizQuotationsPage from "../../modules/sourcewiz/pages/SourcewizQuotationsPage";
 import SourcewizRfqsPage from "../../modules/sourcewiz/pages/SourcewizRfqsPage";
 import SharedDeckViewerPage from "../../modules/sourcewiz/pages/SharedDeckViewerPage";
@@ -225,6 +230,7 @@ export default function AppRouter() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<HomePage />} />
           <Route path="resource-center/document-library" element={<DocumentLibraryPage />} />
+          <Route path="resource-center/factory-documents" element={<FactoryDocumentsPage />} />
           <Route path="resource-center/important-urls" element={<ImportantUrlsPage />} />
           <Route path="resource-center/sops" element={<SopsPage />} />
           <Route path="resource-center/policies" element={<PoliciesPage />} />
@@ -251,6 +257,8 @@ export default function AppRouter() {
           <Route path="master-data/administrative" element={<AdministrativeMasterHubPage />} />
           <Route path="master-data/human-resource" element={<HumanResourceMasterHubPage />} />
           <Route path="master-data/costing" element={<CostingMasterHubPage />} />
+          <Route path="factories" element={<FactoriesPage />} />
+          <Route path="master-data/factories" element={<FactoriesPage />} />
           <Route path="wood-types" element={<WoodTypesPage />} />
           <Route path="wood-thickness-prices" element={<WoodThicknessPricesPage />} />
           <Route path="metal-prices" element={<MetalPricesPage />} />
@@ -287,17 +295,21 @@ export default function AppRouter() {
           <Route path="standalone-checklist/list" element={<ListChecklistPage />} />
 
           {/* Product Catalogue 2.0 (Sourcewiz) Routes */}
-          <Route path="sourcewiz" element={<SourcewizProductsPage />} />
+          <Route path="sourcewiz" element={<SourcewizHubPage />} />
           <Route path="sourcewiz/products" element={<SourcewizProductsPage />} />
+          <Route path="sourcewiz/products/:id" element={<SourcewizProductDetailPage />} />
+          <Route path="sourcewiz/create-catalogue" element={<SourcewizCreateCataloguePage />} />
           <Route path="sourcewiz/product-form" element={<SourcewizProductFormPage />} />
           <Route path="sourcewiz/product-form/:id" element={<SourcewizProductFormPage />} />
-          <Route path="sourcewiz/dashboard" element={<SourcewizDashboardPage />} />
+          <Route path="sourcewiz/dashboard" element={<SourcewizHubPage />} />
           <Route path="sourcewiz/quotations" element={<SourcewizQuotationsPage />} />
           <Route path="sourcewiz/rfqs" element={<SourcewizRfqsPage />} />
 
+          <Route path="create-catalogue" element={<SourcewizCreateCataloguePage />} />
           <Route path="product-form" element={<SourcewizProductFormPage />} />
           <Route path="product-form/:id" element={<SourcewizProductFormPage />} />
           <Route path="products" element={<SourcewizProductsPage />} />
+          <Route path="products/:id" element={<SourcewizProductDetailPage />} />
           <Route path="fms" element={<FmsHubPage />} />
           <Route path="fms/my-fms" element={<MyFmsPage />} />
           <Route path="fms/add" element={<AddFmsManagerPage />} />

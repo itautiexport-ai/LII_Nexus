@@ -879,4 +879,47 @@ export class MySqlMasterDataRepository {
       } else throw err;
     }
   }
+
+  // Factories
+  async getFactories() {
+    const [rows] = await pool.query(
+      "SELECT id, name, code, status, created_at as createdAt, updated_at as updatedAt FROM factories WHERE deleted_at IS NULL ORDER BY name ASC"
+    );
+    return rows;
+  }
+
+  async createFactory(name: string, code?: string) {
+    const id = uuid();
+    await pool.query(
+      "INSERT INTO factories (id, name, code, status) VALUES (?, ?, ?, 'active')",
+      [id, name.trim(), (code || name.trim().toUpperCase().replace(/\s+/g, "_")).trim()]
+    );
+    const [rows]: any = await pool.query(
+      "SELECT id, name, code, status, created_at as createdAt, updated_at as updatedAt FROM factories WHERE id = ?",
+      [id]
+    );
+    return rows[0];
+  }
+
+  async updateFactory(id: string, name: string, code?: string, status: string = "active") {
+    await pool.query(
+      "UPDATE factories SET name = ?, code = ?, status = ? WHERE id = ?",
+      [name.trim(), (code || "").trim(), status === "inactive" ? "inactive" : "active", id]
+    );
+    const [rows]: any = await pool.query(
+      "SELECT id, name, code, status, created_at as createdAt, updated_at as updatedAt FROM factories WHERE id = ?",
+      [id]
+    );
+    return rows[0];
+  }
+
+  async deleteFactory(id: string) {
+    try {
+      await pool.query("DELETE FROM factories WHERE id = ?", [id]);
+    } catch (err: any) {
+      if (err.code === "ER_ROW_IS_REFERENCED_2") {
+        await pool.query("UPDATE factories SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+      } else throw err;
+    }
+  }
 }
