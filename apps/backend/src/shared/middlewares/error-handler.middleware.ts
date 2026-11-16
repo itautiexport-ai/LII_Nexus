@@ -4,6 +4,12 @@ import { DomainError } from "../../core/domain/errors/DomainError";
 import { logger } from "../../infrastructure/logging/logger";
 
 export function errorHandlerMiddleware(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  if ((err as any)?.type === "entity.too.large") {
+    return res.status(413).json({
+      success: false, data: null, meta: null,
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Form is too large. Upload product images separately and save only their URLs.", details: null },
+    });
+  }
   if (err instanceof DomainError) {
     if (err.statusCode >= 500) {
       logger.error(err.message, { requestId: (req as any).requestId, stack: err.stack });

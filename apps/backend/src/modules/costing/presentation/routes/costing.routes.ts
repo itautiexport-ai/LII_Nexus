@@ -2,11 +2,13 @@ import { Router } from "express";
 import { CostingController } from "../controllers/CostingController";
 import { authMiddleware } from "../../../../shared/middlewares/auth.middleware";
 import { asyncHandler } from "../../../../shared/utils/asyncHandler";
+import costingImageRoutes from "./costingImage.routes";
 
 const router = Router();
 const controller = new CostingController();
 
 router.use(authMiddleware);
+router.use(costingImageRoutes);
 router.get('/approval-authorities', asyncHandler(controller.getApprovalAuthorities));
 
 router.get("/summary", asyncHandler(controller.getSummary));

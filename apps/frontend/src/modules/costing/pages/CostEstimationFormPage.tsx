@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getAssetUrl } from "../../../shared/utils/urlHelper";
 import {
   ALL_COMMON_WOOD_PARTS_AND_FRAMES,
   costingApi,
@@ -545,6 +546,25 @@ export default function CostEstimationFormPage() {
   const [notes, setNotes] = useState("");
   const [woodWastagePct, setWoodWastagePct] = useState(20);
   const [imageUrl, setImageUrl] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState("");
+
+  const costingErrorMessage = (error: any) => error?.response?.data?.error?.message
+    || (error?.response?.status === 413 ? "Image upload exceeds the server limit. Please choose a smaller image." : "")
+    || error?.message || "Unable to save costing. Please try again.";
+
+  const uploadProductImage = async (file: File) => {
+    setImageUploading(true);
+    setImageUploadError("");
+    try {
+      const url = await costingApi.uploadImage(file);
+      setImageUrl(url);
+    } catch (error) {
+      setImageUploadError(costingErrorMessage(error));
+    } finally {
+      setImageUploading(false);
+    }
+  };
 
   // Send for Approval Modal State
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -1509,6 +1529,11 @@ export default function CostEstimationFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || imageUploading) return;
+    if (imageUploadError) {
+      alert("Upload the product image again, or remove it before saving.");
+      return;
+    }
     const finalProdName = productName || title;
     if (!finalProdName.trim()) {
       alert("Please enter product name");
@@ -1729,6 +1754,13 @@ export default function CostEstimationFormPage() {
 
     setLoading(true);
     try {
+      // Preserve old embedded photos; convert only this edited record on save.
+      if (imageUrl.startsWith("data:image/")) {
+        const blob = await (await fetch(imageUrl)).blob();
+        const url = await costingApi.uploadImage(blob);
+        setImageUrl(url);
+        payload.form_data = JSON.stringify({ ...formDataObj, imageUrl: url });
+      }
       let savedId = id;
       if (isEdit && id) {
         await costingApi.updateEstimation(id, payload);
@@ -1739,7 +1771,7 @@ export default function CostEstimationFormPage() {
       setSavedEstimationId(savedId || "");
       setShowApprovalModal(true);
     } catch (err) {
-      alert("Failed to save estimation");
+      alert(costingErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -1894,13 +1926,13 @@ export default function CostEstimationFormPage() {
             {imageUrl ? (
               <div style={{ position: "relative", width: "100%", maxHeight: "260px", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", background: "#f8fafc", textAlign: "center", padding: 12 }}>
                 <img
-                  src={imageUrl}
+                  src={getAssetUrl(imageUrl)}
                   alt="Product Preview"
                   style={{ maxHeight: "230px", maxWidth: "100%", objectFit: "contain", borderRadius: 6, display: "block", margin: "0 auto" }}
                 />
                 <button
                   type="button"
-                  onClick={() => setImageUrl("")}
+                  onClick={() => { setImageUrl(""); setImageUploadError(""); }}
                   style={{
                     position: "absolute",
                     top: 14,
@@ -1945,19 +1977,19 @@ export default function CostEstimationFormPage() {
                   type="file"
                   accept="image/*"
                   style={{ display: "none" }}
+                  disabled={imageUploading || loading}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setImageUrl(reader.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }
+                    if (file) void uploadProductImage(file);
+                    e.target.value = "";
                   }}
                 />
               </label>
             )}
+            {imageUploading && <p role="status">Uploading product image…</p>}
+            {imageUploadError && <div role="alert" style={{ color: "#dc2626", marginTop: 8 }}>
+              {imageUploadError} <button type="button" onClick={() => setImageUploadError("")}>Continue without image</button>
+            </div>}
           </div>
           <div
             data-no-enhance="true"
@@ -4293,7 +4325,7 @@ export default function CostEstimationFormPage() {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || imageUploading}
             style={{
               padding: "10px 24px",
               background: "#2563eb",

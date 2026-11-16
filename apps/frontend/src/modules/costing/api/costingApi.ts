@@ -537,6 +537,13 @@ export interface CostRateMaster {
 }
 
 export const costingApi = {
+  uploadImage: async (file: Blob): Promise<string> => {
+    if (file.size > 10 * 1024 * 1024) throw new Error("Product image must be 10 MB or smaller.");
+    const data = new FormData();
+    data.append("file", file, "product-image");
+    const res = await axiosInstance.post("/costing/images", data);
+    return res.data.data.url;
+  },
   getSummary: async () => {
     const res = await axiosInstance.get("/costing/summary");
     return res.data.data;
