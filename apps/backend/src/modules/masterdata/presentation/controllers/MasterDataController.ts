@@ -378,4 +378,30 @@ export class MasterDataController {
     await this.service.deleteMdfPrice(req.params.id);
     res.json({ success: true });
   }
+
+  // Factories
+  async getFactories(_req: Request, res: Response) {
+    const data = await this.service.getFactories();
+    res.json({ success: true, data });
+  }
+
+  async createFactory(req: Request, res: Response) {
+    const data = await this.service.createFactory(req.body.name, req.body.code);
+    res.json({ success: true, data });
+  }
+
+  async updateFactory(req: Request, res: Response) {
+    const data = await this.service.updateFactory(
+      req.params.id,
+      req.body.name,
+      req.body.code,
+      req.body.status
+    );
+    res.json({ success: true, data });
+  }
+
+  async deleteFactory(req: Request, res: Response) {
+    await this.service.deleteFactory(req.params.id);
+    res.json({ success: true });
+  }
 }

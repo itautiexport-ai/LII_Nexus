@@ -72,6 +72,7 @@ export default function HardwareAccessoriesPage() {
   const [items, setItems] = useState<HardwareAccessory[]>([]);
   const [itemCode, setItemCode] = useState("");
   const [itemName, setItemName] = useState("");
+  const [uom, setUom] = useState("Per Piece");
   const [rate, setRate] = useState<number | "">("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -107,6 +108,7 @@ export default function HardwareAccessoriesPage() {
     setError(null);
     const cleanCode = itemCode.trim();
     const cleanName = itemName.trim();
+    const cleanUom = (uom || "Pcs").trim();
     const cleanRate = Number(rate) || 0;
 
     try {
@@ -114,6 +116,7 @@ export default function HardwareAccessoriesPage() {
         const payload = {
           itemCode: cleanCode,
           itemName: cleanName,
+          uom: cleanUom,
           rate: cleanRate,
         };
         try {
@@ -123,7 +126,7 @@ export default function HardwareAccessoriesPage() {
         }
         const updated = items.map((row) =>
           row.id === editingId
-            ? { ...row, itemCode: cleanCode, itemName: cleanName, rate: cleanRate }
+            ? { ...row, itemCode: cleanCode, itemName: cleanName, uom: cleanUom, rate: cleanRate }
             : row
         );
         saveToStorage(updated);
@@ -137,7 +140,7 @@ export default function HardwareAccessoriesPage() {
           category: "Hardware",
           sizeSpec: "",
           materialFinish: "",
-          uom: "Pc",
+          uom: cleanUom,
           rate: cleanRate,
           status: "active",
         };
@@ -146,6 +149,7 @@ export default function HardwareAccessoriesPage() {
             id: tempId,
             itemCode: cleanCode,
             itemName: cleanName,
+            uom: cleanUom,
             rate: cleanRate,
           });
         } catch (err) {
@@ -155,6 +159,7 @@ export default function HardwareAccessoriesPage() {
       }
       setItemCode("");
       setItemName("");
+      setUom("Per Piece");
       setRate("");
     } catch (err: any) {
       setError(err?.message || `Failed to ${editingId ? "update" : "add"} Hardware.`);
@@ -167,6 +172,7 @@ export default function HardwareAccessoriesPage() {
     setEditingId(item.id);
     setItemCode(item.itemCode || "");
     setItemName(item.itemName || "");
+    setUom(item.uom || "Per Piece");
     setRate(item.rate ?? 0);
     setError(null);
   }
@@ -175,6 +181,7 @@ export default function HardwareAccessoriesPage() {
     setEditingId(null);
     setItemCode("");
     setItemName("");
+    setUom("Per Piece");
     setRate("");
     setError(null);
   }
@@ -278,9 +285,46 @@ export default function HardwareAccessoriesPage() {
             />
           </div>
 
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160, flex: 0.9 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+              UOM (Unit)
+            </label>
+            <select
+              value={uom}
+              onChange={(e) => setUom(e.target.value)}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "9px 12px",
+                border: "1px solid #cbd5e1",
+                borderRadius: 6,
+                fontSize: 14,
+                background: "#ffffff",
+                color: "#111827",
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              <option value="Per Piece">Per Piece</option>
+              <option value="Per Meter">Per Meter</option>
+              <option value="Per Pcs">Per Pcs</option>
+              <option value="Per Kg">Per Kg</option>
+              <option value="Per Set">Per Set</option>
+              <option value="Per Roll">Per Roll</option>
+              <option value="Per Feet">Per Feet</option>
+              <option value="Per Inch">Per Inch</option>
+              <option value="Per Pair">Per Pair</option>
+              <option value="Per Sheet">Per Sheet</option>
+              <option value="Per Packet">Per Packet</option>
+              {!["Per Piece", "Per Meter", "Per Pcs", "Per Kg", "Per Set", "Per Roll", "Per Feet", "Per Inch", "Per Pair", "Per Sheet", "Per Packet"].includes(uom) && uom && (
+                <option value={uom}>{uom}</option>
+              )}
+            </select>
+          </div>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 150, flex: 1 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-              Price
+              Price (₹ / {uom || "Unit"})
             </label>
             <input
               type="number"
@@ -360,6 +404,9 @@ export default function HardwareAccessoriesPage() {
                 Hardware Name
               </th>
               <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                UOM
+              </th>
+              <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#374151" }}>
                 Price
               </th>
               <th style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#374151", width: 140 }}>
@@ -370,13 +417,13 @@ export default function HardwareAccessoriesPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>
+                <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>
                   Loading...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>
+                <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>
                   No Hardware items added yet.
                 </td>
               </tr>
@@ -389,11 +436,19 @@ export default function HardwareAccessoriesPage() {
                   <td style={{ padding: "12px 16px", fontSize: 14, color: "#0f172a", fontWeight: 500 }}>
                     {item.itemName}
                   </td>
+                  <td style={{ padding: "12px 16px", fontSize: 14, color: "#2563eb", fontWeight: 600 }}>
+                    <span style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "2px 8px", borderRadius: 4, fontSize: 12 }}>
+                      {item.uom || "Pcs"}
+                    </span>
+                  </td>
                   <td style={{ padding: "12px 16px", fontSize: 14, color: "#0f172a", fontWeight: 600 }}>
                     ₹{Number(item.rate || 0).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
+                    <span style={{ fontSize: 12, color: "#64748b", fontWeight: 400, marginLeft: 4 }}>
+                      / {item.uom || "Pcs"}
+                    </span>
                   </td>
                   <td style={{ padding: "12px 16px", display: "flex", gap: 12 }}>
                     <button

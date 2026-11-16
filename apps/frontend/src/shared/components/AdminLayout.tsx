@@ -50,6 +50,7 @@ export const SECTIONS: NavSection[] = [
           },
           { label: "Departments", to: "/admin/departments" },
           { label: "Designations", to: "/admin/designations" },
+          { label: "Factories", to: "/admin/factories" },
           { label: "Shifts", to: "/admin/shifts" },
           { label: "Wood Types", to: "/admin/wood-types" },
           { label: "Priorities", to: "/admin/priorities" },
@@ -75,6 +76,7 @@ export const SECTIONS: NavSection[] = [
     allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin", "HR", "Supervisor"],
     items: [
       { label: "Document Library", to: "/admin/resource-center/document-library" },
+      { label: "Factory Documents", to: "/admin/resource-center/factory-documents" },
       { label: "Formats Library",  to: "/admin/resource-center/formats-library" },
       { label: "Important URLs",   to: "/admin/resource-center/important-urls" },
       { label: "SOPs",             to: "/admin/resource-center/sops" },
@@ -133,8 +135,11 @@ export const SECTIONS: NavSection[] = [
     key: "sourcewiz",
     label: "Product Catalogue 2.0",
     items: [
+      { label: "All Products", to: "/admin/sourcewiz/products" },
+      { label: "Create Catalogue", to: "/admin/sourcewiz/create-catalogue" },
       { label: "Product Form", to: "/admin/sourcewiz/product-form" },
-      { label: "Product Catalogue", to: "/admin/sourcewiz/products" },
+      { label: "All Catalogues", to: "/admin/sourcewiz/quotations" },
+      { label: "Buyers", to: "/admin/buyers" },
     ],
   },
   {

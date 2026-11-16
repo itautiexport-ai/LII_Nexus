@@ -17,9 +17,11 @@ export type StoredCatalogueProduct = CatalogProductItem & {
   [key: string]: any;
 };
 function resolveImages(product: StoredCatalogueProduct): StoredCatalogueProduct {
-  return { ...product, image: getAssetUrl(product.image), images: product.images?.map((img) => ({
-    ...img, url: getAssetUrl(img.url), previewUrl: getAssetUrl(img.previewUrl || img.url),
-  })) };
+  return { ...product, image: getAssetUrl(product.image), images: product.images?.map((img, index) => {
+    const image = typeof img === "string" ? { id: `image-${index}`, label: "", url: img, previewUrl: img } : img;
+    return { ...image, id: image.id || `image-${index}`, label: image.label || "",
+      url: getAssetUrl(image.url), previewUrl: getAssetUrl(image.previewUrl || image.url) };
+  }) };
 }
 
 function storageImageUrl(value: string): string {

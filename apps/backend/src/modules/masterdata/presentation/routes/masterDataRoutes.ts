@@ -146,4 +146,10 @@ router.post("/ppt-front-pages", uploadCover.single("image"), asyncHandler(pptCon
 router.put("/ppt-front-pages/:id", uploadCover.single("image"), asyncHandler(pptController.updateFrontPage.bind(pptController)));
 router.delete("/ppt-front-pages/:id", asyncHandler(pptController.deleteFrontPage.bind(pptController)));
 
+// Factories Master
+router.get("/factories", asyncHandler(controller.getFactories.bind(controller)));
+router.post("/factories", asyncHandler(controller.createFactory.bind(controller)));
+router.put("/factories/:id", asyncHandler(controller.updateFactory.bind(controller)));
+router.delete("/factories/:id", asyncHandler(controller.deleteFactory.bind(controller)));
+
 export { router as masterDataRoutes };
