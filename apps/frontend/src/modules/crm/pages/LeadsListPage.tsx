@@ -123,29 +123,39 @@ export default function LeadsListPage() {
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <input placeholder="Search name, company, code, email..." value={search} onChange={(e) => { setSearch(e.target.value); }} style={{ padding: 6, minWidth: 240, border: "1px solid #ccc", borderRadius: 4 }} />
+        <div style={{ display: "flex", flexWrap: "nowrap", gap: 8, flex: "1 1 720px", minWidth: 0 }}>
+        <div style={{ flex: "1 1 0", minWidth: 0 }}>
         <select value={status} onChange={(e) => { setStatus(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
           <option value="">All statuses</option>
           <option value="active">Active</option><option value="won">Won</option><option value="lost">Lost</option><option value="dead">Dead</option><option value="dormant">Dormant</option>
         </select>
+        </div>
+        <div style={{ flex: "1 1 0", minWidth: 0 }}>
         <select value={leadSource} onChange={(e) => { setLeadSource(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
           <option value="">All sources</option>
           <option value="trade_fair">Trade Fair</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option>
           <option value="website">Website</option><option value="referral">Referral</option><option value="other">Other</option>
         </select>
+        </div>
+        <div style={{ flex: "1 1 0", minWidth: 0 }}>
         <select value={leadCategory} onChange={(e) => { setLeadCategory(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
           <option value="">All categories</option>
           <option value="export">Export</option><option value="domestic">Domestic</option>
           <option value="hotel_restaurant_project">Hotel/Restaurant/Project</option>
           <option value="buyer_agent">Buyer Agent</option><option value="repeat_customer">Repeat Customer</option>
         </select>
+        </div>
         {canViewAll && (
+          <div style={{ flex: "1 1 0", minWidth: 0 }}>
           <select value={filterMerchantId} onChange={(e) => { setFilterMerchantId(e.target.value); }} style={{ padding: 6, border: "1px solid #ccc", borderRadius: 4 }}>
             <option value="">All Merchants</option>
             {merchants.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
+          </div>
         )}
+        </div>
         <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
           <input type="checkbox" checked={overdueOnly} onChange={(e) => { setOverdueOnly(e.target.checked); }} /> Overdue only
         </label>
