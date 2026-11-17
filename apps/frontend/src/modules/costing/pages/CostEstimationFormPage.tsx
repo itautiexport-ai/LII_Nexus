@@ -94,6 +94,7 @@ export interface AdditionalCostItem {
 
 export interface HardwareCostItem {
   name: string;
+  uom?: string;
   quantity: number | "";
   price: number | "";
 }
@@ -926,13 +927,13 @@ export default function CostEstimationFormPage() {
   };
 
   const [hardwareItems, setHardwareItems] = useState<HardwareCostItem[]>([
-    { name: "", quantity: 1, price: 0 },
+    { name: "", uom: "Per Piece", quantity: 1, price: 0 },
   ]);
 
   const handleAddHardwareItem = () => {
     setHardwareItems([
       ...hardwareItems,
-      { name: "", quantity: 1, price: 0 },
+      { name: "", uom: "Per Piece", quantity: 1, price: 0 },
     ]);
   };
 
@@ -949,6 +950,7 @@ export default function CostEstimationFormPage() {
       const selectedName = String(value || "").trim().toLowerCase();
       if (!selectedName) {
         nextItem.price = 0;
+        nextItem.uom = "Per Piece";
       } else {
         const latestHw =
           hardwareMasterList.length > 0 ? hardwareMasterList : getLocalHardwareAccessories();
@@ -957,6 +959,7 @@ export default function CostEstimationFormPage() {
         );
         if (matched) {
           nextItem.price = Number(matched.rate) || 0;
+          nextItem.uom = matched.uom || "Per Piece";
         }
       }
     }
@@ -1417,6 +1420,7 @@ export default function CostEstimationFormPage() {
           } else if (cat === "Hardware") {
             restoredHardware.push({
               name,
+              uom: it.unit_of_measure || "Pcs",
               quantity: it.quantity || 1,
               price: it.unit_cost || 0,
             });
@@ -1697,15 +1701,16 @@ export default function CostEstimationFormPage() {
         ...hardwareItems.map((h) => {
           const q = Number(h.quantity) || 0;
           const p = Number(h.price) || 0;
+          const u = h.uom || "Pcs";
           const totalAmt = q * p;
           return {
             category: "Hardware" as const,
             item_name: h.name || "Hardware Item",
-            specification: `Qty: ${q}, Price: ₹${p.toFixed(2)}`,
+            specification: `Qty: ${q} ${u}, Rate: ₹${p.toFixed(2)} / ${u}`,
             quantity: q,
-            unit_of_measure: "Pcs",
+            unit_of_measure: u,
             unit_cost: p,
-            remarks: `Total Amount: ₹${totalAmt.toFixed(2)}`,
+            remarks: `Total Amount: ₹${totalAmt.toFixed(2)} (${q} ${u} @ ₹${p.toFixed(2)}/${u})`,
           };
         }),
         ...upholsteryItems.map((u) => {
@@ -1771,12 +1776,12 @@ export default function CostEstimationFormPage() {
         }),
         {
           category: "Overhead" as const,
-          item_name: `Expenses (${summaryExpensesPct}%)`,
-          specification: `${summaryExpensesPct}% on Direct Subtotal + Polish + Packaging & Forwarding (₹${((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount() + computePolishTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())).toFixed(2)})`,
+          item_name: `Expenses (${expensesPct}%)`,
+          specification: `${expensesPct}% on Direct Costs (Wood + Metal + Hardware + Upholstery + Additional + Labour: ₹${(computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()).toFixed(2)})`,
           quantity: 1,
           unit_of_measure: "Pcs",
-          unit_cost: (((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount() + computePolishTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100,
-          remarks: `Expenses (${summaryExpensesPct}%): ₹${((((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount() + computePolishTotalAmount()) + (computePackagingTotalAmount() + computeForwardingTotalAmount())) * (Number(summaryExpensesPct) || 0)) / 100).toFixed(2)}`,
+          unit_cost: ((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) * (Number(expensesPct) || 0)) / 100,
+          remarks: `Expenses (${expensesPct}%): ₹${(((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) * (Number(expensesPct) || 0)) / 100).toFixed(2)}`,
         },
         ...otherExpenseItems.map((e) => {
           const amt = Number(e.amount) || 0;
@@ -2855,9 +2860,10 @@ export default function CostEstimationFormPage() {
               <thead>
                 <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
                   <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Name of Hardware</th>
-                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Quantity</th>
-                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Price</th>
-                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280" }}>Total Amount</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "115px" }}>UOM</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "110px" }}>Quantity</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "130px" }}>Price (₹ / UOM)</th>
+                  <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "130px" }}>Total Amount</th>
                   <th style={{ padding: "10px 12px", fontSize: 12, color: "#6b7280", width: "60px" }}>Action</th>
                 </tr>
               </thead>
@@ -2901,7 +2907,7 @@ export default function CostEstimationFormPage() {
                                 seenLower.add(key);
                                 options.push({
                                   value: name,
-                                  label: hw.itemCode ? `${name} (${hw.itemCode})` : name,
+                                  label: `${name}${hw.itemCode ? ` (${hw.itemCode})` : ""} - ₹${Number(hw.rate || 0).toFixed(2)} / ${hw.uom || "Pcs"}`,
                                 });
                               });
                             if (item.name && !seenLower.has(item.name.trim().toLowerCase())) {
@@ -2919,6 +2925,40 @@ export default function CostEstimationFormPage() {
                         </select>
                       </td>
 
+                      <td style={{ padding: "8px 12px", width: "135px" }}>
+                        <select
+                          value={item.uom || "Per Piece"}
+                          onChange={(e) => handleHardwareItemChange(idx, "uom", e.target.value)}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 8px",
+                            fontSize: 13,
+                            border: "1px solid #bfdbfe",
+                            borderRadius: 4,
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="Per Piece">Per Piece</option>
+                          <option value="Per Meter">Per Meter</option>
+                          <option value="Per Pcs">Per Pcs</option>
+                          <option value="Per Kg">Per Kg</option>
+                          <option value="Per Set">Per Set</option>
+                          <option value="Per Roll">Per Roll</option>
+                          <option value="Per Feet">Per Feet</option>
+                          <option value="Per Inch">Per Inch</option>
+                          <option value="Per Pair">Per Pair</option>
+                          <option value="Per Sheet">Per Sheet</option>
+                          <option value="Per Packet">Per Packet</option>
+                          {!["Per Piece", "Per Meter", "Per Pcs", "Per Kg", "Per Set", "Per Roll", "Per Feet", "Per Inch", "Per Pair", "Per Sheet", "Per Packet"].includes(item.uom || "") && item.uom && (
+                            <option value={item.uom}>{item.uom}</option>
+                          )}
+                        </select>
+                      </td>
+
                       <td style={{ padding: "8px 12px", width: "110px" }}>
                         <input
                           type="number"
@@ -2930,7 +2970,7 @@ export default function CostEstimationFormPage() {
                         />
                       </td>
 
-                      <td style={{ padding: "8px 12px", width: "120px" }}>
+                      <td style={{ padding: "8px 12px", width: "130px" }}>
                         <input
                           type="number"
                           step="0.01"
@@ -2939,9 +2979,12 @@ export default function CostEstimationFormPage() {
                           onChange={(e) => handleHardwareItemChange(idx, "price", e.target.value)}
                           style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 4, fontWeight: 600, color: "#111827" }}
                         />
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                          ₹ / {item.uom || "Pcs"}
+                        </div>
                       </td>
 
-                      <td style={{ padding: "8px 12px", fontWeight: 600, color: "#111827", width: "130px" }}>
+                      <td style={{ padding: "8px 12px", fontWeight: 700, color: "#111827", width: "130px" }}>
                         ₹{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
 
@@ -2966,7 +3009,7 @@ export default function CostEstimationFormPage() {
               </tbody>
               <tfoot>
                 <tr style={{ background: "#f8fafc", borderTop: "2px solid #cbd5e1" }}>
-                  <td colSpan={3} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
+                  <td colSpan={4} style={{ padding: "12px", textAlign: "right", fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
                     Total Hardware Amount:
                   </td>
                   <td style={{ padding: "12px", fontWeight: 800, fontSize: 15, color: "#2563eb" }}>
@@ -4123,17 +4166,20 @@ export default function CostEstimationFormPage() {
           const packagingTotal = computePackagingTotalAmount();
           const forwardingTotal = computeForwardingTotalAmount();
 
-          const directSubtotal =
+          const rawDirectSubtotal =
             woodTotal + metalTotal + hardwareTotal + upholsteryTotal + additionalTotal + labourTotal;
           const totalPackagingAndForwarding = packagingTotal + forwardingTotal;
 
-          // Expenses in Blue Summary Card is calculated on (Direct Subtotal + Polish Cost + Packaging + Forwarding)
-          const summaryBase = directSubtotal + polishTotal + totalPackagingAndForwarding;
-          const calculatedSummaryExpensesAmt = (summaryBase * (Number(summaryExpensesPct) || 0)) / 100;
+          // 15% (or configured expensesPct) Expenses calculated on Direct Costs (matching Section 8)
+          const section8ExpensesAmt = (rawDirectSubtotal * (Number(expensesPct) || 0)) / 100;
           const otherExpensesAmt = computeOtherExpensesTotalAmount();
-          const totalSummaryExpenses = calculatedSummaryExpensesAmt + otherExpensesAmt;
+          const totalSummaryExpenses = section8ExpensesAmt + otherExpensesAmt;
 
-          const totalCostBeforeProfit = summaryBase + totalSummaryExpenses;
+          // Direct Subtotal after adding 15% expenses (from Section 8)
+          const costAfterExpenses = rawDirectSubtotal + totalSummaryExpenses;
+
+          // Total Cost Before Profit = Direct Cost (with Expenses) + Polish + Packaging & Forwarding
+          const totalCostBeforeProfit = costAfterExpenses + polishTotal + totalPackagingAndForwarding;
           const profitAmt = (totalCostBeforeProfit * (Number(marginPercentage) || 0)) / 100;
           const grandTotal = totalCostBeforeProfit + profitAmt;
 
@@ -4194,15 +4240,20 @@ export default function CostEstimationFormPage() {
                   <div style={{ fontSize: 14, fontWeight: 700 }}>₹{forwardingTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
                 <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 10, border: "1px solid rgba(254,240,138,0.3)" }}>
-                  <div style={{ fontSize: 11, opacity: 0.9, marginBottom: 2, color: "#fef08a" }}>Expenses ({summaryExpensesPct}%)</div>
+                  <div style={{ fontSize: 11, opacity: 0.9, marginBottom: 2, color: "#fef08a" }}>Expenses ({expensesPct}%)</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#fef08a" }}>₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
               </div>
 
-              {/* Direct Subtotal Row */}
+              {/* Direct Subtotal Row: Shows Amount with 15% Expenses included */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.12)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour):</span>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>₹{directSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour + {expensesPct}% Expenses):</span>
+                  <span style={{ fontSize: 11, opacity: 0.8, display: "block", marginTop: 2 }}>
+                    Direct Costs: ₹{rawDirectSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + {expensesPct}% Expenses: ₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 800, color: "#ffffff" }}>₹{costAfterExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
               {/* Polish & Finishing Summary Row */}
@@ -4219,8 +4270,8 @@ export default function CostEstimationFormPage() {
 
               {/* Base for Summary Expenses calculation */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.15)", borderRadius: 6, padding: "8px 16px", marginBottom: 14, fontSize: 12, color: "#cbd5e1" }}>
-                <span>Base for Expenses Calculation (Direct + Polish + Packaging + Forwarding):</span>
-                <span style={{ fontWeight: 700, color: "#ffffff" }}>₹{summaryBase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>Total Production & Freight Cost Before Profit (Direct with Expenses + Polish + Packaging + Forwarding):</span>
+                <span style={{ fontWeight: 700, color: "#ffffff" }}>₹{totalCostBeforeProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
               {/* Expenses % & Profit Margin % Input Section */}
@@ -4230,15 +4281,19 @@ export default function CostEstimationFormPage() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <div>
                       <label style={{ fontSize: 13, fontWeight: 600, display: "block" }}>Expenses Rate (%)</label>
-                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Calculated on Direct + Polish + Pack + Forward)</span>
+                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Calculated on Direct Production Cost: Wood + Metal + HW + Uph + Add + Labour)</span>
                     </div>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <input
                         type="number"
                         step="0.5"
                         min="0"
-                        value={summaryExpensesPct}
-                        onChange={(e) => setSummaryExpensesPct(Number(e.target.value))}
+                        value={expensesPct}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setExpensesPct(val);
+                          setSummaryExpensesPct(val);
+                        }}
                         style={{ width: "65px", padding: "4px 6px", fontSize: 13, border: "none", borderRadius: 4, textAlign: "center", fontWeight: 700, color: "#1e3a8a", background: "#ffffff" }}
                       />
                       <span style={{ fontSize: 13, fontWeight: 700 }}>%</span>
