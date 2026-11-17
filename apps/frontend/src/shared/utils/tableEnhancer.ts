@@ -11,6 +11,37 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = TABLE_STYLE_ID;
   style.textContent = `
+    .table-pinned-region {
+      overflow: visible !important;
+      max-height: none !important;
+    }
+    .table-responsive-wrapper.table-pinned-scroll {
+      overflow: auto;
+      max-height: min(72vh, var(--table-available-height, 72vh));
+      isolation: isolate;
+    }
+    .table-pinned-scroll > .table-filter-bar {
+      position: sticky;
+      top: 0;
+      left: 0;
+      z-index: 60;
+      width: var(--table-visible-width, 100%);
+      margin-bottom: 0;
+    }
+    .table-pinned-scroll > table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .table-pinned-scroll > table > thead > tr > th,
+    .table-pinned-scroll > table > thead > tr > td {
+      position: sticky !important;
+      top: var(--table-header-offset, 0px) !important;
+      z-index: 40;
+      background-color: #e2e8f0;
+    }
+    .table-pinned-scroll > table > thead > tr > [style*="left:"] {
+      z-index: 50 !important;
+    }
     .table-filter-bar {
       display: flex;
       flex-wrap: wrap;
@@ -242,6 +273,8 @@ class TableFilterEnhancer {
   infoLabel: HTMLDivElement | null = null;
   mobileToggleBtn: HTMLButtonElement | null = null;
   badgeEl: HTMLSpanElement | null = null;
+  stickyResizeObserver: ResizeObserver | null = null;
+  stickyLayoutCleanup: (() => void) | null = null;
 
   constructor(table: HTMLTableElement) {
     this.table = table as EnhancedHTMLTableElement;
@@ -253,6 +286,7 @@ class TableFilterEnhancer {
     if (this.headers.length === 0 || !this.tbody) return;
 
     this.createFilterBar();
+    this.pinFiltersAndHeaders();
 
     this.observer = new MutationObserver(() => {
       this.observer?.disconnect();
@@ -463,6 +497,53 @@ class TableFilterEnhancer {
       ? this.table.parentElement
       : this.table;
     targetParent.parentNode?.insertBefore(this.filterBar, targetParent);
+  }
+
+  pinFiltersAndHeaders() {
+    const wrapper = this.table.parentElement;
+    if (!wrapper || !this.filterBar || !this.table.tHead) return;
+
+    // Keep filters and every header row in the same scroll coordinate system.
+    // A second nested scroll box would allow the filters to disappear.
+    wrapper.classList.add("table-pinned-scroll");
+    wrapper.prepend(this.filterBar);
+    const parent = wrapper.parentElement;
+    const parentScrolls = parent && ["auto", "scroll"].includes(getComputedStyle(parent).overflowY);
+    if (parentScrolls) {
+      parent.classList.add("table-pinned-region");
+    }
+
+    const update = () => {
+      if (!wrapper.isConnected || !this.filterBar) return;
+      const setVariable = (element: HTMLElement, name: string, value: string) => {
+        if (element.style.getPropertyValue(name) !== value) element.style.setProperty(name, value);
+      };
+      setVariable(wrapper, "--table-visible-width", `${wrapper.clientWidth}px`);
+      setVariable(wrapper, "--table-available-height", `${Math.max(240, window.innerHeight - Math.max(0, wrapper.getBoundingClientRect().top) - 24)}px`);
+      let offset = this.filterBar.getBoundingClientRect().height;
+      for (const row of Array.from(this.table.tHead!.rows)) {
+        for (const cell of Array.from(row.cells)) {
+          setVariable(cell, "--table-header-offset", `${offset}px`);
+        }
+        offset += row.getBoundingClientRect().height;
+      }
+    };
+    if (typeof ResizeObserver !== "undefined") {
+      this.stickyResizeObserver = new ResizeObserver(update);
+      this.stickyResizeObserver.observe(wrapper);
+      this.stickyResizeObserver.observe(this.filterBar);
+      this.stickyResizeObserver.observe(this.table.tHead);
+      for (const row of Array.from(this.table.tHead.rows)) this.stickyResizeObserver.observe(row);
+    }
+    window.addEventListener("resize", update);
+    update();
+    this.stickyLayoutCleanup = () => {
+      window.removeEventListener("resize", update);
+      wrapper.classList.remove("table-pinned-scroll");
+      if (parentScrolls && parent) {
+        parent.classList.remove("table-pinned-region");
+      }
+    };
   }
 
   updateFilterBarOptions() {
@@ -847,6 +928,8 @@ class TableFilterEnhancer {
 
   destroy() {
     this.observer?.disconnect();
+    this.stickyResizeObserver?.disconnect();
+    this.stickyLayoutCleanup?.();
     
     if (this.filterBar && this.filterBar.parentNode) {
       this.filterBar.parentNode.removeChild(this.filterBar);

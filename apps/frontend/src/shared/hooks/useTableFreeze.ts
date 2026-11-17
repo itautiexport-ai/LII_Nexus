@@ -12,6 +12,7 @@ export interface UseTableFreezeOptions {
   availableColumns?: ColumnDefinition[];
   columnWidths?: number[];
   defaultSettings?: Partial<TableFreezeSettings>;
+  minimumFreezeColumns?: number;
 }
 
 export function useTableFreeze({
@@ -19,6 +20,7 @@ export function useTableFreeze({
   availableColumns = [],
   columnWidths = [],
   defaultSettings,
+  minimumFreezeColumns = 0,
 }: UseTableFreezeOptions) {
   const [settings, setSettings] = useState<TableFreezeSettings>({
     tableKey,
@@ -57,11 +59,11 @@ export function useTableFreeze({
     if (settings.freezeColumnKey && availableColumns.length > 0) {
       const idx = availableColumns.findIndex((c) => c.key === settings.freezeColumnKey);
       if (idx !== -1) {
-        return idx + 1;
+        return Math.max(minimumFreezeColumns, idx + 1);
       }
     }
-    return Math.max(0, settings.freezeColumns || 0);
-  }, [settings.freezeColumns, settings.freezeColumnKey, availableColumns]);
+    return Math.max(minimumFreezeColumns, settings.freezeColumns || 0);
+  }, [settings.freezeColumns, settings.freezeColumnKey, availableColumns, minimumFreezeColumns]);
 
   // Calculate cumulative left offsets for frozen columns
   const columnOffsets = useMemo(() => {

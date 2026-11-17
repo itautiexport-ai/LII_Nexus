@@ -50,6 +50,7 @@ export function FmsGridViewPage() {
   } = useTableFreeze({
     tableKey: "fms_grid",
     availableColumns,
+    minimumFreezeColumns: isSystemAdmin ? 3 : 2,
     defaultSettings: {
       freezeColumns: 0,
       freezeHeader: true,
