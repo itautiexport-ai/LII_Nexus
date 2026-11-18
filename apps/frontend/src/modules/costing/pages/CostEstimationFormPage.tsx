@@ -537,7 +537,7 @@ export default function CostEstimationFormPage() {
   const [exchangeRate, setExchangeRate] = useState(1.0);
   const [marginPercentage, setMarginPercentage] = useState(26);
   const [taxPercentage, setTaxPercentage] = useState(18);
-  const [expensesPct, setExpensesPct] = useState(15);
+  const [expensesPct, setExpensesPct] = useState(20);
   const [summaryExpensesPct, setSummaryExpensesPct] = useState(20);
   const [usdExchangeRate, setUsdExchangeRate] = useState<number | "">(() => getLocalUsdRate());
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
@@ -1712,12 +1712,45 @@ export default function CostEstimationFormPage() {
         }),
         {
           category: "Overhead" as const,
-          item_name: `Expenses (${expensesPct}%)`,
-          specification: `${expensesPct}% on Direct Costs (Wood + Metal + Hardware + Upholstery + Additional + Labour: ₹${(computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()).toFixed(2)})`,
+          item_name: `Expenses (${summaryExpensesPct}%)`,
+          specification: `${summaryExpensesPct}% on Total Cost (Direct Subtotal + Polish + Packaging & Forwarding: ₹${(
+            computeWoodTotalAmount() +
+            computeMetalTotalAmount() +
+            computeHardwareTotalAmount() +
+            computeUpholsteryTotalAmount() +
+            computeAdditionalTotalAmount() +
+            computeLabourTotalAmount() +
+            computePolishTotalAmount() +
+            computePackagingTotalAmount() +
+            computeForwardingTotalAmount()
+          ).toFixed(2)})`,
           quantity: 1,
           unit_of_measure: "Pcs",
-          unit_cost: ((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) * (Number(expensesPct) || 0)) / 100,
-          remarks: `Expenses (${expensesPct}%): ₹${(((computeWoodTotalAmount() + computeMetalTotalAmount() + computeHardwareTotalAmount() + computeUpholsteryTotalAmount() + computeAdditionalTotalAmount() + computeLabourTotalAmount()) * (Number(expensesPct) || 0)) / 100).toFixed(2)}`,
+          unit_cost:
+            ((computeWoodTotalAmount() +
+              computeMetalTotalAmount() +
+              computeHardwareTotalAmount() +
+              computeUpholsteryTotalAmount() +
+              computeAdditionalTotalAmount() +
+              computeLabourTotalAmount() +
+              computePolishTotalAmount() +
+              computePackagingTotalAmount() +
+              computeForwardingTotalAmount()) *
+              (Number(summaryExpensesPct) || 0)) /
+            100,
+          remarks: `Expenses (${summaryExpensesPct}%): ₹${(
+            ((computeWoodTotalAmount() +
+              computeMetalTotalAmount() +
+              computeHardwareTotalAmount() +
+              computeUpholsteryTotalAmount() +
+              computeAdditionalTotalAmount() +
+              computeLabourTotalAmount() +
+              computePolishTotalAmount() +
+              computePackagingTotalAmount() +
+              computeForwardingTotalAmount()) *
+              (Number(summaryExpensesPct) || 0)) /
+            100
+          ).toFixed(2)}`,
         },
         ...otherExpenseItems.map((e) => {
           const amt = Number(e.amount) || 0;
@@ -4114,22 +4147,30 @@ export default function CostEstimationFormPage() {
           const packagingTotal = computePackagingTotalAmount();
           const forwardingTotal = computeForwardingTotalAmount();
 
+          // 1. Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour)
           const rawDirectSubtotal =
             woodTotal + metalTotal + hardwareTotal + upholsteryTotal + additionalTotal + labourTotal;
+
+          // 2. Polish & Finishing Cost Total (polishTotal)
+          // 3. Packaging & Forwarding Costs Total
           const totalPackagingAndForwarding = packagingTotal + forwardingTotal;
 
-          // 15% (or configured expensesPct) Expenses calculated on Direct Costs (matching Section 8)
-          const section8ExpensesAmt = (rawDirectSubtotal * (Number(expensesPct) || 0)) / 100;
+          // 4. Total Cost Before Expenses = Direct Costs Subtotal + Polish & Finishing + Packaging & Forwarding
+          const totalCostBeforeExpenses = rawDirectSubtotal + polishTotal + totalPackagingAndForwarding;
+
+          // 5. Expenses Rate (%) applied on this Total Cost Before Expenses (default 20%)
           const otherExpensesAmt = computeOtherExpensesTotalAmount();
-          const totalSummaryExpenses = section8ExpensesAmt + otherExpensesAmt;
+          const calculatedExpensesAmt = (totalCostBeforeExpenses * (Number(summaryExpensesPct) || 0)) / 100;
+          const totalSummaryExpenses = calculatedExpensesAmt + otherExpensesAmt;
 
-          // Direct Subtotal after adding 15% expenses (from Section 8)
-          const costAfterExpenses = rawDirectSubtotal + totalSummaryExpenses;
+          // 6. Total Cost After Expenses = Total Cost Before Expenses + Expenses Amount
+          const totalAfterExpenses = totalCostBeforeExpenses + totalSummaryExpenses;
 
-          // Total Cost Before Profit = Direct Cost (with Expenses) + Polish + Packaging & Forwarding
-          const totalCostBeforeProfit = costAfterExpenses + polishTotal + totalPackagingAndForwarding;
-          const profitAmt = (totalCostBeforeProfit * (Number(marginPercentage) || 0)) / 100;
-          const grandTotal = totalCostBeforeProfit + profitAmt;
+          // 7. Profit Margin (%) applied on Total Cost After Expenses
+          const profitAmt = (totalAfterExpenses * (Number(marginPercentage) || 0)) / 100;
+
+          // 8. Grand Total Estimated Cost (INR)
+          const grandTotal = totalAfterExpenses + profitAmt;
 
           const activeUsdRate = typeof usdExchangeRate === "number" && usdExchangeRate > 0 ? usdExchangeRate : 86.5;
           const grandTotalInUsd = grandTotal / activeUsdRate;
@@ -4188,100 +4229,110 @@ export default function CostEstimationFormPage() {
                   <div style={{ fontSize: 14, fontWeight: 700 }}>₹{forwardingTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
                 <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 10, border: "1px solid rgba(254,240,138,0.3)" }}>
-                  <div style={{ fontSize: 11, opacity: 0.9, marginBottom: 2, color: "#fef08a" }}>Expenses ({expensesPct}%)</div>
+                  <div style={{ fontSize: 11, opacity: 0.9, marginBottom: 2, color: "#fef08a" }}>Expenses ({summaryExpensesPct}%)</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#fef08a" }}>₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
               </div>
 
-              {/* Direct Subtotal Row: Shows Amount with 15% Expenses included */}
+              {/* Step 1: Direct Costs Subtotal Row */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.12)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
                 <div>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour + {expensesPct}% Expenses):</span>
-                  <span style={{ fontSize: 11, opacity: 0.8, display: "block", marginTop: 2 }}>
-                    Direct Costs: ₹{rawDirectSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + {expensesPct}% Expenses: ₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour):</span>
                 </div>
-                <span style={{ fontSize: 16, fontWeight: 800, color: "#ffffff" }}>₹{costAfterExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: "#ffffff" }}>₹{rawDirectSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
-              {/* Polish & Finishing Summary Row */}
+              {/* Step 2: Polish & Finishing Summary Row */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>Polish & Finishing Cost Total:</span>
                 <span style={{ fontSize: 15, fontWeight: 700, color: "#fed7aa" }}>+ ₹{polishTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
-              {/* Packaging & Forwarding Summary Row */}
+              {/* Step 3: Packaging & Forwarding Summary Row */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "10px 16px", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>Packaging & Forwarding Costs Total:</span>
                 <span style={{ fontSize: 15, fontWeight: 700, color: "#67e8f9" }}>+ ₹{totalPackagingAndForwarding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
-              {/* Base for Summary Expenses calculation */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.15)", borderRadius: 6, padding: "8px 16px", marginBottom: 14, fontSize: 12, color: "#cbd5e1" }}>
-                <span>Total Production & Freight Cost Before Profit (Direct with Expenses + Polish + Packaging + Forwarding):</span>
-                <span style={{ fontWeight: 700, color: "#ffffff" }}>₹{totalCostBeforeProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              {/* Step 4: Total Cost Before Expenses */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.25)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: 6, padding: "12px 16px", marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff" }}>Total Cost Before Expenses:</span>
+                  <span style={{ fontSize: 11, opacity: 0.85, display: "block", marginTop: 2, color: "#cbd5e1" }}>
+                    Direct Costs (₹{rawDirectSubtotal.toFixed(2)}) + Polish (₹{polishTotal.toFixed(2)}) + Packaging & Forwarding (₹{totalPackagingAndForwarding.toFixed(2)})
+                  </span>
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 800, color: "#ffffff" }}>₹{totalCostBeforeExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
-              {/* Expenses % & Profit Margin % Input Section */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginBottom: 18 }}>
-                {/* Expenses */}
-                <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div>
-                      <label style={{ fontSize: 13, fontWeight: 600, display: "block" }}>Expenses Rate (%)</label>
-                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Calculated on Direct Production Cost: Wood + Metal + HW + Uph + Add + Labour)</span>
-                    </div>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={expensesPct}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setExpensesPct(val);
-                          setSummaryExpensesPct(val);
-                        }}
-                        style={{ width: "65px", padding: "4px 6px", fontSize: 13, border: "none", borderRadius: 4, textAlign: "center", fontWeight: 700, color: "#1e3a8a", background: "#ffffff" }}
-                      />
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>%</span>
-                    </div>
+              {/* Step 5: Expenses Rate (%) Input Section (20%) */}
+              <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 14, marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, display: "block" }}>Expenses Rate (%)</label>
+                    <span style={{ fontSize: 11, opacity: 0.85 }}>(Calculated on Total Cost: Direct Costs + Polish + Packaging & Forwarding)</span>
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, textAlign: "right", color: "#fef08a" }}>
-                    + ₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={summaryExpensesPct}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setSummaryExpensesPct(val);
+                        setExpensesPct(val);
+                      }}
+                      style={{ width: "65px", padding: "4px 6px", fontSize: 13, border: "none", borderRadius: 4, textAlign: "center", fontWeight: 700, color: "#1e3a8a", background: "#ffffff" }}
+                    />
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>%</span>
                   </div>
                 </div>
-
-                {/* Profit Margin */}
-                <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div>
-                      <label style={{ fontSize: 13, fontWeight: 600, display: "block" }}>Profit Margin (%)</label>
-                      <span style={{ fontSize: 11, opacity: 0.8 }}>(Default is 26%)</span>
-                    </div>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={marginPercentage}
-                        onChange={(e) => setMarginPercentage(Number(e.target.value))}
-                        style={{ width: "65px", padding: "4px 6px", fontSize: 13, border: "none", borderRadius: 4, textAlign: "center", fontWeight: 700, color: "#1e3a8a", background: "#ffffff" }}
-                      />
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>%</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, textAlign: "right", color: "#86efac" }}>
-                    + ₹{profitAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
+                <div style={{ fontSize: 16, fontWeight: 800, textAlign: "right", color: "#fef08a" }}>
+                  + ₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
 
-              {/* Grand Total Row (INR) */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: "14px 20px", marginBottom: 12, border: "1px solid rgba(255,255,255,0.15)" }}>
+              {/* Step 6: Total Cost After Expenses */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(16, 185, 129, 0.22)", border: "1.5px solid rgba(52, 211, 153, 0.45)", borderRadius: 6, padding: "12px 16px", marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#ecfdf5" }}>Total Cost After Expenses:</span>
+                  <span style={{ fontSize: 11, color: "#a7f3d0", display: "block", marginTop: 2 }}>
+                    Total Before Expenses (₹{totalCostBeforeExpenses.toFixed(2)}) + {summaryExpensesPct}% Expenses (₹{totalSummaryExpenses.toFixed(2)})
+                  </span>
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 800, color: "#34d399" }}>₹{totalAfterExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+
+              {/* Step 7: Profit Margin (%) Input Section */}
+              <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, padding: 14, marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, display: "block" }}>Profit Margin (%)</label>
+                    <span style={{ fontSize: 11, opacity: 0.85 }}>(Calculated on Total Cost After Expenses — Default is 26%)</span>
+                  </div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={marginPercentage}
+                      onChange={(e) => setMarginPercentage(Number(e.target.value))}
+                      style={{ width: "65px", padding: "4px 6px", fontSize: 13, border: "none", borderRadius: 4, textAlign: "center", fontWeight: 700, color: "#1e3a8a", background: "#ffffff" }}
+                    />
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>%</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800, textAlign: "right", color: "#86efac" }}>
+                  + ₹{profitAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              {/* Step 8: Grand Total Row (INR) */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.35)", borderRadius: 8, padding: "14px 20px", marginBottom: 12, border: "1px solid rgba(255,255,255,0.2)" }}>
                 <div>
                   <span style={{ fontSize: 16, fontWeight: 700, display: "block" }}>Grand Total Estimated Cost (INR):</span>
-                  <span style={{ fontSize: 12, opacity: 0.75 }}>Total Cost Before Profit (₹{totalCostBeforeProfit.toFixed(2)}) + Profit {marginPercentage}% (₹{profitAmt.toFixed(2)})</span>
+                  <span style={{ fontSize: 12, opacity: 0.85 }}>Total Cost After Expenses (₹{totalAfterExpenses.toFixed(2)}) + Profit {marginPercentage}% (₹{profitAmt.toFixed(2)})</span>
                 </div>
                 <span style={{ fontSize: 26, fontWeight: 800, color: "#ffffff" }}>₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
