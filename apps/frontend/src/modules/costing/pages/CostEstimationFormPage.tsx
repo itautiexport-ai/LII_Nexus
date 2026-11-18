@@ -537,7 +537,7 @@ export default function CostEstimationFormPage() {
   const [exchangeRate, setExchangeRate] = useState(1.0);
   const [marginPercentage, setMarginPercentage] = useState(26);
   const [taxPercentage, setTaxPercentage] = useState(18);
-  const [expensesPct, setExpensesPct] = useState(20);
+  const [expensesPct, setExpensesPct] = useState(15);
   const [summaryExpensesPct, setSummaryExpensesPct] = useState(20);
   const [usdExchangeRate, setUsdExchangeRate] = useState<number | "">(() => getLocalUsdRate());
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
@@ -4142,13 +4142,16 @@ export default function CostEstimationFormPage() {
           const rawDirectSubtotal =
             woodTotal + metalTotal + hardwareTotal + upholsteryTotal + additionalTotal + labourTotal;
 
-          // 20% Expenses from Section 8
+          // Section 8 Expenses (default 15% via expensesPct)
           const section8ExpensesAmt = (rawDirectSubtotal * (Number(expensesPct) || 0)) / 100;
           const otherExpensesAmt = computeOtherExpensesTotalAmount();
-          const totalSummaryExpenses = section8ExpensesAmt + otherExpensesAmt;
+          const totalSection8Expenses = section8ExpensesAmt + otherExpensesAmt;
 
-          // Direct Costs Subtotal after adding Expenses (calculated in Section 8)
-          const costAfterExpenses = rawDirectSubtotal + totalSummaryExpenses;
+          // Direct Costs Subtotal after adding Section 8 Expenses (reflecting Section 8 in Row 1)
+          const costAfterExpenses = rawDirectSubtotal + totalSection8Expenses;
+
+          // Blue Box Expenses (default 20% via summaryExpensesPct)
+          const blueBoxExpensesAmt = (rawDirectSubtotal * (Number(summaryExpensesPct) || 0)) / 100;
 
           // Polish & Finishing Cost Total (polishTotal)
           // Packaging & Forwarding Costs Total
@@ -4226,7 +4229,7 @@ export default function CostEstimationFormPage() {
                 <div>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>Direct Costs Subtotal (Wood + Metal + Hardware + Upholstery + Additional + Labour + {expensesPct}% Expenses):</span>
                   <span style={{ fontSize: 11, opacity: 0.8, display: "block", marginTop: 2 }}>
-                    Direct Costs: ₹{rawDirectSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + {expensesPct}% Expenses: ₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Direct Costs: ₹{rawDirectSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + {expensesPct}% Expenses: ₹{totalSection8Expenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <span style={{ fontSize: 16, fontWeight: 800, color: "#ffffff" }}>₹{costAfterExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -4269,19 +4272,15 @@ export default function CostEstimationFormPage() {
                         type="number"
                         step="0.5"
                         min="0"
-                        value={expensesPct}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setExpensesPct(val);
-                          setSummaryExpensesPct(val);
-                        }}
+                        value={summaryExpensesPct}
+                        onChange={(e) => setSummaryExpensesPct(Number(e.target.value))}
                         style={{ width: "65px", padding: "4px 6px", fontSize: 13, border: "none", borderRadius: 4, textAlign: "center", fontWeight: 700, color: "#1e3a8a", background: "#ffffff" }}
                       />
                       <span style={{ fontSize: 13, fontWeight: 700 }}>%</span>
                     </div>
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, textAlign: "right", color: "#fef08a" }}>
-                    + ₹{totalSummaryExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    + ₹{blueBoxExpensesAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
 
