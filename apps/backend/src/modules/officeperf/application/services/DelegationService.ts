@@ -13,7 +13,80 @@ import { logger } from "../../../../infrastructure/logging/logger";
 const notificationService = new NotificationService(new MySqlNotificationRepository());
 
 export class DelegationService {
+  private lastDueDateCheck = 0;
+
   constructor(private readonly repo: IDelegationRepository, private readonly scope: EmployeeScopeService) {}
+
+  async checkAndNotifyApproachingDueDates() {
+    const now = Date.now();
+    if (now - this.lastDueDateCheck < 30000) return;
+    this.lastDueDateCheck = now;
+
+    try {
+      const [tasks] = await pool.query<any[]>(`
+        SELECT dt.id, dt.title, dt.due_date, dt.assigned_to, dt.extension_status, dt.extension_requested_date,
+               COALESCE(e.user_id, u.id) AS assignee_user_id,
+               COALESCE(e.full_name, u.full_name) AS assignee_name
+        FROM delegated_tasks dt
+        LEFT JOIN employees e ON e.id = dt.assigned_to
+        LEFT JOIN users u ON u.id = dt.assigned_to
+        WHERE dt.deleted_at IS NULL
+          AND dt.base_status != 'completed'
+          AND dt.due_date IS NOT NULL
+          AND DATEDIFF(dt.due_date, CURDATE()) <= 2
+      `);
+
+      for (const t of tasks) {
+        const targetUserId = t.assignee_user_id;
+        if (!targetUserId) continue;
+
+        const [existing] = await pool.query<any[]>(`
+          SELECT id FROM notifications 
+          WHERE assigned_user_id = ? 
+            AND reference_type = 'delegated_task' 
+            AND reference_id = ? 
+            AND notification_type IN ('task_due_today', 'delegation_due_reminder')
+            AND DATE(created_at) = CURDATE()
+          LIMIT 1
+        `, [targetUserId, t.id]);
+
+        if (existing.length === 0) {
+          const due = new Date(t.due_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          due.setHours(0, 0, 0, 0);
+
+          const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          const isOverdue = diffDays < 0;
+          const isToday = diffDays === 0;
+          const statusLabel = isOverdue ? "Overdue" : isToday ? "Due Today" : "Due Soon";
+
+          const isExtended = t.extension_status === "approved";
+          const dueFormatted = new Date(t.due_date).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+          });
+
+          await notificationService.notify({
+            type: isToday ? "task_due_today" : "delegation_due_reminder" as any,
+            module: "office",
+            referenceType: "delegated_task",
+            referenceId: t.id,
+            assignedUserId: targetUserId,
+            createdBy: null,
+            title: `Delegation Task ${statusLabel}: ${t.title}`,
+            description: `Task "${t.title}" is ${statusLabel.toLowerCase()} (Target: ${dueFormatted}${isExtended ? " - Extended Date" : ""}). Please complete it or request an extension if more time is required.`,
+            priority: isOverdue ? "urgent" : isToday ? "high" : "medium",
+            actionLabel: "View / Request Extension",
+            actionUrl: "/admin/delegation/list",
+          });
+        }
+      }
+    } catch (err: any) {
+      logger.warn("Failed to check and notify approaching due dates for delegations", { error: err?.message });
+    }
+  }
 
   async list(
     page: number, 
@@ -23,6 +96,7 @@ export class DelegationService {
     status?: DelegationBaseStatus,
     scope?: "assigned_to_me" | "assigned_by_me" | "all"
   ) {
+    await this.checkAndNotifyApproachingDueDates();
     const actor = await this.scope.getEmployeeForUser(actorUserId);
     const myIds = [actorUserId];
     if (actor) myIds.push(actor.id);
@@ -241,6 +315,10 @@ export class DelegationService {
       if (targetDate.getTime() < today.getTime()) {
         throw new ValidationError("Proposed extension date cannot be set in the past.");
       }
+    }
+
+    if (existing.extensionStatus === "pending") {
+      throw new ValidationError("An extension request is already pending review for this task.");
     }
 
     if (!hasUpdateOverride) {

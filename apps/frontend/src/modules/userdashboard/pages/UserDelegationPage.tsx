@@ -300,18 +300,26 @@ export function UserDelegationPage() {
                           )}
                         </div>
                       ) : d.extensionStatus === "approved" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "4px 8px", borderRadius: 6 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "6px 8px", borderRadius: 6 }}>
                           <span style={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
                             ✓ Extension Approved
                           </span>
                           {d.extensionRequestedDate && (
-                            <span style={{ fontSize: "11px", color: "#047857" }}>
+                            <span style={{ fontSize: "11px", color: "#047857", fontWeight: 600 }}>
                               Extended to: {new Date(d.extensionRequestedDate).toLocaleDateString()}
                             </span>
                           )}
+                          {d.baseStatus !== "completed" && (
+                            <button 
+                              onClick={() => openExtensionModal(d.id)}
+                              style={{ marginTop: 2, padding: '4px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: "12px" }}
+                            >
+                              ⏱ Request Extension Again
+                            </button>
+                          )}
                         </div>
                       ) : d.extensionStatus === "rejected" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#fef2f2", border: "1px solid #fecaca", padding: "4px 8px", borderRadius: 6 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 8px", borderRadius: 6 }}>
                           <span style={{ fontSize: "11px", fontWeight: 700, color: "#b91c1c" }}>
                             ✕ Extension Rejected
                           </span>
@@ -319,6 +327,14 @@ export function UserDelegationPage() {
                             <span style={{ fontSize: "11px", color: "#991b1b" }}>
                               <strong>Reason:</strong> {d.extensionRejectionReason}
                             </span>
+                          )}
+                          {d.baseStatus !== "completed" && (
+                            <button 
+                              onClick={() => openExtensionModal(d.id)}
+                              style={{ marginTop: 2, padding: '4px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: "12px" }}
+                            >
+                              ⏱ Re-request Extension
+                            </button>
                           )}
                         </div>
                       ) : (
