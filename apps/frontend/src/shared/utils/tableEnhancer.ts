@@ -5,42 +5,38 @@ interface EnhancedHTMLTableElement extends HTMLTableElement {
 }
 
 const TABLE_STYLE_ID = "global-table-enhancer-styles";
+const pageScrollRegions = new WeakMap<HTMLElement, number>();
 
 function injectStyles() {
   if (document.getElementById(TABLE_STYLE_ID)) return;
   const style = document.createElement("style");
   style.id = TABLE_STYLE_ID;
   style.textContent = `
-    .table-pinned-region {
+    .table-page-scroll-region {
       overflow: visible !important;
       max-height: none !important;
+      min-width: 0 !important;
     }
-    .table-responsive-wrapper.table-pinned-scroll {
-      overflow: auto;
-      max-height: min(72vh, var(--table-available-height, 72vh));
+    .table-responsive-wrapper.table-page-scroll {
+      overflow-x: auto;
+      max-height: none;
+      width: 100%;
       isolation: isolate;
     }
-    .table-pinned-scroll > .table-filter-bar {
+    .table-page-filter-bar {
       position: sticky;
       top: 0;
-      left: 0;
       z-index: 60;
-      width: var(--table-visible-width, 100%);
-      margin-bottom: 0;
     }
-    .table-pinned-scroll > table {
+    .table-page-scroll > table {
       border-collapse: separate;
       border-spacing: 0;
     }
-    .table-pinned-scroll > table > thead > tr > th,
-    .table-pinned-scroll > table > thead > tr > td {
-      position: sticky !important;
-      top: var(--table-header-offset, 0px) !important;
-      z-index: 40;
-      background-color: #e2e8f0;
-    }
-    .table-pinned-scroll > table > thead > tr > [style*="left:"] {
-      z-index: 50 !important;
+    /* Page scrolling pins only filters. Keep horizontal frozen columns intact. */
+    .table-page-scroll > table > thead > tr > th,
+    .table-page-scroll > table > thead > tr > td,
+    .table-page-scroll > table > tbody > tr > td {
+      top: auto !important;
     }
     .table-filter-bar {
       display: flex;
@@ -204,39 +200,64 @@ function injectStyles() {
       display: none;
     }
 
+    .table-filter-bar {
+      gap: 6px;
+      padding: 8px 10px;
+      margin-bottom: 0;
+    }
+    .table-filter-bar .table-search-container {
+      min-width: 180px;
+      max-width: 280px;
+    }
+    .table-filter-bar .table-search-input,
+    .table-filter-bar .custom-select-trigger,
+    .table-filter-bar .table-filter-reset-btn {
+      min-height: 32px;
+      font-size: 12px;
+    }
+    .table-filter-bar .custom-select-trigger { padding: 5px 8px; }
+    .table-filter-bar .table-page-size-container > .custom-select-container {
+      width: 104px !important;
+      min-width: 0;
+      max-width: 104px !important;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .table-filter-bar .table-filter-reset-btn { padding: 5px 10px; }
+    .table-filter-bar .table-selects-container {
+      order: 4;
+      flex: 1 1 100%;
+      flex-wrap: nowrap !important;
+      overflow-x: auto;
+      gap: 6px !important;
+      padding-bottom: 2px;
+    }
+    .table-filter-bar .table-filter-select-wrapper {
+      flex: 0 0 140px;
+      min-width: 140px;
+      max-width: 140px;
+    }
     @media (max-width: 768px) {
-      .table-filter-bar {
-        padding: 8px 10px;
-        gap: 8px;
-      }
-      .table-search-container {
-        min-width: 100% !important;
-        max-width: 100% !important;
+      .table-filter-bar .table-search-container {
+        min-width: 100%;
+        max-width: 100%;
       }
       .table-filter-mobile-toggle {
         display: flex;
+        width: auto;
+        min-height: 36px;
+        padding: 5px 8px;
+        font-size: 12px;
       }
-      .table-selects-container {
-        display: none !important;
-        width: 100% !important;
-        flex-direction: column !important;
-        gap: 8px !important;
-      }
-      .table-selects-container.mobile-expanded {
-        display: flex !important;
-      }
-      .table-filter-select-wrapper {
-        min-width: 100% !important;
-        max-width: 100% !important;
-      }
-      .table-page-size-container {
-        width: 100%;
-        justify-content: space-between;
-      }
-      .table-filter-reset-btn {
-        width: 100%;
-        margin-left: 0;
-      }
+      .table-filter-bar .table-selects-container { display: none !important; }
+      .table-filter-bar .table-selects-container.mobile-expanded { display: flex !important; }
+      .table-filter-bar .custom-select-trigger,
+      .table-filter-bar .table-filter-reset-btn,
+      .table-filter-bar .table-search-input { min-height: 36px; }
+      .table-page-size-container { gap: 4px; font-size: 12px; }
+      .table-page-size-container .custom-select-container { min-width: 90px; }
+      .table-filter-reset-btn { margin-left: auto; }
       .table-pagination-controls {
         flex-direction: column;
         gap: 10px;
@@ -273,7 +294,6 @@ class TableFilterEnhancer {
   infoLabel: HTMLDivElement | null = null;
   mobileToggleBtn: HTMLButtonElement | null = null;
   badgeEl: HTMLSpanElement | null = null;
-  stickyResizeObserver: ResizeObserver | null = null;
   stickyLayoutCleanup: (() => void) | null = null;
 
   constructor(table: HTMLTableElement) {
@@ -373,7 +393,8 @@ class TableFilterEnhancer {
     this.mobileToggleBtn = document.createElement("button");
     this.mobileToggleBtn.type = "button";
     this.mobileToggleBtn.className = "table-filter-mobile-toggle";
-    this.mobileToggleBtn.innerHTML = `<span>⚡ Filter Options</span>`;
+    this.mobileToggleBtn.innerHTML = `<span>Filters</span>`;
+    this.mobileToggleBtn.setAttribute("aria-expanded", "false");
 
     this.badgeEl = document.createElement("span");
     this.badgeEl.className = "table-filter-count-badge";
@@ -383,9 +404,10 @@ class TableFilterEnhancer {
     this.mobileToggleBtn.addEventListener("click", () => {
       selectsContainer.classList.toggle("mobile-expanded");
       const isExpanded = selectsContainer.classList.contains("mobile-expanded");
+      this.mobileToggleBtn?.setAttribute("aria-expanded", String(isExpanded));
       const titleSpan = this.mobileToggleBtn?.querySelector("span");
       if (titleSpan) {
-        titleSpan.textContent = isExpanded ? "▲ Hide Filters" : "⚡ Filter Options";
+        titleSpan.textContent = isExpanded ? "Hide filters" : "Filters";
       }
     });
     this.filterBar.appendChild(this.mobileToggleBtn);
@@ -501,47 +523,30 @@ class TableFilterEnhancer {
 
   pinFiltersAndHeaders() {
     const wrapper = this.table.parentElement;
-    if (!wrapper || !this.filterBar || !this.table.tHead) return;
+    if (!wrapper || !this.filterBar) return;
 
-    // Keep filters and every header row in the same scroll coordinate system.
-    // A second nested scroll box would allow the filters to disappear.
-    wrapper.classList.add("table-pinned-scroll");
-    wrapper.prepend(this.filterBar);
-    const parent = wrapper.parentElement;
-    const parentScrolls = parent && ["auto", "scroll"].includes(getComputedStyle(parent).overflowY);
-    if (parentScrolls) {
-      parent.classList.add("table-pinned-region");
+    // The page owns vertical scrolling; this wrapper owns only horizontal scrolling.
+    // Filters stay outside it so sticky positioning follows the page, not a tiny table box.
+    wrapper.classList.add("table-page-scroll");
+    this.filterBar.classList.add("table-page-filter-bar");
+    const regions: HTMLElement[] = [];
+    let ancestor = wrapper.parentElement;
+    while (ancestor && !ancestor.matches("main, .admin-content, body, html, [role='dialog']")) {
+      regions.push(ancestor);
+      pageScrollRegions.set(ancestor, (pageScrollRegions.get(ancestor) ?? 0) + 1);
+      ancestor.classList.add("table-page-scroll-region");
+      ancestor = ancestor.parentElement;
     }
-
-    const update = () => {
-      if (!wrapper.isConnected || !this.filterBar) return;
-      const setVariable = (element: HTMLElement, name: string, value: string) => {
-        if (element.style.getPropertyValue(name) !== value) element.style.setProperty(name, value);
-      };
-      setVariable(wrapper, "--table-visible-width", `${wrapper.clientWidth}px`);
-      setVariable(wrapper, "--table-available-height", `${Math.max(240, window.innerHeight - Math.max(0, wrapper.getBoundingClientRect().top) - 24)}px`);
-      let offset = this.filterBar.getBoundingClientRect().height;
-      for (const row of Array.from(this.table.tHead!.rows)) {
-        for (const cell of Array.from(row.cells)) {
-          setVariable(cell, "--table-header-offset", `${offset}px`);
-        }
-        offset += row.getBoundingClientRect().height;
-      }
-    };
-    if (typeof ResizeObserver !== "undefined") {
-      this.stickyResizeObserver = new ResizeObserver(update);
-      this.stickyResizeObserver.observe(wrapper);
-      this.stickyResizeObserver.observe(this.filterBar);
-      this.stickyResizeObserver.observe(this.table.tHead);
-      for (const row of Array.from(this.table.tHead.rows)) this.stickyResizeObserver.observe(row);
-    }
-    window.addEventListener("resize", update);
-    update();
     this.stickyLayoutCleanup = () => {
-      window.removeEventListener("resize", update);
-      wrapper.classList.remove("table-pinned-scroll");
-      if (parentScrolls && parent) {
-        parent.classList.remove("table-pinned-region");
+      wrapper.classList.remove("table-page-scroll");
+      this.filterBar?.classList.remove("table-page-filter-bar");
+      for (const region of regions) {
+        const count = (pageScrollRegions.get(region) ?? 1) - 1;
+        if (count > 0) pageScrollRegions.set(region, count);
+        else {
+          pageScrollRegions.delete(region);
+          region.classList.remove("table-page-scroll-region");
+        }
       }
     };
   }
@@ -928,7 +933,6 @@ class TableFilterEnhancer {
 
   destroy() {
     this.observer?.disconnect();
-    this.stickyResizeObserver?.disconnect();
     this.stickyLayoutCleanup?.();
     
     if (this.filterBar && this.filterBar.parentNode) {
