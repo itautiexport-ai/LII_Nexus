@@ -8,6 +8,9 @@ import { MySqlRoleRepository } from "../../../rbac/infrastructure/repositories/M
 import { ok } from "../../../../shared/utils/apiResponse";
 import { AuthenticatedRequest } from "../../../../shared/middlewares/auth.middleware";
 import { NotificationStatus } from "../../domain/entities/Notification";
+import { DelegationService } from "../../../officeperf/application/services/DelegationService";
+import { MySqlDelegationRepository } from "../../../officeperf/infrastructure/repositories/MySqlDelegationRepository";
+import { EmployeeScopeService } from "../../../performance/application/services/EmployeeScopeService";
 
 const repo = new MySqlNotificationRepository();
 const service = new NotificationService(repo);
@@ -15,6 +18,7 @@ const templateService = new TemplateService(repo);
 const escalationRuleService = new EscalationRuleService(repo);
 const escalationEngine = new EscalationEngineService(repo);
 const roleRepo = new MySqlRoleRepository();
+const delegationService = new DelegationService(new MySqlDelegationRepository(), new EmployeeScopeService());
 
 async function hasPermission(userId: string, key: string): Promise<boolean> {
   const keys = await roleRepo.getPermissionKeysForUser(userId);
@@ -23,6 +27,7 @@ async function hasPermission(userId: string, key: string): Promise<boolean> {
 
 export const NotificationController = {
   async listMine(req: AuthenticatedRequest, res: Response) {
+    try { await delegationService.checkAndNotifyApproachingDueDates(); } catch {}
     const page = parseInt((req.query.page as string) ?? "1", 10);
     const pageSize = parseInt((req.query.pageSize as string) ?? "20", 10);
     const status = req.query.status as NotificationStatus | undefined;
@@ -32,6 +37,7 @@ export const NotificationController = {
   },
 
   async unreadCount(req: AuthenticatedRequest, res: Response) {
+    try { await delegationService.checkAndNotifyApproachingDueDates(); } catch {}
     return ok(res, { count: await service.unreadCount(req.user!.sub) });
   },
 

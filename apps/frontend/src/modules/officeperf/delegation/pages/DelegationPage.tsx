@@ -691,14 +691,30 @@ export default function DelegationPage() {
                     )}
                   </div>
                 ) : t.extensionStatus === "approved" ? (
-                  <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#065f46" }}>
-                    ✓ Extension Approved {t.extensionRequestedDate ? `to ${new Date(t.extensionRequestedDate).toLocaleDateString()}` : ""}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#065f46" }}>
+                    <span>✓ Extension Approved {t.extensionRequestedDate ? `to ${new Date(t.extensionRequestedDate).toLocaleDateString()}` : ""}</span>
+                    {(isAssignee || tab === "received") && t.displayStatus !== "completed" && (
+                      <button
+                        onClick={() => openRequestExtension(t.id)}
+                        style={{ padding: "4px 8px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", borderRadius: 4, cursor: "pointer", fontSize: 11, fontWeight: 700, alignSelf: "flex-start" }}
+                      >
+                        ⏱ Request Extension Again
+                      </button>
+                    )}
                   </div>
                 ) : t.extensionStatus === "rejected" ? (
-                  <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#991b1b" }}>
-                    ✕ Extension Rejected {t.extensionRejectionReason ? `: ${t.extensionRejectionReason}` : ""}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 10px", borderRadius: 6, fontSize: "12px", color: "#991b1b" }}>
+                    <span>✕ Extension Rejected {t.extensionRejectionReason ? `: ${t.extensionRejectionReason}` : ""}</span>
+                    {(isAssignee || tab === "received") && t.displayStatus !== "completed" && (
+                      <button
+                        onClick={() => openRequestExtension(t.id)}
+                        style={{ padding: "4px 8px", background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a", borderRadius: 4, cursor: "pointer", fontSize: 11, fontWeight: 700, alignSelf: "flex-start" }}
+                      >
+                        ⏱ Re-request Extension
+                      </button>
+                    )}
                   </div>
-                ) : isAssignee && t.displayStatus !== "completed" ? (
+                ) : (isAssignee || tab === "received") && t.displayStatus !== "completed" ? (
                   <div>
                     <button
                       onClick={() => openRequestExtension(t.id)}
@@ -848,6 +864,22 @@ export default function DelegationPage() {
                                        (myFullName && taskAssignedByName === myFullName);
                     const canReview = isAssigner || isAdmin;
 
+                    const taskAssignedTo = (t as any).assignedTo;
+                    const taskAssignedToName = (t.assignedToName || "").trim().toLowerCase();
+                    const isAssignee = (myEmpId && taskAssignedTo === myEmpId) || 
+                                       (myUserId && taskAssignedTo === myUserId) || 
+                                       (myFullName && taskAssignedToName === myFullName) ||
+                                       (tab === "received");
+
+                    // Check if task due date is approaching (within 2 days or overdue)
+                    const isDueSoon = (() => {
+                      if (!t.dueDate || t.displayStatus === "completed") return false;
+                      const dueTime = new Date(t.dueDate).getTime();
+                      const todayTime = new Date().setHours(0, 0, 0, 0);
+                      const diffDays = Math.ceil((dueTime - todayTime) / (1000 * 60 * 60 * 24));
+                      return diffDays <= 2;
+                    })();
+
                     if (t.extensionStatus === "pending") {
                       return (
                         <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "#fffbeb", border: "1px solid #fde68a", padding: "6px 8px", borderRadius: 6 }}>
@@ -920,14 +952,44 @@ export default function DelegationPage() {
 
                     if (t.extensionStatus === "approved") {
                       return (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "4px 8px", borderRadius: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#065f46", display: "flex", alignItems: "center", gap: 4 }}>
-                            ✓ Extension Approved
-                          </span>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "6px 8px", borderRadius: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#065f46", display: "flex", alignItems: "center", gap: 4 }}>
+                              ✓ Extension Approved
+                            </span>
+                            {isDueSoon && (
+                              <span style={{ fontSize: 10, background: "#fef3c7", color: "#b45309", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>
+                                Due Soon
+                              </span>
+                            )}
+                          </div>
                           {t.extensionRequestedDate && (
-                            <span style={{ fontSize: 10, color: "#047857" }}>
+                            <span style={{ fontSize: 10, color: "#047857", fontWeight: 600 }}>
                               Extended: {new Date(t.extensionRequestedDate).toLocaleDateString()}
                             </span>
+                          )}
+                          {isAssignee && t.displayStatus !== "completed" && (
+                            <button
+                              onClick={() => openRequestExtension(t.id)}
+                              title="Request Extension Again"
+                              style={{
+                                marginTop: 3,
+                                padding: "4px 8px",
+                                background: isDueSoon ? "#fed7aa" : "#fef3c7",
+                                color: "#92400e",
+                                border: isDueSoon ? "1px solid #f97316" : "1px solid #fde68a",
+                                borderRadius: 4,
+                                cursor: "pointer",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 4
+                              }}
+                            >
+                              ⏱ Request Extension Again
+                            </button>
                           )}
                         </div>
                       );
@@ -935,7 +997,7 @@ export default function DelegationPage() {
 
                     if (t.extensionStatus === "rejected") {
                       return (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "#fef2f2", border: "1px solid #fecaca", padding: "4px 8px", borderRadius: 6 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 8px", borderRadius: 6 }}>
                           <span style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", display: "flex", alignItems: "center", gap: 4 }}>
                             ✕ Extension Rejected
                           </span>
@@ -944,13 +1006,32 @@ export default function DelegationPage() {
                               <strong>Reason:</strong> {t.extensionRejectionReason}
                             </span>
                           )}
+                          {isAssignee && t.displayStatus !== "completed" && (
+                            <button
+                              onClick={() => openRequestExtension(t.id)}
+                              title="Re-request Extension"
+                              style={{
+                                marginTop: 3,
+                                padding: "4px 8px",
+                                background: "#fef3c7",
+                                color: "#92400e",
+                                border: "1px solid #fde68a",
+                                borderRadius: 4,
+                                cursor: "pointer",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 4
+                              }}
+                            >
+                              ⏱ Re-request Extension
+                            </button>
+                          )}
                         </div>
                       );
                     }
-
-                    const isAssignee = (myEmpId && (t as any).assignedTo === myEmpId) ||
-                                       (myUserId && (t as any).assignedTo === myUserId) ||
-                                       (myFullName && (t.assignedToName || "").trim().toLowerCase() === myFullName);
 
                     return (
                       <div>
@@ -959,10 +1040,10 @@ export default function DelegationPage() {
                             onClick={() => openRequestExtension(t.id)}
                             title="Request Extension"
                             style={{
-                              padding: "3px 8px",
-                              background: "#fef3c7",
+                              padding: "4px 8px",
+                              background: isDueSoon ? "#fed7aa" : "#fef3c7",
                               color: "#92400e",
-                              border: "1px solid #fde68a",
+                              border: isDueSoon ? "1px solid #f97316" : "1px solid #fde68a",
                               borderRadius: 4,
                               cursor: "pointer",
                               fontSize: 11,
