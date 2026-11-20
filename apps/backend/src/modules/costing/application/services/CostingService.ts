@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { MySqlCostingRepository } from "../../infrastructure/MySqlCostingRepository";
-import { CostEstimation, CostEstimationItem, CostRateMaster } from "../../domain/CostEstimation";
-import { CreateCostEstimationDto, UpdateCostEstimationDto, SaveCostRateDto } from "../dto/costing.dto";
+import { CostEstimation, CostEstimationItem, CostRateMaster, CostingRequestBunch, CostingRequestItem } from "../../domain/CostEstimation";
+import { CreateCostEstimationDto, UpdateCostEstimationDto, SaveCostRateDto, CreateCostingRequestBunchDto } from "../dto/costing.dto";
 
 export class CostingService {
   constructor(private repo: MySqlCostingRepository = new MySqlCostingRepository()) {}
@@ -180,6 +180,7 @@ export class CostingService {
       final_price: calc.finalPrice,
       notes: dto.notes,
       form_data: dto.form_data,
+      costing_request_item_id: dto.costing_request_item_id,
       created_by: userId,
     };
 
@@ -221,6 +222,7 @@ export class CostingService {
       margin_percentage: dto.margin_percentage,
       tax_percentage: dto.tax_percentage,
       notes: dto.notes,
+      costing_request_item_id: dto.costing_request_item_id,
       ...(dto.form_data !== undefined ? { form_data: dto.form_data } : {}),
     };
 
@@ -281,5 +283,59 @@ export class CostingService {
 
   async deleteRate(id: string): Promise<boolean> {
     return this.repo.deleteRate(id);
+  }
+
+  // Costing Request Bunches & Items
+  async createRequestBunch(dto: CreateCostingRequestBunchDto, userId?: string): Promise<CostingRequestBunch> {
+    if (!dto.merchant_name || !dto.merchant_name.trim()) {
+      throw new Error("Merchant name is required");
+    }
+    if (!dto.items || dto.items.length === 0) {
+      throw new Error("At least one product item is required in the costing request");
+    }
+    return this.repo.createBunchWithItems(
+      {
+        merchant_id: userId,
+        merchant_name: dto.merchant_name.trim(),
+        client_name: dto.client_name?.trim(),
+        notes: dto.notes?.trim(),
+        priority: dto.priority || 'Normal',
+      },
+      dto.items
+    );
+  }
+
+  async listBunches(search?: string, status?: string, merchant?: string): Promise<CostingRequestBunch[]> {
+    return this.repo.findBunches(search, status, merchant);
+  }
+
+  async getBunchById(id: string): Promise<CostingRequestBunch | null> {
+    return this.repo.findBunchById(id);
+  }
+
+  async listRequestItems(search?: string, stage?: string, priority?: string, bunchCode?: string, merchant?: string): Promise<CostingRequestItem[]> {
+    return this.repo.findRequestItems(search, stage, priority, bunchCode, merchant);
+  }
+
+  async getRequestItemById(id: string): Promise<CostingRequestItem | null> {
+    return this.repo.findRequestItemById(id);
+  }
+
+  async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number): Promise<boolean> {
+    return this.repo.updateRequestItemStage(id, stage, estimationId, estimationNumber, finalPrice, finalPriceUsd);
+  }
+
+  async getTrackerData(search?: string, stage?: string, merchant?: string, dateFrom?: string, dateTo?: string): Promise<any> {
+    return this.repo.getCostingTracker(search, stage, merchant, dateFrom, dateTo);
+  }
+
+  async getDashboardMetrics(): Promise<any> {
+    return this.repo.getDashboardMetrics();
+  }
+
+  async getNextCodes(count: number = 1): Promise<{ bunchCode: string; productCodes: string[] }> {
+    const bunchCode = await this.repo.generateBunchCode();
+    const productCodes = Array.from({ length: Math.max(1, count) }, (_, i) => `${bunchCode}-P${String(i + 1).padStart(2, "0")}`);
+    return { bunchCode, productCodes };
   }
 }

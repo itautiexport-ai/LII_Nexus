@@ -594,4 +594,156 @@ export const costingApi = {
     const res = await axiosInstance.post("/costing/calculate-cft", payload);
     return res.data.data;
   },
+
+  // Costing Request Bunches & Items
+  createRequestBunch: async (data: {
+    merchant_name: string;
+    client_name?: string;
+    notes?: string;
+    priority?: 'Normal' | 'High' | 'Urgent';
+    items: Array<{
+      product_name: string;
+      product_code?: string;
+      product_type?: string;
+      collection_name?: string;
+      wood_type?: string;
+      overall_size?: string;
+      client_name?: string;
+      description?: string;
+      image_url?: string;
+      priority?: 'Normal' | 'High' | 'Urgent';
+    }>;
+  }): Promise<CostingRequestBunch> => {
+    const res = await axiosInstance.post("/costing/requests/bunch", data);
+    return res.data.data as CostingRequestBunch;
+  },
+
+  getBunches: async (params?: { search?: string; status?: string; merchant?: string }): Promise<CostingRequestBunch[]> => {
+    const res = await axiosInstance.get("/costing/requests/bunches", { params });
+    return res.data.data as CostingRequestBunch[];
+  },
+
+  getBunchById: async (id: string): Promise<CostingRequestBunch> => {
+    const res = await axiosInstance.get(`/costing/requests/bunches/${id}`);
+    return res.data.data as CostingRequestBunch;
+  },
+
+  getRequestItems: async (params?: { search?: string; stage?: string; priority?: string; bunchCode?: string }): Promise<CostingRequestItem[]> => {
+    const res = await axiosInstance.get("/costing/requests/items", { params });
+    return res.data.data as CostingRequestItem[];
+  },
+
+  getRequestItemById: async (id: string): Promise<CostingRequestItem> => {
+    const res = await axiosInstance.get(`/costing/requests/items/${id}`);
+    return res.data.data as CostingRequestItem;
+  },
+
+  updateRequestItemStage: async (id: string, data: { stage: string; estimationId?: string; estimationNumber?: string; finalPrice?: number; finalPriceUsd?: number }): Promise<any> => {
+    const res = await axiosInstance.patch(`/costing/requests/items/${id}/stage`, data);
+    return res.data.data;
+  },
+
+  getTracker: async (params?: { search?: string; stage?: string; merchant?: string; dateFrom?: string; dateTo?: string }): Promise<CostingTrackerResponse> => {
+    const res = await axiosInstance.get("/costing/tracker", { params });
+    return res.data.data as CostingTrackerResponse;
+  },
+
+  getDashboardMetrics: async (): Promise<{
+    metrics: {
+      total_requests: number;
+      not_started_count: number;
+      in_progress_count: number;
+      in_review_count: number;
+      approved_count: number;
+      rejected_count: number;
+      total_bunches: number;
+    };
+    recent_activity: any[];
+    merchant_breakdown: any[];
+  }> => {
+    const res = await axiosInstance.get("/costing/dashboard-metrics");
+    return res.data.data;
+  },
+
+  getNextCodes: async (count: number = 1): Promise<{ bunchCode: string; productCodes: string[] }> => {
+    const res = await axiosInstance.get("/costing/requests/next-codes", { params: { count } });
+    return res.data.data;
+  },
+
+  uploadImageFile: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axiosInstance.post("/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data?.data?.fileUrl || res.data?.fileUrl || "";
+  },
 };
+
+export interface CostingRequestItem {
+  id: string;
+  bunch_id: string;
+  bunch_code: string;
+  product_code: string;
+  product_name: string;
+  product_type?: string;
+  collection_name?: string;
+  wood_type?: string;
+  overall_size?: string;
+  client_name?: string;
+  description?: string;
+  image_url?: string;
+  priority: 'Normal' | 'High' | 'Urgent';
+  stage: 'Pending' | 'In Progress' | 'In Review' | 'Approved' | 'Rejected';
+  estimation_id?: string;
+  estimation_number?: string;
+  final_price?: number;
+  final_price_usd?: number;
+  merchant_name: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const isDirectorApprover = (user: any): boolean => {
+  if (!user) return false;
+  const name = (user.fullName || "").toLowerCase();
+  const email = (user.email || "").toLowerCase();
+  const roles = (user.roles || []).map((r: string) => r.toLowerCase());
+  return (
+    name.includes("ravi") ||
+    name.includes("raj") ||
+    email.includes("ravi") ||
+    email.includes("raj") ||
+    roles.includes("director") ||
+    roles.includes("ceo") ||
+    roles.includes("system admin") ||
+    email.includes("admin")
+  );
+};
+
+export interface CostingRequestBunch {
+  id: string;
+  bunch_code: string;
+  merchant_id?: string;
+  merchant_name: string;
+  client_name?: string;
+  notes?: string;
+  priority: 'Normal' | 'High' | 'Urgent';
+  total_products: number;
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
+  created_at: string;
+  updated_at: string;
+  items?: CostingRequestItem[];
+}
+
+export interface CostingTrackerResponse {
+  kpis: {
+    total_requests: number;
+    not_started_count: number;
+    under_process_count: number;
+    approved_count: number;
+    rejected_count: number;
+  };
+  items: CostingRequestItem[];
+}

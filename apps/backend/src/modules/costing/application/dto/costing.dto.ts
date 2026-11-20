@@ -37,6 +37,7 @@ export interface CreateCostEstimationDto {
   tax_percentage?: number;
   notes?: string;
   form_data?: string;
+  costing_request_item_id?: string;
   items: CreateCostEstimationItemDto[];
 }
 
@@ -58,6 +59,7 @@ export interface UpdateCostEstimationDto {
   tax_percentage?: number;
   notes?: string;
   form_data?: string;
+  costing_request_item_id?: string;
   items?: CreateCostEstimationItemDto[];
 }
 
@@ -68,4 +70,25 @@ export interface SaveCostRateDto {
   unit_of_measure: string;
   rate: number;
   effective_date?: string;
+}
+
+export interface CreateCostingRequestItemInputDto {
+  product_name: string;
+  product_code?: string;
+  product_type?: string;
+  collection_name?: string;
+  wood_type?: string;
+  overall_size?: string;
+  client_name?: string;
+  description?: string;
+  image_url?: string;
+  priority?: 'Normal' | 'High' | 'Urgent';
+}
+
+export interface CreateCostingRequestBunchDto {
+  merchant_name: string;
+  client_name?: string;
+  notes?: string;
+  priority?: 'Normal' | 'High' | 'Urgent';
+  items: CreateCostingRequestItemInputDto[];
 }

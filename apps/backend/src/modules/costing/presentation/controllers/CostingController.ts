@@ -81,4 +81,91 @@ export class CostingController {
     );
     return res.json({ success: true, data: result });
   };
+
+  createRequestBunch = async (req: Request, res: Response) => {
+    const userId = (req as any).user?.id;
+    const bunch = await this.costingService.createRequestBunch(req.body, userId);
+    return res.status(201).json({ success: true, data: bunch });
+  };
+
+  listBunches = async (req: Request, res: Response) => {
+    const { search, status, merchant } = req.query;
+    const bunches = await this.costingService.listBunches(
+      search as string,
+      status as string,
+      merchant as string
+    );
+    return res.json({ success: true, data: bunches });
+  };
+
+  getBunchById = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const bunch = await this.costingService.getBunchById(id);
+    if (!bunch) {
+      return res.status(404).json({ success: false, error: { message: "Costing request bunch not found" } });
+    }
+    return res.json({ success: true, data: bunch });
+  };
+
+  listRequestItems = async (req: Request, res: Response) => {
+    const { search, stage, priority, bunchCode, merchant } = req.query;
+    const items = await this.costingService.listRequestItems(
+      search as string,
+      stage as string,
+      priority as string,
+      bunchCode as string,
+      merchant as string
+    );
+    return res.json({ success: true, data: items });
+  };
+
+  getRequestItemById = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const item = await this.costingService.getRequestItemById(id);
+    if (!item) {
+      return res.status(404).json({ success: false, error: { message: "Costing request item not found" } });
+    }
+    return res.json({ success: true, data: item });
+  };
+
+  updateRequestItemStage = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { stage, estimationId, estimationNumber, finalPrice, finalPriceUsd } = req.body;
+
+    const updated = await this.costingService.updateRequestItemStage(
+      id,
+      stage,
+      estimationId,
+      estimationNumber,
+      finalPrice,
+      finalPriceUsd
+    );
+    if (!updated) {
+      return res.status(404).json({ success: false, error: { message: "Costing request item not found" } });
+    }
+    return res.json({ success: true, data: { updated: true } });
+  };
+
+  getTrackerData = async (req: Request, res: Response) => {
+    const { search, stage, merchant, dateFrom, dateTo } = req.query;
+    const tracker = await this.costingService.getTrackerData(
+      search as string,
+      stage as string,
+      merchant as string,
+      dateFrom as string,
+      dateTo as string
+    );
+    return res.json({ success: true, data: tracker });
+  };
+
+  getDashboardMetrics = async (_req: Request, res: Response) => {
+    const data = await this.costingService.getDashboardMetrics();
+    return res.json({ success: true, data });
+  };
+
+  getNextCodes = async (req: Request, res: Response) => {
+    const count = parseInt((req.query.count as string) || "1", 10);
+    const data = await this.costingService.getNextCodes(count);
+    return res.json({ success: true, data });
+  };
 }

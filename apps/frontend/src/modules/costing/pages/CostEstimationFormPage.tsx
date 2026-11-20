@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ALL_COMMON_WOOD_PARTS_AND_FRAMES,
   costingApi,
@@ -462,7 +462,12 @@ function computeAdditionalRowAmount(item: AdditionalCostItem): number {
 export default function CostEstimationFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
+
+  const requestIdParam = searchParams.get("requestId") || "";
+  const bunchCodeParam = searchParams.get("bunchCode") || "";
+  const merchantNameParam = searchParams.get("merchantName") || "";
 
   const [loading, setLoading] = useState(false);
   const [rates, setRates] = useState<CostRateMaster[]>([]);
@@ -521,15 +526,15 @@ export default function CostEstimationFormPage() {
   );
 
   // Form State
-  const [title, setTitle] = useState("");
-  const [productCode, setProductCode] = useState("");
-  const [productName, setProductName] = useState("");
-  const [productType, setProductType] = useState("");
-  const [collectionName, setCollectionName] = useState("");
+  const [title, setTitle] = useState(() => searchParams.get("productName") || searchParams.get("title") || "");
+  const [productCode, setProductCode] = useState(() => searchParams.get("productCode") || "");
+  const [productName, setProductName] = useState(() => searchParams.get("productName") || "");
+  const [productType, setProductType] = useState(() => searchParams.get("productType") || "");
+  const [collectionName, setCollectionName] = useState(() => searchParams.get("collectionName") || "");
   const [typeOfCosting, setTypeOfCosting] = useState<"Client Based" | "Showroom Based" | "">("");
-  const [overallSize, setOverallSize] = useState("");
-  const [woodType, setWoodType] = useState("");
-  const [clientName, setClientName] = useState("");
+  const [overallSize, setOverallSize] = useState(() => searchParams.get("overallSize") || "");
+  const [woodType, setWoodType] = useState(() => searchParams.get("woodType") || "");
+  const [clientName, setClientName] = useState(() => searchParams.get("clientName") || "");
   const [status, setStatus] = useState<'Draft' | 'In Review' | 'Approved' | 'Rejected'>("Draft");
   const [currency, setCurrency] = useState("INR");
   const [exchangeRate, setExchangeRate] = useState(1.0);
@@ -1653,6 +1658,7 @@ export default function CostEstimationFormPage() {
       tax_percentage: Number(taxPercentage),
       notes: cleanNotesBeforeSave,
       form_data: formDataJson,
+      costing_request_item_id: requestIdParam || undefined,
       items: [
         ...woodItems.map((w) => {
           const l = Number(w.length_ft) || 0;
@@ -1916,9 +1922,17 @@ export default function CostEstimationFormPage() {
       });
 
       alert(`Costing successfully submitted to ${authorityName} for approval!`);
-      navigate("/admin/costing/list");
+      if (requestIdParam) {
+        navigate("/admin/costing/sku-wise");
+      } else {
+        navigate("/admin/costing/list");
+      }
     } catch (err) {
-      navigate("/admin/costing/list");
+      if (requestIdParam) {
+        navigate("/admin/costing/sku-wise");
+      } else {
+        navigate("/admin/costing/list");
+      }
     } finally {
       setApprovalLoading(false);
     }
@@ -1990,6 +2004,23 @@ export default function CostEstimationFormPage() {
           Cancel
         </button>
       </div>
+
+      {requestIdParam && (
+        <div style={{ background: "#ede9fe", border: "1.5px solid #c4b5fd", borderRadius: 8, padding: "14px 20px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#5b21b6", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>⚡ Costing Request Linked:</span>
+              <span style={{ color: "#3730a3" }}>{productCode || searchParams.get("productCode")} - {productName || searchParams.get("productName")}</span>
+            </div>
+            <div style={{ fontSize: 13, color: "#6d28d9", marginTop: 4 }}>
+              Bunch Code: <strong>{bunchCodeParam || "—"}</strong> | Requested by Merchant: <strong>{merchantNameParam || "Merchant"}</strong>
+            </div>
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700, background: "#8b5cf6", color: "#ffffff", padding: "4px 12px", borderRadius: 12 }}>
+            Connected to Request Center
+          </span>
+        </div>
+      )}
 
       <form data-no-enhance="true" onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
         {/* Basic Details Card */}
@@ -4628,7 +4659,13 @@ export default function CostEstimationFormPage() {
             <div style={{ padding: "16px 24px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <button
                 type="button"
-                onClick={() => navigate("/admin/costing/list")}
+                onClick={() => {
+                  if (requestIdParam) {
+                    navigate("/admin/costing/sku-wise");
+                  } else {
+                    navigate("/admin/costing/list");
+                  }
+                }}
                 style={{
                   padding: "9px 16px",
                   background: "#ffffff",

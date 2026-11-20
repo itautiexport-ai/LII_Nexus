@@ -61,7 +61,49 @@ export default function CostingHubPage() {
             Comprehensive Product Costing, BOM Cost Analysis, and Quotation Price Estimation
           </p>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={() => navigate("/admin/costing/request-center")}
+            style={{
+              padding: "10px 16px",
+              background: "#ede9fe",
+              border: "1px solid #c4b5fd",
+              borderRadius: 6,
+              fontWeight: 700,
+              cursor: "pointer",
+              color: "#5b21b6",
+            }}
+          >
+            📦 Request Center
+          </button>
+          <button
+            onClick={() => navigate("/admin/costing/tracker")}
+            style={{
+              padding: "10px 16px",
+              background: "#e0f2fe",
+              border: "1px solid #93c5fd",
+              borderRadius: 6,
+              fontWeight: 700,
+              cursor: "pointer",
+              color: "#0369a1",
+            }}
+          >
+            ⏱️ Costing Tracker
+          </button>
+          <button
+            onClick={() => navigate("/admin/costing/requests/bunches")}
+            style={{
+              padding: "10px 16px",
+              background: "#ffffff",
+              border: "1px solid #d1d5db",
+              borderRadius: 6,
+              fontWeight: 600,
+              cursor: "pointer",
+              color: "#374151",
+            }}
+          >
+            📂 Bunches
+          </button>
           <button
             onClick={() => navigate("/admin/costing/rates")}
             style={{
