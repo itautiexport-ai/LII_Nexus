@@ -411,7 +411,7 @@ export default function DelegationPage() {
 
       {showCreate && (
         <form onSubmit={handleCreate} style={{ padding: 16, border: "1px solid #ddd", borderRadius: 6, marginBottom: 16, maxWidth: 480 }}>
-          <input required placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={{ display: "block", width: "100%", padding: 6, marginBottom: 8 }} />
+          <input required maxLength={500} placeholder="Title (maximum 500 characters)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={{ display: "block", width: "100%", padding: 6, marginBottom: 8 }} />
           <textarea placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} style={{ display: "block", width: "100%", padding: 6, marginBottom: 8 }} />
           <select required value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} style={{ display: "block", width: "100%", padding: 6, marginBottom: 8 }}>
             <option value="">— Assign to a direct report —</option>
@@ -1355,6 +1355,7 @@ export default function DelegationPage() {
                 <input
                   required
                   type="text"
+                  maxLength={500}
                   value={editTaskForm.title}
                   onChange={e => setEditTaskForm({ ...editTaskForm, title: e.target.value })}
                   style={{ width: "100%", padding: "6px 8px", border: "1px solid #ccc", borderRadius: 4, boxSizing: "border-box" }}

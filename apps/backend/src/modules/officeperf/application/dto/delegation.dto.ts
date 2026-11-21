@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const createDelegatedTaskSchema = z.object({
-  title: z.string().min(1),
+  title: z.string().min(1).max(500, "Task Name must be 500 characters or fewer."),
   description: z.string().max(1000).optional().nullable(),
   assignedBy: z.string().uuid().optional(),
   assignedTo: z.string().uuid(),
@@ -15,7 +15,7 @@ export const createDelegatedTaskSchema = z.object({
 });
 
 export const updateDelegatedTaskSchema = z.object({
-  title: z.string().min(1).optional(),
+  title: z.string().min(1).max(500, "Task Name must be 500 characters or fewer.").optional(),
   description: z.string().max(1000).optional().nullable(),
   dueDate: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).optional(),

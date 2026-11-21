@@ -101,6 +101,10 @@ export default function AddDelegationPage() {
         setErrorMsg(`Task #${i + 1}: Please enter the Task Name.`);
         return;
       }
+      if (task.title.trim().length > 500) {
+        setErrorMsg(`Task #${i + 1}: Task Name must be 500 characters or fewer.`);
+        return;
+      }
       if (!task.dueDate) {
         setErrorMsg(`Task #${i + 1}: Please select a Planned Date.`);
         return;
@@ -398,7 +402,8 @@ export default function AddDelegationPage() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Enter task name..."
+                        placeholder="Enter task name (maximum 500 characters)..."
+                        maxLength={500}
                         value={task.title}
                         onChange={(e) => handleTaskChange(task.id, "title", e.target.value)}
                         required
