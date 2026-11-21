@@ -18,11 +18,11 @@ const html = `<!doctype html><html><head><style>${responsiveCss}
   th,td{border:1px solid #cbd5e1;box-sizing:border-box;padding:12px;height:56px;white-space:nowrap}th{background:#e2e8f0}
   .table-scroll-test table{width:1584px;table-layout:fixed}
   </style></head><body><main class="admin-content"><div class="content-inner"><section style="overflow:hidden">
-  <header style="height:180px"><h1>Responsive table test</h1><p>Page scrolling and compact sticky filters</p></header>
+  <header style="height:180px"><h1>Responsive table test</h1><p>Page scrolling with sticky table headers</p></header>
   <div style="overflow-x:auto"><div class="table-scroll-test" style="overflow:auto;max-height:72vh;min-width:900px">
   <table data-filter-all-pages="true"><colgroup><col style="width:44px"><col style="width:140px"><col style="width:160px">${'<col style="width:155px">'.repeat(8)}</colgroup>
-  <thead><tr><th></th><th>INFO</th><th>DETAILS</th><th colspan="8">STEP 1</th></tr>
-  <tr><th></th><th>Reference</th><th>Alias</th>${'<th>Doer / Plan Date</th>'.repeat(8)}</tr></thead><tbody>${rows}</tbody></table>
+  <thead><tr><th style="position:sticky;left:0"></th><th style="position:sticky;left:44px">INFO</th><th style="position:sticky;left:184px">DETAILS</th><th colspan="8">STEP 1</th></tr>
+  <tr><th style="position:sticky;left:0"><input aria-label="Select all tasks" type="checkbox"></th><th style="position:sticky;left:44px">Reference</th><th style="position:sticky;left:184px">Alias</th>${'<th>Doer / Plan Date</th>'.repeat(8)}</tr></thead><tbody>${rows}</tbody></table>
   </div></div></section></div></main></body></html>`;
 
 async function run() {
@@ -41,17 +41,25 @@ async function run() {
       await page.waitForTimeout(50);
       const layout = await page.evaluate(() => {
         const bar = document.querySelector('.table-page-filter-bar').getBoundingClientRect();
-        return { top: bar.top, height: bar.height, right: bar.right, mainScroll: document.querySelector('main').scrollTop, headerTop: document.querySelector('thead').getBoundingClientRect().top };
+        return { top: bar.top, height: bar.height, right: bar.right, mainScroll: document.querySelector('main').scrollTop, headerTop: document.querySelector('.table-sticky-header').getBoundingClientRect().top };
       });
       assert(layout.mainScroll > 0, 'Page must scroll');
-      assert(Math.abs(layout.top) <= 2, 'Filter bar must stick to the page top');
+      assert(layout.top < 0, 'Filters must scroll away with the page');
+      assert(Math.abs(layout.headerTop) <= 2, 'Table header must stick to the page top');
       assert(layout.right <= viewport.width + 1, 'Filters must fit the screen');
       assert(layout.height < 160, 'Filters must leave room for tasks');
-      assert(layout.headerTop < 0, 'Only filters should remain vertically pinned');
+      const sourceBox = await page.locator('.table-page-scroll thead input').boundingBox();
+      const copiedBox = await page.locator('.table-sticky-header input').boundingBox();
+      assert.equal(sourceBox.width, copiedBox.width, 'Header controls must retain sizing');
+      await page.locator('.table-sticky-header input').click();
+      assert(await page.locator('.table-page-scroll thead input').isChecked(), 'Pinned checkbox must operate the real header');
       const before = await page.locator('tbody tr').first().locator('td').nth(2).boundingBox();
       await wrapper.evaluate(e => { e.scrollLeft = 400; });
       const after = await page.locator('tbody tr').first().locator('td').nth(2).boundingBox();
       assert(Math.abs(before.x - after.x) < 2, 'Horizontal DETAILS freeze must survive');
+      const headerDetails = await page.locator('.table-sticky-header tr').last().locator('th').nth(2).boundingBox();
+      assert(Math.abs(after.x - headerDetails.x) < 2, 'Pinned header must align with the frozen DETAILS cells');
+      await page.locator('main').evaluate(e => { e.scrollTop = 0; });
       if (viewport.width <= 768) {
         await page.getByRole('button', { name: /^Filters/ }).click();
         assert(await page.locator('.table-selects-container').isVisible(), 'Mobile filters must open');
@@ -62,7 +70,11 @@ async function run() {
       assert.equal(visible.length, 1);
       assert(visible[0].includes('REF-99'), 'Search must reach later pages');
       await page.getByRole('button', { name: 'Clear Filters', exact: true }).click();
-      console.log(`PASS ${viewport.width}x${viewport.height}: page scroll, sticky compact filters, horizontal freeze, mobile controls and cross-page search.`);
+      await page.locator('section').evaluate(e => e.remove());
+      await page.waitForTimeout(50);
+      assert.equal(await page.locator('.table-sticky-header').count(), 0, 'Removed tables must clean up their sticky header');
+      assert.equal(await page.locator('.content-inner.table-page-scroll-region').count(), 0, 'Route changes must restore ancestor scrolling');
+      console.log(`PASS ${viewport.width}x${viewport.height}: page scroll, sticky headers only, working header controls, horizontal freeze, mobile filters and cross-page search.`);
       await page.close();
     }
   } finally { await browser.close(); }

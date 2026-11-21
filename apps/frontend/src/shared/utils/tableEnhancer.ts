@@ -1,4 +1,5 @@
 import { enhanceSelect } from "./selectEnhancer";
+import { pinTableHeader } from "./stickyTableHeader";
 
 interface EnhancedHTMLTableElement extends HTMLTableElement {
   __enhancer?: TableFilterEnhancer;
@@ -22,17 +23,29 @@ function injectStyles() {
       max-height: none;
       width: 100%;
       isolation: isolate;
+      margin-top: 0;
     }
     .table-page-filter-bar {
+      position: static;
+    }
+    .table-sticky-header {
       position: sticky;
       top: 0;
       z-index: 60;
+      margin-top: 8px;
+      width: 100%;
+    }
+    .table-sticky-header-viewport { overflow: hidden; width: 100%; }
+    .table-sticky-header table { border-collapse: separate; border-spacing: 0; }
+    .table-sticky-header th, .table-sticky-header td { top: auto !important; }
+    @media print {
+      .table-sticky-header { display: none !important; }
     }
     .table-page-scroll > table {
       border-collapse: separate;
       border-spacing: 0;
     }
-    /* Page scrolling pins only filters. Keep horizontal frozen columns intact. */
+    /* Vertical scrolling belongs to the page; horizontal frozen columns stay intact. */
     .table-page-scroll > table > thead > tr > th,
     .table-page-scroll > table > thead > tr > td,
     .table-page-scroll > table > tbody > tr > td {
@@ -526,7 +539,7 @@ class TableFilterEnhancer {
     if (!wrapper || !this.filterBar) return;
 
     // The page owns vertical scrolling; this wrapper owns only horizontal scrolling.
-    // Filters stay outside it so sticky positioning follows the page, not a tiny table box.
+    // The separate header follows the page while filters scroll away normally.
     wrapper.classList.add("table-page-scroll");
     this.filterBar.classList.add("table-page-filter-bar");
     const regions: HTMLElement[] = [];
@@ -537,7 +550,9 @@ class TableFilterEnhancer {
       ancestor.classList.add("table-page-scroll-region");
       ancestor = ancestor.parentElement;
     }
+    const unpinHeader = pinTableHeader(this.table, wrapper);
     this.stickyLayoutCleanup = () => {
+      unpinHeader();
       wrapper.classList.remove("table-page-scroll");
       this.filterBar?.classList.remove("table-page-filter-bar");
       for (const region of regions) {
@@ -997,9 +1012,13 @@ export function initTableEnhancer() {
   tableObserver = new MutationObserver((mutations) => {
     let shouldScan = false;
     for (const mutation of mutations) {
+      for (const node of Array.from(mutation.removedNodes)) {
+        if (!(node instanceof Element) || node.isConnected) continue;
+        const removedTables = node.matches("table") ? [node] : Array.from(node.querySelectorAll("table"));
+        for (const table of removedTables) (table as EnhancedHTMLTableElement).__enhancer?.destroy();
+      }
       if (mutation.addedNodes.length > 0) {
         shouldScan = true;
-        break;
       }
     }
     if (shouldScan) {
