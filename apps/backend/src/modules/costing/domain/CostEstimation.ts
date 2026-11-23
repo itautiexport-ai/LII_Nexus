@@ -41,11 +41,51 @@ export interface CostEstimation {
   final_price: number;
   notes?: string;
   form_data?: string | null;
+  costing_request_item_id?: string;
   approval_authority_id?: string | null;
   created_by?: string;
   created_at?: Date;
   updated_at?: Date;
   items?: CostEstimationItem[];
+}
+
+export interface CostingRequestItem {
+  id: string;
+  bunch_id: string;
+  bunch_code: string;
+  product_code: string;
+  product_name: string;
+  product_type?: string;
+  collection_name?: string;
+  wood_type?: string;
+  overall_size?: string;
+  client_name?: string;
+  description?: string;
+  image_url?: string;
+  priority: 'Normal' | 'High' | 'Urgent';
+  stage: 'Pending' | 'In Progress' | 'In Review' | 'Approved' | 'Rejected';
+  estimation_id?: string;
+  estimation_number?: string;
+  final_price?: number;
+  merchant_name: string;
+  created_by?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CostingRequestBunch {
+  id: string;
+  bunch_code: string;
+  merchant_id?: string;
+  merchant_name: string;
+  client_name?: string;
+  notes?: string;
+  priority: 'Normal' | 'High' | 'Urgent';
+  total_products: number;
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
+  created_at: Date;
+  updated_at: Date;
+  items?: CostingRequestItem[];
 }
 
 export interface CostRateMaster {

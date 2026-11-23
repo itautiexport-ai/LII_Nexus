@@ -1,5 +1,5 @@
 import { pool } from "../../../infrastructure/database/mysql/connection";
-import { CostEstimation, CostEstimationItem, CostRateMaster } from "../domain/CostEstimation";
+import { CostEstimation, CostEstimationItem, CostRateMaster, CostingRequestBunch, CostingRequestItem } from "../domain/CostEstimation";
 import { v4 as uuidv4 } from "uuid";
 
 export class MySqlCostingRepository {
@@ -51,6 +51,7 @@ export class MySqlCostingRepository {
       ["overall_size", "VARCHAR(255) NULL AFTER type_of_costing"],
       ["wood_type", "VARCHAR(100) NULL AFTER overall_size"],
       ["form_data", "LONGTEXT NULL AFTER notes"],
+      ["costing_request_item_id", "VARCHAR(36) NULL AFTER form_data"],
       ["approval_authority_id", "VARCHAR(36) NULL AFTER form_data"],
     ];
     for (const [colName, colDef] of extraCols) {
@@ -83,6 +84,64 @@ export class MySqlCostingRepository {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS costing_request_bunches (
+        id VARCHAR(36) PRIMARY KEY,
+        bunch_code VARCHAR(50) NOT NULL UNIQUE,
+        merchant_id VARCHAR(36) NULL,
+        merchant_name VARCHAR(255) NOT NULL,
+        client_name VARCHAR(255) NULL,
+        notes TEXT NULL,
+        priority ENUM('Normal', 'High', 'Urgent') NOT NULL DEFAULT 'Normal',
+        total_products INT NOT NULL DEFAULT 1,
+        status ENUM('Pending', 'In Progress', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Pending',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY idx_bunch_code (bunch_code),
+        KEY idx_bunch_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS costing_request_items (
+        id VARCHAR(36) PRIMARY KEY,
+        bunch_id VARCHAR(36) NOT NULL,
+        bunch_code VARCHAR(50) NOT NULL,
+        product_code VARCHAR(100) NOT NULL,
+        product_name VARCHAR(255) NOT NULL,
+        product_type VARCHAR(100) NULL,
+        collection_name VARCHAR(150) NULL,
+        wood_type VARCHAR(100) NULL,
+        overall_size VARCHAR(255) NULL,
+        client_name VARCHAR(255) NULL,
+        description TEXT NULL,
+        image_url TEXT NULL,
+        priority ENUM('Normal', 'High', 'Urgent') NOT NULL DEFAULT 'Normal',
+        stage ENUM('Pending', 'In Progress', 'In Review', 'Approved', 'Rejected') NOT NULL DEFAULT 'Pending',
+        estimation_id VARCHAR(36) NULL,
+        estimation_number VARCHAR(50) NULL,
+        final_price DECIMAL(15,2) NULL,
+        merchant_name VARCHAR(255) NOT NULL,
+        created_by VARCHAR(36) NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY idx_item_bunch (bunch_id),
+        KEY idx_item_bunch_code (bunch_code),
+        KEY idx_item_product_code (product_code),
+        KEY idx_item_stage (stage),
+        KEY idx_item_estimation (estimation_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Ensure final_price_usd column exists on costing_request_items
+    const [usdCols]: any = await pool.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'costing_request_items' AND COLUMN_NAME = 'final_price_usd'`
+    );
+    if (!Array.isArray(usdCols) || usdCols.length === 0) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN final_price_usd DECIMAL(15,2) NULL AFTER final_price`);
+    }
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS cost_rates_master (
         id VARCHAR(36) PRIMARY KEY,
         item_name VARCHAR(255) NOT NULL,
@@ -99,6 +158,14 @@ export class MySqlCostingRepository {
     await pool.query(
       `INSERT IGNORE INTO roles (id, name, description, is_system_role) VALUES
         (UUID(), 'Menu: Costing & Estimation', 'Access to Costing & Estimation module', 0),
+        (UUID(), 'Menu: Costing & Estimation -> Dashboard', 'Access to Costing Dashboard', 0),
+        (UUID(), 'Menu: Costing & Estimation -> Costing Request Center', 'Access to Costing Request Center under Costing & Estimation', 0),
+        (UUID(), 'Menu: Costing & Estimation -> List of Costing', 'Access to List of Costing under Costing & Estimation', 0),
+        (UUID(), 'Menu: Costing & Estimation -> List of Costing -> SKU Wise Costing', 'Access to SKU Wise Costing under List of Costing', 0),
+        (UUID(), 'Menu: Costing & Estimation -> List of Costing -> Merchant Wise Details', 'Access to Merchant Wise Details under List of Costing', 0),
+        (UUID(), 'Menu: Costing & Estimation -> Costing Requests (Products)', 'Access to Costing Requests (Products) under Costing & Estimation', 0),
+        (UUID(), 'Menu: Costing & Estimation -> Costing Requests (Bunches)', 'Access to Costing Requests (Bunches) under Costing & Estimation', 0),
+        (UUID(), 'Menu: Costing & Estimation -> Costing Tracker', 'Access to Costing Tracker under Costing & Estimation', 0),
         (UUID(), 'Menu: Costing & Estimation -> New Costing Sheet', 'Access to New Costing Sheet under Costing & Estimation', 0),
         (UUID(), 'Menu: Costing & Estimation -> List of New Costing', 'Access to List of New Costing under Costing & Estimation', 0)`
     );
@@ -168,8 +235,8 @@ export class MySqlCostingRepository {
           id, estimation_number, title, product_code, product_name, product_type, collection_name, type_of_costing, overall_size, wood_type, client_name, crm_lead_id, status, currency, exchange_rate,
           total_material_cost, total_labor_cost, total_overhead_cost, total_finishing_cost,
           total_packaging_cost, subtotal_cost, margin_percentage, margin_amount,
-          tax_percentage, tax_amount, final_price, notes, form_data, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          tax_percentage, tax_amount, final_price, notes, form_data, costing_request_item_id, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           estimation.id,
           estimation.estimation_number,
@@ -199,6 +266,7 @@ export class MySqlCostingRepository {
           estimation.final_price || 0,
           estimation.notes || null,
           (estimation as any).form_data || null,
+          (estimation as any).costing_request_item_id || null,
           estimation.created_by || null,
         ]
       );
@@ -222,6 +290,36 @@ export class MySqlCostingRepository {
             item.remarks || null,
           ]
         );
+      }
+
+      // Link to Costing Request Item if provided
+      const reqItemId = (estimation as any).costing_request_item_id;
+      if (reqItemId) {
+        const itemStage = estimation.status === 'Approved' ? 'Approved' : (estimation.status === 'In Review' ? 'In Review' : 'In Progress');
+        let usdRate = 86.5;
+        try {
+          if ((estimation as any).form_data) {
+            const parsed = typeof (estimation as any).form_data === 'string' ? JSON.parse((estimation as any).form_data) : (estimation as any).form_data;
+            if (parsed.usdExchangeRate) usdRate = Number(parsed.usdExchangeRate) || 86.5;
+          }
+        } catch (_) {}
+        const finalPriceUsd = estimation.final_price ? Number((estimation.final_price / usdRate).toFixed(2)) : null;
+
+        await conn.query(
+          `UPDATE costing_request_items SET
+            estimation_id = ?,
+            estimation_number = ?,
+            final_price = ?,
+            final_price_usd = ?,
+            stage = ?
+           WHERE id = ?`,
+          [estimation.id, estimation.estimation_number, estimation.final_price || 0, finalPriceUsd, itemStage, reqItemId]
+        );
+        // Also update parent bunch status
+        const [itemRows]: any = await conn.query(`SELECT bunch_id FROM costing_request_items WHERE id = ?`, [reqItemId]);
+        if (itemRows && itemRows.length > 0) {
+          await this.syncBunchStatusInternal(conn, itemRows[0].bunch_id);
+        }
       }
 
       await conn.commit();
@@ -326,6 +424,39 @@ export class MySqlCostingRepository {
         }
       }
 
+      // Sync with linked costing_request_items if any
+      const [linkedReqs]: any = await conn.query(
+        `SELECT id, bunch_id FROM costing_request_items WHERE estimation_id = ? OR id = (SELECT costing_request_item_id FROM cost_estimations WHERE id = ?)`,
+        [id, id]
+      );
+      if (linkedReqs && linkedReqs.length > 0) {
+        const itemStage = estimation.status === 'Approved' ? 'Approved' : (estimation.status === 'In Review' ? 'In Review' : 'In Progress');
+        const finalPrice = estimation.final_price !== undefined ? estimation.final_price : null;
+        let usdRate = 86.5;
+        try {
+          if ((estimation as any).form_data) {
+            const parsed = typeof (estimation as any).form_data === 'string' ? JSON.parse((estimation as any).form_data) : (estimation as any).form_data;
+            if (parsed.usdExchangeRate) usdRate = Number(parsed.usdExchangeRate) || 86.5;
+          }
+        } catch (_) {}
+        const finalPriceUsd = finalPrice ? Number((finalPrice / usdRate).toFixed(2)) : null;
+
+        for (const req of linkedReqs) {
+          await conn.query(
+            `UPDATE costing_request_items SET
+              estimation_id = ?,
+              stage = ?,
+              final_price = COALESCE(?, final_price),
+              final_price_usd = COALESCE(?, final_price_usd)
+             WHERE id = ?`,
+            [id, itemStage, finalPrice, finalPriceUsd, req.id]
+          );
+          if (req.bunch_id) {
+            await this.syncBunchStatusInternal(conn, req.bunch_id);
+          }
+        }
+      }
+
       await conn.commit();
       return await this.findEstimationById(id);
     } catch (err) {
@@ -387,6 +518,385 @@ export class MySqlCostingRepository {
     return {
       overview: totalRows[0],
       byStatus: statusRows
+    };
+  }
+
+  // Costing Request Bunches & Items
+  private async syncBunchStatusInternal(conn: any, bunchId: string): Promise<void> {
+    const [items]: any = await conn.query(`SELECT stage FROM costing_request_items WHERE bunch_id = ?`, [bunchId]);
+    if (!items || items.length === 0) return;
+    const allApproved = items.every((i: any) => i.stage === 'Approved');
+    const anyInProgress = items.some((i: any) => ['In Progress', 'In Review', 'Approved'].includes(i.stage));
+    let status = 'Pending';
+    if (allApproved) {
+      status = 'Completed';
+    } else if (anyInProgress) {
+      status = 'In Progress';
+    }
+    await conn.query(`UPDATE costing_request_bunches SET status = ? WHERE id = ?`, [status, bunchId]);
+  }
+
+  async generateBunchCode(): Promise<string> {
+    await this.ensureCostingSchema();
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const prefix = `BUN-${yy}${mm}-`;
+    const [rows]: any = await pool.query(
+      `SELECT bunch_code FROM costing_request_bunches WHERE bunch_code LIKE ? ORDER BY created_at DESC LIMIT 1`,
+      [`${prefix}%`]
+    );
+    if (rows && rows.length > 0) {
+      const lastCode = rows[0].bunch_code;
+      const seq = parseInt(lastCode.replace(prefix, ""), 10);
+      const nextSeq = isNaN(seq) ? 1 : seq + 1;
+      return `${prefix}${String(nextSeq).padStart(4, "0")}`;
+    }
+    return `${prefix}0001`;
+  }
+
+  async createBunchWithItems(bunchData: {
+    merchant_id?: string;
+    merchant_name: string;
+    client_name?: string;
+    notes?: string;
+    priority?: 'Normal' | 'High' | 'Urgent';
+  }, items: Array<{
+    product_name: string;
+    product_code?: string;
+    product_type?: string;
+    collection_name?: string;
+    wood_type?: string;
+    overall_size?: string;
+    client_name?: string;
+    description?: string;
+    image_url?: string;
+    priority?: 'Normal' | 'High' | 'Urgent';
+  }>): Promise<CostingRequestBunch> {
+    await this.ensureCostingSchema();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const bunchId = uuidv4();
+      const bunchCode = await this.generateBunchCode();
+      const priority = bunchData.priority || 'Normal';
+      const totalProducts = items.length;
+
+      await conn.query(
+        `INSERT INTO costing_request_bunches (
+          id, bunch_code, merchant_id, merchant_name, client_name, notes, priority, total_products, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+        [
+          bunchId,
+          bunchCode,
+          bunchData.merchant_id || null,
+          bunchData.merchant_name,
+          bunchData.client_name || null,
+          bunchData.notes || null,
+          priority,
+          totalProducts,
+        ]
+      );
+
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
+        const itemId = uuidv4();
+        const autoProductCode = (item.product_code && item.product_code.trim())
+          ? item.product_code.trim()
+          : `${bunchCode}-P${String(idx + 1).padStart(2, '0')}`;
+
+        await conn.query(
+          `INSERT INTO costing_request_items (
+            id, bunch_id, bunch_code, product_code, product_name, product_type, collection_name,
+            wood_type, overall_size, client_name, description, image_url, priority, stage,
+            merchant_name, created_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
+          [
+            itemId,
+            bunchId,
+            bunchCode,
+            autoProductCode,
+            item.product_name,
+            item.product_type || null,
+            item.collection_name || null,
+            item.wood_type || null,
+            item.overall_size || null,
+            item.client_name || bunchData.client_name || null,
+            item.description || null,
+            item.image_url || null,
+            item.priority || priority,
+            bunchData.merchant_name,
+            bunchData.merchant_id || null,
+          ]
+        );
+      }
+
+      await conn.commit();
+      return (await this.findBunchById(bunchId))!;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+
+  async findBunches(search?: string, status?: string, merchant?: string): Promise<CostingRequestBunch[]> {
+    await this.ensureCostingSchema();
+    let sql = `SELECT * FROM costing_request_bunches WHERE 1=1`;
+    const params: any[] = [];
+
+    if (status && status !== 'ALL') {
+      sql += ` AND status = ?`;
+      params.push(status);
+    }
+    if (merchant && merchant !== 'ALL') {
+      sql += ` AND merchant_name = ?`;
+      params.push(merchant);
+    }
+    if (search) {
+      sql += ` AND (bunch_code LIKE ? OR merchant_name LIKE ? OR client_name LIKE ? OR notes LIKE ?)`;
+      const term = `%${search}%`;
+      params.push(term, term, term, term);
+    }
+    sql += ` ORDER BY created_at DESC`;
+
+    const [bunches]: any = await pool.query(sql, params);
+    if (!bunches || bunches.length === 0) return [];
+
+    const bunchIds = bunches.map((b: any) => b.id);
+    const [items]: any = await pool.query(
+      `SELECT
+        cri.*,
+        COALESCE(cri.final_price, ce.final_price) as final_price,
+        COALESCE(cri.final_price_usd, CASE WHEN ce.final_price > 0 THEN ROUND(ce.final_price / 86.5, 2) ELSE NULL END) as final_price_usd
+       FROM costing_request_items cri
+       LEFT JOIN cost_estimations ce ON cri.estimation_id = ce.id
+       WHERE cri.bunch_id IN (?)
+       ORDER BY cri.created_at ASC`,
+      [bunchIds]
+    );
+
+    const itemsByBunchId: Record<string, CostingRequestItem[]> = {};
+    for (const it of items) {
+      if (!itemsByBunchId[it.bunch_id]) itemsByBunchId[it.bunch_id] = [];
+      itemsByBunchId[it.bunch_id].push(it);
+    }
+
+    return bunches.map((b: any) => ({
+      ...b,
+      items: itemsByBunchId[b.id] || [],
+    }));
+  }
+
+  async findBunchById(idOrCode: string): Promise<CostingRequestBunch | null> {
+    await this.ensureCostingSchema();
+    const [bunches]: any = await pool.query(
+      `SELECT * FROM costing_request_bunches WHERE id = ? OR bunch_code = ? LIMIT 1`,
+      [idOrCode, idOrCode]
+    );
+    if (!bunches || bunches.length === 0) return null;
+    const bunch = bunches[0];
+    const [items]: any = await pool.query(
+      `SELECT
+        cri.*,
+        COALESCE(cri.final_price, ce.final_price) as final_price,
+        COALESCE(cri.final_price_usd, CASE WHEN ce.final_price > 0 THEN ROUND(ce.final_price / 86.5, 2) ELSE NULL END) as final_price_usd
+       FROM costing_request_items cri
+       LEFT JOIN cost_estimations ce ON cri.estimation_id = ce.id
+       WHERE cri.bunch_id = ?
+       ORDER BY cri.created_at ASC`,
+      [bunch.id]
+    );
+    return {
+      ...bunch,
+      items: items || [],
+    };
+  }
+
+  async findRequestItems(search?: string, stage?: string, priority?: string, bunchCode?: string, merchant?: string): Promise<CostingRequestItem[]> {
+    await this.ensureCostingSchema();
+    let sql = `
+      SELECT
+        cri.*,
+        COALESCE(cri.final_price, ce.final_price) as final_price,
+        COALESCE(cri.final_price_usd, CASE WHEN ce.final_price > 0 THEN ROUND(ce.final_price / 86.5, 2) ELSE NULL END) as final_price_usd
+      FROM costing_request_items cri
+      LEFT JOIN cost_estimations ce ON cri.estimation_id = ce.id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (stage && stage !== 'ALL') {
+      sql += ` AND cri.stage = ?`;
+      params.push(stage);
+    }
+    if (priority && priority !== 'ALL') {
+      sql += ` AND cri.priority = ?`;
+      params.push(priority);
+    }
+    if (bunchCode) {
+      sql += ` AND cri.bunch_code = ?`;
+      params.push(bunchCode);
+    }
+    if (merchant && merchant !== 'ALL') {
+      sql += ` AND cri.merchant_name = ?`;
+      params.push(merchant);
+    }
+    if (search) {
+      sql += ` AND (cri.product_code LIKE ? OR cri.product_name LIKE ? OR cri.bunch_code LIKE ? OR cri.merchant_name LIKE ? OR cri.client_name LIKE ?)`;
+      const term = `%${search}%`;
+      params.push(term, term, term, term, term);
+    }
+    sql += ` ORDER BY cri.created_at DESC`;
+
+    const [rows]: any = await pool.query(sql, params);
+    return rows as CostingRequestItem[];
+  }
+
+  async findRequestItemById(id: string): Promise<CostingRequestItem | null> {
+    await this.ensureCostingSchema();
+    const [rows]: any = await pool.query(`SELECT * FROM costing_request_items WHERE id = ? LIMIT 1`, [id]);
+    return (rows && rows.length > 0) ? (rows[0] as CostingRequestItem) : null;
+  }
+
+  async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number): Promise<boolean> {
+    await this.ensureCostingSchema();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      let calcUsd = finalPriceUsd;
+      if (finalPrice && !calcUsd) {
+        calcUsd = Number((finalPrice / 86.5).toFixed(2));
+      }
+
+      const [res]: any = await conn.query(
+        `UPDATE costing_request_items SET
+          stage = ?,
+          estimation_id = COALESCE(?, estimation_id),
+          estimation_number = COALESCE(?, estimation_number),
+          final_price = COALESCE(?, final_price),
+          final_price_usd = COALESCE(?, final_price_usd)
+         WHERE id = ?`,
+        [stage, estimationId || null, estimationNumber || null, finalPrice || null, calcUsd || null, id]
+      );
+      const [itemRows]: any = await conn.query(`SELECT bunch_id, estimation_id, final_price FROM costing_request_items WHERE id = ?`, [id]);
+      if (itemRows && itemRows.length > 0) {
+        const estId = itemRows[0].estimation_id;
+        if (estId && (stage === 'Approved' || stage === 'Rejected')) {
+          const estStatus = stage === 'Approved' ? 'Approved' : 'Rejected';
+          await conn.query(`UPDATE cost_estimations SET status = ? WHERE id = ?`, [estStatus, estId]);
+        }
+        await this.syncBunchStatusInternal(conn, itemRows[0].bunch_id);
+      }
+      await conn.commit();
+      return res.affectedRows > 0;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+
+  async getCostingTracker(search?: string, stage?: string, merchant?: string, dateFrom?: string, dateTo?: string): Promise<any> {
+    await this.ensureCostingSchema();
+    let sql = `SELECT * FROM costing_request_items WHERE 1=1`;
+    const params: any[] = [];
+
+    if (stage && stage !== 'ALL') {
+      sql += ` AND stage = ?`;
+      params.push(stage);
+    }
+    if (merchant && merchant !== 'ALL') {
+      sql += ` AND merchant_name = ?`;
+      params.push(merchant);
+    }
+    if (dateFrom) {
+      sql += ` AND created_at >= ?`;
+      params.push(dateFrom);
+    }
+    if (dateTo) {
+      sql += ` AND created_at <= ?`;
+      params.push(`${dateTo} 23:59:59`);
+    }
+    if (search) {
+      sql += ` AND (product_code LIKE ? OR product_name LIKE ? OR bunch_code LIKE ? OR merchant_name LIKE ? OR client_name LIKE ?)`;
+      const term = `%${search}%`;
+      params.push(term, term, term, term, term);
+    }
+    sql += ` ORDER BY created_at DESC`;
+
+    const [items]: any = await pool.query(sql, params);
+
+    // Summary counts
+    const [counts]: any = await pool.query(`
+      SELECT
+        COUNT(*) as total_requests,
+        SUM(CASE WHEN stage = 'Pending' THEN 1 ELSE 0 END) as not_started_count,
+        SUM(CASE WHEN stage IN ('In Progress', 'In Review') THEN 1 ELSE 0 END) as under_process_count,
+        SUM(CASE WHEN stage = 'Approved' THEN 1 ELSE 0 END) as approved_count,
+        SUM(CASE WHEN stage = 'Rejected' THEN 1 ELSE 0 END) as rejected_count
+      FROM costing_request_items
+    `);
+
+    return {
+      kpis: counts[0] || {
+        total_requests: 0,
+        not_started_count: 0,
+        under_process_count: 0,
+        approved_count: 0,
+        rejected_count: 0,
+      },
+      items: items || [],
+    };
+  }
+
+  async getDashboardMetrics(): Promise<any> {
+    await this.ensureCostingSchema();
+    const [counts]: any = await pool.query(`
+      SELECT
+        COUNT(*) as total_requests,
+        SUM(CASE WHEN stage = 'Pending' THEN 1 ELSE 0 END) as not_started_count,
+        SUM(CASE WHEN stage = 'In Progress' THEN 1 ELSE 0 END) as in_progress_count,
+        SUM(CASE WHEN stage = 'In Review' THEN 1 ELSE 0 END) as in_review_count,
+        SUM(CASE WHEN stage = 'Approved' THEN 1 ELSE 0 END) as approved_count,
+        SUM(CASE WHEN stage = 'Rejected' THEN 1 ELSE 0 END) as rejected_count
+      FROM costing_request_items
+    `);
+
+    const [bunchCount]: any = await pool.query(`SELECT COUNT(*) as total_bunches FROM costing_request_bunches`);
+    const [recentItems]: any = await pool.query(`
+      SELECT id, bunch_code, product_code, product_name, merchant_name, client_name, stage, priority, final_price, created_at
+      FROM costing_request_items
+      ORDER BY created_at DESC
+      LIMIT 10
+    `);
+
+    const [merchantStats]: any = await pool.query(`
+      SELECT merchant_name, COUNT(*) as total_products,
+        SUM(CASE WHEN stage = 'Approved' THEN 1 ELSE 0 END) as approved,
+        SUM(CASE WHEN stage = 'Pending' THEN 1 ELSE 0 END) as pending
+      FROM costing_request_items
+      GROUP BY merchant_name
+      ORDER BY total_products DESC
+      LIMIT 10
+    `);
+
+    return {
+      metrics: {
+        total_requests: Number(counts[0]?.total_requests || 0),
+        not_started_count: Number(counts[0]?.not_started_count || 0),
+        in_progress_count: Number(counts[0]?.in_progress_count || 0),
+        in_review_count: Number(counts[0]?.in_review_count || 0),
+        approved_count: Number(counts[0]?.approved_count || 0),
+        rejected_count: Number(counts[0]?.rejected_count || 0),
+        total_bunches: Number(bunchCount[0]?.total_bunches || 0),
+      },
+      recent_activity: recentItems || [],
+      merchant_breakdown: merchantStats || [],
     };
   }
 }

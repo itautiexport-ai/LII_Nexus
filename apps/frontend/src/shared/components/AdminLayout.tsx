@@ -226,8 +226,18 @@ export const SECTIONS: NavSection[] = [
     label: "Costing & Estimation",
     allowedRoles: ["System Admin", "Merchant", "CEO", "HOD"],
     items: [
+      { label: "Dashboard", to: "/admin/costing/dashboard" },
+      { label: "Costing Request Center", to: "/admin/costing/request-center" },
+      {
+        label: "List of Costing",
+        to: "/admin/costing/sku-wise",
+        items: [
+          { label: "SKU Wise Costing", to: "/admin/costing/sku-wise" },
+          { label: "Merchant Wise Details", to: "/admin/costing/merchant-wise" },
+        ],
+      },
+      { label: "Costing Tracker", to: "/admin/costing/tracker" },
       { label: "New Costing Sheet", to: "/admin/costing/new" },
-      { label: "List of New Costing", to: "/admin/costing/list" },
     ],
   },
   {
