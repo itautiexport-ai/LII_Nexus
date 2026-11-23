@@ -357,8 +357,16 @@ export class CostingService {
     return this.repo.findRequestItemById(id);
   }
 
-  async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number): Promise<boolean> {
-    return this.repo.updateRequestItemStage(id, stage, estimationId, estimationNumber, finalPrice, finalPriceUsd);
+  async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number, actorUserId?: string): Promise<boolean> {
+    if (!['Pending', 'In Progress', 'In Review', 'Approved', 'Rejected'].includes(stage)) {
+      throw new ValidationError('Invalid costing request stage.');
+    }
+    const authorities = await this.getApprovalAuthorities();
+    const actorCanApprove = authorities.some(authority => authority.id === actorUserId);
+    if ((stage === 'Approved' || stage === 'Rejected') && !actorCanApprove) {
+      throw new ForbiddenError('Only Ravi Utmani or Raj Utmani can approve or reject costing.');
+    }
+    return this.repo.updateRequestItemStage(id, stage, estimationId, estimationNumber, finalPrice, finalPriceUsd, actorCanApprove);
   }
 
   async getTrackerData(search?: string, stage?: string, merchant?: string, dateFrom?: string, dateTo?: string): Promise<any> {

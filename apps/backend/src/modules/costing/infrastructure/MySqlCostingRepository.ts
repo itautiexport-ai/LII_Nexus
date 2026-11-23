@@ -1,6 +1,7 @@
 import { pool } from "../../../infrastructure/database/mysql/connection";
 import { CostEstimation, CostEstimationItem, CostRateMaster, CostingRequestBunch, CostingRequestItem } from "../domain/CostEstimation";
 import { v4 as uuidv4 } from "uuid";
+import { ForbiddenError } from "../../../core/domain/errors/DomainError";
 
 export class MySqlCostingRepository {
   private schemaEnsured = false;
@@ -761,11 +762,34 @@ export class MySqlCostingRepository {
     return (rows && rows.length > 0) ? (rows[0] as CostingRequestItem) : null;
   }
 
-  async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number): Promise<boolean> {
+  async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number, actorCanApprove: boolean = false): Promise<boolean> {
     await this.ensureCostingSchema();
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+
+      // Lock before checking so a concurrent approval cannot be reset by a stale request.
+      const [currentRows]: any = await conn.query(
+        'SELECT stage, estimation_id FROM costing_request_items WHERE id = ? FOR UPDATE', [id]
+      );
+      if (!currentRows.length) {
+        await conn.rollback();
+        return false;
+      }
+      const current = currentRows[0];
+      const finalized = (value: string) => value === 'Approved' || value === 'Rejected';
+      if (!actorCanApprove && (finalized(stage) || finalized(current.stage))) {
+        throw new ForbiddenError('Only Ravi Utmani or Raj Utmani can approve, reject or modify finalized costing.');
+      }
+      // Protect both the existing and requested linked estimation from indirect changes.
+      for (const linkedId of [...new Set([current.estimation_id, estimationId].filter(Boolean))].sort()) {
+        const [linkedRows]: any = await conn.query(
+          'SELECT status FROM cost_estimations WHERE id = ? FOR UPDATE', [linkedId]
+        );
+        if (!actorCanApprove && linkedRows.some((row: any) => finalized(row.status))) {
+          throw new ForbiddenError('Only Ravi Utmani or Raj Utmani can modify finalized costing.');
+        }
+      }
 
       let calcUsd = finalPriceUsd;
       if (finalPrice && !calcUsd) {

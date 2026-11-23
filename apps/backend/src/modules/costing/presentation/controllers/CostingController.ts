@@ -142,7 +142,8 @@ export class CostingController {
       estimationId,
       estimationNumber,
       finalPrice,
-      finalPriceUsd
+      finalPriceUsd,
+      (req as any).user?.sub
     );
     if (!updated) {
       return res.status(404).json({ success: false, error: { message: "Costing request item not found" } });

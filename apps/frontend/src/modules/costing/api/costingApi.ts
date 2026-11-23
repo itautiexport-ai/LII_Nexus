@@ -717,21 +717,10 @@ export interface CostingRequestItem {
   updated_at: string;
 }
 
+// UI visibility only; the API independently checks active approval-authority IDs.
 export const isDirectorApprover = (user: any): boolean => {
-  if (!user) return false;
-  const name = (user.fullName || "").toLowerCase();
-  const email = (user.email || "").toLowerCase();
-  const roles = (user.roles || []).map((r: string) => r.toLowerCase());
-  return (
-    name.includes("ravi") ||
-    name.includes("raj") ||
-    email.includes("ravi") ||
-    email.includes("raj") ||
-    roles.includes("director") ||
-    roles.includes("ceo") ||
-    roles.includes("system admin") ||
-    email.includes("admin")
-  );
+  const name = (user?.fullName || "").trim().toLowerCase();
+  return name === "ravi utmani" || name === "raj utmani";
 };
 
 export interface CostingRequestBunch {
