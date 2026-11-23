@@ -165,7 +165,6 @@ export class CostingService {
   async createEstimation(dto: CreateCostEstimationDto, userId?: string): Promise<CostEstimation> {
     this.validateFormData(dto.form_data);
     const id = uuidv4();
-    const estimationNumber = await this.repo.generateEstimationNumber();
 
     const marginPct = dto.margin_percentage ?? 26;
     const taxPct = dto.tax_percentage ?? 18;
@@ -174,7 +173,7 @@ export class CostingService {
 
     const estimation: CostEstimation = {
       id,
-      estimation_number: estimationNumber,
+      estimation_number: "", // Allocated atomically with the repository insert.
       title: dto.title || dto.product_name || "Untitled Product",
       product_code: dto.product_code,
       product_name: dto.product_name,

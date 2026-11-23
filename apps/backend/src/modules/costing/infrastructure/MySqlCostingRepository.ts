@@ -1,7 +1,8 @@
 import { pool } from "../../../infrastructure/database/mysql/connection";
 import { CostEstimation, CostEstimationItem, CostRateMaster, CostingRequestBunch, CostingRequestItem } from "../domain/CostEstimation";
 import { v4 as uuidv4 } from "uuid";
-import { ForbiddenError } from "../../../core/domain/errors/DomainError";
+import type { PoolConnection } from "mysql2/promise";
+import { ConflictError, ForbiddenError } from "../../../core/domain/errors/DomainError";
 
 export class MySqlCostingRepository {
   private schemaEnsured = false;
@@ -174,21 +175,65 @@ export class MySqlCostingRepository {
     this.schemaEnsured = true;
   }
 
-  async generateEstimationNumber(): Promise<string> {
-    await this.ensureCostingSchema();
-    const year = new Date().getFullYear();
-    const prefix = `EST-${year}-`;
-    const [rows]: any = await pool.query(
-      `SELECT estimation_number FROM cost_estimations WHERE estimation_number LIKE ? ORDER BY created_at DESC LIMIT 1`,
-      [`${prefix}%`]
+  private async nextNumber(
+    connection: Pick<PoolConnection, 'query'>,
+    table: 'cost_estimations' | 'costing_request_bunches',
+    column: 'estimation_number' | 'bunch_code',
+    prefix: string
+  ): Promise<string> {
+    const [rows]: any = await connection.query(
+      `SELECT COALESCE(MAX(CAST(SUBSTRING(${column}, ?) AS UNSIGNED)), 0) AS last_sequence
+       FROM ${table} WHERE ${column} REGEXP ?`,
+      [prefix.length + 1, `^${prefix}[0-9]+$`]
     );
-    if (rows && rows.length > 0) {
-      const lastNum = rows[0].estimation_number;
-      const sequence = parseInt(lastNum.replace(prefix, ""), 10);
-      const nextSeq = isNaN(sequence) ? 1 : sequence + 1;
-      return `${prefix}${String(nextSeq).padStart(4, "0")}`;
+    const next = Number(rows[0].last_sequence) + 1;
+    if (!Number.isSafeInteger(next)) throw new ConflictError('Costing number range exceeded.');
+    return `${prefix}${String(next).padStart(4, '0')}`;
+  }
+
+  private async withNumberTransaction<T>(
+    kind: 'estimation' | 'bunch',
+    action: (connection: PoolConnection) => Promise<T>
+  ): Promise<T> {
+    const conn = await pool.getConnection();
+    let held = false;
+    let reusable = true;
+    // Database-specific session lock works across application processes.
+    const lockKey = `:costing:${kind}-number`;
+    try {
+      const [locks]: any = await conn.query(
+        'SELECT GET_LOCK(SHA2(CONCAT(DATABASE(), ?), 256), 15) AS acquired', [lockKey]
+      );
+      if (Number(locks[0].acquired) !== 1) {
+        throw new ConflictError('Another costing is being saved. Please retry shortly.');
+      }
+      held = true;
+      await conn.beginTransaction();
+      const result = await action(conn);
+      await conn.commit();
+      return result;
+    } catch (error) {
+      try { await conn.rollback(); } catch (_) { reusable = false; }
+      throw error;
+    } finally {
+      if (held) {
+        try {
+          const [released]: any = await conn.query(
+            'SELECT RELEASE_LOCK(SHA2(CONCAT(DATABASE(), ?), 256)) AS released', [lockKey]
+          );
+          reusable = reusable && Number(released[0].released) === 1;
+        } catch (_) { reusable = false; }
+      }
+      if (reusable) conn.release();
+      else conn.destroy();
     }
-    return `${prefix}0001`;
+  }
+
+  // Without a connection this is a preview, not a reservation.
+  async generateEstimationNumber(connection?: PoolConnection): Promise<string> {
+    if (!connection) await this.ensureCostingSchema();
+    return this.nextNumber(connection || pool, 'cost_estimations', 'estimation_number',
+      `EST-${new Date().getFullYear()}-`);
   }
 
   async findAllEstimations(search?: string, status?: string): Promise<CostEstimation[]> {
@@ -227,9 +272,8 @@ export class MySqlCostingRepository {
 
   async createEstimation(estimation: CostEstimation, items: CostEstimationItem[]): Promise<CostEstimation> {
     await this.ensureCostingSchema();
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
+    await this.withNumberTransaction('estimation', async conn => {
+      estimation.estimation_number = await this.generateEstimationNumber(conn);
 
       await conn.query(
         `INSERT INTO cost_estimations (
@@ -323,14 +367,9 @@ export class MySqlCostingRepository {
         }
       }
 
-      await conn.commit();
-      return (await this.findEstimationById(estimation.id))!;
-    } catch (err) {
-      await conn.rollback();
-      throw err;
-    } finally {
-      conn.release();
-    }
+    });
+    // Release the connection before the readback to avoid exhausting the pool.
+    return (await this.findEstimationById(estimation.id))!;
   }
 
   async updateEstimation(id: string, estimation: Partial<CostEstimation>, items?: CostEstimationItem[]): Promise<CostEstimation | null> {
@@ -537,23 +576,14 @@ export class MySqlCostingRepository {
     await conn.query(`UPDATE costing_request_bunches SET status = ? WHERE id = ?`, [status, bunchId]);
   }
 
-  async generateBunchCode(): Promise<string> {
-    await this.ensureCostingSchema();
+  // Preview codes may change before save; allocation happens in the transaction.
+  async generateBunchCode(connection?: PoolConnection): Promise<string> {
+    if (!connection) await this.ensureCostingSchema();
     const now = new Date();
     const yy = String(now.getFullYear()).slice(-2);
     const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const prefix = `BUN-${yy}${mm}-`;
-    const [rows]: any = await pool.query(
-      `SELECT bunch_code FROM costing_request_bunches WHERE bunch_code LIKE ? ORDER BY created_at DESC LIMIT 1`,
-      [`${prefix}%`]
-    );
-    if (rows && rows.length > 0) {
-      const lastCode = rows[0].bunch_code;
-      const seq = parseInt(lastCode.replace(prefix, ""), 10);
-      const nextSeq = isNaN(seq) ? 1 : seq + 1;
-      return `${prefix}${String(nextSeq).padStart(4, "0")}`;
-    }
-    return `${prefix}0001`;
+    return this.nextNumber(connection || pool, 'costing_request_bunches', 'bunch_code',
+      `BUN-${yy}${mm}-`);
   }
 
   async createBunchWithItems(bunchData: {
@@ -575,12 +605,9 @@ export class MySqlCostingRepository {
     priority?: 'Normal' | 'High' | 'Urgent';
   }>): Promise<CostingRequestBunch> {
     await this.ensureCostingSchema();
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
-
-      const bunchId = uuidv4();
-      const bunchCode = await this.generateBunchCode();
+    const bunchId = uuidv4();
+    await this.withNumberTransaction('bunch', async conn => {
+      const bunchCode = await this.generateBunchCode(conn);
       const priority = bunchData.priority || 'Normal';
       const totalProducts = items.length;
 
@@ -633,14 +660,8 @@ export class MySqlCostingRepository {
         );
       }
 
-      await conn.commit();
-      return (await this.findBunchById(bunchId))!;
-    } catch (err) {
-      await conn.rollback();
-      throw err;
-    } finally {
-      conn.release();
-    }
+    });
+    return (await this.findBunchById(bunchId))!;
   }
 
   async findBunches(search?: string, status?: string, merchant?: string): Promise<CostingRequestBunch[]> {
