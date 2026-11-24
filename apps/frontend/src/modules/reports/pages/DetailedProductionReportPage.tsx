@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { reportApi, ReportFilters, ReportResult } from "../api/reportApi";
 import { departmentsApi, DepartmentRecord } from "../../admin/organization/departments/api/departmentsApi";
 import { dprApi } from "../../dpr/api/dprApi";
@@ -17,6 +17,27 @@ export default function DetailedProductionReportPage() {
   const [result, setResult] = useState<ReportResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const department = table.querySelector<HTMLElement>('thead [data-dpr-pin="department"]');
+    const alias = table.querySelector<HTMLElement>('thead [data-dpr-pin="alias"]');
+    if (!department || !alias) return;
+    const updateOffsets = () => {
+      const departmentWidth = department.getBoundingClientRect().width;
+      const aliasWidth = alias.getBoundingClientRect().width;
+      table.style.setProperty('--dpr-alias-left', `${departmentWidth}px`);
+      table.style.setProperty('--dpr-product-left', `${departmentWidth + aliasWidth}px`);
+    };
+    updateOffsets();
+    const resize = new ResizeObserver(updateOffsets);
+    resize.observe(department);
+    resize.observe(alias);
+    return () => resize.disconnect();
+  }, [result]);
+
 
   // Edit & Delete modal states (Admin only)
   const [editModalItem, setEditModalItem] = useState<{
@@ -89,6 +110,10 @@ export default function DetailedProductionReportPage() {
   // Item-wise columns (matching the form)
   const itemCols = ["Alias Name", "Product Code", "Wood Type", "Order Quantity", "OK Quantity", "UOM", "Qty as per UOM", "Re-work"];
   const headerCols = ["Date", "Department", "Shift", "Supervisor", "HOD"];
+  const pinnedColumn = (name: string) => ({
+    Department: 'department', 'Alias Name': 'alias', 'Product Code': 'product',
+  }[name]);
+
 
   return (
     <>
@@ -109,6 +134,17 @@ export default function DetailedProductionReportPage() {
         .dpr-table td { padding: 9px 14px; font-size: 13px; color: #1f2937; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
         .dpr-table td.item-cell { color: #1b4332; font-weight: 500; }
         .dpr-table td.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+        .dpr-table [data-dpr-pin] { position: sticky; z-index: 2; }
+        .dpr-table [data-dpr-pin="department"] { left: 0; }
+        .dpr-table [data-dpr-pin="alias"] { left: var(--dpr-alias-left, 0px); }
+        .dpr-table [data-dpr-pin="product"] { left: var(--dpr-product-left, 0px); box-shadow: 2px 0 0 #cbd5e1; }
+        .dpr-table tbody td[data-dpr-pin] { background-color: #fff; }
+        .dpr-table thead th[data-dpr-pin] { z-index: 3; background-color: #1b4332; }
+        .dpr-table thead th.item-col[data-dpr-pin] { background-color: #2d6a4f; }
+        @media print {
+          .dpr-table [data-dpr-pin] { position: static; box-shadow: none; }
+        }
+
         .stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 20px; min-width: 140px; }
         .stat-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; }
         .stat-value { font-size: 24px; font-weight: 700; margin-top: 2px; }
@@ -289,16 +325,16 @@ export default function DetailedProductionReportPage() {
         {result && (
           <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #e5e7eb", overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>
             <div style={{ overflowX: "auto" }}>
-              <table className="dpr-table">
+              <table ref={tableRef} className="dpr-table">
                 <thead>
                   <tr>
                     {/* Header columns */}
                     {headerCols.map((c) => (
-                      <th key={c}>{c}</th>
+                      <th key={c} data-dpr-pin={pinnedColumn(c)}>{c}</th>
                     ))}
                     {/* Item-wise columns — highlighted differently */}
                     {itemCols.map((c) => (
-                      <th key={c} className="item-col">{c}</th>
+                      <th key={c} data-dpr-pin={pinnedColumn(c)} className="item-col">{c}</th>
                     ))}
                     {isAdmin && (
                       <th className="no-print" style={{ background: "#153a2b", textAlign: "center", minWidth: 140 }}>
@@ -324,10 +360,10 @@ export default function DetailedProductionReportPage() {
                     return (
                       <tr key={i}>
                         {headerCols.map((c) => (
-                          <td key={c}>{row[ci(c)] ?? "—"}</td>
+                          <td key={c} data-dpr-pin={pinnedColumn(c)}>{row[ci(c)] ?? "—"}</td>
                         ))}
                         {itemCols.map((c) => (
-                          <td key={c} className={`item-cell${numCols.includes(c) ? " num-cell" : ""}`}>
+                          <td key={c} data-dpr-pin={pinnedColumn(c)} className={`item-cell${numCols.includes(c) ? " num-cell" : ""}`}>
                             {row[ci(c)] ?? "—"}
                           </td>
                         ))}
