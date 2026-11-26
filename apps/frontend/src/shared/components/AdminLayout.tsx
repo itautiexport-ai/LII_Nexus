@@ -22,6 +22,18 @@ export interface NavSection {
 }
 export const SECTIONS: NavSection[] = [
   {
+    key: "dashboard",
+    label: "Dashboard",
+    allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin", "Merchant", "Supervisor", "Employee"],
+    items: [
+      { label: "Directors Dashboard", to: "/admin/dashboard/directors" },
+      { label: "GM Dashboard", to: "/admin/dashboard/gm" },
+      { label: "HOD's Dashboard", to: "/admin/dashboard/hods" },
+      { label: "Merchants Dashboard", to: "/admin/dashboard/merchants" },
+      { label: "Manager's Dashboard", to: "/admin/dashboard/managers" },
+    ],
+  },
+  {
     key: "administration",
     label: "Administration",
     allowedRoles: ["System Admin", "HOD", "CEO", "HR Admin"],
@@ -235,6 +247,7 @@ export const SECTIONS: NavSection[] = [
         ],
       },
       { label: "Costing Tracker", to: "/admin/costing/tracker" },
+      { label: "Buyer's Quote History", to: "/admin/costing/buyer-quotes-history" },
       { label: "New Costing Sheet", to: "/admin/costing/new" },
     ],
   },

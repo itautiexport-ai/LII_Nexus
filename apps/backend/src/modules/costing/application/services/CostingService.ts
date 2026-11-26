@@ -333,9 +333,12 @@ export class CostingService {
     return this.repo.getDashboardMetrics();
   }
 
-  async getNextCodes(count: number = 1): Promise<{ bunchCode: string; productCodes: string[] }> {
+  async getNextCodes(count: number = 1): Promise<{ bunchCode: string; productCodes: string[]; nextCostingCode: number; costingCodes: string[] }> {
     const bunchCode = await this.repo.generateBunchCode();
-    const productCodes = Array.from({ length: Math.max(1, count) }, (_, i) => `${bunchCode}-P${String(i + 1).padStart(2, "0")}`);
-    return { bunchCode, productCodes };
+    const nextCostingCode = await this.repo.getNextCostingCodeNumber();
+    const safeCount = Math.max(1, count);
+    const costingCodes = Array.from({ length: safeCount }, (_, i) => String(nextCostingCode + i));
+    const productCodes = costingCodes;
+    return { bunchCode, productCodes, nextCostingCode, costingCodes };
   }
 }

@@ -79,6 +79,7 @@ import CostingRequestCenterPage from "../../modules/costing/pages/CostingRequest
 import CostingRequestsProductsPage from "../../modules/costing/pages/CostingRequestsProductsPage";
 import CostingRequestsBunchesPage from "../../modules/costing/pages/CostingRequestsBunchesPage";
 import CostingTrackerPage from "../../modules/costing/pages/CostingTrackerPage";
+import BuyerQuotesHistoryPage from "../../modules/costing/pages/BuyerQuotesHistoryPage";
 import BuyersPage from "../../modules/admin/masterdata/pages/BuyersPage";
 import UomsPage from "../../modules/admin/masterdata/pages/UomsPage";
 import FinishCodesPage from "../../modules/admin/masterdata/pages/FinishCodesPage";
@@ -224,6 +225,7 @@ import MachineMaintenanceDetailsPage from "../../modules/maintenance/pages/Machi
 import MachineBreakdownDetailsPage from "../../modules/maintenance/pages/MachineBreakdownDetailsPage";
 import AmcManagementPage from "../../modules/maintenance/pages/AmcManagementPage";
 import MaintenanceChecklistPage from "../../modules/maintenance/pages/MaintenanceChecklistPage";
+import RoleDashboardPage from "../../modules/dashboard/pages/RoleDashboardPage";
 
 export default function AppRouter() {
   return (
@@ -234,6 +236,11 @@ export default function AppRouter() {
       <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<HomePage />} />
+          <Route path="dashboard/directors" element={<RoleDashboardPage roleType="directors" />} />
+          <Route path="dashboard/gm" element={<RoleDashboardPage roleType="gm" />} />
+          <Route path="dashboard/hods" element={<RoleDashboardPage roleType="hods" />} />
+          <Route path="dashboard/merchants" element={<RoleDashboardPage roleType="merchants" />} />
+          <Route path="dashboard/managers" element={<RoleDashboardPage roleType="managers" />} />
           <Route path="resource-center/document-library" element={<DocumentLibraryPage />} />
           <Route path="resource-center/factory-documents" element={<FactoryDocumentsPage />} />
           <Route path="resource-center/important-urls" element={<ImportantUrlsPage />} />
@@ -421,6 +428,7 @@ export default function AppRouter() {
           <Route path="costing/requests/products" element={<CostingRequestsProductsPage />} />
           <Route path="costing/requests/bunches" element={<CostingRequestsBunchesPage />} />
           <Route path="costing/tracker" element={<CostingTrackerPage />} />
+          <Route path="costing/buyer-quotes-history" element={<BuyerQuotesHistoryPage />} />
           <Route path="costing/list" element={<CostEstimationsListPage />} />
           <Route path="costing/new" element={<CostEstimationFormPage />} />
           <Route path="costing/edit/:id" element={<CostEstimationFormPage />} />

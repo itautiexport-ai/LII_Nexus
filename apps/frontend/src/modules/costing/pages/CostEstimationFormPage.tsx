@@ -7,6 +7,7 @@ import {
   CostRateMaster,
   FURNITURE_PRODUCT_TYPES,
   getAssociatedWoodPartsForProduct,
+  parseItemImageUrls,
 } from "../api/costingApi";
 import {
   AdditionalCostRecord,
@@ -45,6 +46,7 @@ import {
   loadSyncedMdfPrices,
 } from "../../admin/masterdata/pages/MdfPricesPage";
 import { employeesApi, EmployeeRecord } from "../../admin/organization/employees/api/employeesApi";
+import { useAuthStore } from "../../auth/hooks/useAuthStore";
 import {
   MetalPrice,
   findMatchingMetalPrice,
@@ -153,6 +155,28 @@ export interface CartonSizeItem {
   width: number | "";
   height: number | "";
   unit: "cm" | "in";
+}
+
+export interface BuyerQuoteItem {
+  id: string;
+  currency: string;
+  amount: number | "";
+  note?: string;
+}
+
+function getOrdinalQuoteLabel(num: number): string {
+  const mod100 = num % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${num}th Quote`;
+  switch (num % 10) {
+    case 1:
+      return `${num}st Quote`;
+    case 2:
+      return `${num}nd Quote`;
+    case 3:
+      return `${num}rd Quote`;
+    default:
+      return `${num}th Quote`;
+  }
 }
 
 function evaluateSizeEquation(raw: string): string | null {
@@ -464,6 +488,53 @@ export default function CostEstimationFormPage() {
   const { id } = useParams<{ id?: string }>();
   const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
+  const currentUser = useAuthStore((s) => s.user);
+  const isSystemAdminUser = React.useMemo(() => {
+    if (!currentUser) return false;
+    const roles = (currentUser.roles || []).map((r) => r.toLowerCase());
+    const email = (currentUser.email || "").toLowerCase();
+    const fullName = (currentUser.fullName || "").toLowerCase();
+    return (
+      roles.includes("system admin") ||
+      email === "admin@liinexus.com" ||
+      fullName.includes("system administrator")
+    );
+  }, [currentUser]);
+
+  const [isDirector, setIsDirector] = useState<boolean>(
+    () => isSystemAdminUser || (currentUser?.designation || "").toLowerCase().includes("director")
+  );
+
+  useEffect(() => {
+    const directCheck = isSystemAdminUser || (currentUser?.designation || "").toLowerCase().includes("director");
+    if (directCheck) {
+      setIsDirector(true);
+      return;
+    }
+    if (!currentUser) {
+      setIsDirector(false);
+      return;
+    }
+    let cancelled = false;
+    employeesApi
+      .list()
+      .then((emps) => {
+        if (cancelled || !Array.isArray(emps)) return;
+        const match = emps.find(
+          (emp) =>
+            (emp.userId && emp.userId === currentUser.id) ||
+            (emp.email && currentUser.email && emp.email.toLowerCase() === currentUser.email.toLowerCase())
+        );
+        const empDesig = (match?.designationTitle || "").toLowerCase();
+        setIsDirector(empDesig.includes("director"));
+      })
+      .catch(() => {
+        if (!cancelled) setIsDirector(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isSystemAdminUser, currentUser?.id, currentUser?.email, currentUser?.designation]);
 
   const requestIdParam = searchParams.get("requestId") || "";
   const bunchCodeParam = searchParams.get("bunchCode") || "";
@@ -528,6 +599,7 @@ export default function CostEstimationFormPage() {
   // Form State
   const [title, setTitle] = useState(() => searchParams.get("productName") || searchParams.get("title") || "");
   const [productCode, setProductCode] = useState(() => searchParams.get("productCode") || "");
+  const [buyerCode, setBuyerCode] = useState(() => searchParams.get("buyerCode") || "");
   const [productName, setProductName] = useState(() => searchParams.get("productName") || "");
   const [productType, setProductType] = useState(() => searchParams.get("productType") || "");
   const [collectionName, setCollectionName] = useState(() => searchParams.get("collectionName") || "");
@@ -547,9 +619,116 @@ export default function CostEstimationFormPage() {
   const [currencyExchangeRates, setCurrencyExchangeRates] = useState<Record<string, number>>(() =>
     getLocalCurrencyMap()
   );
+  const [buyerQuotes, setBuyerQuotes] = useState<BuyerQuoteItem[]>([
+    { id: "quote-1", currency: "USD", amount: "", note: "" },
+  ]);
   const [notes, setNotes] = useState("");
   const [woodWastagePct, setWoodWastagePct] = useState(20);
   const [imageUrl, setImageUrl] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Auto-extract full details (Costing/Product Code, Buyer Code, Name, Specs, All Photos) from linked Costing Request
+  useEffect(() => {
+    if (!requestIdParam || isEdit) return;
+    let cancelled = false;
+    costingApi
+      .getRequestItemById(requestIdParam)
+      .then((reqItem) => {
+        if (cancelled || !reqItem) return;
+        const extractedCode = reqItem.costing_code || reqItem.product_code || "";
+        if (extractedCode) setProductCode(extractedCode);
+        if (reqItem.buyer_code) setBuyerCode(reqItem.buyer_code);
+        if (reqItem.product_name) {
+          setProductName(reqItem.product_name);
+          setTitle(reqItem.product_name);
+        }
+        if (reqItem.product_type) setProductType(reqItem.product_type);
+        if (reqItem.collection_name) setCollectionName(reqItem.collection_name);
+        if (reqItem.overall_size) setOverallSize(reqItem.overall_size);
+        if (reqItem.wood_type) setWoodType(reqItem.wood_type);
+        if (reqItem.client_name) setClientName(reqItem.client_name);
+
+        const extractedPhotos = parseItemImageUrls(reqItem);
+        if (extractedPhotos.length > 0) {
+          setImageUrls(extractedPhotos);
+          setImageUrl(extractedPhotos[0]);
+          setActiveImageIdx(0);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch linked costing request item details:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestIdParam, isEdit]);
+
+  const handleUploadFormImages = async (files: FileList | File[]) => {
+    const fileArr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (fileArr.length === 0) return;
+
+    setUploadingImages(true);
+    try {
+      const previews = fileArr.map((f) => URL.createObjectURL(f));
+      let startSlot = 0;
+      setImageUrls((prev) => {
+        startSlot = prev.length;
+        const merged = [...prev, ...previews];
+        setImageUrl(merged[0] || "");
+        setActiveImageIdx(startSlot);
+        return merged;
+      });
+
+      for (let i = 0; i < fileArr.length; i++) {
+        try {
+          const uploadedUrl = await costingApi.uploadImageFile(fileArr[i]);
+          if (uploadedUrl) {
+            const targetSlot = startSlot + i;
+            setImageUrls((prev) => {
+              const next = [...prev];
+              if (targetSlot < next.length) {
+                next[targetSlot] = uploadedUrl;
+              }
+              setImageUrl(next[0] || "");
+              return next;
+            });
+          }
+        } catch (err) {
+          // Fallback to DataURL if server upload fails
+          const reader = new FileReader();
+          const targetSlot = startSlot + i;
+          reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            if (!dataUrl) return;
+            setImageUrls((prev) => {
+              const next = [...prev];
+              if (targetSlot < next.length) {
+                next[targetSlot] = dataUrl;
+              }
+              setImageUrl(next[0] || "");
+              return next;
+            });
+          };
+          reader.readAsDataURL(fileArr[i]);
+        }
+      }
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleRemoveFormImage = () => {
+    setImageUrls((prev) => {
+      if (prev.length === 0) return prev;
+      const removeIdx = Math.min(activeImageIdx, prev.length - 1);
+      const next = prev.filter((_, idx) => idx !== removeIdx);
+      setImageUrl(next[0] || "");
+      setActiveImageIdx(next.length === 0 ? 0 : Math.min(removeIdx, next.length - 1));
+      return next;
+    });
+  };
 
   // Send for Approval Modal State
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -725,10 +904,8 @@ export default function CostEstimationFormPage() {
     const l = Number(item.length_ft) || 0;
     const w = Number(item.width_in) || 0;
     const rawT = Number(item.thick_in) || 0;
-    const rowIsMdf = isMdfType(item.wood_type, mdfPricesList);
-    const effectiveThickIn = rowIsMdf ? rawT / 25.4 : rawT;
     const pcs = Number(item.pcs) || 0;
-    return item.backend_cft ?? (l * w * effectiveThickIn * pcs) / 144;
+    return item.backend_cft ?? (l * w * rawT * pcs) / 144;
   };
 
   const handleWoodItemChange = (index: number, field: keyof WoodCostingItem, value: any) => {
@@ -803,7 +980,7 @@ export default function CostEstimationFormPage() {
     const l = Number(nextItem.length_ft) || 0;
     const w = Number(nextItem.width_in) || 0;
     const rawT = Number(nextItem.thick_in) || 0;
-    const effectiveThickIn = rowIsMdf ? rawT / 25.4 : rawT;
+    const effectiveThickIn = rawT;
     const p = Number(nextItem.pcs) || 0;
     const r = Number(nextItem.rate) || 0;
     nextItem.backend_cft = (l * w * effectiveThickIn * p) / 144;
@@ -825,9 +1002,7 @@ export default function CostEstimationFormPage() {
           setWoodItems((prev) => {
             if (!prev[index]) return prev;
             const cur = prev[index];
-            const curIsMdf = isMdfType(cur.wood_type, latestMdf);
-            const curRawT = Number(cur.thick_in) || 0;
-            const curEffT = curIsMdf ? curRawT / 25.4 : curRawT;
+            const curEffT = Number(cur.thick_in) || 0;
             if (
               (Number(cur.length_ft) || 0) === l &&
               (Number(cur.width_in) || 0) === w &&
@@ -1351,8 +1526,18 @@ export default function CostEstimationFormPage() {
             if (fd.summaryExpensesPct !== undefined) setSummaryExpensesPct(Number(fd.summaryExpensesPct));
             if (fd.usdExchangeRate !== undefined && fd.usdExchangeRate !== "") setUsdExchangeRate(Number(fd.usdExchangeRate));
             if (fd.selectedCurrency !== undefined) setSelectedCurrency(fd.selectedCurrency);
+            if (Array.isArray(fd.buyerQuotes) && fd.buyerQuotes.length > 0) setBuyerQuotes(fd.buyerQuotes);
             if (fd.woodWastagePct !== undefined) setWoodWastagePct(Number(fd.woodWastagePct));
-            if (fd.imageUrl) setImageUrl(fd.imageUrl);
+            if (fd.buyerCode !== undefined) setBuyerCode(fd.buyerCode);
+            if (Array.isArray(fd.imageUrls) && fd.imageUrls.length > 0) {
+              setImageUrls(fd.imageUrls);
+              setImageUrl(fd.imageUrls[0]);
+              setActiveImageIdx(0);
+            } else if (fd.imageUrl) {
+              setImageUrl(fd.imageUrl);
+              setImageUrls([fd.imageUrl]);
+              setActiveImageIdx(0);
+            }
             loadedFromFormData = true;
           }
         } catch (e) {
@@ -1383,8 +1568,18 @@ export default function CostEstimationFormPage() {
             if (fd.summaryExpensesPct !== undefined) setSummaryExpensesPct(Number(fd.summaryExpensesPct));
             if (fd.usdExchangeRate !== undefined && fd.usdExchangeRate !== "") setUsdExchangeRate(Number(fd.usdExchangeRate));
             if (fd.selectedCurrency !== undefined) setSelectedCurrency(fd.selectedCurrency);
+            if (Array.isArray(fd.buyerQuotes) && fd.buyerQuotes.length > 0) setBuyerQuotes(fd.buyerQuotes);
             if (fd.woodWastagePct !== undefined) setWoodWastagePct(Number(fd.woodWastagePct));
-            if (fd.imageUrl) setImageUrl(fd.imageUrl);
+            if (fd.buyerCode !== undefined) setBuyerCode(fd.buyerCode);
+            if (Array.isArray(fd.imageUrls) && fd.imageUrls.length > 0) {
+              setImageUrls(fd.imageUrls);
+              setImageUrl(fd.imageUrls[0]);
+              setActiveImageIdx(0);
+            } else if (fd.imageUrl) {
+              setImageUrl(fd.imageUrl);
+              setImageUrls([fd.imageUrl]);
+              setActiveImageIdx(0);
+            }
             loadedFromFormData = true;
           }
         } catch (e) {
@@ -1631,8 +1826,11 @@ export default function CostEstimationFormPage() {
       summaryExpensesPct,
       usdExchangeRate,
       selectedCurrency,
+      buyerQuotes,
       woodWastagePct,
-      imageUrl,
+      buyerCode,
+      imageUrl: imageUrls[0] || imageUrl,
+      imageUrls,
     };
     const formDataJson = JSON.stringify(formDataObj);
     const cleanNotesBeforeSave = (notes || "")
@@ -1665,7 +1863,7 @@ export default function CostEstimationFormPage() {
           const wi = Number(w.width_in) || 0;
           const t = Number(w.thick_in) || 0;
           const rowIsMdf = isMdfType(w.wood_type, mdfPricesList);
-          const effectiveThickIn = rowIsMdf ? t / 25.4 : t;
+          const effectiveThickIn = t;
           const pcs = Number(w.pcs) || 0;
           const r = Number(w.rate) || 0;
           const cft = computeWoodRowCft(w);
@@ -1678,7 +1876,7 @@ export default function CostEstimationFormPage() {
           return {
             category: "Raw Material" as const,
             item_name: w.wood_type ? `${partLabel} (${w.wood_type})` : partLabel,
-            specification: `${w.wood_type ? `Wood: ${w.wood_type}, ` : ""}L:${l}ft, W:${wi}in, T:${rowIsMdf ? `${t}mm (${effectiveThickIn.toFixed(3)}in)` : `${t}in`}, Pcs:${pcs}, Cft:${cft.toFixed(3)}${mdfSpecExtra}`,
+            specification: `${w.wood_type ? `Wood: ${w.wood_type}, ` : ""}L:${l}ft, W:${wi}in, T:${t}, Pcs:${pcs}, Cft:${cft.toFixed(3)}${mdfSpecExtra}`,
             quantity: Number(cft.toFixed(3)),
             unit_of_measure: "Cft",
             unit_cost: r,
@@ -2005,23 +2203,6 @@ export default function CostEstimationFormPage() {
         </button>
       </div>
 
-      {requestIdParam && (
-        <div style={{ background: "#ede9fe", border: "1.5px solid #c4b5fd", borderRadius: 8, padding: "14px 20px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#5b21b6", display: "flex", alignItems: "center", gap: 8 }}>
-              <span>⚡ Costing Request Linked:</span>
-              <span style={{ color: "#3730a3" }}>{productCode || searchParams.get("productCode")} - {productName || searchParams.get("productName")}</span>
-            </div>
-            <div style={{ fontSize: 13, color: "#6d28d9", marginTop: 4 }}>
-              Bunch Code: <strong>{bunchCodeParam || "—"}</strong> | Requested by Merchant: <strong>{merchantNameParam || "Merchant"}</strong>
-            </div>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 700, background: "#8b5cf6", color: "#ffffff", padding: "4px 12px", borderRadius: 12 }}>
-            Connected to Request Center
-          </span>
-        </div>
-      )}
-
       <form data-no-enhance="true" onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
         {/* Basic Details Card */}
         <div data-no-enhance="true" style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 20, marginBottom: 24 }}>
@@ -2029,79 +2210,187 @@ export default function CostEstimationFormPage() {
             1. Product Details
           </h3>
 
-          {/* Product Image Upload Section */}
+          {/* Product Images Upload Section (Multi-Photo + Drag & Drop + Arrows) */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-              Product Image
-            </label>
-
-            {imageUrl ? (
-              <div style={{ position: "relative", width: "100%", maxHeight: "260px", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", background: "#f8fafc", textAlign: "center", padding: 12 }}>
-                <img
-                  src={imageUrl}
-                  alt="Product Preview"
-                  style={{ maxHeight: "230px", maxWidth: "100%", objectFit: "contain", borderRadius: 6, display: "block", margin: "0 auto" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setImageUrl("")}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                Product Images {imageUrls.length > 0 && `(${imageUrls.length})`}
+              </label>
+              {imageUrls.length > 0 && (
+                <label
                   style={{
-                    position: "absolute",
-                    top: 14,
-                    right: 14,
-                    background: "#dc2626",
-                    color: "#ffffff",
-                    border: "none",
+                    padding: "5px 12px",
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    border: "1px solid #93c5fd",
                     borderRadius: 6,
-                    padding: "6px 12px",
                     fontSize: 12,
-                    fontWeight: 600,
+                    fontWeight: 700,
                     cursor: "pointer",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
                   }}
                 >
-                  ✕ Remove Image
-                </button>
-              </div>
-            ) : (
-              <label
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "170px",
-                  border: "2px dashed #cbd5e1",
-                  borderRadius: 8,
-                  background: "#f8fafc",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <div style={{ fontSize: 36, marginBottom: 8 }}>📷</div>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#2563eb", marginBottom: 4 }}>
-                  Click to Upload Product Image
-                </span>
-                <span style={{ fontSize: 12, color: "#64748b" }}>
-                  Upload image file (PNG, JPG, WEBP, GIF)
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setImageUrl(reader.result as string);
-                      };
-                      reader.readAsDataURL(file);
+                  + Add More Photos
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleUploadFormImages(e.target.files);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {(() => {
+              const allPhotos = imageUrls.length > 0 ? imageUrls : (imageUrl ? [imageUrl] : []);
+              const safeIdx = allPhotos.length > 0 ? Math.min(activeImageIdx, allPhotos.length - 1) : 0;
+              const currentImg = allPhotos.length > 0 ? allPhotos[safeIdx] : "";
+
+              if (currentImg) {
+                return (
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        handleUploadFormImages(e.dataTransfer.files);
+                      }
+                    }}
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      border: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      textAlign: "center",
+                      padding: 14,
+                    }}
+                  >
+                    <img
+                      src={currentImg}
+                      alt={`Product Preview ${safeIdx + 1}`}
+                      style={{ maxHeight: "240px", maxWidth: "100%", objectFit: "contain", borderRadius: 6, display: "block", margin: "0 auto" }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveFormImage}
+                      style={{
+                        position: "absolute",
+                        top: 12,
+                        right: 12,
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "6px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+                      }}
+                    >
+                      ✕ Remove This Photo
+                    </button>
+
+                    {/* Arrow Navigation & Thumbnail Strip */}
+                    {allPhotos.length > 1 && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 12 }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveImageIdx((safeIdx - 1 + allPhotos.length) % allPhotos.length)}
+                          style={{
+                            padding: "6px 14px",
+                            background: "#ffffff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 6,
+                            fontWeight: 700,
+                            fontSize: 12,
+                            cursor: "pointer",
+                            color: "#1e293b",
+                          }}
+                        >
+                          ◀ Previous
+                        </button>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>
+                          Photo {safeIdx + 1} / {allPhotos.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveImageIdx((safeIdx + 1) % allPhotos.length)}
+                          style={{
+                            padding: "6px 14px",
+                            background: "#2563eb",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: 6,
+                            fontWeight: 700,
+                            fontSize: 12,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Next ▶
+                        </button>
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 8 }}>
+                      {uploadingImages ? "Uploading photos..." : "Drag & drop more photos here or click '+ Add More Photos' above"}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <label
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handleUploadFormImages(e.dataTransfer.files);
                     }
                   }}
-                />
-              </label>
-            )}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "170px",
+                    border: "2px dashed #cbd5e1",
+                    borderRadius: 8,
+                    background: "#f8fafc",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>📷</div>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#2563eb", marginBottom: 4 }}>
+                    {uploadingImages ? "Uploading..." : "Click or Drag & Drop Product Photos"}
+                  </span>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>
+                    Upload one or multiple product images (PNG, JPG, WEBP, GIF)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleUploadFormImages(e.target.files);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              );
+            })()}
           </div>
           <div
             data-no-enhance="true"
@@ -2115,11 +2404,11 @@ export default function CostEstimationFormPage() {
           >
             <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
-                Product Code
+                Product Code / Costing Code
               </label>
               <input
                 type="text"
-                placeholder="Enter Product Code"
+                placeholder="Enter Product / Costing Code"
                 value={productCode}
                 onChange={(e) => setProductCode(e.target.value)}
                 style={{
@@ -2140,12 +2429,37 @@ export default function CostEstimationFormPage() {
 
             <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
-                Product Name *
+                Buyer Code
+              </label>
+              <input
+                type="text"
+                placeholder="Enter Buyer Code"
+                value={buyerCode}
+                onChange={(e) => setBuyerCode(e.target.value)}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: 42,
+                  boxSizing: "border-box",
+                  padding: "8px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  backgroundColor: "#ffffff",
+                  color: "#111827",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
+                Product Name / Image Name *
               </label>
               <input
                 type="text"
                 required
-                placeholder="Enter Product Name"
+                placeholder="Enter Product Name / Image Name"
                 value={productName}
                 onChange={(e) => {
                   setProductName(e.target.value);
@@ -4252,13 +4566,19 @@ export default function CostEstimationFormPage() {
           // Grand Total Estimated Cost (INR)
           const grandTotal = totalCostAfterExpenses + profitAmt;
 
-          const activeUsdRate = typeof usdExchangeRate === "number" && usdExchangeRate > 0 ? usdExchangeRate : 86.5;
-          const grandTotalInUsd = grandTotal / activeUsdRate;
+          const masterUsdRate = getLocalUsdRate();
+          const activeUsdRate =
+            isDirector && typeof usdExchangeRate === "number" && usdExchangeRate > 0
+              ? usdExchangeRate
+              : masterUsdRate;
+          const grandTotalInUsd = activeUsdRate > 0 ? grandTotal / activeUsdRate : 0;
 
           const activeSelectedRate =
-            currencyExchangeRates[selectedCurrency] && currencyExchangeRates[selectedCurrency] > 0
-              ? currencyExchangeRates[selectedCurrency]
-              : (selectedCurrency === "USD" ? activeUsdRate : 1);
+            selectedCurrency === "USD"
+              ? activeUsdRate
+              : currencyExchangeRates[selectedCurrency] && currencyExchangeRates[selectedCurrency] > 0
+                ? currencyExchangeRates[selectedCurrency]
+                : 1;
           const grandTotalInSelectedCurrency = activeSelectedRate > 0 ? grandTotal / activeSelectedRate : 0;
           const selectedSymbol = CURRENCY_SYMBOLS[selectedCurrency] || `${selectedCurrency} `;
 
@@ -4413,15 +4733,64 @@ export default function CostEstimationFormPage() {
               </div>
 
               {/* USD ($) Conversion Row directly below Grand Total */}
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", background: "rgba(16, 185, 129, 0.2)", border: "1.5px solid rgba(52, 211, 153, 0.4)", borderRadius: 8, padding: "12px 20px", marginBottom: 14 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, background: "rgba(16, 185, 129, 0.2)", border: "1.5px solid rgba(52, 211, 153, 0.4)", borderRadius: 8, padding: "12px 20px", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 22 }}>💵</span>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#ecfdf5" }}>
                       Grand Total in USD ($)
                     </div>
-                    <div style={{ fontSize: 12, color: "#a7f3d0" }}>
-                      Conversion Rate: $1 USD = ₹{activeUsdRate.toFixed(2)} (from Costing Master)
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4, fontSize: 12, color: "#a7f3d0" }}>
+                      {isDirector ? (
+                        <>
+                          <span>Conversion Rate: $1 USD = ₹</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={usdExchangeRate}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setUsdExchangeRate(val === "" ? "" : Number(val));
+                            }}
+                            style={{
+                              width: "82px",
+                              padding: "3px 8px",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: "#065f46",
+                              background: "#ffffff",
+                              border: "1px solid #34d399",
+                              borderRadius: 5,
+                              textAlign: "center",
+                              outline: "none",
+                            }}
+                          />
+                          {Math.abs(activeUsdRate - masterUsdRate) > 0.001 ? (
+                            <button
+                              type="button"
+                              onClick={() => setUsdExchangeRate(masterUsdRate)}
+                              style={{
+                                padding: "2px 8px",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                background: "rgba(255,255,255,0.2)",
+                                color: "#ecfdf5",
+                                border: "1px solid rgba(255,255,255,0.35)",
+                                borderRadius: 4,
+                                cursor: "pointer",
+                              }}
+                              title="Reset to Costing Master rate"
+                            >
+                              ↺ Reset (₹{masterUsdRate.toFixed(2)})
+                            </button>
+                          ) : (
+                            <span style={{ opacity: 0.9 }}>(from Costing Master)</span>
+                          )}
+                        </>
+                      ) : (
+                        <span>Conversion Rate: $1 USD = ₹{masterUsdRate.toFixed(2)} (from Costing Master)</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4468,7 +4837,7 @@ export default function CostEstimationFormPage() {
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.15)", padding: "5px 12px", borderRadius: 6 }}>
                       <span style={{ fontSize: 12, color: "#cbd5e1" }}>1 {selectedCurrency} =</span>
                       <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>
-                        ₹{(currencyExchangeRates[selectedCurrency] ?? activeSelectedRate).toFixed(2)}
+                        ₹{activeSelectedRate.toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -4482,6 +4851,168 @@ export default function CostEstimationFormPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Buyer Quotes Section (Director Designation Only) */}
+              {isDirector && (
+              <div style={{ background: "rgba(255, 255, 255, 0.12)", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 8, padding: "14px 18px", marginTop: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>💬</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff" }}>Buyer Quotes</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setBuyerQuotes((prev) => [
+                        ...prev,
+                        { id: `quote-${Date.now()}-${prev.length + 1}`, currency: selectedCurrency || "USD", amount: "", note: "" },
+                      ])
+                    }
+                    style={{
+                      padding: "6px 14px",
+                      background: "#ffffff",
+                      color: "#1e3a8a",
+                      border: "none",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    <span>+</span>
+                    <span>Add {getOrdinalQuoteLabel(buyerQuotes.length + 1)}</span>
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {buyerQuotes.map((q, qIdx) => (
+                    <div
+                      key={q.id}
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(0, 0, 0, 0.22)",
+                        borderRadius: 6,
+                        padding: "8px 12px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          minWidth: 84,
+                          padding: "4px 10px",
+                          background: "#fef08a",
+                          color: "#1e3a8a",
+                          borderRadius: 5,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          textAlign: "center",
+                        }}
+                      >
+                        {getOrdinalQuoteLabel(qIdx + 1)}
+                      </span>
+
+                      <select
+                        value={q.currency || "USD"}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setBuyerQuotes((prev) => prev.map((item, i) => (i === qIdx ? { ...item, currency: val } : item)));
+                        }}
+                        style={{
+                          padding: "6px 8px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#1e3a8a",
+                          background: "#ffffff",
+                          border: "none",
+                          borderRadius: 5,
+                          cursor: "pointer",
+                          outline: "none",
+                        }}
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="AED">AED</option>
+                        <option value="AUD">AUD</option>
+                        <option value="CAD">CAD</option>
+                      </select>
+
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder={`Enter ${getOrdinalQuoteLabel(qIdx + 1)} amount`}
+                        value={q.amount}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setBuyerQuotes((prev) =>
+                            prev.map((item, i) => (i === qIdx ? { ...item, amount: val === "" ? "" : Number(val) } : item))
+                          );
+                        }}
+                        style={{
+                          width: 150,
+                          padding: "6px 10px",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "#0f172a",
+                          background: "#ffffff",
+                          border: "none",
+                          borderRadius: 5,
+                          outline: "none",
+                        }}
+                      />
+
+                      <input
+                        type="text"
+                        placeholder="Remarks / Date (optional)"
+                        value={q.note || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setBuyerQuotes((prev) => prev.map((item, i) => (i === qIdx ? { ...item, note: val } : item)));
+                        }}
+                        style={{
+                          flex: "1 1 180px",
+                          padding: "6px 10px",
+                          fontSize: 12,
+                          color: "#0f172a",
+                          background: "#ffffff",
+                          border: "none",
+                          borderRadius: 5,
+                          outline: "none",
+                        }}
+                      />
+
+                      {buyerQuotes.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setBuyerQuotes((prev) => prev.filter((_, i) => i !== qIdx))}
+                          style={{
+                            padding: "5px 9px",
+                            background: "rgba(239, 68, 68, 0.85)",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: 5,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                          title="Remove quote"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              )}
             </div>
           );
         })()}

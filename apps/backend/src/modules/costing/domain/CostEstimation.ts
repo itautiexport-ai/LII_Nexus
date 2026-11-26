@@ -53,14 +53,18 @@ export interface CostingRequestItem {
   bunch_id: string;
   bunch_code: string;
   product_code: string;
+  buyer_code?: string;
+  costing_code?: string;
   product_name: string;
   product_type?: string;
   collection_name?: string;
+  sample_availability?: 'Not Available' | 'Sample Available';
   wood_type?: string;
   overall_size?: string;
   client_name?: string;
   description?: string;
   image_url?: string;
+  image_urls?: string[];
   priority: 'Normal' | 'High' | 'Urgent';
   stage: 'Pending' | 'In Progress' | 'In Review' | 'Approved' | 'Rejected';
   estimation_id?: string;

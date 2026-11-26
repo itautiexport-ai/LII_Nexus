@@ -604,13 +604,17 @@ export const costingApi = {
     items: Array<{
       product_name: string;
       product_code?: string;
+      buyer_code?: string;
+      costing_code?: string;
       product_type?: string;
       collection_name?: string;
+      sample_availability?: 'Not Available' | 'Sample Available';
       wood_type?: string;
       overall_size?: string;
       client_name?: string;
       description?: string;
       image_url?: string;
+      image_urls?: string[];
       priority?: 'Normal' | 'High' | 'Urgent';
     }>;
   }): Promise<CostingRequestBunch> => {
@@ -665,7 +669,7 @@ export const costingApi = {
     return res.data.data;
   },
 
-  getNextCodes: async (count: number = 1): Promise<{ bunchCode: string; productCodes: string[] }> => {
+  getNextCodes: async (count: number = 1): Promise<{ bunchCode: string; productCodes: string[]; nextCostingCode: number; costingCodes: string[] }> => {
     const res = await axiosInstance.get("/costing/requests/next-codes", { params: { count } });
     return res.data.data;
   },
@@ -685,25 +689,61 @@ export interface CostingRequestItem {
   bunch_id: string;
   bunch_code: string;
   product_code: string;
+  buyer_code?: string;
+  costing_code?: string;
   product_name: string;
   product_type?: string;
   collection_name?: string;
+  sample_availability?: 'Not Available' | 'Sample Available';
   wood_type?: string;
   overall_size?: string;
   client_name?: string;
   description?: string;
   image_url?: string;
+  image_urls?: string[] | string;
   priority: 'Normal' | 'High' | 'Urgent';
   stage: 'Pending' | 'In Progress' | 'In Review' | 'Approved' | 'Rejected';
+  approved_at?: string | null;
   estimation_id?: string;
   estimation_number?: string;
   final_price?: number;
   final_price_usd?: number;
+  latest_buyer_quote?: {
+    label: string;
+    currency: string;
+    amount: number;
+    note?: string;
+    usd_rate?: number;
+  } | null;
   merchant_name: string;
   created_by?: string;
   created_at: string;
   updated_at: string;
 }
+
+export const parseItemImageUrls = (item: Pick<CostingRequestItem, "image_url" | "image_urls">): string[] => {
+  const list: string[] = [];
+  if (Array.isArray(item.image_urls)) {
+    item.image_urls.forEach((u) => {
+      if (typeof u === "string" && u.trim()) list.push(u.trim());
+    });
+  } else if (typeof item.image_urls === "string" && item.image_urls.trim()) {
+    try {
+      const parsed = JSON.parse(item.image_urls);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((u) => {
+          if (typeof u === "string" && u.trim()) list.push(u.trim());
+        });
+      }
+    } catch {
+      // ignore invalid json
+    }
+  }
+  if (list.length === 0 && item.image_url && item.image_url.trim()) {
+    list.push(item.image_url.trim());
+  }
+  return list;
+};
 
 export const isDirectorApprover = (user: any): boolean => {
   if (!user) return false;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { costingApi, CostingRequestItem, isDirectorApprover } from "../api/costingApi";
+import { costingApi, CostingRequestItem, isDirectorApprover, parseItemImageUrls } from "../api/costingApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
 
 export default function CostingRequestsProductsPage() {
@@ -16,6 +16,7 @@ export default function CostingRequestsProductsPage() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [galleryModal, setGalleryModal] = useState<{ title: string; urls: string[]; index: number } | null>(null);
 
   useEffect(() => {
     loadItems();
@@ -46,8 +47,8 @@ export default function CostingRequestsProductsPage() {
   const handleDoCosting = (item: CostingRequestItem) => {
     const params = new URLSearchParams({
       requestId: item.id,
-      bunchCode: item.bunch_code,
-      productCode: item.product_code,
+      productCode: item.costing_code || item.product_code || "",
+      buyerCode: item.buyer_code || "",
       productName: item.product_name,
       clientName: item.client_name || "",
       woodType: item.wood_type || "",
@@ -85,26 +86,26 @@ export default function CostingRequestsProductsPage() {
   const getStageBadge = (stage: string) => {
     switch (stage) {
       case "Approved":
-        return <span style={{ padding: "4px 8px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontSize: 12, fontWeight: 700 }}>✅ Approved</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>✅ Approved</span>;
       case "In Review":
-        return <span style={{ padding: "4px 8px", borderRadius: 12, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700 }}>⏳ Under Review</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>⏳ Under Review</span>;
       case "In Progress":
-        return <span style={{ padding: "4px 8px", borderRadius: 12, background: "#e0f2fe", color: "#0369a1", fontSize: 12, fontWeight: 700 }}>🛠️ In Progress</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#e0f2fe", color: "#0369a1", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>🛠️ In Progress</span>;
       case "Rejected":
-        return <span style={{ padding: "4px 8px", borderRadius: 12, background: "#fee2e2", color: "#991b1b", fontSize: 12, fontWeight: 700 }}>❌ Rejected</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#fee2e2", color: "#991b1b", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>❌ Rejected</span>;
       default:
-        return <span style={{ padding: "4px 8px", borderRadius: 12, background: "#f1f5f9", color: "#475569", fontSize: 12, fontWeight: 700 }}>⏳ Not Started</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#f1f5f9", color: "#475569", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>⏳ Not Started</span>;
     }
   };
 
   const getPriorityBadge = (p: string) => {
     switch (p) {
       case "Urgent":
-        return <span style={{ padding: "3px 8px", borderRadius: 4, background: "#fee2e2", color: "#991b1b", fontSize: 11, fontWeight: 700 }}>🔴 Urgent</span>;
+        return <span style={{ padding: "3px 8px", borderRadius: 4, background: "#fee2e2", color: "#991b1b", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>🔴 Urgent</span>;
       case "High":
-        return <span style={{ padding: "3px 8px", borderRadius: 4, background: "#ffedd5", color: "#c2410c", fontSize: 11, fontWeight: 700 }}>🟠 High</span>;
+        return <span style={{ padding: "3px 8px", borderRadius: 4, background: "#ffedd5", color: "#c2410c", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>🟠 High</span>;
       default:
-        return <span style={{ padding: "3px 8px", borderRadius: 4, background: "#f0fdf4", color: "#166534", fontSize: 11, fontWeight: 700 }}>🟢 Normal</span>;
+        return <span style={{ padding: "3px 8px", borderRadius: 4, background: "#f0fdf4", color: "#166534", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>🟢 Normal</span>;
     }
   };
 
@@ -143,7 +144,7 @@ export default function CostingRequestsProductsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by product name, code, bunch, merchant..."
+            placeholder="Search by costing code, buyer code, product name, merchant..."
             style={{ flex: 1, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}
           />
           <button
@@ -259,12 +260,13 @@ export default function CostingRequestsProductsPage() {
       </div>
 
       {/* Products Table */}
-      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
+      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 8, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <table data-no-enhance="true" style={{ width: "100%", minWidth: 1260, borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
           <thead>
-            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Costing Code</th>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Buyer Code</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Product Info</th>
-              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Bunch Code</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Merchant</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Client</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Requested Date</th>
@@ -277,13 +279,13 @@ export default function CostingRequestsProductsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>
                   Loading costing request items...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: 48, textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={10} style={{ padding: 48, textAlign: "center", color: "#6b7280" }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
                   <div style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>No costing requests found</div>
                   <p style={{ margin: "4px 0 16px 0", fontSize: 13 }}>Merchants can submit new product costing requests from the Request Center.</p>
@@ -306,40 +308,106 @@ export default function CostingRequestsProductsPage() {
             ) : (
               items.map((item) => (
                 <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                    <span
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        background: "#dcfce7",
+                        color: "#166534",
+                        fontWeight: 800,
+                        fontSize: 13,
+                        whiteSpace: "nowrap",
+                        display: "inline-block",
+                      }}
+                    >
+                      {item.costing_code || item.product_code || "—"}
+                    </span>
+                  </td>
+
+                  <td style={{ padding: "12px 16px" }}>
+                    {item.buyer_code ? (
+                      <span
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: 4,
+                          background: "#ede9fe",
+                          color: "#6d28d9",
+                          fontWeight: 700,
+                          fontSize: 12,
+                        }}
+                      >
+                        {item.buyer_code}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#9ca3af" }}>—</span>
+                    )}
+                  </td>
+
                   <td style={{ padding: "12px 16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      {item.image_url ? (
-                        <img
-                          src={item.image_url}
-                          alt=""
-                          style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 6, border: "1px solid #e5e7eb" }}
-                          onError={(e) => ((e.target as any).style.display = "none")}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 6,
-                            background: "#f1f5f9",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 18,
-                            color: "#94a3b8",
-                          }}
-                        >
-                          🪑
-                        </div>
-                      )}
+                      {(() => {
+                        const photos = parseItemImageUrls(item);
+                        if (photos.length === 0) {
+                          return (
+                            <div
+                              style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 6,
+                                background: "#f1f5f9",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 18,
+                                color: "#94a3b8",
+                              }}
+                            >
+                              🪑
+                            </div>
+                          );
+                        }
+                        return (
+                          <div
+                            onClick={() => setGalleryModal({ title: item.product_name, urls: photos, index: 0 })}
+                            style={{ position: "relative", cursor: "pointer", flexShrink: 0 }}
+                            title={photos.length > 1 ? `Click to view all ${photos.length} photos` : "Click to enlarge"}
+                          >
+                            <img
+                              src={photos[0]}
+                              alt=""
+                              style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 6, border: "1px solid #e5e7eb" }}
+                              onError={(e) => ((e.target as any).style.display = "none")}
+                            />
+                            {photos.length > 1 && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  bottom: -4,
+                                  right: -4,
+                                  background: "#2563eb",
+                                  color: "#ffffff",
+                                  fontSize: 9,
+                                  fontWeight: 800,
+                                  padding: "1px 5px",
+                                  borderRadius: 8,
+                                }}
+                              >
+                                +{photos.length - 1}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div>
                         <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>
                           {item.product_name}
                         </div>
-                        <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600, marginTop: 2 }}>
-                          {item.product_code}
-                          {item.product_type && <span style={{ color: "#6b7280", fontWeight: 400 }}> • {item.product_type}</span>}
-                        </div>
+                        {item.product_type && (
+                          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                            {item.product_type}
+                          </div>
+                        )}
                         {item.overall_size && (
                           <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>
                             Size: {item.overall_size}
@@ -347,21 +415,6 @@ export default function CostingRequestsProductsPage() {
                         )}
                       </div>
                     </div>
-                  </td>
-
-                  <td style={{ padding: "12px 16px" }}>
-                    <span
-                      style={{
-                        padding: "3px 8px",
-                        borderRadius: 4,
-                        background: "#ede9fe",
-                        color: "#6d28d9",
-                        fontWeight: 700,
-                        fontSize: 12,
-                      }}
-                    >
-                      {item.bunch_code}
-                    </span>
                   </td>
 
                   <td style={{ padding: "12px 16px" }}>
@@ -387,32 +440,71 @@ export default function CostingRequestsProductsPage() {
                     {getStageBadge(item.stage)}
                   </td>
 
-                  {/* Approved Price (USD and INR) */}
-                  <td style={{ padding: "12px 16px" }}>
+                  {/* Approved Price (Latest Buyer Quote if mentioned, else Approved USD & INR) */}
+                  <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
                     {item.stage === "Approved" ? (
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>
-                          ${(item.final_price_usd ? Number(item.final_price_usd) : Number(item.final_price || 0) / 86.5).toFixed(2)}
+                      item.latest_buyer_quote && item.latest_buyer_quote.amount > 0 ? (
+                        (() => {
+                          const q = item.latest_buyer_quote!;
+                          const rate = q.usd_rate && q.usd_rate > 0 ? q.usd_rate : 86.5;
+                          const symMap: Record<string, string> = {
+                            USD: "$",
+                            INR: "₹",
+                            EUR: "€",
+                            GBP: "£",
+                            AED: "AED ",
+                            AUD: "A$",
+                            CAD: "C$",
+                          };
+                          const sym = symMap[q.currency] || `${q.currency} `;
+                          const inrVal = q.currency === "INR" ? q.amount : q.currency === "USD" ? q.amount * rate : null;
+                          const usdVal = q.currency === "USD" ? q.amount : q.currency === "INR" ? q.amount / rate : null;
+                          return (
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>
+                                {sym}{q.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                              {q.currency === "USD" && inrVal !== null && (
+                                <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                                  ₹{inrVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                              )}
+                              {q.currency === "INR" && usdVal !== null && (
+                                <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                                  ${usdVal.toFixed(2)}
+                                </div>
+                              )}
+                              <div style={{ fontSize: 10, color: "#6d28d9", fontWeight: 700, marginTop: 2 }}>
+                                {q.label}
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>
+                            ${(item.final_price_usd ? Number(item.final_price_usd) : Number(item.final_price || 0) / 86.5).toFixed(2)}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                            ₹{Number(item.final_price || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
-                          ₹{Number(item.final_price || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
+                      )
                     ) : (
                       <span style={{ color: "#9ca3af", fontSize: 13 }}>—</span>
                     )}
                   </td>
 
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-                      {/* Director Approval Action (Ravi Utmani / Raj Utmani only) */}
+                  <td style={{ padding: "12px 16px", textAlign: "right", whiteSpace: "nowrap" }}>
+                    <div style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "nowrap" }}>
+                      {/* Director Approval Action (Ravi Utmani / Raj Utmani / System Admin only) */}
                       {canApprove && (item.stage === "In Review" || item.stage === "In Progress") && (
                         <button
                           type="button"
                           onClick={() => handleQuickApprove(item)}
                           title="Director Approval"
                           style={{
-                            padding: "6px 12px",
+                            padding: "6px 10px",
                             background: "#16a34a",
                             color: "#ffffff",
                             border: "none",
@@ -423,6 +515,7 @@ export default function CostingRequestsProductsPage() {
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 4,
+                            whiteSpace: "nowrap",
                             boxShadow: "0 1px 2px rgba(22, 163, 74, 0.2)",
                           }}
                         >
@@ -443,28 +536,55 @@ export default function CostingRequestsProductsPage() {
                             fontWeight: 600,
                             fontSize: 12,
                             cursor: "pointer",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           ❌ Reject
                         </button>
                       )}
 
-                      {/* Do Costing / Edit Costing Action */}
+                      {/* Do Costing Action */}
                       <button
                         type="button"
                         onClick={() => handleDoCosting(item)}
                         style={{
-                          padding: "6px 14px",
-                          background: item.stage === "Approved" ? "#f3f4f6" : "#2563eb",
-                          color: item.stage === "Approved" ? "#374151" : "#ffffff",
-                          border: item.stage === "Approved" ? "1px solid #d1d5db" : "none",
+                          padding: "6px 12px",
+                          background: "#2563eb",
+                          color: "#ffffff",
+                          border: "none",
                           borderRadius: 6,
                           fontWeight: 700,
                           fontSize: 12,
                           cursor: "pointer",
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        {item.estimation_id ? "✏️ Edit Costing" : "⚡ Do Costing"}
+                        ⚡ Do Costing
+                      </button>
+
+                      {/* Edit Costing Action */}
+                      <button
+                        type="button"
+                        disabled={!item.estimation_id}
+                        onClick={() => {
+                          if (item.estimation_id) {
+                            navigate(`/admin/costing/edit/${item.estimation_id}?requestId=${item.id}`);
+                          }
+                        }}
+                        title={item.estimation_id ? "Edit saved costing sheet" : "Do Costing first to enable editing"}
+                        style={{
+                          padding: "6px 12px",
+                          background: item.estimation_id ? "#fffbeb" : "#f3f4f6",
+                          color: item.estimation_id ? "#b45309" : "#9ca3af",
+                          border: item.estimation_id ? "1px solid #fcd34d" : "1px solid #e5e7eb",
+                          borderRadius: 6,
+                          fontWeight: 700,
+                          fontSize: 12,
+                          cursor: item.estimation_id ? "pointer" : "not-allowed",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        ✏️ Edit Costing
                       </button>
 
                       {item.estimation_id && (
@@ -493,6 +613,84 @@ export default function CostingRequestsProductsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Multi-Angle Photo Gallery Modal */}
+      {galleryModal && (
+        <div
+          onClick={() => setGalleryModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.72)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: 12,
+              padding: 20,
+              maxWidth: 680,
+              width: "100%",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>
+                {galleryModal.title} ({galleryModal.index + 1} / {galleryModal.urls.length})
+              </div>
+              <button
+                type="button"
+                onClick={() => setGalleryModal(null)}
+                style={{ background: "#f1f5f9", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700 }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#f8fafc", borderRadius: 8, overflow: "hidden", minHeight: 340, maxHeight: 480 }}>
+              <img
+                src={galleryModal.urls[galleryModal.index]}
+                alt=""
+                style={{ maxWidth: "100%", maxHeight: 460, objectFit: "contain" }}
+              />
+            </div>
+            {galleryModal.urls.length > 1 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGalleryModal((prev) =>
+                      prev ? { ...prev, index: (prev.index - 1 + prev.urls.length) % prev.urls.length } : null
+                    )
+                  }
+                  style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                >
+                  ◀ Previous
+                </button>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>
+                  Photo {galleryModal.index + 1} of {galleryModal.urls.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGalleryModal((prev) =>
+                      prev ? { ...prev, index: (prev.index + 1) % prev.urls.length } : null
+                    )
+                  }
+                  style={{ padding: "8px 16px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Next ▶
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

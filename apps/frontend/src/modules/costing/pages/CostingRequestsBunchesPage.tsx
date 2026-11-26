@@ -1,202 +1,197 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { costingApi, CostingRequestBunch, CostingRequestItem, isDirectorApprover } from "../api/costingApi";
+import { costingApi, CostingRequestItem, parseItemImageUrls } from "../api/costingApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
+
+interface MerchantFolder {
+  folderKey: string;
+  userId?: string;
+  merchantName: string;
+  items: CostingRequestItem[];
+  totalProducts: number;
+  approvedProducts: number;
+  reviewProducts: number;
+  inProgressProducts: number;
+  notStartedProducts: number;
+  rejectedProducts: number;
+  approvedInrTotal: number;
+  approvedUsdTotal: number;
+  lastUpdatedAt?: string;
+}
 
 export default function CostingRequestsBunchesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
-  const canApprove = isDirectorApprover(user);
 
-  const [bunches, setBunches] = useState<CostingRequestBunch[]>([]);
+  const [allItems, setAllItems] = useState<CostingRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Folder navigation state: null = Root (All Merchant Folders), string = Inside Merchant Folder
+  // Folder navigation state: null = Root (All Merchant Folders), string = Inside a Merchant's Folder
   const merchantInUrl = searchParams.get("merchant") || null;
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(merchantInUrl);
+  const [selectedFolderKey, setSelectedFolderKey] = useState<string | null>(merchantInUrl);
 
-  // In-folder search & filter
-  const [batchSearch, setBatchSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  // Filters
   const [folderSearch, setFolderSearch] = useState("");
-
-  // Expanded batches state inside folder
-  const [expandedBatches, setExpandedBatches] = useState<Record<string, boolean>>({});
+  const [itemSearch, setItemSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState("ALL");
+  const [galleryModal, setGalleryModal] = useState<{ title: string; urls: string[]; index: number } | null>(null);
 
   useEffect(() => {
-    loadBunches();
+    loadAllItems();
   }, []);
 
-  // Keep state synced with URL param
   useEffect(() => {
-    if (merchantInUrl !== selectedFolder) {
-      setSelectedFolder(merchantInUrl);
+    if (merchantInUrl !== selectedFolderKey) {
+      setSelectedFolderKey(merchantInUrl);
     }
   }, [merchantInUrl]);
 
-  const loadBunches = async () => {
+  const loadAllItems = async () => {
     setLoading(true);
     try {
-      const data = await costingApi.getBunches();
-      setBunches(data || []);
+      const data = await costingApi.getRequestItems();
+      setAllItems(data || []);
     } catch (err) {
-      console.error("Failed to load costing request bunches:", err);
+      console.error("Failed to load merchant costing records:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenFolder = (merchantName: string) => {
-    setSelectedFolder(merchantName);
-    setBatchSearch("");
-    setStatusFilter("ALL");
-    setSearchParams({ merchant: merchantName });
-  };
+  // Group ALL costing request items by User ID (created_by) / Merchant Name into ONE permanent folder per user
+  const merchantFolders = useMemo<MerchantFolder[]>(() => {
+    const map: Record<string, MerchantFolder> = {};
 
-  const handleBackToFolders = () => {
-    setSelectedFolder(null);
-    setSearchParams({});
-  };
+    allItems.forEach((item) => {
+      const displayName = (item.merchant_name || "Unassigned").trim();
+      const key = item.created_by ? `uid:${item.created_by}` : `name:${displayName.toLowerCase()}`;
 
-  const toggleBatchExpand = (bunchId: string) => {
-    setExpandedBatches((prev) => ({
-      ...prev,
-      [bunchId]: !prev[bunchId],
-    }));
-  };
-
-  // Group data by merchant folder
-  const merchantFolders = useMemo(() => {
-    const map: Record<
-      string,
-      {
-        merchant: string;
-        bunches: CostingRequestBunch[];
-        totalBatches: number;
-        totalProducts: number;
-        approvedProducts: number;
-        reviewProducts: number;
-        inProgressProducts: number;
-        notStartedProducts: number;
-        approvedInrTotal: number;
-        approvedUsdTotal: number;
-        completedBatches: number;
-        inProgressBatches: number;
-        pendingBatches: number;
-      }
-    > = {};
-
-    bunches.forEach((b) => {
-      const m = (b.merchant_name || "Unassigned").trim();
-      if (!map[m]) {
-        map[m] = {
-          merchant: m,
-          bunches: [],
-          totalBatches: 0,
+      if (!map[key]) {
+        map[key] = {
+          folderKey: key,
+          userId: item.created_by || undefined,
+          merchantName: displayName,
+          items: [],
           totalProducts: 0,
           approvedProducts: 0,
           reviewProducts: 0,
           inProgressProducts: 0,
           notStartedProducts: 0,
+          rejectedProducts: 0,
           approvedInrTotal: 0,
           approvedUsdTotal: 0,
-          completedBatches: 0,
-          inProgressBatches: 0,
-          pendingBatches: 0,
+          lastUpdatedAt: item.created_at,
         };
       }
 
-      map[m].bunches.push(b);
-      map[m].totalBatches += 1;
-      const items = b.items || [];
-      const pCount = items.length || b.total_products || 0;
-      map[m].totalProducts += pCount;
+      const folder = map[key];
+      folder.items.push(item);
+      folder.totalProducts += 1;
 
-      if (b.status === "Completed") map[m].completedBatches += 1;
-      else if (b.status === "In Progress") map[m].inProgressBatches += 1;
-      else map[m].pendingBatches += 1;
-
-      items.forEach((it) => {
-        if (it.stage === "Approved") {
-          map[m].approvedProducts += 1;
-          if (it.final_price) {
-            map[m].approvedInrTotal += Number(it.final_price);
-            map[m].approvedUsdTotal += it.final_price_usd ? Number(it.final_price_usd) : Number(it.final_price) / 86.5;
-          }
-        } else if (it.stage === "In Review") {
-          map[m].reviewProducts += 1;
-        } else if (it.stage === "In Progress") {
-          map[m].inProgressProducts += 1;
-        } else {
-          map[m].notStartedProducts += 1;
+      if (item.created_at && (!folder.lastUpdatedAt || new Date(item.created_at) > new Date(folder.lastUpdatedAt))) {
+        folder.lastUpdatedAt = item.created_at;
+        // Keep the latest display name if user updated it
+        if (displayName && displayName !== "Unassigned") {
+          folder.merchantName = displayName;
         }
-      });
+      }
+
+      if (item.stage === "Approved") {
+        folder.approvedProducts += 1;
+        if (item.final_price) {
+          folder.approvedInrTotal += Number(item.final_price);
+          folder.approvedUsdTotal += item.final_price_usd
+            ? Number(item.final_price_usd)
+            : Number(item.final_price) / 86.5;
+        }
+      } else if (item.stage === "In Review") {
+        folder.reviewProducts += 1;
+      } else if (item.stage === "In Progress") {
+        folder.inProgressProducts += 1;
+      } else if (item.stage === "Rejected") {
+        folder.rejectedProducts += 1;
+      } else {
+        folder.notStartedProducts += 1;
+      }
     });
 
-    return Object.values(map);
-  }, [bunches]);
+    return Object.values(map).sort((a, b) => {
+      const tA = a.lastUpdatedAt ? new Date(a.lastUpdatedAt).getTime() : 0;
+      const tB = b.lastUpdatedAt ? new Date(b.lastUpdatedAt).getTime() : 0;
+      return tB - tA;
+    });
+  }, [allItems]);
 
-  // Filter folders at root
+  const handleOpenFolder = (folder: MerchantFolder) => {
+    setSelectedFolderKey(folder.merchantName);
+    setItemSearch("");
+    setStageFilter("ALL");
+    setSearchParams({ merchant: folder.merchantName });
+  };
+
+  const handleBackToFolders = () => {
+    setSelectedFolderKey(null);
+    setSearchParams({});
+  };
+
   const filteredFolders = useMemo(() => {
     if (!folderSearch.trim()) return merchantFolders;
     const q = folderSearch.trim().toLowerCase();
-    return merchantFolders.filter((f) => f.merchant.toLowerCase().includes(q));
+    return merchantFolders.filter((f) => f.merchantName.toLowerCase().includes(q));
   }, [merchantFolders, folderSearch]);
 
-  // Active folder data when inside a folder
-  const activeFolderData = useMemo(() => {
-    if (!selectedFolder) return null;
-    return merchantFolders.find(
-      (f) => f.merchant.toLowerCase() === selectedFolder.trim().toLowerCase()
+  const activeFolder = useMemo(() => {
+    if (!selectedFolderKey) return null;
+    const target = selectedFolderKey.trim().toLowerCase();
+    return (
+      merchantFolders.find(
+        (f) =>
+          f.folderKey.toLowerCase() === target ||
+          f.merchantName.toLowerCase() === target ||
+          (f.userId && f.userId.toLowerCase() === target)
+      ) || null
     );
-  }, [merchantFolders, selectedFolder]);
+  }, [merchantFolders, selectedFolderKey]);
 
-  // Batches within active folder (filtered)
-  const activeFolderBatches = useMemo(() => {
-    if (!activeFolderData) return [];
-    return activeFolderData.bunches.filter((b) => {
-      if (statusFilter !== "ALL" && b.status !== statusFilter) return false;
-      if (batchSearch.trim()) {
-        const q = batchSearch.trim().toLowerCase();
+  const activeFolderItems = useMemo(() => {
+    if (!activeFolder) return [];
+    return activeFolder.items.filter((it) => {
+      if (stageFilter !== "ALL" && it.stage !== stageFilter) return false;
+      if (itemSearch.trim()) {
+        const q = itemSearch.trim().toLowerCase();
         const match =
-          (b.bunch_code || "").toLowerCase().includes(q) ||
-          (b.client_name || "").toLowerCase().includes(q) ||
-          (b.notes || "").toLowerCase().includes(q);
+          (it.costing_code || "").toLowerCase().includes(q) ||
+          (it.buyer_code || "").toLowerCase().includes(q) ||
+          (it.product_name || "").toLowerCase().includes(q) ||
+          (it.client_name || "").toLowerCase().includes(q) ||
+          (it.product_type || "").toLowerCase().includes(q) ||
+          (it.wood_type || "").toLowerCase().includes(q);
         if (!match) return false;
       }
       return true;
     });
-  }, [activeFolderData, statusFilter, batchSearch]);
+  }, [activeFolder, stageFilter, itemSearch]);
 
-  const isCurrentUser = (merchantName: string) => {
-    if (!user?.fullName) return false;
-    return merchantName.trim().toLowerCase() === user.fullName.trim().toLowerCase();
+  const isCurrentUserFolder = (folder: MerchantFolder) => {
+    if (!user) return false;
+    if (folder.userId && user.id && folder.userId === user.id) return true;
+    if (user.fullName && folder.merchantName.trim().toLowerCase() === user.fullName.trim().toLowerCase()) return true;
+    return false;
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Completed":
-        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontSize: 12, fontWeight: 700 }}>✅ Completed</span>;
-      case "In Progress":
-        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#e0f2fe", color: "#0369a1", fontSize: 12, fontWeight: 700 }}>🛠️ In Progress</span>;
-      default:
-        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700 }}>⏳ Pending</span>;
-    }
-  };
-
-  const getItemStageBadge = (stage: string) => {
+  const getStageBadge = (stage: string) => {
     switch (stage) {
       case "Approved":
-        return <span style={{ padding: "3px 8px", borderRadius: 10, background: "#dcfce7", color: "#166534", fontSize: 11, fontWeight: 700 }}>✅ Approved</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontSize: 12, fontWeight: 700 }}>✅ Approved</span>;
       case "In Review":
-        return <span style={{ padding: "3px 8px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 11, fontWeight: 700 }}>⏳ Under Review</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700 }}>⏳ Under Review</span>;
       case "In Progress":
-        return <span style={{ padding: "3px 8px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontSize: 11, fontWeight: 700 }}>🛠️ In Progress</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#e0f2fe", color: "#0369a1", fontSize: 12, fontWeight: 700 }}>🛠️ In Progress</span>;
       case "Rejected":
-        return <span style={{ padding: "3px 8px", borderRadius: 10, background: "#fee2e2", color: "#991b1b", fontSize: 11, fontWeight: 700 }}>❌ Rejected</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#fee2e2", color: "#991b1b", fontSize: 12, fontWeight: 700 }}>❌ Rejected</span>;
       default:
-        return <span style={{ padding: "3px 8px", borderRadius: 10, background: "#f1f5f9", color: "#64748b", fontSize: 11, fontWeight: 700 }}>⏳ Not Started</span>;
+        return <span style={{ padding: "4px 10px", borderRadius: 12, background: "#f1f5f9", color: "#64748b", fontSize: 12, fontWeight: 700 }}>⏳ Not Started</span>;
     }
   };
 
@@ -220,30 +215,30 @@ export default function CostingRequestsBunchesPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#64748b", marginBottom: 6 }}>
             <span
               onClick={handleBackToFolders}
-              style={{ cursor: "pointer", color: selectedFolder ? "#2563eb" : "#1e293b", fontWeight: 700 }}
+              style={{ cursor: "pointer", color: activeFolder ? "#2563eb" : "#1e293b", fontWeight: 700 }}
             >
               📁 Merchant Folders
             </span>
-            {selectedFolder && (
+            {activeFolder && (
               <>
                 <span>/</span>
                 <span style={{ color: "#1e293b", fontWeight: 700 }}>
-                  📂 {selectedFolder}
+                  📂 {activeFolder.merchantName}
                 </span>
               </>
             )}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 28 }}>{selectedFolder ? "📂" : "🗂️"}</span>
+            <span style={{ fontSize: 28 }}>{activeFolder ? "📂" : "🗂️"}</span>
             <div>
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: "#111827" }}>
-                {selectedFolder ? `${selectedFolder}'s Folder` : "Merchant Folders"}
+                {activeFolder ? `${activeFolder.merchantName}` : "Merchant Folders"}
               </h1>
               <p style={{ margin: "2px 0 0 0", fontSize: 13, color: "#6b7280" }}>
-                {selectedFolder
-                  ? `Detailed costing request bunches and products submitted by ${selectedFolder}.`
-                  : "Each user has a dedicated folder. Click a folder to open and inspect detailed costing data."}
+                {activeFolder
+                  ? `All costing requests submitted by ${activeFolder.merchantName} across all dates.`
+                  : "Each user has a dedicated folder containing all costing requests they submit."}
               </p>
             </div>
           </div>
@@ -251,7 +246,7 @@ export default function CostingRequestsBunchesPage() {
 
         {/* Header Actions */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {selectedFolder && (
+          {activeFolder && (
             <button
               type="button"
               onClick={handleBackToFolders}
@@ -284,7 +279,7 @@ export default function CostingRequestsBunchesPage() {
           <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#1f2937" }}>No Merchant Folders Found</div>
           <p style={{ margin: "6px 0 18px 0", fontSize: 14, color: "#6b7280" }}>
-            No costing requests have been submitted yet. Submitting a request creates a merchant folder automatically.
+            No costing requests have been submitted yet. Submitting a request automatically creates a folder under the user's name.
           </p>
           <button
             onClick={() => navigate("/admin/costing/request-center")}
@@ -302,12 +297,11 @@ export default function CostingRequestsBunchesPage() {
             + Create First Costing Request
           </button>
         </div>
-      ) : !selectedFolder ? (
+      ) : !activeFolder ? (
         /* ========================================================================= */
-        /* ROOT VIEW: MERCHANT FOLDERS DIRECTORY GRID                                */
+        /* ROOT VIEW: MERCHANT FOLDERS DIRECTORY GRID (1 FOLDER PER USER)            */
         /* ========================================================================= */
         <div>
-          {/* Quick Filter Bar */}
           <div
             style={{
               background: "#ffffff",
@@ -363,11 +357,11 @@ export default function CostingRequestsBunchesPage() {
             }}
           >
             {filteredFolders.map((folder) => {
-              const isMine = isCurrentUser(folder.merchant);
+              const isMine = isCurrentUserFolder(folder);
               return (
                 <div
-                  key={folder.merchant}
-                  onClick={() => handleOpenFolder(folder.merchant)}
+                  key={folder.folderKey}
+                  onClick={() => handleOpenFolder(folder)}
                   style={{
                     background: isMine ? "#fdfcff" : "#ffffff",
                     border: isMine ? "2px solid #818cf8" : "1px solid #e2e8f0",
@@ -376,7 +370,6 @@ export default function CostingRequestsBunchesPage() {
                     cursor: "pointer",
                     transition: "all 0.2s ease",
                     boxShadow: "0 2px 5px rgba(0,0,0,0.04)",
-                    position: "relative",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
@@ -412,10 +405,10 @@ export default function CostingRequestsBunchesPage() {
                         </div>
                         <div>
                           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
-                            {folder.merchant}
+                            {folder.merchantName}
                           </h3>
                           <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, fontWeight: 500 }}>
-                            {folder.totalBatches} {folder.totalBatches === 1 ? "Batch" : "Batches"} • {folder.totalProducts} Products
+                            {folder.totalProducts} {folder.totalProducts === 1 ? "Costing Request" : "Costing Requests"}
                           </div>
                         </div>
                       </div>
@@ -457,12 +450,16 @@ export default function CostingRequestsBunchesPage() {
                       )}
                       {folder.notStartedProducts > 0 && (
                         <span style={{ background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6 }}>
-                          ⏸️ {folder.notStartedProducts} Pending
+                          ⏸️ {folder.notStartedProducts} Not Started
+                        </span>
+                      )}
+                      {folder.rejectedProducts > 0 && (
+                        <span style={{ background: "#fee2e2", color: "#991b1b", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
+                          ❌ {folder.rejectedProducts} Rejected
                         </span>
                       )}
                     </div>
 
-                    {/* Approved Total display */}
                     {folder.approvedInrTotal > 0 && (
                       <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 700, marginBottom: 12, background: "#f0fdf4", padding: "6px 10px", borderRadius: 6 }}>
                         Approved Total: ${folder.approvedUsdTotal.toFixed(2)} (₹{folder.approvedInrTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })})
@@ -470,7 +467,7 @@ export default function CostingRequestsBunchesPage() {
                     )}
                   </div>
 
-                  {/* Folder Footer Action */}
+                  {/* Folder Footer */}
                   <div
                     style={{
                       borderTop: "1px solid #f1f5f9",
@@ -481,8 +478,8 @@ export default function CostingRequestsBunchesPage() {
                       marginTop: 8,
                     }}
                   >
-                    <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
-                      Batches: {folder.completedBatches} Done • {folder.inProgressBatches} Active
+                    <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>
+                      {folder.lastUpdatedAt ? `Last Request: ${new Date(folder.lastUpdatedAt).toLocaleDateString()}` : ""}
                     </span>
                     <span style={{ color: "#2563eb", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
                       Open Folder ➔
@@ -495,7 +492,7 @@ export default function CostingRequestsBunchesPage() {
         </div>
       ) : (
         /* ========================================================================= */
-        /* INSIDE MERCHANT FOLDER VIEW: DETAILED BATCHES & PRODUCTS                   */
+        /* INSIDE MERCHANT FOLDER: ALL COSTING REQUESTS BY THIS USER (ALL DATES)     */
         /* ========================================================================= */
         <div>
           {/* Quick Folder Switcher Bar */}
@@ -504,12 +501,12 @@ export default function CostingRequestsBunchesPage() {
               Switch Folder:
             </span>
             {merchantFolders.map((mf) => {
-              const isSelected = selectedFolder.toLowerCase() === mf.merchant.toLowerCase();
+              const isSelected = activeFolder.folderKey === mf.folderKey;
               return (
                 <button
-                  key={mf.merchant}
+                  key={mf.folderKey}
                   type="button"
-                  onClick={() => handleOpenFolder(mf.merchant)}
+                  onClick={() => handleOpenFolder(mf)}
                   style={{
                     padding: "6px 12px",
                     borderRadius: 20,
@@ -526,462 +523,414 @@ export default function CostingRequestsBunchesPage() {
                   }}
                 >
                   <span>{isSelected ? "📂" : "📁"}</span>
-                  <span>{mf.merchant}</span>
+                  <span>{mf.merchantName}</span>
                   <span style={{ background: isSelected ? "#2563eb" : "#e2e8f0", color: isSelected ? "#ffffff" : "#475569", borderRadius: 10, padding: "1px 6px", fontSize: 10 }}>
-                    {mf.totalBatches}
+                    {mf.totalProducts}
                   </span>
                 </button>
               );
             })}
           </div>
 
-          {/* Folder Details Box */}
-          {activeFolderData && (
-            <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
-              {/* Folder Header Banner */}
-              <div
-                style={{
-                  padding: "18px 24px",
-                  background: "#f8fafc",
-                  borderBottom: "1px solid #e2e8f0",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 16,
-                }}
-              >
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 24 }}>📂</span>
-                    <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#0f172a" }}>
-                      {activeFolderData.merchant}
-                    </h2>
-                    {isCurrentUser(activeFolderData.merchant) && (
-                      <span style={{ background: "#ede9fe", color: "#6d28d9", fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 10 }}>
-                        ⭐ My Folder
-                      </span>
-                    )}
-                    <span style={{ fontSize: 13, color: "#64748b" }}>
-                      • <strong>{activeFolderData.totalBatches}</strong> Batches ({activeFolderData.totalProducts} Total Products)
+          {/* Folder Content Box */}
+          <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+            {/* Folder Header Banner */}
+            <div
+              style={{
+                padding: "18px 24px",
+                background: "#f8fafc",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 16,
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 24 }}>📂</span>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#0f172a" }}>
+                    {activeFolder.merchantName}
+                  </h2>
+                  {isCurrentUserFolder(activeFolder) && (
+                    <span style={{ background: "#ede9fe", color: "#6d28d9", fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 10 }}>
+                      ⭐ My Folder
                     </span>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 14, fontSize: 12, marginTop: 8, flexWrap: "wrap" }}>
-                    <span style={{ color: "#16a34a", fontWeight: 700 }}>
-                      ✅ Approved: {activeFolderData.approvedProducts}
-                    </span>
-                    <span style={{ color: "#d97706", fontWeight: 700 }}>
-                      ⏳ In Review: {activeFolderData.reviewProducts}
-                    </span>
-                    <span style={{ color: "#2563eb", fontWeight: 700 }}>
-                      🛠️ In Progress: {activeFolderData.inProgressProducts}
-                    </span>
-                    <span style={{ color: "#64748b", fontWeight: 600 }}>
-                      ⏸️ Not Started: {activeFolderData.notStartedProducts}
-                    </span>
-                  </div>
+                  )}
+                  <span style={{ fontSize: 13, color: "#64748b" }}>
+                    • <strong>{activeFolder.totalProducts}</strong> Total Costing Requests
+                  </span>
                 </div>
 
-                {/* Search & Filter inside active folder */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <input
-                    type="text"
-                    placeholder="Search batches in this folder..."
-                    value={batchSearch}
-                    onChange={(e) => setBatchSearch(e.target.value)}
-                    style={{
-                      padding: "7px 12px",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 6,
-                      fontSize: 13,
-                      outline: "none",
-                      width: 220,
-                    }}
-                  />
-
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    style={{ padding: "7px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12, fontWeight: 600 }}
-                  >
-                    <option value="ALL">All Batch Status</option>
-                    <option value="Pending">⏳ Pending</option>
-                    <option value="In Progress">🛠️ In Progress</option>
-                    <option value="Completed">✅ Completed</option>
-                  </select>
-
-                  {(batchSearch || statusFilter !== "ALL") && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBatchSearch("");
-                        setStatusFilter("ALL");
-                      }}
-                      style={{ background: "none", border: "none", color: "#2563eb", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                    >
-                      Clear
-                    </button>
+                <div style={{ display: "flex", gap: 14, fontSize: 12, marginTop: 8, flexWrap: "wrap" }}>
+                  <span style={{ color: "#16a34a", fontWeight: 700 }}>
+                    ✅ Approved: {activeFolder.approvedProducts}
+                  </span>
+                  <span style={{ color: "#d97706", fontWeight: 700 }}>
+                    ⏳ Under Review: {activeFolder.reviewProducts}
+                  </span>
+                  <span style={{ color: "#2563eb", fontWeight: 700 }}>
+                    🛠️ In Progress: {activeFolder.inProgressProducts}
+                  </span>
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>
+                    ⏸️ Not Started: {activeFolder.notStartedProducts}
+                  </span>
+                  {activeFolder.approvedInrTotal > 0 && (
+                    <span style={{ color: "#15803d", fontWeight: 800 }}>
+                      | Approved Total: ${activeFolder.approvedUsdTotal.toFixed(2)} (₹{activeFolder.approvedInrTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })})
+                    </span>
                   )}
                 </div>
               </div>
 
-              {/* BATCHES TABLE IN THIS FOLDER */}
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700 }}>Batch Code</th>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700 }}>Client / Buyer</th>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700 }}>Created Date</th>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700 }}>Products</th>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700 }}>Priority</th>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700 }}>Costing Status Breakdown</th>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700 }}>Batch State</th>
-                      <th style={{ padding: "12px 18px", color: "#475569", fontWeight: 700, textAlign: "right" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeFolderBatches.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
-                          No batches found in {activeFolderData.merchant}'s folder.
-                        </td>
-                      </tr>
-                    ) : (
-                      activeFolderBatches.map((bunch, idx) => {
-                        const items = bunch.items || [];
-                        const approvedCount = items.filter((it) => it.stage === "Approved").length;
-                        const reviewCount = items.filter((it) => it.stage === "In Review").length;
-                        const progressCount = items.filter((it) => it.stage === "In Progress").length;
-                        const pendingCount = items.filter((it) => it.stage === "Pending").length;
-                        const isExpanded = !!expandedBatches[bunch.id];
+              {/* Search & Stage Filter */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  placeholder="Search costing code, buyer code, product..."
+                  value={itemSearch}
+                  onChange={(e) => setItemSearch(e.target.value)}
+                  style={{
+                    padding: "7px 12px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    outline: "none",
+                    width: 260,
+                  }}
+                />
 
-                        // Calculate approved amount
-                        let batchApprovedInr = 0;
-                        let batchApprovedUsd = 0;
-                        items.forEach((it) => {
-                          if (it.stage === "Approved" && it.final_price) {
-                            batchApprovedInr += Number(it.final_price);
-                            batchApprovedUsd += it.final_price_usd ? Number(it.final_price_usd) : Number(it.final_price) / 86.5;
-                          }
-                        });
+                <select
+                  value={stageFilter}
+                  onChange={(e) => setStageFilter(e.target.value)}
+                  style={{ padding: "7px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12, fontWeight: 600 }}
+                >
+                  <option value="ALL">All Stages</option>
+                  <option value="Pending">⏳ Not Started</option>
+                  <option value="In Progress">🛠️ In Progress</option>
+                  <option value="In Review">⏳ Under Review</option>
+                  <option value="Approved">✅ Approved</option>
+                  <option value="Rejected">❌ Rejected</option>
+                </select>
 
-                        return (
-                          <React.Fragment key={bunch.id}>
-                            <tr
-                              style={{
-                                borderBottom: isExpanded ? "none" : "1px solid #f1f5f9",
-                                background: idx % 2 === 0 ? "#ffffff" : "#fbfcfe",
-                              }}
-                            >
-                              <td style={{ padding: "14px 18px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleBatchExpand(bunch.id)}
-                                    style={{
-                                      background: "none",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      fontSize: 12,
-                                      padding: 0,
-                                      color: "#64748b",
-                                    }}
-                                    title={isExpanded ? "Collapse products" : "Expand products"}
-                                  >
-                                    {isExpanded ? "▼" : "▶"}
-                                  </button>
-                                  <span
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 800,
-                                      color: "#4f46e5",
-                                      background: "#ede9fe",
-                                      padding: "4px 10px",
-                                      borderRadius: 6,
-                                      letterSpacing: "0.5px",
-                                    }}
-                                  >
-                                    {bunch.bunch_code}
-                                  </span>
-                                </div>
-                                {bunch.notes && (
-                                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, fontStyle: "italic", maxWidth: 220, paddingLeft: 18 }}>
-                                    "{bunch.notes}"
-                                  </div>
-                                )}
-                              </td>
-
-                              <td style={{ padding: "14px 18px", color: "#334155", fontWeight: 600 }}>
-                                {bunch.client_name || "—"}
-                              </td>
-
-                              <td style={{ padding: "14px 18px", color: "#64748b", fontSize: 12 }}>
-                                {bunch.created_at ? new Date(bunch.created_at).toLocaleDateString() : "—"}
-                                <span style={{ display: "block", fontSize: 11, color: "#94a3b8" }}>
-                                  {bunch.created_at ? new Date(bunch.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                                </span>
-                              </td>
-
-                              <td style={{ padding: "14px 18px" }}>
-                                <span
-                                  style={{
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    background: "#f1f5f9",
-                                    color: "#334155",
-                                    padding: "4px 10px",
-                                    borderRadius: 12,
-                                  }}
-                                >
-                                  {items.length || bunch.total_products} Products
-                                </span>
-                              </td>
-
-                              <td style={{ padding: "14px 18px" }}>
-                                {getPriorityBadge(bunch.priority)}
-                              </td>
-
-                              {/* Progress Breakdown */}
-                              <td style={{ padding: "14px 18px" }}>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: 11 }}>
-                                  {approvedCount > 0 && (
-                                    <span style={{ background: "#dcfce7", color: "#166534", padding: "2px 6px", borderRadius: 6, fontWeight: 700 }}>
-                                      ✅ {approvedCount} Approved
-                                    </span>
-                                  )}
-                                  {reviewCount > 0 && (
-                                    <span style={{ background: "#fef3c7", color: "#92400e", padding: "2px 6px", borderRadius: 6, fontWeight: 700 }}>
-                                      ⏳ {reviewCount} Review
-                                    </span>
-                                  )}
-                                  {progressCount > 0 && (
-                                    <span style={{ background: "#e0f2fe", color: "#0369a1", padding: "2px 6px", borderRadius: 6, fontWeight: 700 }}>
-                                      🛠️ {progressCount} In Progress
-                                    </span>
-                                  )}
-                                  {pendingCount > 0 && (
-                                    <span style={{ background: "#f1f5f9", color: "#475569", padding: "2px 6px", borderRadius: 6, fontWeight: 600 }}>
-                                      ⏸️ {pendingCount} Pending
-                                    </span>
-                                  )}
-                                </div>
-                                {batchApprovedInr > 0 && (
-                                  <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, marginTop: 4 }}>
-                                    Approved: ${batchApprovedUsd.toFixed(2)} (₹{batchApprovedInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })})
-                                  </div>
-                                )}
-                              </td>
-
-                              <td style={{ padding: "14px 18px" }}>
-                                {getStatusBadge(bunch.status)}
-                              </td>
-
-                              {/* Actions */}
-                              <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                                <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleBatchExpand(bunch.id)}
-                                    style={{
-                                      padding: "6px 12px",
-                                      background: isExpanded ? "#f1f5f9" : "#ffffff",
-                                      color: "#475569",
-                                      border: "1px solid #cbd5e1",
-                                      borderRadius: 6,
-                                      fontWeight: 600,
-                                      fontSize: 12,
-                                      cursor: "pointer",
-                                    }}
-                                  >
-                                    {isExpanded ? "Hide SKUs" : "👁️ View SKUs"}
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => navigate(`/admin/costing/sku-wise?bunchCode=${bunch.bunch_code}`)}
-                                    style={{
-                                      padding: "6px 14px",
-                                      background: "#2563eb",
-                                      color: "#ffffff",
-                                      border: "none",
-                                      borderRadius: 6,
-                                      fontWeight: 700,
-                                      fontSize: 12,
-                                      cursor: "pointer",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: 4,
-                                      boxShadow: "0 1px 2px rgba(37, 99, 235, 0.2)",
-                                    }}
-                                  >
-                                    <span>Costing Sheet</span>
-                                    <span>➔</span>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-
-                            {/* EXPANDED ROW: PRODUCTS WITHIN THIS BATCH */}
-                            {isExpanded && (
-                              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                                <td colSpan={8} style={{ padding: "12px 24px 20px 24px" }}>
-                                  <div
-                                    style={{
-                                      background: "#ffffff",
-                                      border: "1px solid #e2e8f0",
-                                      borderRadius: 8,
-                                      padding: "16px 20px",
-                                      boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)",
-                                    }}
-                                  >
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: 6 }}>
-                                        <span>📦 Products inside Batch</span>
-                                        <strong style={{ color: "#4f46e5" }}>{bunch.bunch_code}</strong>
-                                        <span style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>({items.length} items)</span>
-                                      </div>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => navigate(`/admin/costing/sku-wise?bunchCode=${bunch.bunch_code}`)}
-                                        style={{
-                                          background: "none",
-                                          border: "none",
-                                          color: "#2563eb",
-                                          fontSize: 12,
-                                          fontWeight: 700,
-                                          cursor: "pointer",
-                                        }}
-                                      >
-                                        Open full table in SKU Wise Costing ➔
-                                      </button>
-                                    </div>
-
-                                    {items.length === 0 ? (
-                                      <div style={{ padding: 16, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-                                        No individual product items attached to this batch.
-                                      </div>
-                                    ) : (
-                                      <div style={{ overflowX: "auto" }}>
-                                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                                          <thead>
-                                            <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
-                                              <th style={{ padding: "8px 10px" }}>Product Info</th>
-                                              <th style={{ padding: "8px 10px" }}>Type & Specs</th>
-                                              <th style={{ padding: "8px 10px" }}>Dimensions</th>
-                                              <th style={{ padding: "8px 10px" }}>Wood</th>
-                                              <th style={{ padding: "8px 10px" }}>Stage</th>
-                                              <th style={{ padding: "8px 10px" }}>Approved Price</th>
-                                              <th style={{ padding: "8px 10px", textAlign: "right" }}>Costing</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {items.map((it) => (
-                                              <tr key={it.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                                                <td style={{ padding: "8px 10px" }}>
-                                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                                    {it.image_url ? (
-                                                      <img
-                                                        src={it.image_url}
-                                                        alt=""
-                                                        style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4, border: "1px solid #e2e8f0" }}
-                                                        onError={(e) => ((e.target as any).style.display = "none")}
-                                                      />
-                                                    ) : (
-                                                      <div style={{ width: 32, height: 32, borderRadius: 4, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
-                                                        🪑
-                                                      </div>
-                                                    )}
-                                                    <div>
-                                                      <div style={{ fontWeight: 700, color: "#0f172a" }}>{it.product_name}</div>
-                                                      <div style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600 }}>{it.product_code}</div>
-                                                    </div>
-                                                  </div>
-                                                </td>
-
-                                                <td style={{ padding: "8px 10px", color: "#475569" }}>
-                                                  {it.product_type || "—"}
-                                                  {it.collection_name && <span style={{ display: "block", fontSize: 11, color: "#94a3b8" }}>{it.collection_name}</span>}
-                                                </td>
-
-                                                <td style={{ padding: "8px 10px", color: "#475569" }}>
-                                                  {it.overall_size || "—"}
-                                                </td>
-
-                                                <td style={{ padding: "8px 10px", color: "#475569" }}>
-                                                  {it.wood_type || "—"}
-                                                </td>
-
-                                                <td style={{ padding: "8px 10px" }}>
-                                                  {getItemStageBadge(it.stage)}
-                                                </td>
-
-                                                <td style={{ padding: "8px 10px" }}>
-                                                  {it.stage === "Approved" && it.final_price ? (
-                                                    <span style={{ fontWeight: 700, color: "#16a34a" }}>
-                                                      ${(it.final_price_usd ? Number(it.final_price_usd) : Number(it.final_price) / 86.5).toFixed(2)}
-                                                      <span style={{ fontSize: 11, color: "#64748b", marginLeft: 4 }}>
-                                                        (₹{Number(it.final_price).toLocaleString("en-IN", { minimumFractionDigits: 2 })})
-                                                      </span>
-                                                    </span>
-                                                  ) : (
-                                                    <span style={{ color: "#94a3b8" }}>—</span>
-                                                  )}
-                                                </td>
-
-                                                <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      const params = new URLSearchParams({
-                                                        requestId: it.id,
-                                                        bunchCode: it.bunch_code,
-                                                        productCode: it.product_code,
-                                                        productName: it.product_name,
-                                                        clientName: it.client_name || "",
-                                                        woodType: it.wood_type || "",
-                                                        overallSize: it.overall_size || "",
-                                                        productType: it.product_type || "",
-                                                        collectionName: it.collection_name || "",
-                                                        merchantName: it.merchant_name || "",
-                                                      });
-                                                      navigate(`/admin/costing/new?${params.toString()}`);
-                                                    }}
-                                                    style={{
-                                                      padding: "4px 10px",
-                                                      background: it.stage === "Approved" ? "#f1f5f9" : "#2563eb",
-                                                      color: it.stage === "Approved" ? "#334155" : "#ffffff",
-                                                      border: "none",
-                                                      borderRadius: 4,
-                                                      fontSize: 11,
-                                                      fontWeight: 700,
-                                                      cursor: "pointer",
-                                                    }}
-                                                  >
-                                                    {it.stage === "Approved" ? "👁️ View Sheet" : it.stage === "Pending" ? "⚡ Do Costing" : "✏️ Edit Costing"}
-                                                  </button>
-                                                </td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                {(itemSearch || stageFilter !== "ALL") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setItemSearch("");
+                      setStageFilter("ALL");
+                    }}
+                    style={{ background: "none", border: "none", color: "#2563eb", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
-          )}
+
+            {/* ALL REQUESTS TABLE INSIDE THIS MERCHANT FOLDER */}
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table data-no-enhance="true" style={{ width: "100%", minWidth: 1050, borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Costing Code</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Buyer Code</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Product Info</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Client / Buyer</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Requested Date</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Priority</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Status</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Approved Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeFolderItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
+                        No costing requests found in {activeFolder.merchantName}'s folder.
+                      </td>
+                    </tr>
+                  ) : (
+                    activeFolderItems.map((it, idx) => (
+                      <tr
+                        key={it.id}
+                        style={{
+                          borderBottom: "1px solid #f1f5f9",
+                          background: idx % 2 === 0 ? "#ffffff" : "#fbfcfe",
+                        }}
+                      >
+                        {/* Costing Code */}
+                        <td style={{ padding: "12px 16px" }}>
+                          <span
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: 6,
+                              background: "#dcfce7",
+                              color: "#166534",
+                              fontWeight: 800,
+                              fontSize: 13,
+                            }}
+                          >
+                            {it.costing_code || it.product_code || "—"}
+                          </span>
+                        </td>
+
+                        {/* Buyer Code */}
+                        <td style={{ padding: "12px 16px" }}>
+                          {it.buyer_code ? (
+                            <span
+                              style={{
+                                padding: "3px 8px",
+                                borderRadius: 4,
+                                background: "#ede9fe",
+                                color: "#6d28d9",
+                                fontWeight: 700,
+                                fontSize: 12,
+                              }}
+                            >
+                              {it.buyer_code}
+                            </span>
+                          ) : (
+                            <span style={{ color: "#94a3b8" }}>—</span>
+                          )}
+                        </td>
+
+                        {/* Product Info */}
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            {(() => {
+                              const photos = parseItemImageUrls(it);
+                              if (photos.length === 0) {
+                                return (
+                                  <div
+                                    style={{
+                                      width: 42,
+                                      height: 42,
+                                      borderRadius: 6,
+                                      background: "#f1f5f9",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontSize: 18,
+                                    }}
+                                  >
+                                    🪑
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div
+                                  onClick={() => setGalleryModal({ title: it.product_name, urls: photos, index: 0 })}
+                                  style={{ position: "relative", cursor: "pointer", flexShrink: 0 }}
+                                  title={photos.length > 1 ? `Click to view all ${photos.length} photos` : "Click to enlarge"}
+                                >
+                                  <img
+                                    src={photos[0]}
+                                    alt=""
+                                    style={{ width: 42, height: 42, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0" }}
+                                    onError={(e) => ((e.target as any).style.display = "none")}
+                                  />
+                                  {photos.length > 1 && (
+                                    <span
+                                      style={{
+                                        position: "absolute",
+                                        bottom: -4,
+                                        right: -4,
+                                        background: "#2563eb",
+                                        color: "#ffffff",
+                                        fontSize: 9,
+                                        fontWeight: 800,
+                                        padding: "1px 5px",
+                                        borderRadius: 8,
+                                      }}
+                                    >
+                                      +{photos.length - 1}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            <div>
+                              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 14 }}>
+                                {it.product_name}
+                              </div>
+                              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                {[it.product_type, it.wood_type].filter(Boolean).join(" • ") || "—"}
+                              </div>
+                              {it.overall_size && (
+                                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>
+                                  Size: {it.overall_size}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Client / Buyer */}
+                        <td style={{ padding: "12px 16px", color: "#334155", fontWeight: 600 }}>
+                          {it.client_name || "—"}
+                        </td>
+
+                        {/* Requested Date */}
+                        <td style={{ padding: "12px 16px", color: "#64748b", fontSize: 12 }}>
+                          {it.created_at ? new Date(it.created_at).toLocaleDateString() : "—"}
+                          <span style={{ display: "block", fontSize: 11, color: "#94a3b8" }}>
+                            {it.created_at ? new Date(it.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                          </span>
+                        </td>
+
+                        {/* Priority */}
+                        <td style={{ padding: "12px 16px" }}>
+                          {getPriorityBadge(it.priority)}
+                        </td>
+
+                        {/* Stage / Status */}
+                        <td style={{ padding: "12px 16px" }}>
+                          {getStageBadge(it.stage)}
+                        </td>
+
+                        {/* Approved Price (Latest Buyer Quote if mentioned, else Approved USD & INR) */}
+                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                          {it.stage === "Approved" ? (
+                            it.latest_buyer_quote && it.latest_buyer_quote.amount > 0 ? (
+                              (() => {
+                                const q = it.latest_buyer_quote!;
+                                const rate = q.usd_rate && q.usd_rate > 0 ? q.usd_rate : 86.5;
+                                const symMap: Record<string, string> = {
+                                  USD: "$",
+                                  INR: "₹",
+                                  EUR: "€",
+                                  GBP: "£",
+                                  AED: "AED ",
+                                  AUD: "A$",
+                                  CAD: "C$",
+                                };
+                                const sym = symMap[q.currency] || `${q.currency} `;
+                                const inrVal = q.currency === "INR" ? q.amount : q.currency === "USD" ? q.amount * rate : null;
+                                const usdVal = q.currency === "USD" ? q.amount : q.currency === "INR" ? q.amount / rate : null;
+                                return (
+                                  <div>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>
+                                      {sym}{q.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                    {q.currency === "USD" && inrVal !== null && (
+                                      <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                                        ₹{inrVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </div>
+                                    )}
+                                    {q.currency === "INR" && usdVal !== null && (
+                                      <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                                        ${usdVal.toFixed(2)}
+                                      </div>
+                                    )}
+                                    <div style={{ fontSize: 10, color: "#6d28d9", fontWeight: 700, marginTop: 2 }}>
+                                      {q.label}
+                                    </div>
+                                  </div>
+                                );
+                              })()
+                            ) : it.final_price ? (
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: "#16a34a" }}>
+                                  ${(it.final_price_usd ? Number(it.final_price_usd) : Number(it.final_price) / 86.5).toFixed(2)}
+                                </div>
+                                <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                                  ₹{Number(it.final_price).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                            ) : (
+                              <span style={{ color: "#94a3b8" }}>—</span>
+                            )
+                          ) : (
+                            <span style={{ color: "#94a3b8" }}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-Angle Photo Gallery Modal */}
+      {galleryModal && (
+        <div
+          onClick={() => setGalleryModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.72)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: 12,
+              padding: 20,
+              maxWidth: 680,
+              width: "100%",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>
+                {galleryModal.title} ({galleryModal.index + 1} / {galleryModal.urls.length})
+              </div>
+              <button
+                type="button"
+                onClick={() => setGalleryModal(null)}
+                style={{ background: "#f1f5f9", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700 }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#f8fafc", borderRadius: 8, overflow: "hidden", minHeight: 340, maxHeight: 480 }}>
+              <img
+                src={galleryModal.urls[galleryModal.index]}
+                alt=""
+                style={{ maxWidth: "100%", maxHeight: 460, objectFit: "contain" }}
+              />
+            </div>
+            {galleryModal.urls.length > 1 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGalleryModal((prev) =>
+                      prev ? { ...prev, index: (prev.index - 1 + prev.urls.length) % prev.urls.length } : null
+                    )
+                  }
+                  style={{ padding: "8px 16px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                >
+                  ◀ Previous
+                </button>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>
+                  Photo {galleryModal.index + 1} of {galleryModal.urls.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGalleryModal((prev) =>
+                      prev ? { ...prev, index: (prev.index + 1) % prev.urls.length } : null
+                    )
+                  }
+                  style={{ padding: "8px 16px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Next ▶
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
