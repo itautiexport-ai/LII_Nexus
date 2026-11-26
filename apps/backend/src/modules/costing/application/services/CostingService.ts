@@ -321,6 +321,10 @@ export class CostingService {
     return this.repo.findRequestItemById(id);
   }
 
+  async updateRequestItemDetails(id: string, data: any): Promise<CostingRequestItem | null> {
+    return this.repo.updateRequestItemDetails(id, data);
+  }
+
   async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number): Promise<boolean> {
     return this.repo.updateRequestItemStage(id, stage, estimationId, estimationNumber, finalPrice, finalPriceUsd);
   }

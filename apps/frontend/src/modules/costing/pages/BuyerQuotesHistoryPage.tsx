@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { costingApi, CostEstimation } from "../api/costingApi";
+import { costingApi, CostEstimation, CostingRequestItem, parseItemImageUrls } from "../api/costingApi";
 
 interface ParsedBuyerQuote {
   label: string;
@@ -10,9 +10,16 @@ interface ParsedBuyerQuote {
 }
 
 interface QuoteHistoryRow {
-  estimation: CostEstimation;
+  rowKey: string;
+  estimationId?: string;
+  requestItemId?: string;
+  productName: string;
+  productType?: string;
+  costingCode: string;
   buyerCode: string;
   buyerName: string;
+  targetPrice: number | null;
+  targetCurrency: string;
   imageUrls: string[];
   usdRate: number;
   quotes: ParsedBuyerQuote[];
@@ -46,6 +53,7 @@ function getOrdinalLabel(num: number): string {
 export default function BuyerQuotesHistoryPage() {
   const navigate = useNavigate();
   const [estimations, setEstimations] = useState<CostEstimation[]>([]);
+  const [requestItems, setRequestItems] = useState<CostingRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [galleryModal, setGalleryModal] = useState<{ title: string; urls: string[]; index: number } | null>(null);
@@ -57,8 +65,12 @@ export default function BuyerQuotesHistoryPage() {
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const list = await costingApi.getAllEstimations();
-      setEstimations(list || []);
+      const [estList, reqList] = await Promise.all([
+        costingApi.getAllEstimations().catch(() => []),
+        costingApi.getRequestItems().catch(() => []),
+      ]);
+      setEstimations(estList || []);
+      setRequestItems(reqList || []);
     } catch (err) {
       console.error("Failed to load buyer quotes history:", err);
     } finally {
@@ -68,6 +80,13 @@ export default function BuyerQuotesHistoryPage() {
 
   const historyRows = useMemo<QuoteHistoryRow[]>(() => {
     const rows: QuoteHistoryRow[] = [];
+    const reqByEstId = new Map<string, CostingRequestItem>();
+    requestItems.forEach((ri) => {
+      if (ri.estimation_id) reqByEstId.set(ri.estimation_id, ri);
+    });
+    const handledReqIds = new Set<string>();
+
+    // 1. Process all estimations (combining with linked request item if any)
     estimations.forEach((est) => {
       let fd: any = null;
       if (est.form_data) {
@@ -77,6 +96,9 @@ export default function BuyerQuotesHistoryPage() {
           fd = null;
         }
       }
+
+      const linkedReq = reqByEstId.get(est.id);
+      if (linkedReq) handledReqIds.add(linkedReq.id);
 
       const rawQuotes = Array.isArray(fd?.buyerQuotes) ? fd.buyerQuotes : [];
       const parsedQuotes: ParsedBuyerQuote[] = [];
@@ -92,8 +114,19 @@ export default function BuyerQuotesHistoryPage() {
         }
       });
 
-      // Only show estimations where at least 1 quote was recorded
-      if (parsedQuotes.length === 0) return;
+      const reqTarget =
+        linkedReq?.target_price !== undefined && linkedReq?.target_price !== null && Number(linkedReq.target_price) > 0
+          ? Number(linkedReq.target_price)
+          : null;
+      const fdTarget =
+        fd?.targetPrice !== undefined && fd?.targetPrice !== null && String(fd.targetPrice).trim() !== "" && Number(fd.targetPrice) > 0
+          ? Number(fd.targetPrice)
+          : null;
+      const targetPrice = reqTarget ?? fdTarget;
+      const targetCurrency = (linkedReq?.target_currency || fd?.targetCurrency || "USD").toUpperCase();
+
+      // Include if there is either a Target Price OR at least 1 Buyer Quote
+      if (parsedQuotes.length === 0 && targetPrice === null) return;
 
       const photos: string[] = [];
       if (Array.isArray(fd?.imageUrls)) {
@@ -104,25 +137,60 @@ export default function BuyerQuotesHistoryPage() {
       if (photos.length === 0 && typeof fd?.imageUrl === "string" && fd.imageUrl.trim()) {
         photos.push(fd.imageUrl.trim());
       }
+      if (photos.length === 0 && linkedReq) {
+        photos.push(...parseItemImageUrls(linkedReq));
+      }
 
       rows.push({
-        estimation: est,
-        buyerCode: fd?.buyerCode || "",
-        buyerName: est.client_name || "",
+        rowKey: `est-${est.id}`,
+        estimationId: est.id,
+        requestItemId: linkedReq?.id,
+        productName: est.product_name || est.title || linkedReq?.product_name || "Product",
+        productType: est.product_type || linkedReq?.product_type,
+        costingCode: linkedReq?.costing_code || est.product_code || est.estimation_number || "—",
+        buyerCode: linkedReq?.buyer_code || fd?.buyerCode || "",
+        buyerName: linkedReq?.client_name || est.client_name || "",
+        targetPrice,
+        targetCurrency,
         imageUrls: photos,
         usdRate: Number(fd?.usdExchangeRate) > 0 ? Number(fd.usdExchangeRate) : 86.5,
         quotes: parsedQuotes,
       });
     });
 
+    // 2. Include request items that have a Target Price even if no estimation sheet exists yet
+    requestItems.forEach((ri) => {
+      if (handledReqIds.has(ri.id)) return;
+      const targetPrice =
+        ri.target_price !== undefined && ri.target_price !== null && Number(ri.target_price) > 0
+          ? Number(ri.target_price)
+          : null;
+      if (targetPrice === null) return;
+
+      rows.push({
+        rowKey: `req-${ri.id}`,
+        estimationId: ri.estimation_id || undefined,
+        requestItemId: ri.id,
+        productName: ri.product_name || "Product",
+        productType: ri.product_type,
+        costingCode: ri.costing_code || ri.product_code || "—",
+        buyerCode: ri.buyer_code || "",
+        buyerName: ri.client_name || "",
+        targetPrice,
+        targetCurrency: (ri.target_currency || "USD").toUpperCase(),
+        imageUrls: parseItemImageUrls(ri),
+        usdRate: 86.5,
+        quotes: [],
+      });
+    });
+
     return rows;
-  }, [estimations]);
+  }, [estimations, requestItems]);
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return historyRows;
     const q = search.trim().toLowerCase();
     return historyRows.filter((row) => {
-      const est = row.estimation;
       const matchQuotes = row.quotes.some(
         (bq) =>
           bq.label.toLowerCase().includes(q) ||
@@ -130,10 +198,11 @@ export default function BuyerQuotesHistoryPage() {
           String(bq.amount).includes(q)
       );
       const matchMeta =
-        (est.product_code || "").toLowerCase().includes(q) ||
-        (row.buyerCode || "").toLowerCase().includes(q) ||
-        (row.buyerName || "").toLowerCase().includes(q) ||
-        (est.product_name || est.title || "").toLowerCase().includes(q);
+        row.costingCode.toLowerCase().includes(q) ||
+        row.buyerCode.toLowerCase().includes(q) ||
+        row.buyerName.toLowerCase().includes(q) ||
+        row.productName.toLowerCase().includes(q) ||
+        (row.targetPrice !== null && String(row.targetPrice).includes(q));
       return matchQuotes || matchMeta;
     });
   }, [historyRows, search]);
@@ -186,8 +255,8 @@ export default function BuyerQuotesHistoryPage() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by costing code, buyer code, buyer name, product, or quote..."
-          style={{ flex: "1 1 320px", maxWidth: 480, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}
+          placeholder="Search by costing code, buyer code, buyer name, target price, product, or quote..."
+          style={{ flex: "1 1 320px", maxWidth: 520, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}
         />
 
         {search && (
@@ -207,7 +276,7 @@ export default function BuyerQuotesHistoryPage() {
           data-no-enhance="true"
           style={{
             width: "100%",
-            minWidth: 780 + maxQuoteColumns * 160,
+            minWidth: 920 + maxQuoteColumns * 160,
             borderCollapse: "collapse",
             textAlign: "left",
             fontSize: 13,
@@ -219,6 +288,7 @@ export default function BuyerQuotesHistoryPage() {
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Costing Code</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Buyer Code</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Buyer Name</th>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Buyer Target Price</th>
               {quoteColumnIndices.map((idx) => (
                 <th key={`qh-${idx}`} style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>
                   {getOrdinalLabel(idx + 1)}
@@ -230,38 +300,37 @@ export default function BuyerQuotesHistoryPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5 + maxQuoteColumns} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={6 + maxQuoteColumns} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>
                   Loading buyer's quote history...
                 </td>
               </tr>
             ) : filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={5 + maxQuoteColumns} style={{ padding: 48, textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={6 + maxQuoteColumns} style={{ padding: 48, textAlign: "center", color: "#6b7280" }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>No buyer quotes recorded yet</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>No buyer quotes or target prices recorded yet</div>
                   <p style={{ margin: "4px 0 0 0", fontSize: 13 }}>
-                    Quotes entered in the Costing Sheet (1st Quote, 2nd Quote, etc.) will automatically record here.
+                    Buyer Target Prices and Quotes entered in the Costing Sheet or Merchant Folder will automatically record here.
                   </p>
                 </td>
               </tr>
             ) : (
               filteredRows.map((row, rIdx) => {
-                const est = row.estimation;
-                const prodTitle = est.product_name || est.title || "Product";
+                const targetSym = CURRENCY_SYMBOLS[row.targetCurrency] || `${row.targetCurrency} `;
                 return (
-                  <tr key={est.id} style={{ borderBottom: "1px solid #f1f5f9", background: rIdx % 2 === 0 ? "#ffffff" : "#fbfcfe" }}>
+                  <tr key={row.rowKey} style={{ borderBottom: "1px solid #f1f5f9", background: rIdx % 2 === 0 ? "#ffffff" : "#fbfcfe" }}>
                     {/* Product Image + Name */}
                     <td style={{ padding: "12px 16px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         {row.imageUrls.length > 0 ? (
                           <div
-                            onClick={() => setGalleryModal({ title: prodTitle, urls: row.imageUrls, index: 0 })}
+                            onClick={() => setGalleryModal({ title: row.productName, urls: row.imageUrls, index: 0 })}
                             style={{ position: "relative", cursor: "pointer", flexShrink: 0 }}
                             title={row.imageUrls.length > 1 ? `Click to view all ${row.imageUrls.length} photos` : "Click to enlarge"}
                           >
                             <img
                               src={row.imageUrls[0]}
-                              alt={prodTitle}
+                              alt={row.productName}
                               style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0" }}
                               onError={(e) => ((e.target as any).style.display = "none")}
                             />
@@ -302,9 +371,9 @@ export default function BuyerQuotesHistoryPage() {
                           </div>
                         )}
                         <div>
-                          <div style={{ fontWeight: 700, color: "#111827", fontSize: 13 }}>{prodTitle}</div>
-                          {est.product_type && (
-                            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{est.product_type}</div>
+                          <div style={{ fontWeight: 700, color: "#111827", fontSize: 13 }}>{row.productName}</div>
+                          {row.productType && (
+                            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{row.productType}</div>
                           )}
                         </div>
                       </div>
@@ -323,7 +392,7 @@ export default function BuyerQuotesHistoryPage() {
                           display: "inline-block",
                         }}
                       >
-                        {est.product_code || est.estimation_number || "—"}
+                        {row.costingCode}
                       </span>
                     </td>
 
@@ -353,20 +422,44 @@ export default function BuyerQuotesHistoryPage() {
                       {row.buyerName || "—"}
                     </td>
 
+                    {/* Buyer Target Price */}
+                    <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                      {row.targetPrice !== null ? (
+                        <div
+                          style={{
+                            display: "inline-block",
+                            padding: "5px 10px",
+                            borderRadius: 6,
+                            background: "#fffbeb",
+                            border: "1.5px solid #fcd34d",
+                          }}
+                        >
+                          <div style={{ fontSize: 14, fontWeight: 800, color: "#b45309" }}>
+                            {targetSym}{row.targetPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          <div style={{ fontSize: 10, color: "#92400e", fontWeight: 700 }}>
+                            {row.targetCurrency} Target
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ color: "#cbd5e1" }}>—</span>
+                      )}
+                    </td>
+
                     {/* 1st Quote, 2nd Quote, 3rd Quote... */}
                     {quoteColumnIndices.map((qIdx) => {
                       const bq = row.quotes[qIdx];
                       const isLatest = bq && qIdx === row.quotes.length - 1;
                       if (!bq) {
                         return (
-                          <td key={`${est.id}-qc-${qIdx}`} style={{ padding: "12px 16px", color: "#cbd5e1" }}>
+                          <td key={`${row.rowKey}-qc-${qIdx}`} style={{ padding: "12px 16px", color: "#cbd5e1" }}>
                             —
                           </td>
                         );
                       }
                       const sym = CURRENCY_SYMBOLS[bq.currency] || `${bq.currency} `;
                       return (
-                        <td key={`${est.id}-qc-${qIdx}`} style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                        <td key={`${row.rowKey}-qc-${qIdx}`} style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
                           <div
                             style={{
                               display: "inline-block",
@@ -396,40 +489,44 @@ export default function BuyerQuotesHistoryPage() {
 
                     {/* Action */}
                     <td style={{ padding: "12px 16px", textAlign: "right", whiteSpace: "nowrap" }}>
-                      <div style={{ display: "inline-flex", gap: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/admin/costing/detail/${est.id}`)}
-                          style={{
-                            padding: "6px 10px",
-                            background: "#ffffff",
-                            color: "#2563eb",
-                            border: "1px solid #bfdbfe",
-                            borderRadius: 6,
-                            fontWeight: 600,
-                            fontSize: 12,
-                            cursor: "pointer",
-                          }}
-                        >
-                          👁️ View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/admin/costing/edit/${est.id}`)}
-                          style={{
-                            padding: "6px 10px",
-                            background: "#2563eb",
-                            color: "#ffffff",
-                            border: "none",
-                            borderRadius: 6,
-                            fontWeight: 600,
-                            fontSize: 12,
-                            cursor: "pointer",
-                          }}
-                        >
-                          ✏️ Edit
-                        </button>
-                      </div>
+                      {row.estimationId ? (
+                        <div style={{ display: "inline-flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/admin/costing/detail/${row.estimationId}?readonly=true`)}
+                            style={{
+                              padding: "6px 10px",
+                              background: "#ffffff",
+                              color: "#2563eb",
+                              border: "1px solid #bfdbfe",
+                              borderRadius: 6,
+                              fontWeight: 600,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            👁️ View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/admin/costing/edit/${row.estimationId}`)}
+                            style={{
+                              padding: "6px 10px",
+                              background: "#2563eb",
+                              color: "#ffffff",
+                              border: "none",
+                              borderRadius: 6,
+                              fontWeight: 600,
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>Pending Sheet</span>
+                      )}
                     </td>
                   </tr>
                 );

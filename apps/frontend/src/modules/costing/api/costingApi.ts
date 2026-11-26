@@ -612,6 +612,8 @@ export const costingApi = {
       wood_type?: string;
       overall_size?: string;
       client_name?: string;
+      target_price?: number | null;
+      target_currency?: string | null;
       description?: string;
       image_url?: string;
       image_urls?: string[];
@@ -639,6 +641,28 @@ export const costingApi = {
 
   getRequestItemById: async (id: string): Promise<CostingRequestItem> => {
     const res = await axiosInstance.get(`/costing/requests/items/${id}`);
+    return res.data.data as CostingRequestItem;
+  },
+
+  updateRequestItemDetails: async (
+    id: string,
+    data: {
+      product_name?: string;
+      costing_code?: string;
+      buyer_code?: string;
+      product_type?: string;
+      collection_name?: string;
+      sample_availability?: string;
+      wood_type?: string;
+      overall_size?: string;
+      client_name?: string;
+      target_price?: number | null;
+      target_currency?: string | null;
+      description?: string;
+      priority?: 'Normal' | 'High' | 'Urgent';
+    }
+  ): Promise<CostingRequestItem> => {
+    const res = await axiosInstance.patch(`/costing/requests/items/${id}`, data);
     return res.data.data as CostingRequestItem;
   },
 
@@ -698,6 +722,8 @@ export interface CostingRequestItem {
   wood_type?: string;
   overall_size?: string;
   client_name?: string;
+  target_price?: number | null;
+  target_currency?: string | null;
   description?: string;
   image_url?: string;
   image_urls?: string[] | string;

@@ -62,6 +62,8 @@ export interface CostingRequestItem {
   wood_type?: string;
   overall_size?: string;
   client_name?: string;
+  target_price?: number | null;
+  target_currency?: string | null;
   description?: string;
   image_url?: string;
   image_urls?: string[];

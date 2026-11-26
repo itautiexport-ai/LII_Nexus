@@ -607,6 +607,8 @@ export default function CostEstimationFormPage() {
   const [overallSize, setOverallSize] = useState(() => searchParams.get("overallSize") || "");
   const [woodType, setWoodType] = useState(() => searchParams.get("woodType") || "");
   const [clientName, setClientName] = useState(() => searchParams.get("clientName") || "");
+  const [targetPrice, setTargetPrice] = useState<number | "">("");
+  const [targetCurrency, setTargetCurrency] = useState<string>("USD");
   const [status, setStatus] = useState<'Draft' | 'In Review' | 'Approved' | 'Rejected'>("Draft");
   const [currency, setCurrency] = useState("INR");
   const [exchangeRate, setExchangeRate] = useState(1.0);
@@ -649,6 +651,12 @@ export default function CostEstimationFormPage() {
         if (reqItem.overall_size) setOverallSize(reqItem.overall_size);
         if (reqItem.wood_type) setWoodType(reqItem.wood_type);
         if (reqItem.client_name) setClientName(reqItem.client_name);
+        if (reqItem.target_price !== undefined && reqItem.target_price !== null) {
+          setTargetPrice(Number(reqItem.target_price));
+        }
+        if (reqItem.target_currency) {
+          setTargetCurrency(reqItem.target_currency);
+        }
 
         const extractedPhotos = parseItemImageUrls(reqItem);
         if (extractedPhotos.length > 0) {
@@ -1529,6 +1537,8 @@ export default function CostEstimationFormPage() {
             if (Array.isArray(fd.buyerQuotes) && fd.buyerQuotes.length > 0) setBuyerQuotes(fd.buyerQuotes);
             if (fd.woodWastagePct !== undefined) setWoodWastagePct(Number(fd.woodWastagePct));
             if (fd.buyerCode !== undefined) setBuyerCode(fd.buyerCode);
+            if (fd.targetPrice !== undefined && fd.targetPrice !== null && fd.targetPrice !== "") setTargetPrice(Number(fd.targetPrice));
+            if (fd.targetCurrency) setTargetCurrency(fd.targetCurrency);
             if (Array.isArray(fd.imageUrls) && fd.imageUrls.length > 0) {
               setImageUrls(fd.imageUrls);
               setImageUrl(fd.imageUrls[0]);
@@ -1571,6 +1581,8 @@ export default function CostEstimationFormPage() {
             if (Array.isArray(fd.buyerQuotes) && fd.buyerQuotes.length > 0) setBuyerQuotes(fd.buyerQuotes);
             if (fd.woodWastagePct !== undefined) setWoodWastagePct(Number(fd.woodWastagePct));
             if (fd.buyerCode !== undefined) setBuyerCode(fd.buyerCode);
+            if (fd.targetPrice !== undefined && fd.targetPrice !== null && fd.targetPrice !== "") setTargetPrice(Number(fd.targetPrice));
+            if (fd.targetCurrency) setTargetCurrency(fd.targetCurrency);
             if (Array.isArray(fd.imageUrls) && fd.imageUrls.length > 0) {
               setImageUrls(fd.imageUrls);
               setImageUrl(fd.imageUrls[0]);
@@ -1829,6 +1841,8 @@ export default function CostEstimationFormPage() {
       buyerQuotes,
       woodWastagePct,
       buyerCode,
+      targetPrice,
+      targetCurrency,
       imageUrl: imageUrls[0] || imageUrl,
       imageUrls,
     };
@@ -2677,6 +2691,62 @@ export default function CostEstimationFormPage() {
                   outline: "none",
                 }}
               />
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 6 }}>
+                Buyer Target Price <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}>(Optional)</span>
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  data-no-enhance="true"
+                  value={targetCurrency}
+                  onChange={(e) => setTargetCurrency(e.target.value)}
+                  style={{
+                    width: 96,
+                    height: 42,
+                    boxSizing: "border-box",
+                    padding: "8px 8px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    backgroundColor: "#f8fafc",
+                    color: "#111827",
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  <option value="USD">USD ($)</option>
+                  <option value="INR">INR (₹)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="AED">AED</option>
+                  <option value="AUD">AUD</option>
+                  <option value="CAD">CAD</option>
+                </select>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Enter Target Price"
+                  value={targetPrice}
+                  onChange={(e) => setTargetPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    height: 42,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: 6,
+                    fontSize: 14,
+                    backgroundColor: "#ffffff",
+                    color: "#111827",
+                    outline: "none",
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

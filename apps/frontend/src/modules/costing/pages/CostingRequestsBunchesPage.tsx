@@ -1,7 +1,17 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { costingApi, CostingRequestItem, parseItemImageUrls } from "../api/costingApi";
+import { costingApi, CostingRequestItem, FURNITURE_PRODUCT_TYPES, parseItemImageUrls } from "../api/costingApi";
 import { useAuthStore } from "../../auth/hooks/useAuthStore";
+
+const TARGET_CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  INR: "₹",
+  EUR: "€",
+  GBP: "£",
+  AED: "AED ",
+  AUD: "A$",
+  CAD: "C$",
+};
 
 interface MerchantFolder {
   folderKey: string;
@@ -36,6 +46,77 @@ export default function CostingRequestsBunchesPage() {
   const [itemSearch, setItemSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("ALL");
   const [galleryModal, setGalleryModal] = useState<{ title: string; urls: string[]; index: number } | null>(null);
+
+  // Edit Request Modal State (inside Merchant Folder)
+  const [editingItem, setEditingItem] = useState<CostingRequestItem | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    product_name: "",
+    costing_code: "",
+    buyer_code: "",
+    client_name: "",
+    product_type: "",
+    wood_type: "",
+    overall_size: "",
+    collection_name: "",
+    sample_availability: "Not Available",
+    priority: "Normal" as "Normal" | "High" | "Urgent",
+    target_price: "",
+    target_currency: "USD",
+    description: "",
+  });
+
+  const openEditModal = (it: CostingRequestItem) => {
+    setEditingItem(it);
+    setEditForm({
+      product_name: it.product_name || "",
+      costing_code: it.costing_code || it.product_code || "",
+      buyer_code: it.buyer_code || "",
+      client_name: it.client_name || "",
+      product_type: it.product_type || "",
+      wood_type: it.wood_type || "",
+      overall_size: it.overall_size || "",
+      collection_name: it.collection_name || "",
+      sample_availability: it.sample_availability || "Not Available",
+      priority: it.priority || "Normal",
+      target_price: it.target_price !== undefined && it.target_price !== null ? String(it.target_price) : "",
+      target_currency: it.target_currency || "USD",
+      description: it.description || "",
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    if (!editForm.product_name.trim()) {
+      alert("Product Name is required.");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      await costingApi.updateRequestItemDetails(editingItem.id, {
+        product_name: editForm.product_name.trim(),
+        costing_code: editForm.costing_code.trim() || undefined,
+        buyer_code: editForm.buyer_code.trim(),
+        client_name: editForm.client_name.trim() || undefined,
+        product_type: editForm.product_type.trim() || undefined,
+        wood_type: editForm.wood_type.trim() || undefined,
+        overall_size: editForm.overall_size.trim() || undefined,
+        collection_name: editForm.collection_name.trim() || undefined,
+        sample_availability: editForm.sample_availability || "Not Available",
+        priority: editForm.priority,
+        target_price: editForm.target_price.trim() !== "" ? Number(editForm.target_price) : null,
+        target_currency: editForm.target_currency || "USD",
+        description: editForm.description.trim() || undefined,
+      });
+      setEditingItem(null);
+      await loadAllItems();
+    } catch (err: any) {
+      alert(err?.response?.data?.error?.message || "Failed to update costing request.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   useEffect(() => {
     loadAllItems();
@@ -631,23 +712,25 @@ export default function CostingRequestsBunchesPage() {
 
             {/* ALL REQUESTS TABLE INSIDE THIS MERCHANT FOLDER */}
             <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-              <table data-no-enhance="true" style={{ width: "100%", minWidth: 1050, borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
+              <table data-no-enhance="true" style={{ width: "100%", minWidth: 1220, borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Costing Code</th>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Buyer Code</th>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Product Info</th>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Client / Buyer</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Target Price</th>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Requested Date</th>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Priority</th>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Status</th>
                     <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700 }}>Approved Price</th>
+                    <th style={{ padding: "12px 16px", color: "#475569", fontWeight: 700, textAlign: "right" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activeFolderItems.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
+                      <td colSpan={10} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
                         No costing requests found in {activeFolder.merchantName}'s folder.
                       </td>
                     </tr>
@@ -772,6 +855,29 @@ export default function CostingRequestsBunchesPage() {
                           {it.client_name || "—"}
                         </td>
 
+                        {/* Target Price */}
+                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                          {it.target_price !== undefined && it.target_price !== null && Number(it.target_price) > 0 ? (
+                            <span
+                              style={{
+                                padding: "4px 9px",
+                                borderRadius: 6,
+                                background: "#fffbeb",
+                                border: "1px solid #fde68a",
+                                color: "#b45309",
+                                fontWeight: 800,
+                                fontSize: 13,
+                                display: "inline-block",
+                              }}
+                            >
+                              {TARGET_CURRENCY_SYMBOLS[(it.target_currency || "USD").toUpperCase()] || `${it.target_currency || "USD"} `}
+                              {Number(it.target_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          ) : (
+                            <span style={{ color: "#94a3b8" }}>—</span>
+                          )}
+                        </td>
+
                         {/* Requested Date */}
                         <td style={{ padding: "12px 16px", color: "#64748b", fontSize: 12 }}>
                           {it.created_at ? new Date(it.created_at).toLocaleDateString() : "—"}
@@ -846,12 +952,273 @@ export default function CostingRequestsBunchesPage() {
                             <span style={{ color: "#94a3b8" }}>—</span>
                           )}
                         </td>
+
+                        {/* Edit Request Action */}
+                        <td style={{ padding: "12px 16px", textAlign: "right", whiteSpace: "nowrap" }}>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(it)}
+                            style={{
+                              padding: "6px 12px",
+                              background: "#eff6ff",
+                              color: "#1d4ed8",
+                              border: "1px solid #93c5fd",
+                              borderRadius: 6,
+                              fontWeight: 700,
+                              fontSize: 12,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Costing Request Modal */}
+      {editingItem && (
+        <div
+          onClick={() => !editSaving && setEditingItem(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.65)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 700,
+              width: "100%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+                ✏️ Edit Costing Request
+              </h3>
+              <button
+                type="button"
+                onClick={() => !editSaving && setEditingItem(null)}
+                style={{ background: "#f1f5f9", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontWeight: 700 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Product Name <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.product_name}
+                    onChange={(e) => setEditForm((p) => ({ ...p, product_name: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Costing Code
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.costing_code}
+                    onChange={(e) => setEditForm((p) => ({ ...p, costing_code: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Buyer Code
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.buyer_code}
+                    onChange={(e) => setEditForm((p) => ({ ...p, buyer_code: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Client / Buyer Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.client_name}
+                    onChange={(e) => setEditForm((p) => ({ ...p, client_name: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Buyer Target Price <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 400 }}>(Optional)</span>
+                  </label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <select
+                      value={editForm.target_currency}
+                      onChange={(e) => setEditForm((p) => ({ ...p, target_currency: e.target.value }))}
+                      style={{ width: 84, padding: "8px 6px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, fontWeight: 700, background: "#f8fafc" }}
+                    >
+                      <option value="USD">USD ($)</option>
+                      <option value="INR">INR (₹)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                      <option value="AED">AED</option>
+                      <option value="AUD">AUD</option>
+                      <option value="CAD">CAD</option>
+                    </select>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Target Price"
+                      value={editForm.target_price}
+                      onChange={(e) => setEditForm((p) => ({ ...p, target_price: e.target.value }))}
+                      style={{ flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 6, border: "1.5px solid #f59e0b", background: "#fffbeb", fontSize: 13, fontWeight: 700 }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Product Type
+                  </label>
+                  <select
+                    value={editForm.product_type}
+                    onChange={(e) => setEditForm((p) => ({ ...p, product_type: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  >
+                    <option value="">-- Select Product Type --</option>
+                    {FURNITURE_PRODUCT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Wood Type
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.wood_type}
+                    onChange={(e) => setEditForm((p) => ({ ...p, wood_type: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Overall Size / Dimensions
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.overall_size}
+                    onChange={(e) => setEditForm((p) => ({ ...p, overall_size: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Collection Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.collection_name}
+                    onChange={(e) => setEditForm((p) => ({ ...p, collection_name: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Sample Status
+                  </label>
+                  <select
+                    value={editForm.sample_availability}
+                    onChange={(e) => setEditForm((p) => ({ ...p, sample_availability: e.target.value }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  >
+                    <option value="Not Available">Not Available</option>
+                    <option value="Sample Available">Sample Available</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                    Priority
+                  </label>
+                  <select
+                    value={editForm.priority}
+                    onChange={(e) => setEditForm((p) => ({ ...p, priority: e.target.value as any }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                  >
+                    <option value="Normal">🟢 Normal</option>
+                    <option value="High">🟠 High</option>
+                    <option value="Urgent">🔴 Urgent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                  Specifications / Notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  disabled={editSaving}
+                  onClick={() => setEditingItem(null)}
+                  style={{ padding: "8px 16px", background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  style={{ padding: "8px 20px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 700, cursor: editSaving ? "not-allowed" : "pointer" }}
+                >
+                  {editSaving ? "Updating..." : "Save & Update"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

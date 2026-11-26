@@ -128,6 +128,15 @@ export class CostingController {
     return res.json({ success: true, data: item });
   };
 
+  updateRequestItemDetails = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const updated = await this.costingService.updateRequestItemDetails(id, req.body || {});
+    if (!updated) {
+      return res.status(404).json({ success: false, error: { message: "Costing request item not found" } });
+    }
+    return res.json({ success: true, data: updated });
+  };
+
   updateRequestItemStage = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { stage, estimationId, estimationNumber, finalPrice, finalPriceUsd } = req.body;

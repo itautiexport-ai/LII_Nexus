@@ -15,6 +15,8 @@ interface ProductFormItem {
   wood_type: string;
   overall_size: string;
   client_name: string;
+  target_price: string;
+  target_currency: string;
   description: string;
   image_url: string;
   image_urls: string[];
@@ -50,6 +52,8 @@ export default function CostingRequestCenterPage() {
       wood_type: "",
       overall_size: "",
       client_name: "",
+      target_price: "",
+      target_currency: "USD",
       description: "",
       image_url: "",
       image_urls: [],
@@ -85,6 +89,8 @@ export default function CostingRequestCenterPage() {
               wood_type: woodTypes.length > 0 ? woodTypes[0].name : "",
               overall_size: "",
               client_name: "",
+              target_price: "",
+              target_currency: "USD",
               description: "",
               image_url: "",
               image_urls: [],
@@ -141,6 +147,8 @@ export default function CostingRequestCenterPage() {
           wood_type: woodTypes.length > 0 ? woodTypes[0].name : "",
           overall_size: "",
           client_name: clientName || "",
+          target_price: "",
+          target_currency: "USD",
           description: "",
           image_url: "",
           image_urls: [],
@@ -285,6 +293,8 @@ export default function CostingRequestCenterPage() {
         wood_type: woodTypes.length > 0 ? woodTypes[0].name : "",
         overall_size: "",
         client_name: clientName || "",
+        target_price: "",
+        target_currency: "USD",
         description: "",
         image_url: previewUrl,
         image_urls: [previewUrl],
@@ -360,6 +370,8 @@ export default function CostingRequestCenterPage() {
           wood_type: p.wood_type.trim() || undefined,
           overall_size: p.overall_size.trim() || undefined,
           client_name: (p.client_name || clientName).trim() || undefined,
+          target_price: p.target_price.trim() !== "" ? Number(p.target_price) : null,
+          target_currency: p.target_currency || "USD",
           description: p.description.trim() || undefined,
           image_url: (p.image_urls[0] || p.image_url || "").trim() || undefined,
           image_urls: (p.image_urls || []).map((u) => u.trim()).filter(Boolean),
@@ -1024,6 +1036,36 @@ export default function CostingRequestCenterPage() {
                         <option value="Not Available">Not Available</option>
                         <option value="Sample Available">Sample Available</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                        Buyer Target Price <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 400 }}>(Optional)</span>
+                      </label>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select
+                          value={item.target_currency || "USD"}
+                          onChange={(e) => handleProductChange(index, "target_currency", e.target.value)}
+                          style={{ width: 82, padding: "7px 6px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, fontWeight: 700, background: "#f8fafc" }}
+                        >
+                          <option value="USD">USD ($)</option>
+                          <option value="INR">INR (₹)</option>
+                          <option value="EUR">EUR (€)</option>
+                          <option value="GBP">GBP (£)</option>
+                          <option value="AED">AED</option>
+                          <option value="AUD">AUD</option>
+                          <option value="CAD">CAD</option>
+                        </select>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.target_price}
+                          onChange={(e) => handleProductChange(index, "target_price", e.target.value)}
+                          placeholder="Target Price"
+                          style={{ flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                        />
+                      </div>
                     </div>
                   </div>
 
