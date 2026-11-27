@@ -76,13 +76,19 @@ export interface SaveCostRateDto {
 export interface CreateCostingRequestItemInputDto {
   product_name: string;
   product_code?: string;
+  buyer_code?: string;
+  costing_code?: string;
   product_type?: string;
   collection_name?: string;
+  sample_availability?: 'Not Available' | 'Sample Available';
   wood_type?: string;
   overall_size?: string;
   client_name?: string;
+  target_price?: number | null;
+  target_currency?: string | null;
   description?: string;
   image_url?: string;
+  image_urls?: string[];
   priority?: 'Normal' | 'High' | 'Urgent';
 }
 

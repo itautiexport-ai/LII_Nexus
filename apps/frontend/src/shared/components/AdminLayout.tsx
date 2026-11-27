@@ -237,6 +237,7 @@ export const SECTIONS: NavSection[] = [
         ],
       },
       { label: "Costing Tracker", to: "/admin/costing/tracker" },
+      { label: "Buyer's Quote History", to: "/admin/costing/buyer-quotes-history" },
       { label: "New Costing Sheet", to: "/admin/costing/new" },
     ],
   },

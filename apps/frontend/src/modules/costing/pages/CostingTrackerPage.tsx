@@ -217,7 +217,7 @@ export default function CostingTrackerPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search product, code, bunch, merchant..."
+            placeholder="Search costing code, buyer code, product, merchant..."
             style={{ flex: 1, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}
           />
           <button
@@ -295,29 +295,31 @@ export default function CostingTrackerPage() {
       </div>
 
       {/* Tracker Table */}
-      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
+      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 8, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <table data-no-enhance="true" style={{ width: "100%", minWidth: 1260, borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
           <thead>
-            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Costing Code</th>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Buyer Code</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Product Details</th>
-              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Bunch Code</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Merchant (Requested By)</th>
-              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Requested When</th>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Requested Date</th>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Approved Date</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Current Stage</th>
               <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569" }}>Quotation Price</th>
-              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569", textAlign: "right" }}>Action / Link</th>
+              <th style={{ padding: "12px 16px", fontWeight: 700, color: "#475569", textAlign: "right" }}>Sheet</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={9} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>
                   Loading costing tracker data...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: 48, textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={9} style={{ padding: 48, textAlign: "center", color: "#6b7280" }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
                   <div style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>No costing records in tracker</div>
                   <p style={{ margin: "4px 0 16px 0", fontSize: 13 }}>Submit costing requests to track their live status here.</p>
@@ -326,6 +328,42 @@ export default function CostingTrackerPage() {
             ) : (
               items.map((item) => (
                 <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  {/* Costing Code */}
+                  <td style={{ padding: "12px 16px" }}>
+                    <span
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        background: "#dcfce7",
+                        color: "#166534",
+                        fontWeight: 800,
+                        fontSize: 13,
+                      }}
+                    >
+                      {item.costing_code || item.product_code || "—"}
+                    </span>
+                  </td>
+
+                  {/* Buyer Code */}
+                  <td style={{ padding: "12px 16px" }}>
+                    {item.buyer_code ? (
+                      <span
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: 4,
+                          background: "#ede9fe",
+                          color: "#6d28d9",
+                          fontWeight: 700,
+                          fontSize: 12,
+                        }}
+                      >
+                        {item.buyer_code}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#9ca3af" }}>—</span>
+                    )}
+                  </td>
+
                   {/* Product Details */}
                   <td style={{ padding: "12px 16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -356,10 +394,11 @@ export default function CostingTrackerPage() {
                         <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>
                           {item.product_name}
                         </div>
-                        <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>
-                          {item.product_code}
-                          {item.product_type && <span style={{ color: "#6b7280", fontWeight: 400 }}> • {item.product_type}</span>}
-                        </div>
+                        {item.product_type && (
+                          <div style={{ fontSize: 12, color: "#6b7280" }}>
+                            {item.product_type}
+                          </div>
+                        )}
                         {item.client_name && (
                           <div style={{ fontSize: 11, color: "#9ca3af" }}>
                             Client: {item.client_name}
@@ -369,29 +408,13 @@ export default function CostingTrackerPage() {
                     </div>
                   </td>
 
-                  {/* Bunch Code */}
-                  <td style={{ padding: "12px 16px" }}>
-                    <span
-                      style={{
-                        padding: "3px 8px",
-                        borderRadius: 4,
-                        background: "#ede9fe",
-                        color: "#6d28d9",
-                        fontWeight: 700,
-                        fontSize: 12,
-                      }}
-                    >
-                      {item.bunch_code}
-                    </span>
-                  </td>
-
                   {/* Merchant */}
                   <td style={{ padding: "12px 16px" }}>
                     <div style={{ fontWeight: 600, color: "#1f2937" }}>{item.merchant_name}</div>
                   </td>
 
-                  {/* Requested When */}
-                  <td style={{ padding: "12px 16px" }}>
+                  {/* Requested Date */}
+                  <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
                     <div style={{ fontWeight: 600, color: "#374151" }}>
                       {item.created_at ? new Date(item.created_at).toLocaleDateString() : "—"}
                     </div>
@@ -400,17 +423,83 @@ export default function CostingTrackerPage() {
                     </div>
                   </td>
 
+                  {/* Approved Date */}
+                  <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                    {item.stage === "Approved" && (item.approved_at || item.updated_at) ? (
+                      (() => {
+                        const approvedDateStr = item.approved_at || item.updated_at;
+                        const appDate = new Date(approvedDateStr);
+                        const reqDate = item.created_at ? new Date(item.created_at) : null;
+                        const diffDays = reqDate ? Math.max(0, Math.floor((appDate.getTime() - reqDate.getTime()) / (1000 * 60 * 60 * 24))) : null;
+                        return (
+                          <div>
+                            <div style={{ fontWeight: 700, color: "#15803d" }}>
+                              {appDate.toLocaleDateString()}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                              {appDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {diffDays !== null && (
+                                <span style={{ color: "#16a34a", fontWeight: 600 }}>
+                                  {" "}({diffDays === 0 ? "Same day" : `${diffDays}d`})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <span style={{ color: "#9ca3af", fontSize: 12 }}>—</span>
+                    )}
+                  </td>
+
                   {/* Current Stage */}
                   <td style={{ padding: "12px 16px" }}>
                     {getStageBadge(item.stage)}
                   </td>
 
-                  {/* Quotation Price */}
-                  <td style={{ padding: "12px 16px" }}>
-                    {item.final_price ? (
+                  {/* Quotation Price (Latest Buyer Quote if mentioned, else latest estimation final price) */}
+                  <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                    {item.latest_buyer_quote && item.latest_buyer_quote.amount > 0 ? (
+                      (() => {
+                        const q = item.latest_buyer_quote!;
+                        const rate = q.usd_rate && q.usd_rate > 0 ? q.usd_rate : 86.5;
+                        const symMap: Record<string, string> = {
+                          USD: "$",
+                          INR: "₹",
+                          EUR: "€",
+                          GBP: "£",
+                          AED: "AED ",
+                          AUD: "A$",
+                          CAD: "C$",
+                        };
+                        const sym = symMap[q.currency] || `${q.currency} `;
+                        const inrVal = q.currency === "INR" ? q.amount : q.currency === "USD" ? q.amount * rate : null;
+                        const usdVal = q.currency === "USD" ? q.amount : q.currency === "INR" ? q.amount / rate : null;
+                        return (
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: "#059669" }}>
+                              {sym}{q.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            {q.currency === "USD" && inrVal !== null && (
+                              <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                                ₹{inrVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                            )}
+                            {q.currency === "INR" && usdVal !== null && (
+                              <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 2 }}>
+                                ${usdVal.toFixed(2)}
+                              </div>
+                            )}
+                            <div style={{ fontSize: 10, color: "#6d28d9", fontWeight: 700, marginTop: 2 }}>
+                              {q.label}
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : item.final_price ? (
                       <div>
                         <span style={{ fontSize: 14, fontWeight: 700, color: "#059669" }}>
-                          ₹{Number(item.final_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ₹{Number(item.final_price).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         {item.estimation_number && (
                           <span style={{ display: "block", fontSize: 11, color: "#6b7280" }}>
@@ -423,57 +512,31 @@ export default function CostingTrackerPage() {
                     )}
                   </td>
 
-                  {/* Action / Link */}
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    {item.estimation_id ? (
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/admin/costing/detail/${item.estimation_id}`)}
-                        style={{
-                          padding: "6px 12px",
-                          background: "#ffffff",
-                          color: "#2563eb",
-                          border: "1px solid #bfdbfe",
-                          borderRadius: 6,
-                          fontWeight: 600,
-                          fontSize: 12,
-                          cursor: "pointer",
-                        }}
-                      >
-                        👁️ View Costing
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const params = new URLSearchParams({
-                            requestId: item.id,
-                            bunchCode: item.bunch_code,
-                            productCode: item.product_code,
-                            productName: item.product_name,
-                            clientName: item.client_name || "",
-                            woodType: item.wood_type || "",
-                            overallSize: item.overall_size || "",
-                            productType: item.product_type || "",
-                            collectionName: item.collection_name || "",
-                            merchantName: item.merchant_name || "",
-                          });
-                          navigate(`/admin/costing/new?${params.toString()}`);
-                        }}
-                        style={{
-                          padding: "6px 12px",
-                          background: "#2563eb",
-                          color: "#ffffff",
-                          border: "none",
-                          borderRadius: 6,
-                          fontWeight: 700,
-                          fontSize: 12,
-                          cursor: "pointer",
-                        }}
-                      >
-                        ⚡ Do Costing
-                      </button>
-                    )}
+                  {/* Sheet (View Costing - Read-Only Sheet) */}
+                  <td style={{ padding: "12px 16px", textAlign: "right", whiteSpace: "nowrap" }}>
+                    <button
+                      type="button"
+                      disabled={!item.estimation_id}
+                      onClick={() => {
+                        if (item.estimation_id) {
+                          navigate(`/admin/costing/detail/${item.estimation_id}?readonly=true`);
+                        }
+                      }}
+                      title={item.estimation_id ? "View complete read-only costing sheet" : "Costing sheet not yet created"}
+                      style={{
+                        padding: "6px 12px",
+                        background: item.estimation_id ? "#ffffff" : "#f3f4f6",
+                        color: item.estimation_id ? "#2563eb" : "#9ca3af",
+                        border: item.estimation_id ? "1px solid #bfdbfe" : "1px solid #e5e7eb",
+                        borderRadius: 6,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: item.estimation_id ? "pointer" : "not-allowed",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      👁️ View Costing
+                    </button>
                   </td>
                 </tr>
               ))

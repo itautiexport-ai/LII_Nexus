@@ -41,7 +41,8 @@ async function assertReleased(kind){const [r]=await pool.query('SELECT IS_FREE_L
  const batches=await Promise.allSettled(Array.from({length:12},()=>service.createRequestBunch({merchant_name:marker,items:[{product_name:marker},{product_name:marker+' second SKU'}]})));
  assert.ok(batches.every(x=>x.status==='fulfilled'),JSON.stringify(batches.filter(x=>x.status==='rejected').map(x=>x.reason.message)));
  assert.equal(new Set(batches.map(x=>x.value.bunch_code)).size,12);
- for(const {value:b} of batches){assert.equal(b.items.length,2);assert.deepEqual(new Set(b.items.map(x=>x.product_code)),new Set([b.bunch_code+'-P01',b.bunch_code+'-P02']));}
+ for(const {value:b} of batches){assert.equal(b.items.length,2);assert.ok(b.items.every(x=>/^[0-9]+$/.test(x.costing_code)&&x.product_code===x.costing_code));}
+ assert.equal(new Set(batches.flatMap(x=>x.value.items.map(i=>i.costing_code))).size,24,'Concurrent numeric costing codes must be unique');
  const [beforeEst]=await pool.query('SELECT COUNT(*) AS n FROM cost_estimations WHERE title=?',[marker]);
  await assert.rejects(service.createEstimation({...inputs(),items:[{category:'INVALID_ENUM',item_name:'bad',quantity:1,unit_cost:1}]}));
  const [afterEst]=await pool.query('SELECT COUNT(*) AS n FROM cost_estimations WHERE title=?',[marker]);assert.equal(afterEst[0].n,beforeEst[0].n);await assertReleased('estimation');

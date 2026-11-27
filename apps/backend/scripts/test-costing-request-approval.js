@@ -51,11 +51,14 @@ for(const user of [null,{fullName:'System Administrator',email:'admin@example.co
   assert.equal((await stage(value,actor)).status,200);
   const [linked]=await pool.query('SELECT status FROM cost_estimations WHERE id=?',[estimationId]);assert.equal(linked[0].status,value);
   assert.equal((await stage('Pending',owner,{finalPrice:1})).status,403);
+  assert.equal((await request(`/requests/items/${item.id}`,'PATCH',{target_price:1,actorUserId:ravi.id},owner)).status,403);
+  assert.equal((await request(`/requests/items/${item.id}`,'PATCH',{target_price:50},actor)).status,200);
   const [saved]=await pool.query('SELECT stage,final_price FROM costing_request_items WHERE id=?',[item.id]);
   assert.equal(saved[0].stage,value);assert.equal(Number(saved[0].final_price),1250);
  }
  await pool.query("UPDATE costing_request_items SET stage='Pending' WHERE id=?",[item.id]);
  assert.equal((await stage('In Progress',owner)).status,403);
+ assert.equal((await request(`/requests/items/${item.id}`,'PATCH',{target_price:1},owner)).status,403);
  assert.equal((await stage('In Review',ravi)).status,200);
  console.log(`PASS: ${others.length} non-authority users denied (including spoofing); Ravi/Raj approve/reject; linked status sync, invalid stages, anonymous access and finalized protection.`);
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{

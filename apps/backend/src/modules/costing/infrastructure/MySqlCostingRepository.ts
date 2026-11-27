@@ -134,13 +134,36 @@ export class MySqlCostingRepository {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Ensure final_price_usd column exists on costing_request_items
-    const [usdCols]: any = await pool.query(
+    // Ensure final_price_usd, buyer_code, costing_code, sample_availability, image_urls, approved_at, target_price, target_currency columns exist
+    const [existingItemCols]: any = await pool.query(
       `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'costing_request_items' AND COLUMN_NAME = 'final_price_usd'`
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'costing_request_items'
+         AND COLUMN_NAME IN ('final_price_usd', 'buyer_code', 'costing_code', 'sample_availability', 'image_urls', 'approved_at', 'target_price', 'target_currency')`
     );
-    if (!Array.isArray(usdCols) || usdCols.length === 0) {
+    const colSet = new Set((existingItemCols || []).map((r: any) => r.COLUMN_NAME));
+    if (!colSet.has('final_price_usd')) {
       await pool.query(`ALTER TABLE costing_request_items ADD COLUMN final_price_usd DECIMAL(15,2) NULL AFTER final_price`);
+    }
+    if (!colSet.has('buyer_code')) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN buyer_code VARCHAR(100) NULL AFTER product_code`);
+    }
+    if (!colSet.has('costing_code')) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN costing_code VARCHAR(100) NULL AFTER buyer_code`);
+    }
+    if (!colSet.has('sample_availability')) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN sample_availability VARCHAR(50) NOT NULL DEFAULT 'Not Available' AFTER collection_name`);
+    }
+    if (!colSet.has('image_urls')) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN image_urls LONGTEXT NULL AFTER image_url`);
+    }
+    if (!colSet.has('approved_at')) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN approved_at TIMESTAMP NULL AFTER stage`);
+    }
+    if (!colSet.has('target_price')) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN target_price DECIMAL(15,2) NULL AFTER client_name`);
+    }
+    if (!colSet.has('target_currency')) {
+      await pool.query(`ALTER TABLE costing_request_items ADD COLUMN target_currency VARCHAR(20) NULL DEFAULT 'USD' AFTER target_price`);
     }
 
     await pool.query(`
@@ -168,6 +191,7 @@ export class MySqlCostingRepository {
         (UUID(), 'Menu: Costing & Estimation -> Costing Requests (Products)', 'Access to Costing Requests (Products) under Costing & Estimation', 0),
         (UUID(), 'Menu: Costing & Estimation -> Costing Requests (Bunches)', 'Access to Costing Requests (Bunches) under Costing & Estimation', 0),
         (UUID(), 'Menu: Costing & Estimation -> Costing Tracker', 'Access to Costing Tracker under Costing & Estimation', 0),
+        (UUID(), 'Menu: Costing & Estimation -> Buyer''s Quote History', 'Access to Buyer''s Quote History under Costing & Estimation', 0),
         (UUID(), 'Menu: Costing & Estimation -> New Costing Sheet', 'Access to New Costing Sheet under Costing & Estimation', 0),
         (UUID(), 'Menu: Costing & Estimation -> List of New Costing', 'Access to List of New Costing under Costing & Estimation', 0)`
     );
@@ -586,6 +610,17 @@ export class MySqlCostingRepository {
       `BUN-${yy}${mm}-`);
   }
 
+  async getNextCostingCodeNumber(): Promise<number> {
+    await this.ensureCostingSchema();
+    const [rows]: any = await pool.query(
+      `SELECT MAX(CAST(costing_code AS UNSIGNED)) AS max_code
+       FROM costing_request_items
+       WHERE costing_code REGEXP '^[0-9]+$'`
+    );
+    const maxCode = Number(rows?.[0]?.max_code || 0);
+    return maxCode + 1;
+  }
+
   async createBunchWithItems(bunchData: {
     merchant_id?: string;
     merchant_name: string;
@@ -595,13 +630,19 @@ export class MySqlCostingRepository {
   }, items: Array<{
     product_name: string;
     product_code?: string;
+    buyer_code?: string;
+    costing_code?: string;
     product_type?: string;
     collection_name?: string;
+    sample_availability?: 'Not Available' | 'Sample Available';
     wood_type?: string;
     overall_size?: string;
     client_name?: string;
+    target_price?: number | null;
+    target_currency?: string | null;
     description?: string;
     image_url?: string;
+    image_urls?: string[];
     priority?: 'Normal' | 'High' | 'Urgent';
   }>): Promise<CostingRequestBunch> {
     await this.ensureCostingSchema();
@@ -610,6 +651,13 @@ export class MySqlCostingRepository {
       const bunchCode = await this.generateBunchCode(conn);
       const priority = bunchData.priority || 'Normal';
       const totalProducts = items.length;
+
+      const [maxRows]: any = await conn.query(
+        `SELECT MAX(CAST(costing_code AS UNSIGNED)) AS max_code
+         FROM costing_request_items
+         WHERE costing_code REGEXP '^[0-9]+$'`
+      );
+      let nextNumericCode = Number(maxRows?.[0]?.max_code || 0) + 1;
 
       await conn.query(
         `INSERT INTO costing_request_bunches (
@@ -630,29 +678,64 @@ export class MySqlCostingRepository {
       for (let idx = 0; idx < items.length; idx++) {
         const item = items[idx];
         const itemId = uuidv4();
-        const autoProductCode = (item.product_code && item.product_code.trim())
-          ? item.product_code.trim()
-          : `${bunchCode}-P${String(idx + 1).padStart(2, '0')}`;
+
+        let costingCode = (item.costing_code && item.costing_code.trim())
+          ? item.costing_code.trim()
+          : String(nextNumericCode);
+        if (/^[0-9]+$/.test(costingCode)) {
+          const numVal = parseInt(costingCode, 10);
+          if (numVal >= nextNumericCode) {
+            nextNumericCode = numVal + 1;
+          }
+        } else {
+          nextNumericCode += 1;
+        }
+
+        const buyerCode = (item.buyer_code && item.buyer_code.trim()) ? item.buyer_code.trim() : null;
+        const autoProductCode = costingCode;
+
+        const cleanImageUrls = Array.isArray(item.image_urls)
+          ? item.image_urls.map((u) => (u || "").trim()).filter(Boolean)
+          : [];
+        const primaryImageUrl = (item.image_url && item.image_url.trim())
+          ? item.image_url.trim()
+          : (cleanImageUrls[0] || null);
+        const allImageUrls = cleanImageUrls.length > 0
+          ? cleanImageUrls
+          : (primaryImageUrl ? [primaryImageUrl] : []);
+
+        const parsedTargetPrice =
+          item.target_price !== undefined && item.target_price !== null && String(item.target_price).trim() !== ""
+            ? Number(item.target_price)
+            : null;
+        const cleanTargetPrice = parsedTargetPrice !== null && Number.isFinite(parsedTargetPrice) ? parsedTargetPrice : null;
+        const cleanTargetCurrency = item.target_currency ? String(item.target_currency).trim().toUpperCase() : "USD";
 
         await conn.query(
           `INSERT INTO costing_request_items (
-            id, bunch_id, bunch_code, product_code, product_name, product_type, collection_name,
-            wood_type, overall_size, client_name, description, image_url, priority, stage,
+            id, bunch_id, bunch_code, product_code, buyer_code, costing_code, product_name, product_type, collection_name, sample_availability,
+            wood_type, overall_size, client_name, target_price, target_currency, description, image_url, image_urls, priority, stage,
             merchant_name, created_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)`,
           [
             itemId,
             bunchId,
             bunchCode,
             autoProductCode,
+            buyerCode,
+            costingCode,
             item.product_name,
             item.product_type || null,
             item.collection_name || null,
+            item.sample_availability || 'Not Available',
             item.wood_type || null,
             item.overall_size || null,
             item.client_name || bunchData.client_name || null,
+            cleanTargetPrice,
+            cleanTargetCurrency,
             item.description || null,
-            item.image_url || null,
+            primaryImageUrl,
+            allImageUrls.length > 0 ? JSON.stringify(allImageUrls) : null,
             item.priority || priority,
             bunchData.merchant_name,
             bunchData.merchant_id || null,
@@ -737,13 +820,56 @@ export class MySqlCostingRepository {
     };
   }
 
+  private extractLatestBuyerQuote(rawFormData: any): {
+    label: string;
+    currency: string;
+    amount: number;
+    note?: string;
+    usd_rate: number;
+  } | null {
+    if (!rawFormData) return null;
+    try {
+      const fd = typeof rawFormData === "string" ? JSON.parse(rawFormData) : rawFormData;
+      if (!fd || !Array.isArray(fd.buyerQuotes) || fd.buyerQuotes.length === 0) return null;
+
+      const usdRate = Number(fd.usdExchangeRate) > 0 ? Number(fd.usdExchangeRate) : 86.5;
+
+      // Pick the LAST filled buyer quote (1st, 2nd, 3rd, etc.)
+      for (let i = fd.buyerQuotes.length - 1; i >= 0; i--) {
+        const q = fd.buyerQuotes[i];
+        const amt = Number(q?.amount);
+        if (q && q.amount !== "" && q.amount !== null && q.amount !== undefined && Number.isFinite(amt) && amt > 0) {
+          const num = i + 1;
+          const mod100 = num % 100;
+          let suffix = "th";
+          if (mod100 < 11 || mod100 > 13) {
+            if (num % 10 === 1) suffix = "st";
+            else if (num % 10 === 2) suffix = "nd";
+            else if (num % 10 === 3) suffix = "rd";
+          }
+          return {
+            label: `${num}${suffix} Quote`,
+            currency: (q.currency || "USD").toUpperCase(),
+            amount: amt,
+            note: q.note || "",
+            usd_rate: usdRate,
+          };
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   async findRequestItems(search?: string, stage?: string, priority?: string, bunchCode?: string, merchant?: string): Promise<CostingRequestItem[]> {
     await this.ensureCostingSchema();
     let sql = `
       SELECT
         cri.*,
         COALESCE(cri.final_price, ce.final_price) as final_price,
-        COALESCE(cri.final_price_usd, CASE WHEN ce.final_price > 0 THEN ROUND(ce.final_price / 86.5, 2) ELSE NULL END) as final_price_usd
+        COALESCE(cri.final_price_usd, CASE WHEN ce.final_price > 0 THEN ROUND(ce.final_price / 86.5, 2) ELSE NULL END) as final_price_usd,
+        ce.form_data as estimation_form_data
       FROM costing_request_items cri
       LEFT JOIN cost_estimations ce ON cri.estimation_id = ce.id
       WHERE 1=1
@@ -767,20 +893,179 @@ export class MySqlCostingRepository {
       params.push(merchant);
     }
     if (search) {
-      sql += ` AND (cri.product_code LIKE ? OR cri.product_name LIKE ? OR cri.bunch_code LIKE ? OR cri.merchant_name LIKE ? OR cri.client_name LIKE ?)`;
+      sql += ` AND (cri.costing_code LIKE ? OR cri.buyer_code LIKE ? OR cri.product_code LIKE ? OR cri.product_name LIKE ? OR cri.merchant_name LIKE ? OR cri.client_name LIKE ?)`;
       const term = `%${search}%`;
-      params.push(term, term, term, term, term);
+      params.push(term, term, term, term, term, term);
     }
     sql += ` ORDER BY cri.created_at DESC`;
 
     const [rows]: any = await pool.query(sql, params);
-    return rows as CostingRequestItem[];
+    return (rows || []).map((row: any) => {
+      const latestBuyerQuote = this.extractLatestBuyerQuote(row.estimation_form_data);
+      const { estimation_form_data: _ignored, ...rest } = row;
+      return {
+        ...rest,
+        latest_buyer_quote: latestBuyerQuote,
+      };
+    }) as CostingRequestItem[];
   }
 
   async findRequestItemById(id: string): Promise<CostingRequestItem | null> {
     await this.ensureCostingSchema();
     const [rows]: any = await pool.query(`SELECT * FROM costing_request_items WHERE id = ? LIMIT 1`, [id]);
     return (rows && rows.length > 0) ? (rows[0] as CostingRequestItem) : null;
+  }
+
+  async updateRequestItemDetails(
+    id: string,
+    data: {
+      product_name?: string;
+      costing_code?: string;
+      buyer_code?: string;
+      product_type?: string;
+      collection_name?: string;
+      sample_availability?: string;
+      wood_type?: string;
+      overall_size?: string;
+      client_name?: string;
+      target_price?: number | null;
+      target_currency?: string | null;
+      description?: string;
+      priority?: 'Normal' | 'High' | 'Urgent';
+    },
+    actorCanApprove: boolean = false
+  ): Promise<CostingRequestItem | null> {
+    await this.ensureCostingSchema();
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [locked]: any = await conn.query('SELECT stage, estimation_id FROM costing_request_items WHERE id = ? FOR UPDATE', [id]);
+      if (!locked.length) { await conn.rollback(); return null; }
+      const finalized = (value: string) => value === 'Approved' || value === 'Rejected';
+      if (!actorCanApprove && finalized(locked[0].stage)) {
+        throw new ForbiddenError('Only Ravi Utmani or Raj Utmani can modify finalized costing.');
+      }
+      if (locked[0].estimation_id) {
+        const [linked]: any = await conn.query('SELECT status FROM cost_estimations WHERE id = ? FOR UPDATE', [locked[0].estimation_id]);
+        if (!actorCanApprove && linked.some((row: any) => finalized(row.status))) {
+          throw new ForbiddenError('Only Ravi Utmani or Raj Utmani can modify finalized costing.');
+        }
+      }
+
+      const hasTargetPrice = data.target_price !== undefined;
+      const parsedTarget =
+        data.target_price !== undefined && data.target_price !== null && String(data.target_price).trim() !== ""
+          ? Number(data.target_price)
+          : null;
+      const cleanTargetPrice = parsedTarget !== null && Number.isFinite(parsedTarget) ? parsedTarget : null;
+      const cleanTargetCurrency = data.target_currency ? String(data.target_currency).trim().toUpperCase() : null;
+
+      await conn.query(
+        `UPDATE costing_request_items SET
+          product_name = COALESCE(?, product_name),
+          costing_code = COALESCE(?, costing_code),
+          product_code = COALESCE(?, product_code),
+          buyer_code = IF(?, ?, buyer_code),
+          product_type = COALESCE(?, product_type),
+          collection_name = COALESCE(?, collection_name),
+          sample_availability = COALESCE(?, sample_availability),
+          wood_type = COALESCE(?, wood_type),
+          overall_size = COALESCE(?, overall_size),
+          client_name = COALESCE(?, client_name),
+          target_price = ${hasTargetPrice ? "?" : "target_price"},
+          target_currency = COALESCE(?, target_currency),
+          description = COALESCE(?, description),
+          priority = COALESCE(?, priority)
+         WHERE id = ?`,
+        hasTargetPrice
+          ? [
+              data.product_name ?? null,
+              data.costing_code ?? null,
+              data.costing_code ?? null,
+              data.buyer_code !== undefined,
+              data.buyer_code || null,
+              data.product_type ?? null,
+              data.collection_name ?? null,
+              data.sample_availability ?? null,
+              data.wood_type ?? null,
+              data.overall_size ?? null,
+              data.client_name ?? null,
+              cleanTargetPrice,
+              cleanTargetCurrency,
+              data.description ?? null,
+              data.priority ?? null,
+              id,
+            ]
+          : [
+              data.product_name ?? null,
+              data.costing_code ?? null,
+              data.costing_code ?? null,
+              data.buyer_code !== undefined,
+              data.buyer_code || null,
+              data.product_type ?? null,
+              data.collection_name ?? null,
+              data.sample_availability ?? null,
+              data.wood_type ?? null,
+              data.overall_size ?? null,
+              data.client_name ?? null,
+              cleanTargetCurrency,
+              data.description ?? null,
+              data.priority ?? null,
+              id,
+            ]
+      );
+
+      // If linked to an existing cost_estimation, sync targetPrice/targetCurrency & buyerCode into its form_data
+      const [itemRows]: any = await conn.query(`SELECT * FROM costing_request_items WHERE id = ? LIMIT 1`, [id]);
+      if (itemRows && itemRows.length > 0 && itemRows[0].estimation_id) {
+        const estId = itemRows[0].estimation_id;
+        const [estRows]: any = await conn.query(`SELECT form_data FROM cost_estimations WHERE id = ? LIMIT 1`, [estId]);
+        if (estRows && estRows.length > 0) {
+          let fd: any = {};
+          try {
+            fd = estRows[0].form_data
+              ? typeof estRows[0].form_data === "string"
+                ? JSON.parse(estRows[0].form_data)
+                : estRows[0].form_data
+              : {};
+          } catch {
+            fd = {};
+          }
+          if (hasTargetPrice) {
+            fd.targetPrice = cleanTargetPrice !== null ? cleanTargetPrice : "";
+          }
+          if (cleanTargetCurrency) {
+            fd.targetCurrency = cleanTargetCurrency;
+          }
+          if (data.buyer_code !== undefined) {
+            fd.buyerCode = data.buyer_code || "";
+          }
+          await conn.query(
+            `UPDATE cost_estimations SET
+              form_data = ?,
+              client_name = COALESCE(?, client_name),
+              product_name = COALESCE(?, product_name),
+              product_code = COALESCE(?, product_code)
+             WHERE id = ?`,
+            [
+              JSON.stringify(fd),
+              data.client_name ?? null,
+              data.product_name ?? null,
+              data.costing_code ?? null,
+              estId,
+            ]
+          );
+        }
+      }
+
+      await conn.commit();
+      return itemRows && itemRows.length > 0 ? (itemRows[0] as CostingRequestItem) : null;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   }
 
   async updateRequestItemStage(id: string, stage: string, estimationId?: string, estimationNumber?: string, finalPrice?: number, finalPriceUsd?: number, actorCanApprove: boolean = false): Promise<boolean> {
@@ -820,12 +1105,13 @@ export class MySqlCostingRepository {
       const [res]: any = await conn.query(
         `UPDATE costing_request_items SET
           stage = ?,
+          approved_at = CASE WHEN ? = 'Approved' THEN COALESCE(approved_at, NOW()) ELSE approved_at END,
           estimation_id = COALESCE(?, estimation_id),
           estimation_number = COALESCE(?, estimation_number),
           final_price = COALESCE(?, final_price),
           final_price_usd = COALESCE(?, final_price_usd)
          WHERE id = ?`,
-        [stage, estimationId || null, estimationNumber || null, finalPrice || null, calcUsd || null, id]
+        [stage, stage, estimationId || null, estimationNumber || null, finalPrice || null, calcUsd || null, id]
       );
       const [itemRows]: any = await conn.query(`SELECT bunch_id, estimation_id, final_price FROM costing_request_items WHERE id = ?`, [id]);
       if (itemRows && itemRows.length > 0) {
@@ -848,33 +1134,51 @@ export class MySqlCostingRepository {
 
   async getCostingTracker(search?: string, stage?: string, merchant?: string, dateFrom?: string, dateTo?: string): Promise<any> {
     await this.ensureCostingSchema();
-    let sql = `SELECT * FROM costing_request_items WHERE 1=1`;
+    let sql = `
+      SELECT
+        cri.*,
+        COALESCE(cri.final_price, ce.final_price) as final_price,
+        COALESCE(cri.final_price_usd, CASE WHEN ce.final_price > 0 THEN ROUND(ce.final_price / 86.5, 2) ELSE NULL END) as final_price_usd,
+        CASE WHEN cri.stage = 'Approved' THEN COALESCE(cri.approved_at, cri.updated_at) ELSE NULL END as approved_at,
+        ce.form_data as estimation_form_data
+      FROM costing_request_items cri
+      LEFT JOIN cost_estimations ce ON cri.estimation_id = ce.id
+      WHERE 1=1
+    `;
     const params: any[] = [];
 
     if (stage && stage !== 'ALL') {
-      sql += ` AND stage = ?`;
+      sql += ` AND cri.stage = ?`;
       params.push(stage);
     }
     if (merchant && merchant !== 'ALL') {
-      sql += ` AND merchant_name = ?`;
+      sql += ` AND cri.merchant_name = ?`;
       params.push(merchant);
     }
     if (dateFrom) {
-      sql += ` AND created_at >= ?`;
+      sql += ` AND cri.created_at >= ?`;
       params.push(dateFrom);
     }
     if (dateTo) {
-      sql += ` AND created_at <= ?`;
+      sql += ` AND cri.created_at <= ?`;
       params.push(`${dateTo} 23:59:59`);
     }
     if (search) {
-      sql += ` AND (product_code LIKE ? OR product_name LIKE ? OR bunch_code LIKE ? OR merchant_name LIKE ? OR client_name LIKE ?)`;
+      sql += ` AND (cri.costing_code LIKE ? OR cri.buyer_code LIKE ? OR cri.product_code LIKE ? OR cri.product_name LIKE ? OR cri.merchant_name LIKE ? OR cri.client_name LIKE ?)`;
       const term = `%${search}%`;
-      params.push(term, term, term, term, term);
+      params.push(term, term, term, term, term, term);
     }
-    sql += ` ORDER BY created_at DESC`;
+    sql += ` ORDER BY cri.created_at DESC`;
 
-    const [items]: any = await pool.query(sql, params);
+    const [rawItems]: any = await pool.query(sql, params);
+    const items = (rawItems || []).map((row: any) => {
+      const latestBuyerQuote = this.extractLatestBuyerQuote(row.estimation_form_data);
+      const { estimation_form_data: _ignored, ...rest } = row;
+      return {
+        ...rest,
+        latest_buyer_quote: latestBuyerQuote,
+      };
+    });
 
     // Summary counts
     const [counts]: any = await pool.query(`

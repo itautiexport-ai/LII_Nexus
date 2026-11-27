@@ -33,6 +33,7 @@ router.get("/requests/bunches", asyncHandler(controller.listBunches));
 router.get("/requests/bunches/:id", asyncHandler(controller.getBunchById));
 router.get("/requests/items", asyncHandler(controller.listRequestItems));
 router.get("/requests/items/:id", asyncHandler(controller.getRequestItemById));
+router.patch("/requests/items/:id", asyncHandler(controller.updateRequestItemDetails));
 router.patch("/requests/items/:id/stage", asyncHandler(controller.updateRequestItemStage));
 
 // Costing Tracker

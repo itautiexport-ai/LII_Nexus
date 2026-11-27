@@ -7,14 +7,20 @@ import { useAuthStore } from "../../auth/hooks/useAuthStore";
 interface ProductFormItem {
   id: string;
   product_name: string;
-  product_code: string;
+  costing_code: string;
+  buyer_code: string;
   product_type: string;
   collection_name: string;
+  sample_availability: "Not Available" | "Sample Available";
   wood_type: string;
   overall_size: string;
   client_name: string;
+  target_price: string;
+  target_currency: string;
   description: string;
   image_url: string;
+  image_urls: string[];
+  activeImageIndex: number;
   uploading?: boolean;
   priority: "Normal" | "High" | "Urgent";
 }
@@ -25,27 +31,33 @@ export default function CostingRequestCenterPage() {
 
   const [merchantName, setMerchantName] = useState(user?.fullName || "");
   const [clientName, setClientName] = useState("");
-  const [bunchPriority, setBunchPriority] = useState<"Normal" | "High" | "Urgent">("Normal");
+  const [requestPriority, setRequestPriority] = useState<"Normal" | "High" | "Urgent">("Normal");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [createdBunch, setCreatedBunch] = useState<any | null>(null);
+  const [createdRequest, setCreatedRequest] = useState<any | null>(null);
 
   // Master Data: Wood Types
   const [woodTypes, setWoodTypes] = useState<WoodType[]>([]);
-  const [bunchCodePrefix, setBunchCodePrefix] = useState<string>("BUN-" + new Date().getFullYear().toString().slice(-2) + String(new Date().getMonth() + 1).padStart(2, "0") + "-0001");
+  const [nextCodeBase, setNextCodeBase] = useState<number>(1);
 
   const [products, setProducts] = useState<ProductFormItem[]>([
     {
       id: "prod-1",
       product_name: "",
-      product_code: "",
+      costing_code: "1",
+      buyer_code: "",
       product_type: "",
       collection_name: "",
+      sample_availability: "Not Available",
       wood_type: "",
       overall_size: "",
       client_name: "",
+      target_price: "",
+      target_currency: "USD",
       description: "",
       image_url: "",
+      image_urls: [],
+      activeImageIndex: 0,
       priority: "Normal",
     },
   ]);
@@ -53,61 +65,95 @@ export default function CostingRequestCenterPage() {
   const bulkFileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    if (user?.fullName && !merchantName) {
+      setMerchantName(user.fullName);
+    }
+  }, [user?.fullName]);
+
+  const fetchNextCostingCode = async (resetFirstProduct: boolean = false) => {
+    try {
+      const res = await costingApi.getNextCodes(1);
+      const startNum = Number(res?.nextCostingCode || 1);
+      setNextCodeBase(startNum);
+      setProducts((prev) => {
+        if (resetFirstProduct) {
+          return [
+            {
+              id: `prod-${Date.now()}-1`,
+              product_name: "",
+              costing_code: String(startNum),
+              buyer_code: "",
+              product_type: "",
+              collection_name: "",
+              sample_availability: "Not Available",
+              wood_type: woodTypes.length > 0 ? woodTypes[0].name : "",
+              overall_size: "",
+              client_name: "",
+              target_price: "",
+              target_currency: "USD",
+              description: "",
+              image_url: "",
+              image_urls: [],
+              activeImageIndex: 0,
+              priority: "Normal",
+            },
+          ];
+        }
+        if (prev.length === 1 && !prev[0].product_name) {
+          return [{ ...prev[0], costing_code: String(startNum) }];
+        }
+        return prev;
+      });
+    } catch {
+      setNextCodeBase(1);
+    }
+  };
+
+  useEffect(() => {
     // Load Wood Types from Master Data
-    masterDataApi.getWoodTypes()
+    masterDataApi
+      .getWoodTypes()
       .then((data) => setWoodTypes(data || []))
       .catch((err) => console.error("Failed to load wood types master:", err));
 
-    // Fetch next auto bunch code & product codes from backend
-    costingApi.getNextCodes(5)
-      .then((res) => {
-        if (res && res.bunchCode) {
-          setBunchCodePrefix(res.bunchCode);
-          setProducts((prev) => {
-            if (prev.length === 1 && !prev[0].product_code) {
-              return [{
-                ...prev[0],
-                product_code: `${res.bunchCode}-P01`,
-              }];
-            }
-            return prev;
-          });
-        }
-      })
-      .catch(() => {
-        // Fallback default
-        const code = `BUN-${new Date().getFullYear().toString().slice(-2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-0001`;
-        setBunchCodePrefix(code);
-        setProducts((prev) => {
-          if (prev.length === 1 && !prev[0].product_code) {
-            return [{ ...prev[0], product_code: `${code}-P01` }];
-          }
-          return prev;
-        });
-      });
+    // Fetch next sequential numeric costing code (1, 2, 3...)
+    fetchNextCostingCode(false);
   }, []);
 
-  const getAutoCodeForIndex = (index: number) => {
-    return `${bunchCodePrefix}-P${String(index + 1).padStart(2, "0")}`;
+  const getNextNumericCode = (currentList: ProductFormItem[]): string => {
+    let maxVal = nextCodeBase - 1;
+    currentList.forEach((p) => {
+      const parsed = parseInt((p.costing_code || "").trim(), 10);
+      if (!isNaN(parsed) && parsed > maxVal) {
+        maxVal = parsed;
+      }
+    });
+    return String(maxVal + 1);
   };
 
   const handleAddProduct = () => {
     setProducts((prev) => {
-      const nextIndex = prev.length;
+      const nextCode = getNextNumericCode(prev);
       return [
         ...prev,
         {
-          id: `prod-${Date.now()}-${nextIndex + 1}`,
+          id: `prod-${Date.now()}-${prev.length + 1}`,
           product_name: "",
-          product_code: getAutoCodeForIndex(nextIndex),
+          costing_code: nextCode,
+          buyer_code: "",
           product_type: "",
           collection_name: "",
+          sample_availability: "Not Available",
           wood_type: woodTypes.length > 0 ? woodTypes[0].name : "",
           overall_size: "",
           client_name: clientName || "",
+          target_price: "",
+          target_currency: "USD",
           description: "",
           image_url: "",
-          priority: bunchPriority,
+          image_urls: [],
+          activeImageIndex: 0,
+          priority: requestPriority,
         },
       ];
     });
@@ -132,76 +178,156 @@ export default function CostingRequestCenterPage() {
     });
   };
 
-  // Upload a single file for a product
-  const handleUploadProductImage = async (index: number, file: File) => {
+  // Upload one or multiple side/angle photos for a single product
+  const handleUploadProductImages = async (index: number, files: FileList | File[]) => {
+    const fileArr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (fileArr.length === 0) return;
+
     handleProductChange(index, "uploading", true);
     try {
-      // Direct file reader preview first so it feels instant
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const previewUrl = e.target?.result as string;
-        handleProductChange(index, "image_url", previewUrl);
-      };
-      reader.readAsDataURL(file);
+      const previewUrls = fileArr.map((f) => URL.createObjectURL(f));
 
-      // Upload to server
-      const uploadedUrl = await costingApi.uploadImageFile(file);
-      if (uploadedUrl) {
-        handleProductChange(index, "image_url", uploadedUrl);
+      // Append previews immediately and switch view to the first newly added photo
+      let startSlot = 0;
+      setProducts((prev) => {
+        const updated = [...prev];
+        const existing = updated[index].image_urls || [];
+        startSlot = existing.length;
+        const merged = [...existing, ...previewUrls];
+        updated[index] = {
+          ...updated[index],
+          image_urls: merged,
+          image_url: merged[0] || "",
+          activeImageIndex: startSlot,
+        };
+        return updated;
+      });
+
+      // Upload each file to server and replace its preview slot
+      for (let i = 0; i < fileArr.length; i++) {
+        try {
+          const uploadedUrl = await costingApi.uploadImageFile(fileArr[i]);
+          if (uploadedUrl) {
+            const targetSlot = startSlot + i;
+            setProducts((prev) => {
+              const updated = [...prev];
+              if (!updated[index]) return prev;
+              const urls = [...(updated[index].image_urls || [])];
+              if (targetSlot < urls.length) {
+                urls[targetSlot] = uploadedUrl;
+              }
+              updated[index] = {
+                ...updated[index],
+                image_urls: urls,
+                image_url: urls[0] || "",
+              };
+              return updated;
+            });
+          }
+        } catch (err) {
+          console.warn("Server upload failed, keeping local preview:", err);
+        }
       }
-    } catch (err) {
-      console.warn("Server upload failed, using local image preview:", err);
     } finally {
       handleProductChange(index, "uploading", false);
     }
   };
 
-  // Bulk Image Upload / Drag and Drop (Creates multiple product listings automatically)
+  const handleRemoveCurrentImage = (index: number) => {
+    setProducts((prev) => {
+      const updated = [...prev];
+      const item = updated[index];
+      const urls = [...(item.image_urls || [])];
+      if (urls.length === 0) return prev;
+      const removeIdx = Math.min(item.activeImageIndex || 0, urls.length - 1);
+      urls.splice(removeIdx, 1);
+      const nextActive = urls.length === 0 ? 0 : Math.min(removeIdx, urls.length - 1);
+      updated[index] = {
+        ...item,
+        image_urls: urls,
+        image_url: urls[0] || "",
+        activeImageIndex: nextActive,
+      };
+      return updated;
+    });
+  };
+
+  const handleCycleImage = (index: number, direction: -1 | 1) => {
+    setProducts((prev) => {
+      const updated = [...prev];
+      const item = updated[index];
+      const total = (item.image_urls || []).length;
+      if (total <= 1) return prev;
+      const nextIdx = ((item.activeImageIndex || 0) + direction + total) % total;
+      updated[index] = {
+        ...item,
+        activeImageIndex: nextIdx,
+      };
+      return updated;
+    });
+  };
+
+  // Bulk Image Upload / Drag and Drop (1 product card per photo)
   const handleBulkUploadFiles = async (files: FileList | File[]) => {
     const fileList = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (fileList.length === 0) return;
 
-    const newItems: ProductFormItem[] = [];
-    const startIndex = products.length === 1 && !products[0].product_name && !products[0].image_url ? 0 : products.length;
+    const replaceFirst = products.length === 1 && !products[0].product_name && products[0].image_urls.length === 0;
+    const startIndex = replaceFirst ? 0 : products.length;
+    let runningCode = replaceFirst ? nextCodeBase : parseInt(getNextNumericCode(products), 10);
 
+    const newItems: ProductFormItem[] = [];
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
-      const autoCode = getAutoCodeForIndex(startIndex + i);
       const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-
-      // Generate preview URL
       const previewUrl = URL.createObjectURL(file);
 
       newItems.push({
         id: `prod-${Date.now()}-${i + 1}`,
         product_name: cleanFileName,
-        product_code: autoCode,
+        costing_code: String(runningCode++),
+        buyer_code: "",
         product_type: "",
         collection_name: "",
+        sample_availability: "Not Available",
         wood_type: woodTypes.length > 0 ? woodTypes[0].name : "",
         overall_size: "",
         client_name: clientName || "",
+        target_price: "",
+        target_currency: "USD",
         description: "",
         image_url: previewUrl,
+        image_urls: [previewUrl],
+        activeImageIndex: 0,
         uploading: true,
-        priority: bunchPriority,
+        priority: requestPriority,
       });
     }
 
-    if (startIndex === 0) {
+    if (replaceFirst) {
       setProducts(newItems);
     } else {
       setProducts((prev) => [...prev, ...newItems]);
     }
 
-    // Upload files to server in background
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
       const itemIndex = startIndex + i;
       try {
         const uploadedUrl = await costingApi.uploadImageFile(file);
         if (uploadedUrl) {
-          handleProductChange(itemIndex, "image_url", uploadedUrl);
+          setProducts((prev) => {
+            const updated = [...prev];
+            if (!updated[itemIndex]) return prev;
+            const urls = [...(updated[itemIndex].image_urls || [])];
+            urls[0] = uploadedUrl;
+            updated[itemIndex] = {
+              ...updated[itemIndex],
+              image_url: uploadedUrl,
+              image_urls: urls,
+            };
+            return updated;
+          });
         }
       } catch (err) {
         console.warn("Background upload fallback for file:", file.name, err);
@@ -213,7 +339,8 @@ export default function CostingRequestCenterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!merchantName.trim()) {
+    const effectiveMerchant = merchantName.trim() || user?.fullName?.trim() || "";
+    if (!effectiveMerchant) {
       alert("Please enter Merchant Name.");
       return;
     }
@@ -227,29 +354,35 @@ export default function CostingRequestCenterPage() {
 
     setSubmitting(true);
     try {
-      const bunch = await costingApi.createRequestBunch({
-        merchant_name: merchantName.trim(),
+      const res = await costingApi.createRequestBunch({
+        merchant_name: effectiveMerchant,
         client_name: clientName.trim() || undefined,
         notes: notes.trim() || undefined,
-        priority: bunchPriority,
+        priority: requestPriority,
         items: products.map((p, idx) => ({
           product_name: p.product_name.trim(),
-          product_code: p.product_code.trim() || getAutoCodeForIndex(idx),
+          costing_code: p.costing_code.trim() || String(nextCodeBase + idx),
+          buyer_code: p.buyer_code.trim() || undefined,
+          product_code: p.costing_code.trim() || String(nextCodeBase + idx),
           product_type: p.product_type.trim() || undefined,
           collection_name: p.collection_name.trim() || undefined,
+          sample_availability: p.sample_availability || "Not Available",
           wood_type: p.wood_type.trim() || undefined,
           overall_size: p.overall_size.trim() || undefined,
           client_name: (p.client_name || clientName).trim() || undefined,
+          target_price: p.target_price.trim() !== "" ? Number(p.target_price) : null,
+          target_currency: p.target_currency || "USD",
           description: p.description.trim() || undefined,
-          image_url: p.image_url.trim() || undefined,
-          priority: p.priority || bunchPriority,
+          image_url: (p.image_urls[0] || p.image_url || "").trim() || undefined,
+          image_urls: (p.image_urls || []).map((u) => u.trim()).filter(Boolean),
+          priority: p.priority || requestPriority,
         })),
       });
 
-      setCreatedBunch(bunch);
+      setCreatedRequest(res);
     } catch (err: any) {
-      console.error("Failed to create costing request bunch:", err);
-      alert(err?.response?.data?.error?.message || err?.message || "Failed to create request bunch.");
+      console.error("Failed to create costing request:", err);
+      alert(err?.response?.data?.error?.message || err?.message || "Failed to submit costing request.");
     } finally {
       setSubmitting(false);
     }
@@ -268,7 +401,7 @@ export default function CostingRequestCenterPage() {
       </div>
 
       {/* Success Notification */}
-      {createdBunch && (
+      {createdRequest && (
         <div
           style={{
             background: "#f0fdf4",
@@ -286,25 +419,48 @@ export default function CostingRequestCenterPage() {
                 Costing Request Submitted Successfully!
               </h3>
               <p style={{ margin: "2px 0 0 0", fontSize: 13, color: "#15803d" }}>
-                Bunch Code: <strong>{createdBunch.bunch_code}</strong> | Total Products for Costing: <strong>{createdBunch.total_products}</strong>
+                Merchant Folder: <strong>📁 {createdRequest.merchant_name}</strong> | Total Products Submitted:{" "}
+                <strong>{createdRequest.total_products}</strong>
               </p>
             </div>
           </div>
 
           <div style={{ background: "#ffffff", border: "1px solid #bbf7d0", borderRadius: 6, padding: 12, marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#166534", marginBottom: 6 }}>
-              Auto-Generated Products:
+              Submitted Products:
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 8 }}>
-              {(createdBunch.items || []).map((it: any) => (
+              {(createdRequest.items || []).map((it: any) => (
                 <div key={it.id} style={{ padding: "6px 10px", background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: 12 }}>
-                  <span style={{ fontWeight: 700, color: "#2563eb" }}>{it.product_code}</span>: {it.product_name}
+                  <span style={{ fontWeight: 700, color: "#2563eb" }}>
+                    Costing #{it.costing_code || it.product_code}
+                  </span>
+                  {it.buyer_code && (
+                    <span style={{ color: "#6d28d9", fontWeight: 600 }}> ({it.buyer_code})</span>
+                  )}
+                  : {it.product_name}
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => navigate(`/admin/costing/merchant-wise?merchant=${encodeURIComponent(createdRequest.merchant_name)}`)}
+              style={{
+                padding: "8px 16px",
+                background: "#4f46e5",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              📂 Open {createdRequest.merchant_name}'s Folder →
+            </button>
             <button
               type="button"
               onClick={() => navigate("/admin/costing/sku-wise")}
@@ -323,39 +479,9 @@ export default function CostingRequestCenterPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate("/admin/costing/tracker")}
-              style={{
-                padding: "8px 16px",
-                background: "#2563eb",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: 6,
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              Open Costing Tracker ⏱️
-            </button>
-            <button
-              type="button"
               onClick={() => {
-                setCreatedBunch(null);
-                setProducts([
-                  {
-                    id: "prod-1",
-                    product_name: "",
-                    product_code: `${bunchCodePrefix}-P01`,
-                    product_type: "",
-                    collection_name: "",
-                    wood_type: woodTypes.length > 0 ? woodTypes[0].name : "",
-                    overall_size: "",
-                    client_name: "",
-                    description: "",
-                    image_url: "",
-                    priority: "Normal",
-                  },
-                ]);
+                setCreatedRequest(null);
+                fetchNextCostingCode(true);
               }}
               style={{
                 padding: "8px 16px",
@@ -385,7 +511,7 @@ export default function CostingRequestCenterPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                Merchant Name <span style={{ color: "#ef4444" }}>*</span>
+                Merchant Name (Folder Name) <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <input
                 type="text"
@@ -393,7 +519,7 @@ export default function CostingRequestCenterPage() {
                 onChange={(e) => setMerchantName(e.target.value)}
                 required
                 placeholder="Merchant Name"
-                style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
+                style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, fontWeight: 600 }}
               />
             </div>
 
@@ -415,8 +541,8 @@ export default function CostingRequestCenterPage() {
                 Priority Level
               </label>
               <select
-                value={bunchPriority}
-                onChange={(e) => setBunchPriority(e.target.value as any)}
+                value={requestPriority}
+                onChange={(e) => setRequestPriority(e.target.value as any)}
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, fontWeight: 600 }}
               >
                 <option value="Normal">🟢 Normal</option>
@@ -475,9 +601,6 @@ export default function CostingRequestCenterPage() {
           <div style={{ fontSize: 32, marginBottom: 6 }}>📸</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>
             Instant Bulk Photo Upload: Drag & Drop Multiple Product Photos Here
-          </div>
-          <div style={{ fontSize: 13, color: "#15803d", marginTop: 4 }}>
-            Drop 2, 5 or 10+ photos together. System automatically creates product cards with images & auto-generated codes.
           </div>
           <button
             type="button"
@@ -551,9 +674,14 @@ export default function CostingRequestCenterPage() {
                   >
                     Product #{index + 1}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#2563eb" }}>
-                    {item.product_code || getAutoCodeForIndex(index)}
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#166534", background: "#dcfce7", padding: "3px 10px", borderRadius: 12 }}>
+                    Costing Code: {item.costing_code || String(nextCodeBase + index)}
                   </span>
+                  {item.buyer_code && (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#6d28d9", background: "#ede9fe", padding: "3px 10px", borderRadius: 12 }}>
+                      Buyer Code: {item.buyer_code}
+                    </span>
+                  )}
                 </div>
 
                 {products.length > 1 && (
@@ -576,81 +704,203 @@ export default function CostingRequestCenterPage() {
 
               {/* Product Layout: Photo Upload Zone on Left + Form Fields on Right */}
               <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 20 }}>
-                {/* Photo Upload / Drag Zone */}
+                {/* Photo Upload / Multi-Angle Carousel Zone */}
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    Product Photo
-                  </label>
-                  <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                        handleUploadProductImage(index, e.dataTransfer.files[0]);
-                      }
-                    }}
-                    onClick={() => {
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+                      Product Photos
+                    </label>
+                    {item.image_urls.length > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", background: "#eff6ff", padding: "1px 7px", borderRadius: 10 }}>
+                        {item.image_urls.length} {item.image_urls.length === 1 ? "Photo" : "Photos"}
+                      </span>
+                    )}
+                  </div>
+
+                  {(() => {
+                    const totalPhotos = item.image_urls.length;
+                    const activeIdx = totalPhotos > 0 ? Math.min(item.activeImageIndex || 0, totalPhotos - 1) : 0;
+                    const currentPhoto = totalPhotos > 0 ? item.image_urls[activeIdx] : "";
+
+                    const openFilePicker = (multiple: boolean) => {
                       const input = document.createElement("input");
                       input.type = "file";
                       input.accept = "image/*";
+                      input.multiple = multiple;
                       input.onchange = (e: any) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleUploadProductImage(index, e.target.files[0]);
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleUploadProductImages(index, e.target.files);
                         }
                       };
                       input.click();
-                    }}
-                    style={{
-                      width: "100%",
-                      height: 140,
-                      border: "2px dashed #cbd5e1",
-                      borderRadius: 8,
-                      background: "#f8fafc",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt="Product"
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : item.uploading ? (
-                      <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>Uploading...</div>
-                    ) : (
+                    };
+
+                    return (
                       <>
-                        <span style={{ fontSize: 24, marginBottom: 4 }}>📷</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "#2563eb" }}>Click / Drag Photo</span>
-                        <span style={{ fontSize: 10, color: "#94a3b8" }}>Upload image</span>
+                        <div
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                              handleUploadProductImages(index, e.dataTransfer.files);
+                            }
+                          }}
+                          onClick={() => openFilePicker(totalPhotos > 0)}
+                          style={{
+                            width: "100%",
+                            height: 150,
+                            border: "2px dashed #cbd5e1",
+                            borderRadius: 8,
+                            background: "#f8fafc",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            position: "relative",
+                            overflow: "hidden",
+                          }}
+                          title={totalPhotos > 0 ? "Click or drag to add more side/angle photos" : "Click or drag to upload photo"}
+                        >
+                          {currentPhoto ? (
+                            <>
+                              <img
+                                src={currentPhoto}
+                                alt={`Product view ${activeIdx + 1}`}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                              {totalPhotos > 1 && (
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    top: 6,
+                                    right: 6,
+                                    background: "rgba(15, 23, 42, 0.72)",
+                                    color: "#ffffff",
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: "2px 7px",
+                                    borderRadius: 10,
+                                  }}
+                                >
+                                  {activeIdx + 1} / {totalPhotos}
+                                </span>
+                              )}
+                            </>
+                          ) : item.uploading ? (
+                            <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>Uploading...</div>
+                          ) : (
+                            <>
+                              <span style={{ fontSize: 24, marginBottom: 4 }}>📷</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "#2563eb" }}>Click / Drag Photo</span>
+                              <span style={{ fontSize: 10, color: "#94a3b8" }}>Upload image</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Arrow Navigation Below Image (when 2+ photos uploaded) */}
+                        {totalPhotos > 1 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginTop: 6,
+                              background: "#f1f5f9",
+                              borderRadius: 6,
+                              padding: "4px 6px",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleCycleImage(index, -1)}
+                              style={{
+                                width: 28,
+                                height: 24,
+                                border: "1px solid #cbd5e1",
+                                background: "#ffffff",
+                                borderRadius: 4,
+                                cursor: "pointer",
+                                fontWeight: 800,
+                                color: "#1e293b",
+                                fontSize: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                              title="Previous photo"
+                            >
+                              ◀
+                            </button>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>
+                              Photo {activeIdx + 1} / {totalPhotos}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCycleImage(index, 1)}
+                              style={{
+                                width: 28,
+                                height: 24,
+                                border: "1px solid #cbd5e1",
+                                background: "#ffffff",
+                                borderRadius: 4,
+                                cursor: "pointer",
+                                fontWeight: 800,
+                                color: "#1e293b",
+                                fontSize: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                              title="Next photo"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Add More Photos (Different Sides) + Remove Current Photo */}
+                        {totalPhotos > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 6 }}>
+                            <button
+                              type="button"
+                              onClick={() => openFilePicker(true)}
+                              style={{
+                                width: "100%",
+                                padding: "5px 8px",
+                                background: "#eff6ff",
+                                color: "#1d4ed8",
+                                border: "1px solid #93c5fd",
+                                borderRadius: 4,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              + Add More Photos
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCurrentImage(index)}
+                              style={{
+                                width: "100%",
+                                padding: "4px 8px",
+                                background: "#fee2e2",
+                                color: "#991b1b",
+                                border: "none",
+                                borderRadius: 4,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              ✕ Remove This Photo
+                            </button>
+                          </div>
+                        )}
                       </>
-                    )}
-                  </div>
-                  {item.image_url && (
-                    <button
-                      type="button"
-                      onClick={() => handleProductChange(index, "image_url", "")}
-                      style={{
-                        marginTop: 6,
-                        width: "100%",
-                        padding: "4px 8px",
-                        background: "#fee2e2",
-                        color: "#991b1b",
-                        border: "none",
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      ✕ Remove Photo
-                    </button>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 {/* Fields Grid */}
@@ -672,13 +922,43 @@ export default function CostingRequestCenterPage() {
 
                     <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
-                        Product Code (Auto-Generated)
+                        Costing Code (Auto Numeric)
                       </label>
                       <input
                         type="text"
-                        value={item.product_code || getAutoCodeForIndex(index)}
-                        onChange={(e) => handleProductChange(index, "product_code", e.target.value)}
-                        style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1.5px solid #93c5fd", background: "#f0fdf4", color: "#166534", fontSize: 13, fontWeight: 700 }}
+                        value={item.costing_code}
+                        onChange={(e) => handleProductChange(index, "costing_code", e.target.value)}
+                        placeholder="e.g. 1, 2, 3"
+                        style={{
+                          width: "100%",
+                          padding: "7px 10px",
+                          borderRadius: 6,
+                          border: "1.5px solid #93c5fd",
+                          background: "#f0fdf4",
+                          color: "#166534",
+                          fontSize: 13,
+                          fontWeight: 700,
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                        Buyer Code
+                      </label>
+                      <input
+                        type="text"
+                        value={item.buyer_code}
+                        onChange={(e) => handleProductChange(index, "buyer_code", e.target.value)}
+                        placeholder="Enter Buyer Code"
+                        style={{
+                          width: "100%",
+                          padding: "7px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #d1d5db",
+                          fontSize: 13,
+                          fontWeight: 600,
+                        }}
                       />
                     </div>
 
@@ -743,6 +1023,50 @@ export default function CostingRequestCenterPage() {
                         style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
                       />
                     </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                        Sample Status
+                      </label>
+                      <select
+                        value={item.sample_availability || "Not Available"}
+                        onChange={(e) => handleProductChange(index, "sample_availability", e.target.value)}
+                        style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, fontWeight: 600 }}
+                      >
+                        <option value="Not Available">Not Available</option>
+                        <option value="Sample Available">Sample Available</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+                        Buyer Target Price <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 400 }}>(Optional)</span>
+                      </label>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select
+                          value={item.target_currency || "USD"}
+                          onChange={(e) => handleProductChange(index, "target_currency", e.target.value)}
+                          style={{ width: 82, padding: "7px 6px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 12, fontWeight: 700, background: "#f8fafc" }}
+                        >
+                          <option value="USD">USD ($)</option>
+                          <option value="INR">INR (₹)</option>
+                          <option value="EUR">EUR (€)</option>
+                          <option value="GBP">GBP (£)</option>
+                          <option value="AED">AED</option>
+                          <option value="AUD">AUD</option>
+                          <option value="CAD">CAD</option>
+                        </select>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.target_price}
+                          onChange={(e) => handleProductChange(index, "target_price", e.target.value)}
+                          placeholder="Target Price"
+                          style={{ flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -800,7 +1124,7 @@ export default function CostingRequestCenterPage() {
               Total Products for Costing: {products.length}
             </div>
             <div style={{ fontSize: 12, color: "#6b7280" }}>
-              Merchant: <strong>{merchantName || "Not set"}</strong> | Priority: <strong>{bunchPriority}</strong>
+              Merchant Folder: <strong>{merchantName || "Not set"}</strong> | Priority: <strong>{requestPriority}</strong>
             </div>
           </div>
 

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { costingApi, CostEstimation } from "../api/costingApi";
 
 export default function CostEstimationDetailPage() {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id?: string }>();
+  const [searchParams] = useSearchParams();
+  const isReadOnly = searchParams.get("readonly") === "true";
   const [estimation, setEstimation] = useState<CostEstimation | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,10 +56,10 @@ export default function CostEstimationDetailPage() {
       {/* Action Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <button
-          onClick={() => navigate("/admin/costing/list")}
-          style={{ padding: "8px 16px", background: "#ffffff", border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer" }}
+          onClick={() => navigate(-1)}
+          style={{ padding: "8px 16px", background: "#ffffff", border: "1px solid #d1d5db", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}
         >
-          ← Back to List of New Costing
+          ← Back
         </button>
         <div style={{ display: "flex", gap: 12 }}>
           <button
@@ -66,12 +68,14 @@ export default function CostEstimationDetailPage() {
           >
             🖨️ Print / Save PDF
           </button>
-          <button
-            onClick={() => navigate(`/admin/costing/edit/${estimation.id}`)}
-            style={{ padding: "8px 16px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}
-          >
-            Edit Estimation
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => navigate(`/admin/costing/edit/${estimation.id}`)}
+              style={{ padding: "8px 16px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}
+            >
+              Edit Estimation
+            </button>
+          )}
         </div>
       </div>
 

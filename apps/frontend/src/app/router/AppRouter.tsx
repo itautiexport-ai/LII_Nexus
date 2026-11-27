@@ -79,6 +79,7 @@ import CostingRequestCenterPage from "../../modules/costing/pages/CostingRequest
 import CostingRequestsProductsPage from "../../modules/costing/pages/CostingRequestsProductsPage";
 import CostingRequestsBunchesPage from "../../modules/costing/pages/CostingRequestsBunchesPage";
 import CostingTrackerPage from "../../modules/costing/pages/CostingTrackerPage";
+import BuyerQuotesHistoryPage from "../../modules/costing/pages/BuyerQuotesHistoryPage";
 import BuyersPage from "../../modules/admin/masterdata/pages/BuyersPage";
 import UomsPage from "../../modules/admin/masterdata/pages/UomsPage";
 import FinishCodesPage from "../../modules/admin/masterdata/pages/FinishCodesPage";
@@ -420,6 +421,7 @@ export default function AppRouter() {
           <Route path="costing/requests/products" element={<CostingRequestsProductsPage />} />
           <Route path="costing/requests/bunches" element={<CostingRequestsBunchesPage />} />
           <Route path="costing/tracker" element={<CostingTrackerPage />} />
+          <Route path="costing/buyer-quotes-history" element={<BuyerQuotesHistoryPage />} />
           <Route path="costing/list" element={<CostEstimationsListPage />} />
           <Route path="costing/new" element={<CostEstimationFormPage />} />
           <Route path="costing/edit/:id" element={<CostEstimationFormPage />} />
